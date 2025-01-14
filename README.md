@@ -30,5 +30,5 @@ This blog is built with:
 
 ## License
 
-This blog content is licensed under MIT License. 
+This blog content is licensed under [MIT License](LICENSE). 
 The blog theme is based on [Jekflix Template](https://github.com/thiagorossener/jekflix-template/tree/master) by Thiago Rossener.
