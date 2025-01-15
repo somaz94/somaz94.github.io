@@ -36,30 +36,32 @@ Let's explore how web browsers work internally, from the moment a user enters a 
 15. Displays final result to web user
 
 ### 📊 Flow Chart
-<div style="width: 70%; margin: auto;">
-{% mermaid %}
-graph TD;
-    A[🌐 User accesses website www.a.com] --> B[📡 DNS Lookup: Resolve IP address];
-    B --> C[🔗 3-Way Handshake SYN → SYN/ACK → ACK];
-    C --> D[📨 Send HTTP Request to Server];
-    D --> E[📥 Receive HTTP Response];
-    E --> F[🛠️ Parse HTML → Create DOM Tree];
-    F --> G{🎨 Style tag detected?};
-    G -- Yes --> H[🖌️ Parse CSS → Create CSSOM Tree];
-    H --> F;
-    G -- No --> I{📜 Script tag detected?};
-    I -- Yes --> J[⚙️ Parse JavaScript → Create AST];
-    J --> F;
-    I -- No --> K[📝 Merge DOM + CSSOM → Render Tree];
-    K --> L[📐 Layout: Position Elements];
-    L --> M[🖼️ Painting: Render UI];
-    M --> N[📊 Composition: Organize Layers z-index];
-    N --> O[👀 Display Rendered Page to User];
-    %% Additional Explanation
-    E -.-> P[⚡ Partial Rendering for Faster Display];
-    P --> F;
-{% endmermaid %}
+
+<div style="width: 80%; margin: auto;">
+  <div class="mermaid">
+    graph TD;
+      A[🌐 User accesses website www.a.com] --> B[📡 DNS Lookup: Resolve IP address];
+      B --> C[🔗 3-Way Handshake SYN → SYN/ACK → ACK];
+      C --> D[📨 Send HTTP Request to Server];
+      D --> E[📥 Receive HTTP Response];
+      E --> F[🛠️ Parse HTML → Create DOM Tree];
+      F --> G{🎨 Style tag detected?};
+      G -- Yes --> H[🖌️ Parse CSS → Create CSSOM Tree];
+      H --> F;
+      G -- No --> I{📜 Script tag detected?};
+      I -- Yes --> J[⚙️ Parse JavaScript → Create AST];
+      J --> F;
+      I -- No --> K[📝 Merge DOM + CSSOM → Render Tree];
+      K --> L[📐 Layout: Position Elements];
+      L --> M[🖼️ Painting: Render UI];
+      M --> N[📊 Composition: Organize Layers z-index];
+      N --> O[👀 Display Rendered Page to User];
+      %% Additional Explanation
+      E -.-> P[⚡ Partial Rendering for Faster Display];
+      P --> F;
+  </div>
 </div>
+
 
 ### 🔍 Detailed Process
 
