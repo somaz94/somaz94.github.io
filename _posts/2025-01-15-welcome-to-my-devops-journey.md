@@ -1,5 +1,5 @@
 ---
-date: 2025-01-14 16:00:00
+date: 2025-01-15 16:00:00
 layout: post
 title: Welcome to My DevOps Journey
 subtitle: A DevOps Engineer's perspective on Cloud Infrastructure and Automation
