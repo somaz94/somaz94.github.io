@@ -7,6 +7,10 @@ image: https://res.cloudinary.com/dkcm26aem/image/upload/v1736918189/ipvs-iptabl
 optimized_image: https://res.cloudinary.com/dkcm26aem/image/upload/v1736918189/ipvs-iptables_geqxro.png
 category: Kubernetes
 author: somaz
+tags:
+  - kubernetes
+  - ipvs
+  - iptables
 ---
 
 ## Concepts of IPVS and iptables
