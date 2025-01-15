@@ -19,6 +19,7 @@ group :jekyll_plugins do
   gem "jekyll-feed", "~> 0.12"
   gem "jekyll-sitemap"
   gem "jekyll-seo-tag"
+  gem "jekyll-mermaid"
 end
 
 # Windows와 JRuby 관련
