@@ -206,7 +206,7 @@ January 10, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>8 min to read</span>
                 </p>
                 <h1 class="post-title">Understanding Kubernetes Service Accounts</h1>
                 <p class="post-subtitle"></p>
@@ -231,6 +231,27 @@ January 10, 2025
 <h2 id="-overview">🎯 Overview</h2>
 <p>Service Accounts in Kubernetes are credentials used to grant permissions to pods for interacting with the API server.</p>
 
+<p><br /></p>
+
+<h3 id="what-is-service-account">What is Service Account?</h3>
+<blockquote>
+  <p>Service Account is a Kubernetes resource that provides an identity for processes that run in a Pod. <br /><br />
+Service account key elements play an essential role in the authentication and authorization process within the cluster.</p>
+</blockquote>
+
+<p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737096536/k8s-service-account-component_xxwj07.png" alt="k8s-service-account-component" />
+<a href="https://ssup2.github.io/theory_analysis/Kubernetes_Authentication_Service_Account">image reference link</a></p>
+
+<p>Before Kubernetes 1.24, the service account token is automatically created when the service account is created for the first time.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>kubectl get serviceaccount <span class="nt">-n</span> somaz
+NAME                                   SECRETS   AGE
+default                                1         27d
+
+<span class="nv">$ </span>kubectl get secret <span class="nt">-n</span> somaz
+NAME                                               TYPE                                  DATA   AGE
+default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
+</code></pre></div></div>
+
 <h3 id="-service-account-basics">🔑 Service Account Basics</h3>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Basic Service Account Structure (K8s 1.24+)</span>
@@ -245,9 +266,66 @@ January 10, 2025
 <span class="na">type</span><span class="pi">:</span> <span class="s">kubernetes.io/service-account-token</span>
 <span class="na">metadata</span><span class="pi">:</span>
   <span class="na">name</span><span class="pi">:</span> <span class="s">servicenow-discovery-token</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">default</span>
   <span class="na">annotations</span><span class="pi">:</span>
     <span class="na">kubernetes.io/service-account.name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">servicenow-discovery"</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="c1"># "namespace" omitted since ClusterRoles are not namespaced</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">read-only</span>
+<span class="na">rules</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">apps</span>
+    <span class="pi">-</span> <span class="s">extensions</span>
+    <span class="pi">-</span> <span class="s2">"</span><span class="s">*"</span>
+    <span class="pi">-</span> <span class="s2">"</span><span class="s">"</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">*"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">watch"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">]</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRoleBinding</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">discovery-global</span>
+<span class="na">subjects</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">servicenow-discovery</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">default</span>
+<span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">User</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">servicenow-discovery</span>
+  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
+<span class="na">roleRef</span><span class="pi">:</span>
+  <span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">read-only</span>
+  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
 </code></pre></div></div>
+
+<p><br /></p>
+
+<p><strong>Cluster Role Binding</strong></p>
+<ul>
+  <li>Binds the ClusterRole to the ServiceAccount</li>
+</ul>
+
+<p><strong>Cluster Role</strong></p>
+<ul>
+  <li>Defines the permissions for the ServiceAccount</li>
+</ul>
+
+<p><strong>Role Binding</strong></p>
+<ul>
+  <li>Binds the Role to the ServiceAccount</li>
+</ul>
+
+<p><strong>Role</strong></p>
+<ul>
+  <li>Defines the permissions for the ServiceAccount</li>
+</ul>
+
+<p><br /></p>
 
 <h3 id="-key-components">🔐 Key Components</h3>
 
@@ -273,6 +351,36 @@ January 10, 2025
 </ol>
 
 <h3 id="-kubernetes-authentication-components">🔑 Kubernetes Authentication Components</h3>
+<ul>
+  <li>Token</li>
+  <li>ca.crt</li>
+  <li>Namespace</li>
+</ul>
+
+<blockquote>
+  <p>When a service account is created, Kubernetes automatically creates a security secret containing the following three components.</p>
+</blockquote>
+
+<h4 id="token">Token</h4>
+<p>A token is a JSON web token (JWT) that can be used to authenticate requests to the Kubernetes API server on behalf of service accounts. The token is signed with the private key of the Kubernetes API server</p>
+
+<p>It can be verified using the corresponding public key (in ca.crt). The token contains information about the service account, such as its name and namespaces to which it belongs.</p>
+
+<h4 id="cacrt">ca.crt</h4>
+<p>The ca.crt file contains a certificate of certification authority (CA) for the Kubernetes cluster. It is used to establish trust between the client and the API server when making a request.</p>
+
+<p>The client can use this CA certificate to verify that the API server’s certificate is valid and signed by the same CA. This allows the client to verify that it is communicating with an authenticated API server and not a malicious actor.</p>
+
+<h4 id="namespace">Namespace</h4>
+<p>Namespace is a key component of Kubernetes’ multi-tenant architecture. Namespace is used to logically separate resources within a cluster, allowing multiple teams or projects to share the same cluster without interfering with each other.</p>
+
+<p>When a service account is created, it is associated with a specific namespace. If the service account is not granted full cluster permission through ClusterRoleBindings, the token of the service account authorized for that namespace through RoleBindings can only be used to access resources within that namespace.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h3 id="-component-table">🔄 Component Table</h3>
 
 <style>
   .component-table {
@@ -323,47 +431,90 @@ January 10, 2025
   </tr>
 </table>
 
-<h3 id="-practical-example">💡 Practical Example</h3>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check existing service accounts</span>
-kubectl get serviceaccounts <span class="nt">-n</span> somaz
-
-<span class="c"># View service account token</span>
-kubectl get secret <span class="nt">-n</span> somaz default-token-7c6dm
-
-<span class="c"># Check pod mount</span>
-kubectl describe po <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm
-</code></pre></div></div>
-
 <p><br /></p>
 
 <hr />
 
-<h3 id="-rbac-configuration">🔒 RBAC Configuration</h3>
+<h3 id="-pratice-service-account">💡 Pratice Service Account</h3>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">service-account-somaz-role</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">somaz</span>
-<span class="na">rules</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span> 
-    <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">pods"</span><span class="pi">]</span>
-    <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">watch"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">]</span>
-<span class="nn">---</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">RoleBinding</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">service-account-somaz-role-binding</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">somaz</span> 
-<span class="na">subjects</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
-    <span class="na">name</span><span class="pi">:</span> <span class="s">default</span>
-    <span class="na">namespace</span><span class="pi">:</span> <span class="s">somaz</span>
-<span class="na">roleRef</span><span class="pi">:</span>
-  <span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span> 
-  <span class="na">name</span><span class="pi">:</span> <span class="s">service-account-somaz-role</span> 
-  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
+<p>I’m going to proceed with the existing service account and service account token.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>k get serviceaccounts <span class="nt">-n</span> somaz
+NAME                                   SECRETS   AGE
+default                                1         27d
+
+<span class="nv">$ </span>k get secret <span class="nt">-n</span> somaz
+NAME                                               TYPE                                  DATA   AGE
+default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
+</code></pre></div></div>
+
+<p>The service account is mounted on the pad as shown below.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k describe po <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm
+    Mounts:
+      /etc/mysql/conf.d from config-volume <span class="o">(</span>rw<span class="o">)</span>
+      /var/lib/mysql from mysql-persistent-storage-dev2 <span class="o">(</span>rw<span class="o">)</span>
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9dnzq <span class="o">(</span>ro<span class="o">)</span>
+</code></pre></div></div>
+
+<p>If you check the pad, there is a token in the place where it is mounted. So you can communicate with the Kubernetes API server with that token.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> <span class="nb">ls</span> <span class="nt">-l</span> /var/run/secrets/kubernetes.io/serviceaccount/
+total 0
+lrwxrwxrwx 1 root root 13 Apr 12 10:00 ca.crt -&gt; ..data/ca.crt
+lrwxrwxrwx 1 root root 16 Apr 12 10:00 namespace -&gt; ..data/namespace
+lrwxrwxrwx 1 root root 12 Apr 12 10:00 token -&gt; ..data/token
+</code></pre></div></div>
+
+<p>If you check the token file, there is a value.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> <span class="nb">cat</span> /var/run/secrets/kubernetes.io/serviceaccount/token
+eyJhbGciOi...
+</code></pre></div></div>
+
+<p>And after creating the Role, Rollbinding is done.</p>
+
+<p>Simply put, Role is a role that only works in certain namespaces ClusterRole is a role that operates throughout the cluster</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: service-account-somaz-role
+  namespace: somaz
+rules:
+  - apiGroups: <span class="o">[</span><span class="s2">""</span><span class="o">]</span> 
+    resources: <span class="o">[</span><span class="s2">"pods"</span><span class="o">]</span>
+    verbs: <span class="o">[</span><span class="s2">"get"</span>, <span class="s2">"watch"</span>, <span class="s2">"list"</span><span class="o">]</span>
+<span class="nt">---</span>
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: service-account-somaz-role-binding
+  namespace: somaz 
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: somaz
+roleRef:
+  kind: Role 
+  name: service-account-somaz-role 
+  apiGroup: rbac.authorization.k8s.io
+</code></pre></div></div>
+
+<p>Check the communication as below.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> bash
+bash-4.4# <span class="nb">cd</span> /var/run/secrets/kubernetes.io/serviceaccount/
+bash-4.4# <span class="nv">TOKEN</span><span class="o">=</span><span class="si">$(</span><span class="nb">cat </span>token<span class="si">)</span>
+bash-4.4# curl <span class="nt">-X</span> GET https://<span class="nv">$KUBERNETES_SERVICE_HOST</span>/api/v1/namespaces/somaz/pods <span class="nt">--header</span> <span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span> <span class="nt">--insecure</span>
+<span class="o">{</span>
+  <span class="s2">"kind"</span>: <span class="s2">"PodList"</span>,
+  <span class="s2">"apiVersion"</span>: <span class="s2">"v1"</span>,
+  <span class="s2">"metadata"</span>: <span class="o">{</span>
+    <span class="s2">"resourceVersion"</span>: <span class="s2">"79523984"</span>
+  <span class="o">}</span>,
+  <span class="s2">"items"</span>: <span class="o">[</span>
+    <span class="o">{</span>
+      <span class="s2">"metadata"</span>: <span class="o">{</span>
+        <span class="s2">"name"</span>: <span class="s2">"somaz-db-d7d785ff4-mwgfm"</span>,
+        <span class="s2">"generateName"</span>: <span class="s2">"somaz-db-d7d785ff4-"</span>,
+        <span class="s2">"namespace"</span>: <span class="s2">"somaz"</span>,
+        <span class="s2">"uid"</span>: <span class="s2">"2f44c054-937a-478c-b719-20298846f236"</span>,
+...
 </code></pre></div></div>
 
 <h3 id="-common-questions">❓ Common Questions</h3>
@@ -415,15 +566,22 @@ data:
   <p>Obviously the two token values are different. So how do we communicate?</p>
 </blockquote>
 
-<p>The reasons are as follows.</p>
+<style>
+  .info-box {
+    border: 2px solid #4CAF50;
+    background-color: #e8f5e9;
+    padding: 20px;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    line-height: 1.6;
+  }
+</style>
 
-<p>In fact, it seems that the two tokens should be the same, but Kubernetes automatically rotates the service account token for security reasons.</p>
-
-<p>This is a measure to strengthen security in case the service account token is stolen or leaked.</p>
-
-<p>The rotation period of the service account token varies according to the Kubernetes cluster setting.</p>
-
-<p>Therefore, depending on the time of creation, the token of the pad and the token inquired with the <code class="language-plaintext highlighter-rouge">kubectl get secret</code> command may be different. This is why the two tokens are different</p>
+<div class="info-box">
+  <strong>🔐 Why Are the Two Tokens Different?</strong><br /><br />
+  The reasons are as follows. In fact, it seems that the two tokens should be the same, but Kubernetes automatically rotates the service account token for security reasons. <br /><br /> This is a measure to strengthen security in case the service account token is stolen or leaked. The rotation period of the service account token varies according to the Kubernetes cluster setting. <br /><br />Therefore, depending on the time of creation, the token of the pad and the token inquired with the <code>kubectl get secret</code> command may be different. This is why the two tokens are different.
+</div>
 
 <p><br /></p>
 
@@ -468,11 +626,11 @@ data:
                             </li>
                         
                             <li>
-                                <a href="/category/cs/ipsec-ssl/">
+                                <a href="/category/kubernetes/k8s-resources/">
                                     
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737093919/security_cz6jft.png">
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737098966/kubernetes_qizize.png">
                                     
-                                    <h3>Understanding IPsec vs SSL/TLS - Network Security Protocols</h3>
+                                    <h3>Understanding Kubernetes Resources - A Comprehensive Guide</h3>
                                 </a>
                             </li>
                         
@@ -484,7 +642,7 @@ data:
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="8">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -504,13 +662,13 @@ data:
         </div>
     </div>
     
-    <a href="/category/kubernetes/ipvs-iptables/" class="post-preview">
+    <a href="/category/kubernetes/k8s-resources/" class="post-preview">
         <div class="image">
             
-                <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1736918189/ipvs-iptables_geqxro.png">
+                <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737098966/kubernetes_qizize.png">
             
         </div>
-        <h3 class="title">IPVS vs iptables in Kubernetes</h3>
+        <h3 class="title">Understanding Kubernetes Resources - A Comprehensive Guide</h3>
     </a>
 </div>
 
@@ -790,6 +948,27 @@ data:
 🎯 Overview
 Service Accounts in Kubernetes are credentials used to grant permissions to pods for interacting with the API server.
 
+
+
+What is Service Account?
+
+  Service Account is a Kubernetes resource that provides an identity for processes that run in a Pod. 
+Service account key elements play an essential role in the authentication and authorization process within the cluster.
+
+
+
+image reference link
+
+Before Kubernetes 1.24, the service account token is automatically created when the service account is created for the first time.
+$ kubectl get serviceaccount -n somaz
+NAME                                   SECRETS   AGE
+default                                1         27d
+
+$ kubectl get secret -n somaz
+NAME                                               TYPE                                  DATA   AGE
+default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
+
+
 🔑 Service Account Basics
 
 # Basic Service Account Structure (K8s 1.24+)
@@ -804,8 +983,65 @@ kind: Secret
 type: kubernetes.io/service-account-token
 metadata:
   name: servicenow-discovery-token
+  namespace: default
   annotations:
     kubernetes.io/service-account.name: &quot;servicenow-discovery&quot;
+---
+apiVersion: v1
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  # &quot;namespace&quot; omitted since ClusterRoles are not namespaced
+  name: read-only
+rules:
+- apiGroups:
+    - apps
+    - extensions
+    - &quot;*&quot;
+    - &quot;&quot;
+  resources: [&quot;*&quot;]
+  verbs: [&quot;get&quot;, &quot;watch&quot;, &quot;list&quot;]
+---
+apiVersion: v1
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: discovery-global
+subjects:
+- kind: ServiceAccount
+  name: servicenow-discovery
+  namespace: default
+- kind: User
+  name: servicenow-discovery
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: read-only
+  apiGroup: rbac.authorization.k8s.io
+
+
+
+
+Cluster Role Binding
+
+  Binds the ClusterRole to the ServiceAccount
+
+
+Cluster Role
+
+  Defines the permissions for the ServiceAccount
+
+
+Role Binding
+
+  Binds the Role to the ServiceAccount
+
+
+Role
+
+  Defines the permissions for the ServiceAccount
+
+
 
 
 🔐 Key Components
@@ -833,6 +1069,36 @@ metadata:
 
 🔑 Kubernetes Authentication Components
 
+  Token
+  ca.crt
+  Namespace
+
+
+
+  When a service account is created, Kubernetes automatically creates a security secret containing the following three components.
+
+
+Token
+A token is a JSON web token (JWT) that can be used to authenticate requests to the Kubernetes API server on behalf of service accounts. The token is signed with the private key of the Kubernetes API server
+
+It can be verified using the corresponding public key (in ca.crt). The token contains information about the service account, such as its name and namespaces to which it belongs.
+
+ca.crt
+The ca.crt file contains a certificate of certification authority (CA) for the Kubernetes cluster. It is used to establish trust between the client and the API server when making a request.
+
+The client can use this CA certificate to verify that the API server’s certificate is valid and signed by the same CA. This allows the client to verify that it is communicating with an authenticated API server and not a malicious actor.
+
+Namespace
+Namespace is a key component of Kubernetes’ multi-tenant architecture. Namespace is used to logically separate resources within a cluster, allowing multiple teams or projects to share the same cluster without interfering with each other.
+
+When a service account is created, it is associated with a specific namespace. If the service account is not granted full cluster permission through ClusterRoleBindings, the token of the service account authorized for that namespace through RoleBindings can only be used to access resources within that namespace.
+
+
+
+
+
+🔄 Component Table
+
 
 
 
@@ -854,24 +1120,46 @@ metadata:
   
 
 
-💡 Practical Example
-
-# Check existing service accounts
-kubectl get serviceaccounts -n somaz
-
-# View service account token
-kubectl get secret -n somaz default-token-7c6dm
-
-# Check pod mount
-kubectl describe po -n somaz somaz-db-d7d785ff4-mwgfm
 
 
 
 
+💡 Pratice Service Account
+
+I’m going to proceed with the existing service account and service account token.
+$ k get serviceaccounts -n somaz
+NAME                                   SECRETS   AGE
+default                                1         27d
+
+$ k get secret -n somaz
+NAME                                               TYPE                                  DATA   AGE
+default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
 
 
-🔒 RBAC Configuration
+The service account is mounted on the pad as shown below.
+k describe po -n somaz somaz-db-d7d785ff4-mwgfm
+    Mounts:
+      /etc/mysql/conf.d from config-volume (rw)
+      /var/lib/mysql from mysql-persistent-storage-dev2 (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9dnzq (ro)
 
+
+If you check the pad, there is a token in the place where it is mounted. So you can communicate with the Kubernetes API server with that token.
+k exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- ls -l /var/run/secrets/kubernetes.io/serviceaccount/
+total 0
+lrwxrwxrwx 1 root root 13 Apr 12 10:00 ca.crt -&amp;gt; ..data/ca.crt
+lrwxrwxrwx 1 root root 16 Apr 12 10:00 namespace -&amp;gt; ..data/namespace
+lrwxrwxrwx 1 root root 12 Apr 12 10:00 token -&amp;gt; ..data/token
+
+
+If you check the token file, there is a value.
+k exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
+eyJhbGciOi...
+
+
+And after creating the Role, Rollbinding is done.
+
+Simply put, Role is a role that only works in certain namespaces ClusterRole is a role that operates throughout the cluster
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -895,6 +1183,27 @@ roleRef:
   kind: Role 
   name: service-account-somaz-role 
   apiGroup: rbac.authorization.k8s.io
+
+
+Check the communication as below.
+k exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- bash
+bash-4.4# cd /var/run/secrets/kubernetes.io/serviceaccount/
+bash-4.4# TOKEN=$(cat token)
+bash-4.4# curl -X GET https://$KUBERNETES_SERVICE_HOST/api/v1/namespaces/somaz/pods --header &quot;Authorization: Bearer $TOKEN&quot; --insecure
+{
+  &quot;kind&quot;: &quot;PodList&quot;,
+  &quot;apiVersion&quot;: &quot;v1&quot;,
+  &quot;metadata&quot;: {
+    &quot;resourceVersion&quot;: &quot;79523984&quot;
+  },
+  &quot;items&quot;: [
+    {
+      &quot;metadata&quot;: {
+        &quot;name&quot;: &quot;somaz-db-d7d785ff4-mwgfm&quot;,
+        &quot;generateName&quot;: &quot;somaz-db-d7d785ff4-&quot;,
+        &quot;namespace&quot;: &quot;somaz&quot;,
+        &quot;uid&quot;: &quot;2f44c054-937a-478c-b719-20298846f236&quot;,
+...
 
 
 ❓ Common Questions
@@ -946,15 +1255,12 @@ data:
   Obviously the two token values are different. So how do we communicate?
 
 
-The reasons are as follows.
 
-In fact, it seems that the two tokens should be the same, but Kubernetes automatically rotates the service account token for security reasons.
 
-This is a measure to strengthen security in case the service account token is stolen or leaked.
 
-The rotation period of the service account token varies according to the Kubernetes cluster setting.
+  🔐 Why Are the Two Tokens Different?
+  The reasons are as follows. In fact, it seems that the two tokens should be the same, but Kubernetes automatically rotates the service account token for security reasons.  This is a measure to strengthen security in case the service account token is stolen or leaked. The rotation period of the service account token varies according to the Kubernetes cluster setting. Therefore, depending on the time of creation, the token of the pad and the token inquired with the kubectl get secret command may be different. This is why the two tokens are different.
 
-Therefore, depending on the time of creation, the token of the pad and the token inquired with the kubectl get secret command may be different. This is why the two tokens are different
 
 
 
@@ -967,7 +1273,7 @@ Therefore, depending on the time of creation, the token of the pad and the token
   Kubernetes Service Account Guide
 
 ",
-            "wordcount": "775",
+            "wordcount": "1618",
             "inLanguage": "en",
             "dateCreated": "2025-01-10/",
             "datePublished": "2025-01-10/",
