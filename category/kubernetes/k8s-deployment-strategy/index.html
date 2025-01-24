@@ -218,7 +218,7 @@ January 13, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>2 min to read</span>
+                    <span>5 min to read</span>
                 </p>
                 <h1 class="post-title">Kubernetes Deployment Strategies</h1>
                 <p class="post-subtitle"></p>
@@ -406,6 +406,128 @@ January 13, 2025
 
 <p><br /></p>
 
+<h3 id="-deployment-health-checks">🔍 Deployment Health Checks</h3>
+
+<h4 id="1-readiness-probe">1. Readiness Probe</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+    <span class="na">readinessProbe</span><span class="pi">:</span>
+      <span class="na">httpGet</span><span class="pi">:</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">/health</span>
+        <span class="na">port</span><span class="pi">:</span> <span class="m">8080</span>
+      <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="m">5</span>
+      <span class="na">periodSeconds</span><span class="pi">:</span> <span class="m">10</span>
+</code></pre></div></div>
+<ul>
+  <li>Determines when a pod is ready to accept traffic</li>
+  <li>Essential for smooth rolling updates</li>
+  <li>Prevents routing to partially started pods</li>
+</ul>
+
+<h4 id="2-liveness-probe">2. Liveness Probe</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+    <span class="na">livenessProbe</span><span class="pi">:</span>
+      <span class="na">httpGet</span><span class="pi">:</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">/health</span>
+        <span class="na">port</span><span class="pi">:</span> <span class="m">8080</span>
+      <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="m">15</span>
+      <span class="na">periodSeconds</span><span class="pi">:</span> <span class="m">20</span>
+</code></pre></div></div>
+<ul>
+  <li>Checks if a pod is healthy and running</li>
+  <li>Automatically restarts unhealthy pods</li>
+  <li>Crucial for maintaining application reliability</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="️-advanced-configuration-options">⚙️ Advanced Configuration Options</h3>
+
+<h4 id="1-progressive-delivery-with-argo-rollouts">1. Progressive Delivery with Argo Rollouts</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">argoproj.io/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Rollout</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-rollout</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">strategy</span><span class="pi">:</span>
+    <span class="na">canary</span><span class="pi">:</span>
+      <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">setWeight</span><span class="pi">:</span> <span class="m">20</span>
+      <span class="pi">-</span> <span class="na">pause</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">duration</span><span class="pi">:</span> <span class="nv">1h</span><span class="pi">}</span>
+      <span class="pi">-</span> <span class="na">setWeight</span><span class="pi">:</span> <span class="m">40</span>
+      <span class="pi">-</span> <span class="na">pause</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">duration</span><span class="pi">:</span> <span class="nv">1h</span><span class="pi">}</span>
+</code></pre></div></div>
+<ul>
+  <li>Automated canary analysis</li>
+  <li>Traffic weight management</li>
+  <li>Metric-based promotion/rollback</li>
+</ul>
+
+<h4 id="2-ab-testing-configuration">2. A/B Testing Configuration</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">nginx.ingress.kubernetes.io/canary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+    <span class="na">nginx.ingress.kubernetes.io/canary-by-header</span><span class="pi">:</span> <span class="s2">"</span><span class="s">User-Country"</span>
+    <span class="na">nginx.ingress.kubernetes.io/canary-by-header-value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">US"</span>
+</code></pre></div></div>
+<ul>
+  <li>Feature testing with specific user segments</li>
+  <li>Header-based routing</li>
+  <li>Geographical distribution</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="-common-pitfalls-and-best-practices">🚨 Common Pitfalls and Best Practices</h3>
+
+<div class="info-box info-box-warning">
+  <strong>Common Issues to Avoid:</strong>
+  <ul>
+    <li>Not setting appropriate resource limits and requests</li>
+    <li>Ignoring readiness/liveness probe configuration</li>
+    <li>Insufficient monitoring during deployments</li>
+    <li>Not planning for rollback scenarios</li>
+  </ul>
+</div>
+
+<div class="info-box info-box-success">
+  <strong>Best Practices:</strong>
+  <ul>
+    <li>Always use version tags instead of 'latest'</li>
+    <li>Implement proper health checks</li>
+    <li>Monitor deployment metrics</li>
+    <li>Maintain deployment history for rollbacks</li>
+    <li>Use pod disruption budgets for high availability</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h3 id="-monitoring-deployments">📊 Monitoring Deployments</h3>
+
+<h4 id="key-metrics-to-monitor">Key Metrics to Monitor</h4>
+<ul>
+  <li>Deployment success rate</li>
+  <li>Rollout duration</li>
+  <li>Error rates during deployment</li>
+  <li>Resource utilization</li>
+  <li>Response times</li>
+  <li>Pod health status</li>
+</ul>
+
+<h4 id="example-prometheus-query">Example Prometheus Query</h4>
+<pre><code class="language-promql">rate(http_requests_total{status!~"5.."}[5m]) 
+/ 
+rate(http_requests_total[5m])
+</code></pre>
+
+<p><br /></p>
+
 <hr />
 
 <h3 id="-reference">📚 Reference</h3>
@@ -463,7 +585,7 @@ January 13, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="2">
+            <div class="time-bar" data-minutes="5">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -932,6 +1054,128 @@ metadata:
 
 
 
+🔍 Deployment Health Checks
+
+1. Readiness Probe
+spec:
+  containers:
+  - name: my-app
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+
+  Determines when a pod is ready to accept traffic
+  Essential for smooth rolling updates
+  Prevents routing to partially started pods
+
+
+2. Liveness Probe
+spec:
+  containers:
+  - name: my-app
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+      initialDelaySeconds: 15
+      periodSeconds: 20
+
+
+  Checks if a pod is healthy and running
+  Automatically restarts unhealthy pods
+  Crucial for maintaining application reliability
+
+
+
+
+⚙️ Advanced Configuration Options
+
+1. Progressive Delivery with Argo Rollouts
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: my-app-rollout
+spec:
+  strategy:
+    canary:
+      steps:
+      - setWeight: 20
+      - pause: {duration: 1h}
+      - setWeight: 40
+      - pause: {duration: 1h}
+
+
+  Automated canary analysis
+  Traffic weight management
+  Metric-based promotion/rollback
+
+
+2. A/B Testing Configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/canary: &quot;true&quot;
+    nginx.ingress.kubernetes.io/canary-by-header: &quot;User-Country&quot;
+    nginx.ingress.kubernetes.io/canary-by-header-value: &quot;US&quot;
+
+
+  Feature testing with specific user segments
+  Header-based routing
+  Geographical distribution
+
+
+
+
+🚨 Common Pitfalls and Best Practices
+
+
+  Common Issues to Avoid:
+  
+    Not setting appropriate resource limits and requests
+    Ignoring readiness/liveness probe configuration
+    Insufficient monitoring during deployments
+    Not planning for rollback scenarios
+  
+
+
+
+  Best Practices:
+  
+    Always use version tags instead of &apos;latest&apos;
+    Implement proper health checks
+    Monitor deployment metrics
+    Maintain deployment history for rollbacks
+    Use pod disruption budgets for high availability
+  
+
+
+
+
+📊 Monitoring Deployments
+
+Key Metrics to Monitor
+
+  Deployment success rate
+  Rollout duration
+  Error rates during deployment
+  Resource utilization
+  Response times
+  Pod health status
+
+
+Example Prometheus Query
+rate(http_requests_total{status!~&quot;5..&quot;}[5m]) 
+/ 
+rate(http_requests_total[5m])
+
+
+
+
 
 
 📚 Reference
@@ -941,7 +1185,7 @@ metadata:
   DevOps Engineer Wiki
 
 ",
-            "wordcount": "535",
+            "wordcount": "943",
             "inLanguage": "en",
             "dateCreated": "2025-01-13/",
             "datePublished": "2025-01-13/",
