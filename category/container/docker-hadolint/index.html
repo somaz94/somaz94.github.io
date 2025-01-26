@@ -218,7 +218,7 @@ January 27, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>2 min to read</span>
                 </p>
                 <h1 class="post-title">Dockerfile Security Best Practices and Hadolint Usage Guide</h1>
                 <p class="post-subtitle">Implementing security best practices in your Dockerfiles</p>
@@ -246,16 +246,8 @@ January 27, 2025
 
 <h3 id="-dockerfile-security-best-practices">🔐 Dockerfile Security Best Practices</h3>
 
-<p>Let’s start with a basic Dockerfile:</p>
-
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> ubuntu:20.04  </span>
-<span class="k">LABEL</span><span class="s"> maintainer="somaz@gmail.com" </span>
-<span class="k">RUN </span>apt-get <span class="nt">-y</span> update <span class="o">&amp;&amp;</span> apt-get <span class="nt">-y</span> <span class="nb">install </span>nginx
-<span class="k">COPY</span><span class="s"> files/default /etc/nginx/sites-available/default</span>
-<span class="k">COPY</span><span class="s"> files/index.html /usr/share/nginx/html/index.html</span>
-<span class="k">EXPOSE</span><span class="s"> 80</span>
-<span class="k">CMD</span><span class="s"> ["/usr/sbin/nginx", "-g", "daemon off;"]</span>
-</code></pre></div></div>
+<p>Let’s start with a basic Dockerfile:
+<script src="https://gist.github.com/somaz94/4fb0c3aede3b527949e33c44d6d3cae8.js"></script></p>
 
 <h4 id="key-security-practices">Key Security Practices:</h4>
 
@@ -298,28 +290,7 @@ January 27, 2025
 </div>
 
 <h4 id="secure-version">Secure Version:</h4>
-
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> ubuntu:20.04</span>
-<span class="k">LABEL</span><span class="s"> maintainer="somaz@gmail.com"</span>
-
-<span class="c"># Create non-root user</span>
-<span class="k">RUN </span>groupadd <span class="nt">-r</span> nginx <span class="o">&amp;&amp;</span> useradd <span class="nt">-r</span> <span class="nt">-g</span> nginx nginx
-
-<span class="c"># Install nginx and clean up</span>
-<span class="k">RUN </span>apt-get <span class="nt">-y</span> update <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    apt-get <span class="nt">-y</span> <span class="nb">install </span>nginx <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    apt-get clean <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    <span class="nb">rm</span> <span class="nt">-rf</span> /var/lib/apt/lists/<span class="k">*</span>
-
-<span class="c"># Copy and set permissions</span>
-<span class="k">COPY</span><span class="s"> files/default /etc/nginx/sites-available/default</span>
-<span class="k">COPY</span><span class="s"> files/index.html /usr/share/nginx/html/index.html</span>
-<span class="k">RUN </span><span class="nb">chown</span> <span class="nt">-R</span> nginx:nginx /usr/share/nginx/html /var/log/nginx /var/lib/nginx
-
-<span class="k">EXPOSE</span><span class="s"> 8080</span>
-<span class="k">USER</span><span class="s"> nginx</span>
-<span class="k">CMD</span><span class="s"> ["/usr/sbin/nginx", "-g", "daemon off;"]</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/92dccd927a08eeb62145e5e1f6998109.js"></script>
 
 <p><br /></p>
 
@@ -386,38 +357,9 @@ Invoke-WebRequest <span class="nt">-Uri</span> https://github.com/hadolint/hadol
 
 <h3 id="-practical-example">🚀 Practical Example</h3>
 
-<p>Let’s analyze a Node.js application Dockerfile:</p>
+<p>Let’s analyze a Node.js application Dockerfile:
+<script src="https://gist.github.com/somaz94/83e7721017a79c136db3ed28555e7759.js"></script></p>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Builder stage</span>
-<span class="k">FROM</span><span class="w"> </span><span class="s">node:17-slim</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">builder</span>
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-<span class="k">COPY</span><span class="s"> package*.json ./</span>
-
-<span class="c"># Consolidated RUN instructions with security best practices</span>
-<span class="k">RUN </span>apt-get update <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    apt-get <span class="nb">install</span> <span class="nt">-y</span> <span class="nt">--no-install-recommends</span> <span class="se">\
-</span>    <span class="nv">python3</span><span class="o">=</span>3.9.5-r1 <span class="se">\
-</span>    build-essential<span class="o">=</span>12.8ubuntu1.1 <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    <span class="nb">rm</span> <span class="nt">-rf</span> /var/lib/apt/lists/<span class="k">*</span> <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    npm <span class="nb">install</span> <span class="nt">--only</span><span class="o">=</span>development
-
-<span class="k">COPY</span><span class="s"> . .</span>
-<span class="k">RUN </span>npm run build api
-
-<span class="c"># Production stage</span>
-<span class="k">FROM</span><span class="s"> node:17-alpine</span>
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-<span class="k">COPY</span><span class="s"> --from=builder /app/package*.json .</span>
-
-<span class="k">RUN </span>apk add <span class="nt">--no-cache</span> <span class="se">\
-</span>    <span class="nv">python3</span><span class="o">=</span>3.9.5-r1 <span class="se">\
-</span>    build-base<span class="o">=</span>0.5-r1 <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    npm <span class="nb">install</span> <span class="nt">--only</span><span class="o">=</span>production
-
-<span class="k">COPY</span><span class="s"> --from=builder /app/dist ./dist</span>
-<span class="k">EXPOSE</span><span class="s"> 8080</span>
-<span class="k">CMD</span><span class="s"> ["node", "dist/apps/api/src/main"]</span>
-</code></pre></div></div>
 <h4 id="key-improvements">Key Improvements:</h4>
 <ul>
   <li>Pinned package versions</li>
@@ -486,7 +428,7 @@ Invoke-WebRequest <span class="nt">-Uri</span> https://github.com/hadolint/hadol
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="2">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -797,14 +739,6 @@ Today, we’ll explore Dockerfile security best practices and learn how to use H
 
 Let’s start with a basic Dockerfile:
 
-FROM ubuntu:20.04  
-LABEL maintainer=&quot;somaz@gmail.com&quot; 
-RUN apt-get -y update &amp;amp;&amp;amp; apt-get -y install nginx
-COPY files/default /etc/nginx/sites-available/default
-COPY files/index.html /usr/share/nginx/html/index.html
-EXPOSE 80
-CMD [&quot;/usr/sbin/nginx&quot;, &quot;-g&quot;, &quot;daemon off;&quot;]
-
 
 Key Security Practices:
 
@@ -847,27 +781,6 @@ Key Security Practices:
 
 
 Secure Version:
-
-FROM ubuntu:20.04
-LABEL maintainer=&quot;somaz@gmail.com&quot;
-
-# Create non-root user
-RUN groupadd -r nginx &amp;amp;&amp;amp; useradd -r -g nginx nginx
-
-# Install nginx and clean up
-RUN apt-get -y update &amp;amp;&amp;amp; \
-    apt-get -y install nginx &amp;amp;&amp;amp; \
-    apt-get clean &amp;amp;&amp;amp; \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy and set permissions
-COPY files/default /etc/nginx/sites-available/default
-COPY files/index.html /usr/share/nginx/html/index.html
-RUN chown -R nginx:nginx /usr/share/nginx/html /var/log/nginx /var/lib/nginx
-
-EXPOSE 8080
-USER nginx
-CMD [&quot;/usr/sbin/nginx&quot;, &quot;-g&quot;, &quot;daemon off;&quot;]
 
 
 
@@ -937,35 +850,6 @@ Common Issues and Fixes:
 
 Let’s analyze a Node.js application Dockerfile:
 
-# Builder stage
-FROM node:17-slim AS builder
-WORKDIR /app
-COPY package*.json ./
-
-# Consolidated RUN instructions with security best practices
-RUN apt-get update &amp;amp;&amp;amp; \
-    apt-get install -y --no-install-recommends \
-    python3=3.9.5-r1 \
-    build-essential=12.8ubuntu1.1 &amp;amp;&amp;amp; \
-    rm -rf /var/lib/apt/lists/* &amp;amp;&amp;amp; \
-    npm install --only=development
-
-COPY . .
-RUN npm run build api
-
-# Production stage
-FROM node:17-alpine
-WORKDIR /app
-COPY --from=builder /app/package*.json .
-
-RUN apk add --no-cache \
-    python3=3.9.5-r1 \
-    build-base=0.5-r1 &amp;amp;&amp;amp; \
-    npm install --only=production
-
-COPY --from=builder /app/dist ./dist
-EXPOSE 8080
-CMD [&quot;node&quot;, &quot;dist/apps/api/src/main&quot;]
 
 Key Improvements:
 
@@ -987,7 +871,7 @@ Key Improvements:
   DevOpsCube Hadolint Guide
 
 ",
-            "wordcount": "779",
+            "wordcount": "460",
             "inLanguage": "en",
             "dateCreated": "2025-01-27/",
             "datePublished": "2025-01-27/",
