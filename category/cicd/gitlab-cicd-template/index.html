@@ -218,7 +218,7 @@ January 21, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>6 min to read</span>
+                    <span>4 min to read</span>
                 </p>
                 <h1 class="post-title">GitLab CI/CD Template Guide</h1>
                 <p class="post-subtitle">Optimizing Pipeline Implementation Using GitLab CI Templates</p>
@@ -272,60 +272,7 @@ January 21, 2025
 <h3 id="-creating-custom-templates">🔧 Creating Custom Templates</h3>
 
 <h4 id="build-template-example">Build Template Example</h4>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">.templates</span><span class="pi">:</span>
-  <span class="na">.common_build_before_script</span><span class="pi">:</span> <span class="nl">&amp;common_build_before_script</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] Start build image."</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] CI_REGISTRY is $CI_REGISTRY"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] CI_REGISTRY_IMAGE is $CI_REGISTRY_IMAGE"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] BUILD_TAG is $BUILD_TAG"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] IMAGE_URL is $IMAGE_URL"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] BUILD_TAG_LATEST is $BUILD_TAG_LATEST"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] IMAGE_URL_LATEST is $IMAGE_URL_LATEST"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] CI_PROJECT_DIR is $CI_PROJECT_DIR"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] SERVICE is $SERVICE"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] GCP Config"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] GCP_CI_REGISTRY is $GCP_CI_REGISTRY"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] GCP_CI_REGISTRY_IMAGE is $GCP_CI_REGISTRY_IMAGE"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] GCP_IMAGE_URL is $GCP_IMAGE_URL"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] GCP_IMAGE_URL_LATEST is $GCP_IMAGE_URL_LATEST"</span>
-    <span class="pi">-</span> <span class="s">echo "[INFO] NAMESPACE is $NAMESPACE"</span>
-    <span class="pi">-</span> <span class="s">mkdir -p /kaniko/.docker</span>
-    <span class="pi">-</span> <span class="pi">&gt;</span>
-      <span class="s">if [[ "$NAMESPACE" =~ ^sarena- ]]; then</span>
-        <span class="s">echo "Configuring registry for special namespace $NAMESPACE"</span>
-        <span class="s">cp gcloud/config.json /kaniko/.docker/config.json</span>
-      <span class="s">else</span>
-        <span class="s">echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n ${CI_REGISTRY_USER}:${CI_REGISTRY_PASSWORD} | base64)\"}}}" &gt; /kaniko/.docker/config.json</span>
-      <span class="s">fi</span>
-
-  <span class="na">.common_build_script</span><span class="pi">:</span> <span class="nl">&amp;common_build_script</span>
-    <span class="pi">-</span> <span class="pi">&gt;</span>
-      <span class="s">if [[ "$NAMESPACE" =~ ^sarena- ]]; then</span>
-        <span class="s">/kaniko/executor --cache=true --cache-ttl=24h --snapshot-mode=redo --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/$SERVICE.Dockerfile --destination $GCP_IMAGE_URL --destination $GCP_IMAGE_URL_LATEST --build-arg NODE_ENV=$NAMESPACE --skip-tls-verify</span>
-      <span class="s">else        </span>
-        <span class="s">/kaniko/executor --cache=true --cache-ttl=24h --snapshot-mode=redo --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/$SERVICE.Dockerfile --destination $IMAGE_URL --destination $IMAGE_URL_LATEST --build-arg NODE_ENV=$NAMESPACE --skip-tls-verify</span>
-      <span class="s">fi </span>
-    <span class="pi">-</span> <span class="s">KANIKO_RESULT=$?</span>
-    <span class="pi">-</span> <span class="s">echo "$SERVICE" &gt; service_status.txt</span>
-    <span class="pi">-</span> <span class="pi">&gt;</span>
-      <span class="s">if [ $KANIKO_RESULT -eq 0 ]; then</span>
-        <span class="s">echo "✅ Success" &gt; build_status.txt</span>
-      <span class="s">else</span>
-        <span class="s">echo "❌ Failed" &gt; build_status.txt</span>
-      <span class="s">fi</span>
-
-  <span class="na">.common_job_config</span><span class="pi">:</span> <span class="nl">&amp;common_job_config</span>
-    <span class="na">interruptible</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">retry</span><span class="pi">:</span>
-      <span class="na">max</span><span class="pi">:</span> <span class="m">2</span>
-      <span class="na">when</span><span class="pi">:</span>
-        <span class="pi">-</span> <span class="s">runner_system_failure</span>
-        <span class="pi">-</span> <span class="s">unknown_failure</span>
-        <span class="pi">-</span> <span class="s">data_integrity_failure</span>
-      <span class="na">exit_codes</span><span class="pi">:</span>
-        <span class="pi">-</span> <span class="m">137</span>  <span class="c1"># OOM kill retry</span>
-
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/c060ea29a0a16bc2adf8c7a16f9b59e8.js"></script>
 
 <h4 id="using-build-template">Using Build Template</h4>
 
@@ -417,24 +364,8 @@ January 21, 2025
 
 <h4 id="notification-script-template">Notification Script Template</h4>
 
-<p>Create a Slack notify template.</p>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">.common_notify_slack_script</span><span class="pi">:</span> <span class="nl">&amp;common_notify_slack_script</span>
-  <span class="pi">-</span> <span class="s">export GENERATOR_STATUS=$(cat generator_status.txt || echo "⏭️ Skip")</span>
-  <span class="pi">-</span> <span class="s">export BUILD_STATUS=$(cat build_status.txt || echo "⏭️ Skip")</span>
-  <span class="pi">-</span> <span class="s">export UPDATE_STATUS=$(cat update_status.txt || echo "⏭️ Skip")</span>
-  <span class="pi">-</span> <span class="s">export DEPLOY_SERVICE=$(cat service_status.txt || echo "⏭️ Skip")</span>
-  <span class="pi">-</span> <span class="pi">&gt;</span>
-    <span class="s">export JSON_DATA="{</span>
-      <span class="s">\"source_branch\": \"$CI_COMMIT_REF_NAME\",</span>
-      <span class="s">\"generator_result\": \"$GENERATOR_STATUS\",</span>
-      <span class="s">\"deploy_result\": \"$UPDATE_STATUS\",</span>
-      <span class="s">\"build_result\": \"$BUILD_STATUS\",</span>
-      <span class="s">\"commit_message\": \"$CI_COMMIT_MESSAGE\",</span>
-      <span class="s">\"trigger_user\": \"$GITLAB_USER_LOGIN\",</span>
-      <span class="s">\"gitlab_ci_run_url\": \"$CI_PIPELINE_URL\"</span>
-    <span class="s">}"</span>
-  <span class="pi">-</span> <span class="s">curl -X POST -H 'Content-type</span><span class="err">:</span> <span class="s">application/json' --data "$JSON_DATA" $SLACK_WEBHOOK_URL</span>
-</code></pre></div></div>
+<p>Create a Slack notify template.
+<script src="https://gist.github.com/somaz94/fb0637156611b70025903ba721e0098b.js"></script></p>
 
 <h4 id="using-notification-template">Using Notification Template</h4>
 
@@ -527,7 +458,7 @@ January 21, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="6">
+            <div class="time-bar" data-minutes="4">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -862,59 +793,6 @@ include:
 🔧 Creating Custom Templates
 
 Build Template Example
-.templates:
-  .common_build_before_script: &amp;amp;common_build_before_script
-    - echo &quot;[INFO] Start build image.&quot;
-    - echo &quot;[INFO] CI_REGISTRY is $CI_REGISTRY&quot;
-    - echo &quot;[INFO] CI_REGISTRY_IMAGE is $CI_REGISTRY_IMAGE&quot;
-    - echo &quot;[INFO] BUILD_TAG is $BUILD_TAG&quot;
-    - echo &quot;[INFO] IMAGE_URL is $IMAGE_URL&quot;
-    - echo &quot;[INFO] BUILD_TAG_LATEST is $BUILD_TAG_LATEST&quot;
-    - echo &quot;[INFO] IMAGE_URL_LATEST is $IMAGE_URL_LATEST&quot;
-    - echo &quot;[INFO] CI_PROJECT_DIR is $CI_PROJECT_DIR&quot;
-    - echo &quot;[INFO] SERVICE is $SERVICE&quot;
-    - echo &quot;[INFO] GCP Config&quot;
-    - echo &quot;[INFO] GCP_CI_REGISTRY is $GCP_CI_REGISTRY&quot;
-    - echo &quot;[INFO] GCP_CI_REGISTRY_IMAGE is $GCP_CI_REGISTRY_IMAGE&quot;
-    - echo &quot;[INFO] GCP_IMAGE_URL is $GCP_IMAGE_URL&quot;
-    - echo &quot;[INFO] GCP_IMAGE_URL_LATEST is $GCP_IMAGE_URL_LATEST&quot;
-    - echo &quot;[INFO] NAMESPACE is $NAMESPACE&quot;
-    - mkdir -p /kaniko/.docker
-    - &amp;gt;
-      if [[ &quot;$NAMESPACE&quot; =~ ^sarena- ]]; then
-        echo &quot;Configuring registry for special namespace $NAMESPACE&quot;
-        cp gcloud/config.json /kaniko/.docker/config.json
-      else
-        echo &quot;{\&quot;auths\&quot;:{\&quot;$CI_REGISTRY\&quot;:{\&quot;auth\&quot;:\&quot;$(echo -n ${CI_REGISTRY_USER}:${CI_REGISTRY_PASSWORD} | base64)\&quot;}}}&quot; &amp;gt; /kaniko/.docker/config.json
-      fi
-
-  .common_build_script: &amp;amp;common_build_script
-    - &amp;gt;
-      if [[ &quot;$NAMESPACE&quot; =~ ^sarena- ]]; then
-        /kaniko/executor --cache=true --cache-ttl=24h --snapshot-mode=redo --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/$SERVICE.Dockerfile --destination $GCP_IMAGE_URL --destination $GCP_IMAGE_URL_LATEST --build-arg NODE_ENV=$NAMESPACE --skip-tls-verify
-      else        
-        /kaniko/executor --cache=true --cache-ttl=24h --snapshot-mode=redo --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/$SERVICE.Dockerfile --destination $IMAGE_URL --destination $IMAGE_URL_LATEST --build-arg NODE_ENV=$NAMESPACE --skip-tls-verify
-      fi 
-    - KANIKO_RESULT=$?
-    - echo &quot;$SERVICE&quot; &amp;gt; service_status.txt
-    - &amp;gt;
-      if [ $KANIKO_RESULT -eq 0 ]; then
-        echo &quot;✅ Success&quot; &amp;gt; build_status.txt
-      else
-        echo &quot;❌ Failed&quot; &amp;gt; build_status.txt
-      fi
-
-  .common_job_config: &amp;amp;common_job_config
-    interruptible: true
-    retry:
-      max: 2
-      when:
-        - runner_system_failure
-        - unknown_failure
-        - data_integrity_failure
-      exit_codes:
-        - 137  # OOM kill retry
-
 
 
 Using Build Template
@@ -1008,22 +886,6 @@ I used the SLACK webhook, and I used the workflow builder to write so that I cou
 Notification Script Template
 
 Create a Slack notify template.
-.common_notify_slack_script: &amp;amp;common_notify_slack_script
-  - export GENERATOR_STATUS=$(cat generator_status.txt || echo &quot;⏭️ Skip&quot;)
-  - export BUILD_STATUS=$(cat build_status.txt || echo &quot;⏭️ Skip&quot;)
-  - export UPDATE_STATUS=$(cat update_status.txt || echo &quot;⏭️ Skip&quot;)
-  - export DEPLOY_SERVICE=$(cat service_status.txt || echo &quot;⏭️ Skip&quot;)
-  - &amp;gt;
-    export JSON_DATA=&quot;{
-      \&quot;source_branch\&quot;: \&quot;$CI_COMMIT_REF_NAME\&quot;,
-      \&quot;generator_result\&quot;: \&quot;$GENERATOR_STATUS\&quot;,
-      \&quot;deploy_result\&quot;: \&quot;$UPDATE_STATUS\&quot;,
-      \&quot;build_result\&quot;: \&quot;$BUILD_STATUS\&quot;,
-      \&quot;commit_message\&quot;: \&quot;$CI_COMMIT_MESSAGE\&quot;,
-      \&quot;trigger_user\&quot;: \&quot;$GITLAB_USER_LOGIN\&quot;,
-      \&quot;gitlab_ci_run_url\&quot;: \&quot;$CI_PIPELINE_URL\&quot;
-    }&quot;
-  - curl -X POST -H &apos;Content-type: application/json&apos; --data &quot;$JSON_DATA&quot; $SLACK_WEBHOOK_URL
 
 
 Using Notification Template
@@ -1069,7 +931,7 @@ If used in this way, a template can be created and applied to various jobs as fo
   Getting Started with CI Pipeline Templates
 
 ",
-            "wordcount": "1165",
+            "wordcount": "761",
             "inLanguage": "en",
             "dateCreated": "2025-01-21/",
             "datePublished": "2025-01-21/",
