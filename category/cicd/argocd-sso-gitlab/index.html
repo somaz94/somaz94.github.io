@@ -37,19 +37,19 @@
         mermaid.initialize({ startOnLoad: true });
     </script>
 
-    <title>Setting up GitHub Action Self-Hosted Runner on Kubernetes | somaz</title>
-    <meta name="description" content="Learn how to set up and manage GitHub Action self-hosted runners using Kubernetes and Helm">
+    <title>Setting up ArgoCD SSO with GitLab | somaz</title>
+    <meta name="description" content="Learn how to set up and manage ArgoCD SSO with GitLab">
     
-        <meta name="keywords" content="github, kubernetes, helm, cicd">
+        <meta name="keywords" content="gitlab, kubernetes, helm, cicd">
     
 
     <!-- Social: Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Setting up GitHub Action Self-Hosted Runner on Kubernetes | somaz">
-    <meta name="twitter:description" content="Learn how to set up and manage GitHub Action self-hosted runners using Kubernetes and Helm">
+    <meta name="twitter:title" content="Setting up ArgoCD SSO with GitLab | somaz">
+    <meta name="twitter:description" content="Learn how to set up and manage ArgoCD SSO with GitLab">
 
     
-        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1737616011/github-hosted-runner_wfujyb.png">
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1739943377/argocd-sso-gitlab_jzuunn.png">
     
     
     
@@ -57,10 +57,10 @@
     
 
     <!-- Social: Facebook / Open Graph -->
-    <meta property="og:url" content="https://somaz94.github.io/category/cicd/github-action-hosted-runner/">
-    <meta property="og:title" content="Setting up GitHub Action Self-Hosted Runner on Kubernetes | somaz">
-    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1737616011/github-hosted-runner_wfujyb.png">
-    <meta property="og:description" content="Learn how to set up and manage GitHub Action self-hosted runners using Kubernetes and Helm">
+    <meta property="og:url" content="https://somaz94.github.io/category/cicd/argocd-sso-gitlab/">
+    <meta property="og:title" content="Setting up ArgoCD SSO with GitLab | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1739943377/argocd-sso-gitlab_jzuunn.png">
+    <meta property="og:description" content="Learn how to set up and manage ArgoCD SSO with GitLab">
     <meta property="og:site_name" content="Somaz Tech Blog">
 
     <!-- Favicon -->
@@ -92,7 +92,7 @@
     <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
 
     <link rel="stylesheet" href="/assets/css/styles.css">
-    <link rel="canonical" href="https://somaz94.github.io/category/cicd/github-action-hosted-runner/">
+    <link rel="canonical" href="https://somaz94.github.io/category/cicd/argocd-sso-gitlab/">
     <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz94.github.io/feed.xml" />
 
     <!-- Include extra styles -->
@@ -211,22 +211,22 @@
                 <p class="post-info">
                     
                         <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
-                        <time class="date" datetime="2025-01-23T09:00:00+00:00">
+                        <time class="date" datetime="2025-03-14T05:00:00+00:00">
                             
 
 
-January 23, 2025
+March 14, 2025
 
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>3 min to read</span>
                 </p>
-                <h1 class="post-title">Setting up GitHub Action Self-Hosted Runner on Kubernetes</h1>
-                <p class="post-subtitle">A comprehensive guide to implementing GitHub Action Hosted Runner with Helm</p>
+                <h1 class="post-title">Setting up ArgoCD SSO with GitLab</h1>
+                <p class="post-subtitle">A comprehensive guide to implementing ArgoCD SSO with GitLab</p>
 
                 
-                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737616011/github-hosted-runner_wfujyb.png" alt="Featured image" class="post-cover">
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1739943377/argocd-sso-gitlab_jzuunn.png" alt="Featured image" class="post-cover">
                 
 
                 <!-- Pagination links -->
@@ -240,241 +240,186 @@ January 23, 2025
 
 <hr />
 
-<h2 id="-overview">🎯 Overview</h2>
+<h2 id="overview">Overview</h2>
 
-<p>This guide explores how to create and manage GitHub Action Hosted Runners. We’ll focus on implementing self-hosted runners using Kubernetes and Helm.</p>
+<p>In the last post, I tried configuring <a href="https://somaz94.github.io/cicd/2025-03-07-argocd-sso-gcp-oauth/">ArgoCD SSO using Google Oauth</a>,</p>
+
+<p>This post explains how to configure Single Sign-On (SSO) for ArgoCD using GitLab. We’ll walk through the process of setting up GitLab OAuth and integrating it with ArgoCD.</p>
 
 <p><br /></p>
 
-<h3 id="-understanding-github-action-hosted-runners">🔍 Understanding GitHub Action Hosted Runners</h3>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+  <li>GitLab instance</li>
+  <li>ArgoCD installed on a Kubernetes cluster</li>
+  <li>Administrative access to both GitLab and ArgoCD</li>
+</ul>
 
-<h4 id="components-overview">Components Overview</h4>
+<p><br /></p>
+
+<h2 id="steps">Steps</h2>
+
+<h3 id="1-create-gitlab-application">1. Create GitLab Application</h3>
 
 <div class="info-box info-box-default-not-check">
-  <strong>1. actions-runner-controller</strong>
-  <ul>
-    <li>Manages GitHub Actions runners in Kubernetes clusters</li>
-    <li>Handles automatic provisioning and lifecycle management</li>
-    <li>Supports repository, organization, and enterprise-level deployment</li>
-    <li>Uses Kubernetes HPA for auto-scaling</li><br />
-  </ul>
-  <strong>2. gha-runner-scale-set-controller</strong>
-  <ul>
-    <li>Manages large-scale runner deployments</li>
-    <li>Utilizes Scale Set Runners feature</li>
-    <li>Provides efficient runner management through single endpoint</li>
-    <li>Integrates with GitHub's Scale Set Runners API</li><br />
-  </ul>
-  <strong>3. gha-runner-scale-set</strong>
-  <ul>
-    <li>Configures and deploys runner scale sets</li>
-    <li>Controls scaling and lifecycle through GitHub Actions API</li>
-    <li>Optimizes communication between workflows and runners</li>
-  </ul>
+  <strong>Console Method</strong>
+  <ol>
+    <li>Navigate to Admin Area &gt; Applications in GitLab</li>
+    <li>Create new application:
+      <ul>
+        <li>Name: Argo CD</li>
+        <li>Redirect URI: https://argocd-server-urlapi/dex/callback</li>
+        <li>Select Scopes:
+          <ul>
+            <li>read_user</li>
+            <li>openid</li>
+            <li>profile</li>
+            <li>email</li>
+          </ul> 
+        </li>
+      </ul>
+    </li>
+    <li>Save the credentials:</li>
+      <ul>
+        <li>Application ID (Client ID)</li>
+        <li>Secret (Client Secret)</li>
+      </ul>
+  </ol>
 </div>
 
 <p><br /></p>
 
-<h3 id="-prerequisites">🛠 Prerequisites</h3>
+<h3 id="2-configure-argocd-installation">2. Configure ArgoCD Installation</h3>
 
-<h4 id="authentication-setup">Authentication Setup</h4>
+<p>Create <code class="language-plaintext highlighter-rouge">values/mgmt.yaml</code>:</p>
 
-<p>Choose one of the following authentication methods:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">global</span><span class="pi">:</span>
+  <span class="na">domain</span><span class="pi">:</span> <span class="s">argocd.your-domain.com</span>
 
-<h4 id="option-1-github-pat-token">Option 1: GitHub PAT Token</h4>
-<p><code class="language-plaintext highlighter-rouge">Github Organization/Account settings → Settings → Developer settings → GitHub Personal access tokens</code></p>
-<ul>
-  <li>PAT Token is required for the runner to authenticate with GitHub.</li>
-  <li>Below is an example of PAT Token permissions.</li>
-</ul>
+<span class="na">configs</span><span class="pi">:</span>
+  <span class="na">params</span><span class="pi">:</span>
+    <span class="na">create</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">server.insecure</span><span class="pi">:</span> <span class="no">true</span>
 
-<div class="info-box info-box-default-not-check">
-    <strong>Required scopes:</strong>
-    <ul>
-        <li>Repository Level: repo, workflow</li>
-        <li>Organization Level: read:org, admin:org, workflow</li>
-        <li>Enterprise Level: admin:enterprise, workflow</li>
-    </ul>
-</div>
+  <span class="na">ssh</span><span class="pi">:</span>
+    <span class="na">extraHosts</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">gitlab.concrit.us ssh-rsa AAAAB3N...</span>
+      <span class="s">gitlab.concrit.us ecdsa-sha2-nistp256...</span>
+      <span class="s">gitlab.concrit.us ssh-ed25519 AAAA..</span>
 
-<h4 id="option-2-github-app">Option 2: GitHub App</h4>
-
-<h5 id="if-you-have-an-existing-app">If you have an existing app</h5>
-<ul>
-  <li>Click the app</li>
-  <li>Check “App ID” in “About” section</li>
-</ul>
-
-<h5 id="if-you-dont-have-an-existing-app">If you don’t have an existing app</h5>
-<ul>
-  <li>Create new GitHub App</li>
-  <li>Input the required Information
-    <ul>
-      <li>GitHub App name</li>
-      <li>Homepage URL</li>
-      <li>Webhook URL (Optional)</li>
-      <li>Repository permissions Settings:
-        <ul>
-          <li>Actions: Read and Write</li>
-          <li>Administration: Read and Write</li>
-          <li>Metadata: Read-only</li>
-        </ul>
-      </li>
-    </ul>
-  </li>
-  <li>Click”Create GitHub App”</li>
-</ul>
-
-<h5 id="get-installation-id">Get Installation ID</h5>
-<ul>
-  <li>Click “Install App”</li>
-  <li>Select the repository or organization</li>
-  <li>Click “Install”</li>
-  <li>Check “Installation ID” in “About” section
-    <ul>
-      <li><code class="language-plaintext highlighter-rouge">https://github.com/organizations/YOUR-ORG/settings/installations/INSTALLATION_ID</code></li>
-    </ul>
-  </li>
-</ul>
-
-<h5 id="generate-private-key">Generate private key</h5>
-<ul>
-  <li>Move App Settings Page</li>
-  <li>Click “Generate a private key”</li>
-  <li>Download the private key file</li>
-</ul>
-
-<p><br /></p>
-
-<div class="info-box info-box-default-not-check">
-    <strong>1.Required permissions:</strong>
-    <ul>
-        <li>Actions: Read and Write</li>
-        <li>Administration: Read and Write</li>
-        <li>Metadata: Read-only</li>
-    </ul>
-    <strong>2. Get App ID and Installation ID</strong>
-    <strong>3. Generate private key</strong>
-</div>
-
-<p><br /></p>
-
-<h3 id="-installation">📦 Installation</h3>
-
-<h4 id="1-add-helm-repository">1. Add Helm Repository</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm repo add actions-runner-controller https://actions-runner-controller.github.io/actions-runner-controller
-</code></pre></div></div>
-
-<h4 id="2-create-namespace">2. Create Namespace</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl create namespace actions-runner-system
-</code></pre></div></div>
-
-<h4 id="3-install-controller">3. Install Controller</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>actions-runner-controller actions-runner-controller/actions-runner-controller <span class="se">\</span>
-    <span class="nt">-n</span> actions-runner-system <span class="se">\</span>
-    <span class="nt">-f</span> runner.yaml
-</code></pre></div></div>
-
-<h4 id="4-deploy-runner">4. Deploy Runner</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl apply <span class="nt">-f</span> runner-cr.yaml
-</code></pre></div></div>
-
-<p><br /></p>
-
-<h3 id="️-configuration-files">⚙️ Configuration Files</h3>
-
-<h4 id="runneryaml">runner.yaml</h4>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">authSecret</span><span class="pi">:</span>
-  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-  <span class="na">create</span><span class="pi">:</span> <span class="no">true</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">controller-manager"</span>
-  <span class="na">github_token</span><span class="pi">:</span> <span class="s2">"</span><span class="s">ghp_xxxxxxxxxxxxxxxxxxxxxxxx"</span>
-
-<span class="na">image</span><span class="pi">:</span>
-  <span class="na">repository</span><span class="pi">:</span> <span class="s2">"</span><span class="s">summerwind/actions-runner-controller"</span>
-  <span class="na">actionsRunnerRepositoryAndTag</span><span class="pi">:</span> <span class="s2">"</span><span class="s">summerwind/actions-runner:latest"</span>
-  <span class="na">dindSidecarRepositoryAndTag</span><span class="pi">:</span> <span class="s2">"</span><span class="s">docker:dind"</span>
-  <span class="na">pullPolicy</span><span class="pi">:</span> <span class="s">IfNotPresent</span>
-
-<span class="na">rbac</span><span class="pi">:</span>
-  <span class="na">allowGrantingKubernetesContainerModePermissions</span><span class="pi">:</span> <span class="no">true</span>
-
-<span class="na">serviceAccount</span><span class="pi">:</span>
-  <span class="na">create</span><span class="pi">:</span> <span class="no">true</span>
-</code></pre></div></div>
-
-<h4 id="runner-cryaml">runner-cr.yaml</h4>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">RunnerDeployment</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">example-runner</span>
-<span class="na">spec</span><span class="pi">:</span>
+<span class="na">controller</span><span class="pi">:</span>
   <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
-  <span class="na">template</span><span class="pi">:</span>
-    <span class="na">spec</span><span class="pi">:</span>
-      <span class="na">repository</span><span class="pi">:</span> <span class="s2">"</span><span class="s">your-github-username/your-repository"</span>
-      <span class="na">labels</span><span class="pi">:</span>
-        <span class="pi">-</span> <span class="s">self-hosted</span>
-        <span class="pi">-</span> <span class="s">linux</span>
-        <span class="pi">-</span> <span class="s">x64</span>
+
+<span class="na">dex</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+
+<span class="na">redis</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+
+<span class="na">server</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">annotations</span><span class="pi">:</span>
+      <span class="na">nginx.ingress.kubernetes.io/force-ssl-redirect</span><span class="pi">:</span> <span class="s2">"</span><span class="s">false"</span>
+      <span class="na">nginx.ingress.kubernetes.io/ssl-passthrough</span><span class="pi">:</span> <span class="s2">"</span><span class="s">false"</span>
+    <span class="na">ingressClassName</span><span class="pi">:</span> <span class="s2">"</span><span class="s">nginx"</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+    <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+
+<span class="na">repoServer</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+
+<span class="na">applicationSet</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+
+<span class="na">notifications</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
 </code></pre></div></div>
+
+<h3 id="3-configure-gitlab-sso">3. Configure GitLab SSO</h3>
+
+<p>Update <code class="language-plaintext highlighter-rouge">values/mgmt.yaml</code> with SSO configuration:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">configs</span><span class="pi">:</span>
+  <span class="na">cm</span><span class="pi">:</span>
+    <span class="na">timeout.reconciliation</span><span class="pi">:</span> <span class="s">60s</span>
+    <span class="na">dex.config</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">connectors:</span>
+        <span class="s">- type: gitlab</span>
+          <span class="s">id: gitlab</span>
+          <span class="s">name: GitLab</span>
+          <span class="s">config:</span>
+            <span class="s">baseURL: &lt;gitlab url&gt;</span>
+            <span class="s">clientID: &lt;application id&gt;</span>
+            <span class="s">clientSecret: &lt;secret&gt;</span>
+            <span class="s">redirectURI: https://&lt;argocd url&gt;/api/dex/callback</span>
+            <span class="s">groups:</span>
+              <span class="s">- server</span>
+      <span class="no">        </span>
+  <span class="na">rbac</span><span class="pi">:</span>
+    <span class="na">create</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">policy.csv</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">p, role:org-admin, applications, *, */*, allow</span>
+      <span class="s">p, role:org-admin, clusters, get, *, allow</span>
+      <span class="s">p, role:org-admin, repositories, *, *, allow</span>
+      <span class="s">p, role:org-admin, projects, get, *, allow</span>
+      <span class="s">p, role:org-admin, logs, get, *, allow</span>
+      <span class="s">p, role:org-admin, exec, create, */*, allow</span>
+      
+      <span class="s">g, &lt;group&gt;, role:org-admin</span>
+
+  <span class="na">secrets</span><span class="pi">:</span>
+    <span class="na">dex.gitlab.clientId</span><span class="pi">:</span> <span class="s2">"</span><span class="s">&lt;application</span><span class="nv"> </span><span class="s">id&gt;"</span>
+    <span class="na">dex.gitlab.clientSecret</span><span class="pi">:</span> <span class="s2">"</span><span class="s">&lt;secret&gt;"</span>
+</code></pre></div></div>
+
+<p>Apply the changes:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm upgrade argocd <span class="nb">.</span> <span class="nt">-n</span> argocd <span class="nt">-f</span> ./values/mgmt.yaml
+kubectl rollout restart <span class="nt">-n</span> argocd deployment argocd-dex-server
+</code></pre></div></div>
+
+<h3 id="4-test-login">4. Test Login</h3>
+<p>Access your ArgoCD instance and verify GitLab SSO login works correctly.</p>
+
+<p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1739943646/argocd-sso-gitlab-login_pwegi6.png" alt="ArgoCD SSO GitLab Login" /></p>
 
 <p><br /></p>
 
-<h3 id="-verification">🔍 Verification</h3>
-
-<h4 id="check-installation">Check Installation</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl get po <span class="nt">-n</span> actions-runner-system
-kubectl get runnerdeployments.actions.summerwind.dev
-</code></pre></div></div>
-
-<h4 id="verify-runner-connection">Verify Runner Connection</h4>
-<p>Check runners in your repository:
-<code class="language-plaintext highlighter-rouge">Settings → Actions → Runners</code>
-<img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737616011/github-hosted-runner_wfujyb.png" alt="GitHub Runner" width="800" /></p>
-
-<h4 id="example-workflow">Example Workflow</h4>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">Example Workflow</span>
-<span class="na">on</span><span class="pi">:</span>
-  <span class="na">workflow_dispatch</span><span class="pi">:</span>
-
-<span class="na">jobs</span><span class="pi">:</span>
-  <span class="na">test-job</span><span class="pi">:</span>
-    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">self-hosted</span>
-    <span class="c1"># or runs-on: [self-hosted, linux, x64]</span>
-    <span class="na">steps</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Test Step</span>
-        <span class="na">run</span><span class="pi">:</span> <span class="s">echo "Running on self-hosted runner"</span>
-</code></pre></div></div>
+<h3 id="authentication-processes">Authentication Processes</h3>
+<ul>
+  <li>OAuth Authentication</li>
+  <li>SAML Authentication</li>
+  <li>OpenID Connect Authentication</li>
+</ul>
 
 <p><br /></p>
 
-<h3 id="-key-considerations">🔑 Key Considerations</h3>
-<div class="info-box info-box-success">
-    <strong>1. Authentication:</strong>
-    <ul>
-        <li>You must choose between GitHub App or PAT authentication</li>
-        <li>GitHub App is recommended (better security and permissions management)</li>
-    </ul><br />
-    <strong>2. Permissions:</strong>
-    <ul>
-        <li>Set the proper permissions and resources required for Runner</li>
-    </ul><br />
-    <strong>3. Network Policy:</strong>
-    <ul>
-        <li>Check network policy and security settings</li>
-    </ul>
+<div class="info-box info-box-success-not-check">
+  <strong>Important Notes</strong>
+  <ul>
+    <li>Consider domain settings, security policies, and network configurations</li>
+    <li>Keep up with the latest documentation as GitLab and ArgoCD settings may change</li>
+    <li>Ensure proper backup before making configuration changes</li>
+    <li>Key points for SSO configuration:
+      <ul>
+        <li>dex.config: Authentication configuration</li>
+        <li>rbac: Permission settings</li>
+        <li>Proper mapping between GitLab groups and ArgoCD roles</li>
+      </ul>
+    </li>
+  </ul>
 </div>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="-references">📚 References</h2>
+<h2 id="references">References</h2>
 <ul>
-  <li><a href="https://github.com/actions/actions-runner-controller">Actions Runner Controller GitHub</a></li>
-  <li><a href="https://docs.github.com/en/actions/hosting-your-own-runners">GitHub Self-Hosted Runners Documentation</a></li>
-  <li><a href="https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners">Managing Self-Hosted Runners</a></li>
+  <li><a href="https://argo-cd.readthedocs.io/en/stable/">ArgoCD Documentation</a></li>
+  <li><a href="https://docs.gitlab.com/ee/integration/oauth_provider.html">GitLab OAuth Documentation</a></li>
 </ul>
 
 
@@ -489,15 +434,6 @@ kubectl get runnerdeployments.actions.summerwind.dev
                     <ul>
                         
                         
-                        
-                            <li>
-                                <a href="/category/cicd/argocd-sso-gitlab/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1739943377/argocd-sso-gitlab_jzuunn.png">
-                                    
-                                    <h3>Setting up ArgoCD SSO with GitLab</h3>
-                                </a>
-                            </li>
                         
                             <li>
                                 <a href="/category/cicd/argocd-sso-gcp-oauth/">
@@ -517,6 +453,15 @@ kubectl get runnerdeployments.actions.summerwind.dev
                                 </a>
                             </li>
                         
+                            <li>
+                                <a href="/category/kubernetes/service-mash-api-gateway/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1739347081/service-mesh-api-gateway_xkv6gd.png">
+                                    
+                                    <h3>Service Mesh vs API Gateway - Understanding the Differences</h3>
+                                </a>
+                            </li>
+                        
                     </ul>
                 </aside>
             
@@ -525,7 +470,7 @@ kubectl get runnerdeployments.actions.summerwind.dev
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="3">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -545,13 +490,13 @@ kubectl get runnerdeployments.actions.summerwind.dev
         </div>
     </div>
     
-    <a href="/category/aws/eks-pod-identity/" class="post-preview">
+    <a href="/category/cicd/argocd-sso-gcp-oauth/" class="post-preview">
         <div class="image">
             
-                <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737622654/eks-pod-identity_k6lxvi.png">
+                <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1739942456/argocd-sso-google-oauth_ssoqyf.png">
             
         </div>
-        <h3 class="title">Understanding Amazon EKS Pod Identity Addon</h3>
+        <h3 class="title">Setting up ArgoCD SSO with GCP OAuth</h3>
     </a>
 </div>
 
@@ -567,11 +512,11 @@ kubectl get runnerdeployments.actions.summerwind.dev
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn how to set up and manage GitHub Action self-hosted runners using Kubernetes and Helm&quot;%20https://somaz94.github.io/category/cicd/github-action-hosted-runner/%20via%20&#64;twitter_username&hashtags=github,kubernetes,helm,cicd"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn how to set up and manage ArgoCD SSO with GitLab&quot;%20https://somaz94.github.io/category/cicd/argocd-sso-gitlab/%20via%20&#64;twitter_username&hashtags=gitlab,kubernetes,helm,cicd"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
-    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz94.github.io/category/cicd/github-action-hosted-runner/"
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz94.github.io/category/cicd/argocd-sso-gitlab/"
     onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
         <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
     </a>
@@ -653,7 +598,7 @@ kubectl get runnerdeployments.actions.summerwind.dev
         disqus_loaded = true;
         var disqus_shortname = 'https-somaz94-github-io';
         var disqus_title = '';
-        var disqus_url = '/category/cicd/github-action-hosted-runner/';
+        var disqus_url = '/category/cicd/argocd-sso-gitlab/';
         var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
         dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
         (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
@@ -817,257 +762,202 @@ kubectl get runnerdeployments.actions.summerwind.dev
         {
             "@context": "http://schema.org",
             "@type": "BlogPosting",
-            "name": "Setting up GitHub Action Self-Hosted Runner on Kubernetes",
-            "headline": "A comprehensive guide to implementing GitHub Action Hosted Runner with Helm",
-            "description": "Learn how to set up and manage GitHub Action self-hosted runners using Kubernetes and Helm",
-            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737616011/github-hosted-runner_wfujyb.png",
-            "url": "https://somaz94.github.io/category/cicd/github-action-hosted-runner/",
+            "name": "Setting up ArgoCD SSO with GitLab",
+            "headline": "A comprehensive guide to implementing ArgoCD SSO with GitLab",
+            "description": "Learn how to set up and manage ArgoCD SSO with GitLab",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1739943377/argocd-sso-gitlab_jzuunn.png",
+            "url": "https://somaz94.github.io/category/cicd/argocd-sso-gitlab/",
             "articleBody": "
 
 
 
-🎯 Overview
+Overview
 
-This guide explores how to create and manage GitHub Action Hosted Runners. We’ll focus on implementing self-hosted runners using Kubernetes and Helm.
+In the last post, I tried configuring ArgoCD SSO using Google Oauth,
 
-
-
-🔍 Understanding GitHub Action Hosted Runners
-
-Components Overview
+This post explains how to configure Single Sign-On (SSO) for ArgoCD using GitLab. We’ll walk through the process of setting up GitLab OAuth and integrating it with ArgoCD.
 
 
-  1. actions-runner-controller
+
+Prerequisites
+
+  GitLab instance
+  ArgoCD installed on a Kubernetes cluster
+  Administrative access to both GitLab and ArgoCD
+
+
+
+
+Steps
+
+1. Create GitLab Application
+
+
+  Console Method
   
-    Manages GitHub Actions runners in Kubernetes clusters
-    Handles automatic provisioning and lifecycle management
-    Supports repository, organization, and enterprise-level deployment
-    Uses Kubernetes HPA for auto-scaling
-  
-  2. gha-runner-scale-set-controller
-  
-    Manages large-scale runner deployments
-    Utilizes Scale Set Runners feature
-    Provides efficient runner management through single endpoint
-    Integrates with GitHub&apos;s Scale Set Runners API
-  
-  3. gha-runner-scale-set
-  
-    Configures and deploys runner scale sets
-    Controls scaling and lifecycle through GitHub Actions API
-    Optimizes communication between workflows and runners
-  
-
-
-
-
-🛠 Prerequisites
-
-Authentication Setup
-
-Choose one of the following authentication methods:
-
-Option 1: GitHub PAT Token
-Github Organization/Account settings → Settings → Developer settings → GitHub Personal access tokens
-
-  PAT Token is required for the runner to authenticate with GitHub.
-  Below is an example of PAT Token permissions.
-
-
-
-    Required scopes:
-    
-        Repository Level: repo, workflow
-        Organization Level: read:org, admin:org, workflow
-        Enterprise Level: admin:enterprise, workflow
-    
-
-
-Option 2: GitHub App
-
-If you have an existing app
-
-  Click the app
-  Check “App ID” in “About” section
-
-
-If you don’t have an existing app
-
-  Create new GitHub App
-  Input the required Information
-    
-      GitHub App name
-      Homepage URL
-      Webhook URL (Optional)
-      Repository permissions Settings:
-        
-          Actions: Read and Write
-          Administration: Read and Write
-          Metadata: Read-only
+    Navigate to Admin Area &amp;gt; Applications in GitLab
+    Create new application:
+      
+        Name: Argo CD
+        Redirect URI: https://argocd-server-urlapi/dex/callback
+        Select Scopes:
+          
+            read_user
+            openid
+            profile
+            email
+           
         
       
     
-  
-  Click”Create GitHub App”
-
-
-Get Installation ID
-
-  Click “Install App”
-  Select the repository or organization
-  Click “Install”
-  Check “Installation ID” in “About” section
-    
-      https://github.com/organizations/YOUR-ORG/settings/installations/INSTALLATION_ID
-    
+    Save the credentials:
+      
+        Application ID (Client ID)
+        Secret (Client Secret)
+      
   
 
 
-Generate private key
-
-  Move App Settings Page
-  Click “Generate a private key”
-  Download the private key file
 
 
+2. Configure ArgoCD Installation
 
+Create values/mgmt.yaml:
 
+global:
+  domain: argocd.your-domain.com
 
-    1.Required permissions:
-    
-        Actions: Read and Write
-        Administration: Read and Write
-        Metadata: Read-only
-    
-    2. Get App ID and Installation ID
-    3. Generate private key
+configs:
+  params:
+    create: true
+    server.insecure: true
 
+  ssh:
+    extraHosts: |
+      gitlab.concrit.us ssh-rsa AAAAB3N...
+      gitlab.concrit.us ecdsa-sha2-nistp256...
+      gitlab.concrit.us ssh-ed25519 AAAA..
 
-
-
-📦 Installation
-
-1. Add Helm Repository
-helm repo add actions-runner-controller https://actions-runner-controller.github.io/actions-runner-controller
-
-
-2. Create Namespace
-kubectl create namespace actions-runner-system
-
-
-3. Install Controller
-helm install actions-runner-controller actions-runner-controller/actions-runner-controller \
-    -n actions-runner-system \
-    -f runner.yaml
-
-
-4. Deploy Runner
-kubectl apply -f runner-cr.yaml
-
-
-
-
-⚙️ Configuration Files
-
-runner.yaml
-authSecret:
-  enabled: true
-  create: true
-  name: &quot;controller-manager&quot;
-  github_token: &quot;ghp_xxxxxxxxxxxxxxxxxxxxxxxx&quot;
-
-image:
-  repository: &quot;summerwind/actions-runner-controller&quot;
-  actionsRunnerRepositoryAndTag: &quot;summerwind/actions-runner:latest&quot;
-  dindSidecarRepositoryAndTag: &quot;docker:dind&quot;
-  pullPolicy: IfNotPresent
-
-rbac:
-  allowGrantingKubernetesContainerModePermissions: true
-
-serviceAccount:
-  create: true
-
-
-runner-cr.yaml
-apiVersion: actions.summerwind.dev/v1alpha1
-kind: RunnerDeployment
-metadata:
-  name: example-runner
-spec:
+controller:
   replicas: 1
-  template:
-    spec:
-      repository: &quot;your-github-username/your-repository&quot;
-      labels:
-        - self-hosted
-        - linux
-        - x64
+
+dex:
+  enabled: true
+
+redis:
+  enabled: true
+
+server:
+  replicas: 1
+  ingress:
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/force-ssl-redirect: &quot;false&quot;
+      nginx.ingress.kubernetes.io/ssl-passthrough: &quot;false&quot;
+    ingressClassName: &quot;nginx&quot;
+    path: /
+    pathType: Prefix
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1
+
+notifications:
+  enabled: true
+
+
+3. Configure GitLab SSO
+
+Update values/mgmt.yaml with SSO configuration:
+
+configs:
+  cm:
+    timeout.reconciliation: 60s
+    dex.config: |
+      connectors:
+        - type: gitlab
+          id: gitlab
+          name: GitLab
+          config:
+            baseURL: &amp;lt;gitlab url&amp;gt;
+            clientID: &amp;lt;application id&amp;gt;
+            clientSecret: &amp;lt;secret&amp;gt;
+            redirectURI: https://&amp;lt;argocd url&amp;gt;/api/dex/callback
+            groups:
+              - server
+              
+  rbac:
+    create: true
+    policy.csv: |
+      p, role:org-admin, applications, *, */*, allow
+      p, role:org-admin, clusters, get, *, allow
+      p, role:org-admin, repositories, *, *, allow
+      p, role:org-admin, projects, get, *, allow
+      p, role:org-admin, logs, get, *, allow
+      p, role:org-admin, exec, create, */*, allow
+      
+      g, &amp;lt;group&amp;gt;, role:org-admin
+
+  secrets:
+    dex.gitlab.clientId: &quot;&amp;lt;application id&amp;gt;&quot;
+    dex.gitlab.clientSecret: &quot;&amp;lt;secret&amp;gt;&quot;
+
+
+Apply the changes:
+
+helm upgrade argocd . -n argocd -f ./values/mgmt.yaml
+kubectl rollout restart -n argocd deployment argocd-dex-server
+
+
+4. Test Login
+Access your ArgoCD instance and verify GitLab SSO login works correctly.
 
 
 
 
-🔍 Verification
 
-Check Installation
-kubectl get po -n actions-runner-system
-kubectl get runnerdeployments.actions.summerwind.dev
+Authentication Processes
 
-
-Verify Runner Connection
-Check runners in your repository:
-Settings → Actions → Runners
-
-
-Example Workflow
-name: Example Workflow
-on:
-  workflow_dispatch:
-
-jobs:
-  test-job:
-    runs-on: self-hosted
-    # or runs-on: [self-hosted, linux, x64]
-    steps:
-      - name: Test Step
-        run: echo &quot;Running on self-hosted runner&quot;
+  OAuth Authentication
+  SAML Authentication
+  OpenID Connect Authentication
 
 
 
 
-🔑 Key Considerations
 
-    1. Authentication:
+  Important Notes
+  
+    Consider domain settings, security policies, and network configurations
+    Keep up with the latest documentation as GitLab and ArgoCD settings may change
+    Ensure proper backup before making configuration changes
+    Key points for SSO configuration:
+      
+        dex.config: Authentication configuration
+        rbac: Permission settings
+        Proper mapping between GitLab groups and ArgoCD roles
+      
     
-        You must choose between GitHub App or PAT authentication
-        GitHub App is recommended (better security and permissions management)
-    
-    2. Permissions:
-    
-        Set the proper permissions and resources required for Runner
-    
-    3. Network Policy:
-    
-        Check network policy and security settings
-    
+  
 
 
 
 
 
 
-📚 References
+References
 
-  Actions Runner Controller GitHub
-  GitHub Self-Hosted Runners Documentation
-  Managing Self-Hosted Runners
+  ArgoCD Documentation
+  GitLab OAuth Documentation
 
 ",
-            "wordcount": "748",
+            "wordcount": "565",
             "inLanguage": "en",
-            "dateCreated": "2025-01-23/",
-            "datePublished": "2025-01-23/",
-            "dateModified": "2025-01-23/",
+            "dateCreated": "2025-03-14/",
+            "datePublished": "2025-03-14/",
+            "dateModified": "2025-03-14/",
             "author": {
                 "@type": "Person",
                 "name": "Somaz",
@@ -1094,7 +984,7 @@ jobs:
             "mainEntityOfPage": "True",
             "genre": "CICD",
             "articleSection": "CICD",
-            "keywords": ["github","kubernetes","helm","cicd"]
+            "keywords": ["gitlab","kubernetes","helm","cicd"]
         }
         </script>
     </body>
