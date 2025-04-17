@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>모바일 추정 도구용 회귀식 계산기</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f9f9f9;
+      color: #333;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+    h3 {
+      margin-top: 30px;
+      margin-bottom: 15px;
+      font-size: 1.2em;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 1em;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .result {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    .result-container {
+      background-color: #f0f0f0;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+    .model-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background-color: #fff;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 15px;
+      background-color: #eee;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .tab.active {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .model-container {
+      display: none;
+    }
+    .model-container.active {
+      display: block;
+    }
+    .model-stats {
+      background-color: #e7f3ff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      margin-bottom: 15px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <h2>모바일 추정 도구용 회귀식 계산기</h2>
+  
+  <div class="tabs">
+    <div class="tab active" onclick="showModel(0)">모델 1: TT+IP+오차 보정</div>
+    <div class="tab" onclick="showModel(1)">모델 2: TT+IP 평균값</div>
+    <div class="tab" onclick="showModel(2)">모델 3: 4번째 손가락</div>
+    <div class="tab" onclick="showModel(3)">모델 4: IP+오차 보정</div>
+    <div class="tab" onclick="showModel(4)">모델 5: 단일 지표</div>
+  </div>
+
+  <!-- 모델 1: TT + IP + 오차 보정 모델 -->
+  <div class="model-container active" id="model1">
+    <h3>모델 1: TT + IP + 오차 보정 모델 (최종)</h3>
+    <p class="model-stats">설명력(R): 0.794 | MAE: 3.76</p>
+    <form id="model1-form">
+      <div class="form-group">
+        <label for="ut_rt_ip_2nd">UT_RT_IP_2nd:</label>
+        <input type="number" step="any" id="ut_rt_ip_2nd">
+      </div>
+      <div class="form-group">
+        <label for="ut_rt_ip_3rd">UT_RT_IP_3rd:</label>
+        <input type="number" step="any" id="ut_rt_ip_3rd">
+      </div>
+      <div class="form-group">
+        <label for="ut_rt_ip_4st">UT_RT_IP_4st:</label>
+        <input type="number" step="any" id="ut_rt_ip_4st">
+      </div>
+      <div class="form-group">
+        <label for="ip_2nd_error">IP_2nd_error:</label>
+        <input type="number" step="any" id="ip_2nd_error">
+      </div>
+      <div class="form-group">
+        <label for="ip_3rd_error">IP_3rd_error:</label>
+        <input type="number" step="any" id="ip_3rd_error">
+      </div>
+      <div class="form-group">
+        <label for="ip_4th_error">IP_4th_error:</label>
+        <input type="number" step="any" id="ip_4th_error">
+      </div>
+      <div class="form-group">
+        <label for="ut_rt_tt_2nd">UT_RT_TT_2nd:</label>
+        <input type="number" step="any" id="ut_rt_tt_2nd">
+      </div>
+      <div class="form-group">
+        <label for="ut_rt_tt_3rd">UT_RT_TT_3rd:</label>
+        <input type="number" step="any" id="ut_rt_tt_3rd">
+      </div>
+      <div class="form-group">
+        <label for="ut_rt_tt_4st">UT_RT_TT_4st:</label>
+        <input type="number" step="any" id="ut_rt_tt_4st">
+      </div>
+      <div class="form-group">
+        <label for="tt_2nd_error">TT_2nd_error:</label>
+        <input type="number" step="any" id="tt_2nd_error">
+      </div>
+      <div class="form-group">
+        <label for="tt_3rd_error">TT_3rd_error:</label>
+        <input type="number" step="any" id="tt_3rd_error">
+      </div>
+      <div class="form-group">
+        <label for="tt_4th_error">TT_4th_error:</label>
+        <input type="number" step="any" id="tt_4th_error">
+      </div>
+      <button type="button" onclick="calculateModel1()">계산</button>
+    </form>
+    <div class="result" id="result1">예상 키: - cm</div>
+  </div>
+
+  <!-- 모델 2: TT + IP 평균값 모델 -->
+  <div class="model-container" id="model2">
+    <h3>모델 2: TT + IP 평균값 모델</h3>
+    <p class="model-stats">설명력(R): 0.684 | MAE: 5.03</p>
+    <form id="model2-form">
+      <div class="form-group">
+        <label for="tt_2nd_avg">TT_2nd_avg:</label>
+        <input type="number" step="any" id="tt_2nd_avg">
+      </div>
+      <div class="form-group">
+        <label for="tt_3rd_avg">TT_3rd_avg:</label>
+        <input type="number" step="any" id="tt_3rd_avg">
+      </div>
+      <div class="form-group">
+        <label for="tt_4st_avg">TT_4st_avg:</label>
+        <input type="number" step="any" id="tt_4st_avg">
+      </div>
+      <div class="form-group">
+        <label for="ip_2nd_avg">IP_2nd_avg:</label>
+        <input type="number" step="any" id="ip_2nd_avg">
+      </div>
+      <div class="form-group">
+        <label for="ip_3rd_avg">IP_3rd_avg:</label>
+        <input type="number" step="any" id="ip_3rd_avg">
+      </div>
+      <div class="form-group">
+        <label for="ip_4st_avg">IP_4st_avg:</label>
+        <input type="number" step="any" id="ip_4st_avg">
+      </div>
+      <button type="button" onclick="calculateModel2()">계산</button>
+    </form>
+    <div class="result" id="result2">예상 키: - cm</div>
+  </div>
+
+  <!-- 모델 3: 4번째 손가락 모델 -->
+  <div class="model-container" id="model3">
+    <h3>모델 3: 4번째 손가락 모델</h3>
+    <p class="model-stats">설명력(R): 0.673 | MAE: 4.91</p>
+    <form id="model3-form">
+      <div class="form-group">
+        <label for="tt_4st_avg_m3">TT_4st_avg:</label>
+        <input type="number" step="any" id="tt_4st_avg_m3">
+      </div>
+      <div class="form-group">
+        <label for="ip_4st_avg_m3">IP_4st_avg:</label>
+        <input type="number" step="any" id="ip_4st_avg_m3">
+      </div>
+      <button type="button" onclick="calculateModel3()">계산</button>
+    </form>
+    <div class="result" id="result3">예상 키: - cm</div>
+  </div>
+
+  <!-- 모델 4: IP + 오차 보정 모델 -->
+  <div class="model-container" id="model4">
+    <h3>모델 4: IP + 오차 보정 모델</h3>
+    <p class="model-stats">설명력(R): 0.567 | MAE: 5.01</p>
+    <form id="model4-form">
+      <div class="form-group">
+        <label for="ip_2nd_m4">IP_2nd:</label>
+        <input type="number" step="any" id="ip_2nd_m4">
+      </div>
+      <div class="form-group">
+        <label for="ip_3rd_m4">IP_3rd:</label>
+        <input type="number" step="any" id="ip_3rd_m4">
+      </div>
+      <div class="form-group">
+        <label for="ip_4st_m4">IP_4st:</label>
+        <input type="number" step="any" id="ip_4st_m4">
+      </div>
+      <div class="form-group">
+        <label for="ip_2nd_error_m4">IP_2nd_error:</label>
+        <input type="number" step="any" id="ip_2nd_error_m4">
+      </div>
+      <div class="form-group">
+        <label for="ip_3rd_error_m4">IP_3rd_error:</label>
+        <input type="number" step="any" id="ip_3rd_error_m4">
+      </div>
+      <div class="form-group">
+        <label for="ip_4th_error_m4">IP_4th_error:</label>
+        <input type="number" step="any" id="ip_4th_error_m4">
+      </div>
+      <button type="button" onclick="calculateModel4()">계산</button>
+    </form>
+    <div class="result" id="result4">예상 키: - cm</div>
+  </div>
+
+  <!-- 모델 5: 단일 지표 모델 (IP_2nd) -->
+  <div class="model-container" id="model5">
+    <h3>모델 5: 단일 지표 모델 (IP_2nd)</h3>
+    <p class="model-stats">설명력(R): 0.61 | MAE: 6~7</p>
+    <form id="model5-form">
+      <div class="form-group">
+        <label for="ip_2nd_m5">IP_2nd:</label>
+        <input type="number" step="any" id="ip_2nd_m5">
+      </div>
+      <button type="button" onclick="calculateModel5()">계산</button>
+    </form>
+    <div class="result" id="result5">예상 키: - cm</div>
+  </div>
+
+  <script>
+    // 모델 탭 전환 함수
+    function showModel(modelIndex) {
+      // 모든 탭과 모델 컨테이너를 비활성화
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.model-container').forEach(container => container.classList.remove('active'));
+      
+      // 선택한 탭과 모델 컨테이너를 활성화
+      document.querySelectorAll('.tab')[modelIndex].classList.add('active');
+      document.querySelectorAll('.model-container')[modelIndex].classList.add('active');
+    }
+
+    // 모델 1: TT + IP + 오차 보정 모델 계산 함수
+    function calculateModel1() {
+      const val = id => parseFloat(document.getElementById(id).value) || 0;
+      
+      const H = 62.753 +
+                8.793 * val("ut_rt_ip_2nd") +
+                10.234 * val("ut_rt_ip_3rd") -
+                1.589 * val("ut_rt_ip_4st") -
+                0.135 * val("ip_2nd_error") +
+                0.725 * val("ip_3rd_error") +
+                0.511 * val("ip_4th_error") +
+                10.035 * val("ut_rt_tt_2nd") +
+                42.546 * val("ut_rt_tt_3rd") -
+                52.581 * val("ut_rt_tt_4st") +
+                0.707 * val("tt_2nd_error") +
+                1.757 * val("tt_3rd_error") -
+                1.78 * val("tt_4th_error");
+
+      document.getElementById("result1").innerText = `예상 키: ${H.toFixed(2)} cm`;
+    }
+
+    // 모델 2: TT + IP 평균값 모델 계산 함수
+    function calculateModel2() {
+      const val = id => parseFloat(document.getElementById(id).value) || 0;
+      
+      // 수식: H = a + b1*TT_2nd_avg + b2*TT_3rd_avg + b3*TT_4st_avg + b4*IP_2nd_avg + b5*IP_3rd_avg + b6*IP_4st_avg
+      // 구체적인 계수는 직접 적용하지 않고 수식 형태로 유지
+      const H = 72.703 +
+                52.319 * val("tt_2nd_avg") +
+                45.625 * val("tt_3rd_avg") -
+                97.944 * val("tt_4st_avg") +
+                7.876 * val("ip_2nd_avg") +
+                9.747 * val("ip_3rd_avg") -
+                1.509 * val("ip_4st_avg");
+
+      document.getElementById("result2").innerText = `예상 키: ${H.toFixed(2)} cm`;
+    }
+
+    // 모델 3: 4번째 손가락 모델 계산 함수
+    function calculateModel3() {
+      const val = id => parseFloat(document.getElementById(id).value) || 0;
+      
+      const H = 72.491 +
+                16.115 * val("tt_4st_avg_m3") +
+                9.204 * val("ip_4st_avg_m3");
+
+      document.getElementById("result3").innerText = `예상 키: ${H.toFixed(2)} cm`;
+    }
+
+    // 모델 4: IP + 오차 보정 모델 계산 함수
+    function calculateModel4() {
+      const val = id => parseFloat(document.getElementById(id).value) || 0;
+      
+      const H = 81.627 +
+                7.993 * val("ip_2nd_m4") +
+                5.399 * val("ip_3rd_m4") +
+                4.277 * val("ip_4st_m4") +
+                0.192 * val("ip_2nd_error_m4") +
+                0.592 * val("ip_3rd_error_m4") +
+                0.098 * val("ip_4th_error_m4");
+
+      document.getElementById("result4").innerText = `예상 키: ${H.toFixed(2)} cm`;
+    }
+
+    // 모델 5: 단일 지표 모델 (IP_2nd) 계산 함수
+    function calculateModel5() {
+      const val = id => parseFloat(document.getElementById(id).value) || 0;
+      
+      const H = 61.958 +
+                24.008 * val("ip_2nd_m5");
+
+      document.getElementById("result5").innerText = `예상 키: ${H.toFixed(2)} cm`;
+    }
+  </script>
+</body>
+</html>
