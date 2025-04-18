@@ -1037,6 +1037,9 @@
             return;
           }
           
+          // 디버깅 로그: 전체 데이터 확인
+          console.log("Processing raw data:", JSON.stringify(jsonData, null, 2));
+          
           // 필요한 필드 확인 (첫 번째 행 기준으로)
           const firstRow = jsonData[0];
           const requiredFields = [
@@ -1077,7 +1080,7 @@
           // 전역 변수 초기화 (중요: 이전 데이터가 남아있지 않도록 배열을 새로 생성)
           window.allMeasurementResults = [];
           
-          // 중복 ID 확인
+          // 중복 ID 확인 - 전체 ID(이름 포함)를 기준으로 처리
           const idMap = {};
           const duplicateIDs = [];
           
@@ -1120,7 +1123,9 @@
           const getValue = (obj, fieldName) => {
             for (const key in obj) {
               if (key.toLowerCase() === fieldName.toLowerCase()) {
-                return parseFloat(obj[key]) || 0;
+                // 쉼표(,)를 소수점(.)으로 변경하여 처리
+                const value = obj[key] ? String(obj[key]).replace(/,/g, '.') : '0';
+                return parseFloat(value) || 0;
               }
             }
             return 0;
@@ -1129,7 +1134,14 @@
           // 모든 행의 데이터를 처리
           const allResults = [];
           
+          // 각 행 데이터의 실제 인덱스 추적 (피험자 번호 표시용)
+          let processedIndex = 0;
+          
           for (const rowData of jsonData) {
+            processedIndex++;
+            // 데이터에 순서 인덱스 추가
+            rowData['__displayIndex'] = processedIndex;
+            
             // 데이터 계산 전처리 - Dorsal과 Palmar의 평균값 계산
             const measurementData = {};
             
@@ -1148,7 +1160,7 @@
             measurementData.rt_ip_3rd = (getValue(rowData, 'UT_RT_IP_3rd(dorsal)') + getValue(rowData, 'UT_RT_IP_3rd(palmar)')) / 2;
             measurementData.rt_ip_4th = (getValue(rowData, 'UT_RT_IP_4th(dorsal)') + getValue(rowData, 'UT_RT_IP_4th(palmar)')) / 2;
             
-            // LT_IP 평균값 계산 (마지막은 오타로 보이는 4th를 4th로 처리)
+            // LT_IP 평균값 계산
             measurementData.lt_ip_2nd = (getValue(rowData, 'UT_LT_IP_2nd(dorsal)') + getValue(rowData, 'UT_LT_IP_2nd(palmar)')) / 2;
             measurementData.lt_ip_3rd = (getValue(rowData, 'UT_LT_IP_3rd(dorsal)') + getValue(rowData, 'UT_LT_IP_3rd(palmar)')) / 2;
             measurementData.lt_ip_4th = (getValue(rowData, 'UT_LT_IP_4th(dorsal)') + getValue(rowData, 'UT_LT_IP_4th(palmar)')) / 2;
@@ -1177,8 +1189,16 @@
             const resultItem = {
               rowData: rowData,
               heights: heights,
-              measurementData: measurementData
+              measurementData: measurementData,
+              displayIndex: processedIndex // 원본 데이터의 순서를 기억
             };
+            
+            // 디버깅 로그: 결과 아이템 확인
+            console.log(`Result item ${processedIndex}:`, {
+              id: rowData['피험자 ID'],
+              height: rowData['height(cm)'],
+              model1: heights.exactValues.model1
+            });
             
             // 결과 저장
             allResults.push(resultItem);
@@ -1224,10 +1244,13 @@
         const age = rowData['age'] || '';
         const actualHeight = rowData['height(cm)'] || '';
         
+        // 원본 데이터의 인덱스를 사용하여 피험자 번호 표시
+        const displayIndex = result.displayIndex || (index + 1);
+        
         resultsHTML += `
           <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; padding: 10px; background-color: #f9f9f9;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <h4 style="margin: 0; font-size: 1.1em;">피험자 #${index + 1}</h4>
+              <h4 style="margin: 0; font-size: 1.1em;">피험자 #${displayIndex}</h4>
               <button type="button" class="btn-small" style="padding: 3px 8px; margin: 0;" 
                 onclick="fillInputFieldsByIndex(${index})">이 데이터로 계산하기</button>
             </div>
@@ -1696,24 +1719,6 @@
       console.log("Result data for download:", window.allMeasurementResults);
       
       try {
-        // ID 중복 확인 및 인덱스 맵 생성
-        const idCounts = {};
-        const idIndexMap = {};
-        
-        window.allMeasurementResults.forEach((result, idx) => {
-          if (result && result.rowData) {
-            const id = result.rowData["피험자 ID"] || "";
-            if (id) {
-              idCounts[id] = (idCounts[id] || 0) + 1;
-              idIndexMap[id] = idIndexMap[id] || [];
-              idIndexMap[id].push(idx);
-            }
-          }
-        });
-        
-        console.log("ID counts:", idCounts);
-        console.log("ID index map:", idIndexMap);
-        
         // 데이터 준비
         const resultsData = window.allMeasurementResults.map((result, index) => {
           console.log(`Processing result item ${index}:`, result);
@@ -1792,20 +1797,11 @@
             }
           }
           
-          // 중복 ID 처리를 위해 인덱스 추가
+          // 원본 ID 그대로 사용 - 전체 ID(이름 포함)를 기준으로 처리
           const subjectID = rowData["피험자 ID"] || "";
-          let displayID = subjectID || `데이터 ${index+1}`;
-          
-          // 중복 ID인 경우 인덱스 추가
-          if (subjectID && idCounts[subjectID] > 1) {
-            const idxInGroup = idIndexMap[subjectID].indexOf(index);
-            if (idxInGroup > -1) {
-              displayID = `${subjectID} (${idxInGroup + 1})`;
-            }
-          }
           
           return {
-            "피험자 ID": displayID,
+            "피험자 ID": subjectID,
             "성별": gender,
             "나이": rowData["age"] || rowData["나이"] || "",
             "실제 키(cm)": rowData["height(cm)"] || rowData["실제 키(cm)"] || "",
