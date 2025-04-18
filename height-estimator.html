@@ -628,7 +628,7 @@
         <p style="font-size: 0.8em; margin-top: 10px; color: #666;">
           <strong>엑셀 파일 형식:</strong> 다음 열 이름을 포함해야 합니다:<br>
           UT_RT_TT_2nd(dorsal), UT_RT_TT_2nd(palmar), UT_RT_TT_3rd(dorsal), UT_RT_TT_3rd(palmar), UT_RT_TT_4th(dorsal), UT_RT_TT_4th(palmar), 
-          UT_LT_TT_2nd(dorsal), UT_LT_TT_2nd(palmar), UT_LT_TT_3rd(dorsal), UT_LT_TT_3rd(palmar), UT_LT_TT_4th(dorsal), UT_LT_TT_4th(palmar), 
+          UT_LT_TT_2nd(dorsal), UT_LT_TT_2nd(palmar), UT_LT_TT_3rd(dorsal), UT_LT_TT_3rd(palmar), UT_LT_TT_4th(dorsal), UT_LT_TT_4th(palmar),
           UT_RT_IP_2nd(dorsal), UT_RT_IP_2nd(palmar), UT_RT_IP_3rd(dorsal), UT_RT_IP_3rd(palmar), UT_RT_IP_4th(dorsal), UT_RT_IP_4th(palmar),
           UT_LT_IP_2nd(dorsal), UT_LT_IP_2nd(palmar), 
           UT_LT_IP_3rd(dorsal), UT_LT_IP_3rd(palmar), 
@@ -636,6 +636,20 @@
         </p>
         <a href="#" id="download-template" style="font-size: 0.8em; color: #4CAF50;">템플릿 다운로드</a>
       </div>
+    </div>
+  </div>
+
+  <!-- 엑셀 결과 섹션 추가 -->
+  <div id="excel-results" class="calculator-container mt-4">
+    <h3 style="padding: 15px;">엑셀 처리 결과</h3>
+    <div style="padding: 0 20px 20px 20px;">
+      <div id="excel-status"></div>
+      <div id="excel-result"></div>
+      
+      <!-- 엑셀 다운로드 버튼 -->
+      <button type="button" class="btn-small" style="background-color: #2196F3; margin-top: 15px; display: block; width: 100%;" onclick="downloadResultsAsExcel()">
+        계산 결과를 엑셀로 다운로드
+      </button>
     </div>
   </div>
 
@@ -1024,7 +1038,7 @@
           }
           
           // 필요한 필드 확인 (첫 번째 행 기준으로)
-          const rowData = jsonData[0];
+          const firstRow = jsonData[0];
           const requiredFields = [
             'UT_RT_TT_2nd(dorsal)', 'UT_RT_TT_2nd(palmar)', 
             'UT_RT_TT_3rd(dorsal)', 'UT_RT_TT_3rd(palmar)', 
@@ -1044,7 +1058,7 @@
           const missingFields = [];
           for (const field of requiredFields) {
             let found = false;
-            for (const key in rowData) {
+            for (const key in firstRow) {
               if (key.toLowerCase() === field.toLowerCase()) {
                 found = true;
                 break;
@@ -1060,6 +1074,48 @@
             return;
           }
           
+          // 전역 변수 초기화 (중요: 이전 데이터가 남아있지 않도록 배열을 새로 생성)
+          window.allMeasurementResults = [];
+          
+          // 중복 ID 확인
+          const idMap = {};
+          const duplicateIDs = [];
+          
+          for (const rowData of jsonData) {
+            const subjectID = rowData['피험자 ID'] || '';
+            if (subjectID) {
+              if (idMap[subjectID]) {
+                // 이미 존재하는 ID라면 중복 목록에 추가
+                if (!duplicateIDs.includes(subjectID)) {
+                  duplicateIDs.push(subjectID);
+                }
+              } else {
+                // 처음 보는 ID 기록
+                idMap[subjectID] = true;
+              }
+            }
+          }
+          
+          // 중복 ID가 있으면 알림
+          if (duplicateIDs.length > 0) {
+            const uniqueIDsCount = Object.keys(idMap).length;
+            const duplicateIDInfo = duplicateIDs.map(id => {
+              // 해당 ID가 몇 번 등장하는지 계산
+              let count = 0;
+              jsonData.forEach(row => {
+                if (row['피험자 ID'] === id) count++;
+              });
+              return `${id}(${count}회)`;
+            }).join(', ');
+            
+            statusDiv.innerHTML = `<span style="color: #FFA000;">
+              파일 처리 완료! 총 ${jsonData.length}개의 데이터가 처리되었습니다. (고유 ID: ${uniqueIDsCount}개)<br>
+              주의: 중복된 피험자 ID가 발견되었습니다: ${duplicateIDInfo}
+            </span>`;
+          } else {
+            statusDiv.innerHTML = `<span style="color: #4CAF50;">파일 처리 완료! 총 ${jsonData.length}개의 데이터가 처리되었습니다.</span>`;
+          }
+          
           // 값을 가져오는 함수 (대소문자 구분 없이)
           const getValue = (obj, fieldName) => {
             for (const key in obj) {
@@ -1072,7 +1128,6 @@
           
           // 모든 행의 데이터를 처리
           const allResults = [];
-          window.allMeasurementResults = []; // 전역 변수 초기화
           
           for (const rowData of jsonData) {
             // 데이터 계산 전처리 - Dorsal과 Palmar의 평균값 계산
@@ -1119,23 +1174,20 @@
             // 모델별 계산
             const heights = calculateHeights(measurementData);
             
-            // 결과 저장
-            allResults.push({
+            const resultItem = {
               rowData: rowData,
               heights: heights,
               measurementData: measurementData
-            });
+            };
+            
+            // 결과 저장
+            allResults.push(resultItem);
             
             // 전역 변수에 결과 저장
-            window.allMeasurementResults.push({
-              rowData: rowData,
-              heights: heights,
-              measurementData: measurementData
-            });
+            window.allMeasurementResults.push(resultItem);
           }
           
-          // 모든 결과 표시
-          statusDiv.innerHTML = `<span style="color: #4CAF50;">파일 처리 완료! 총 ${allResults.length}개의 데이터가 처리되었습니다.</span>`;
+          // 모든 결과 표시 - 이미 상태 메시지가 설정되었으므로 여기서는 다시 표시하지 않음
           displayAllResults(allResults, resultDiv);
           
           // 첫 번째 결과의 데이터를 자동 채우기 (선택 사항)
@@ -1183,7 +1235,7 @@
             <div style="margin-bottom: 10px; padding: 8px; background-color: #f0f0f0; border-radius: 4px;">
               ${subjectID ? `<span>피험자 ID: <strong>${subjectID}</strong></span> | ` : ''}
               ${gender ? `<span>성별: <strong>${gender}</strong></span> | ` : ''}
-              ${age ? `<span>나이: <strong>${age}</strong>세</span> | ` : ''}
+              ${age ? `<span>나이: <strong>${age}</strong></span> | ` : ''}
               ${actualHeight ? `<span>실제 키: <strong>${actualHeight}</strong>cm</span>` : ''}
             </div>
             
@@ -1233,9 +1285,6 @@
       
       resultsHTML += '</div>';
       resultDiv.innerHTML = resultsHTML;
-      
-      // 전역 변수에 모든 결과 저장 (이후 버튼 클릭용)
-      window.allMeasurementResults = allResults;
     }
     
     // 특정 인덱스의 데이터로 입력 필드 채우기
@@ -1624,8 +1673,184 @@
         model4: `${min4.toFixed(2)} ~ <strong>${h4.toFixed(2)}</strong> ~ ${max4.toFixed(2)}`,
         model5: `${min5.toFixed(2)} ~ <strong>${h5.toFixed(2)}</strong> ~ ${max5.toFixed(2)}`,
         model6: `${min6.toFixed(2)} ~ <strong>${h6.toFixed(2)}</strong> ~ ${max6.toFixed(2)}`,
-        model7: `${min7.toFixed(2)} ~ <strong>${h7.toFixed(2)}</strong> ~ ${max7.toFixed(2)}`
+        model7: `${min7.toFixed(2)} ~ <strong>${h7.toFixed(2)}</strong> ~ ${max7.toFixed(2)}`,
+        exactValues: {
+          model1: h1.toFixed(2),
+          model2: h2.toFixed(2),
+          model3: h3.toFixed(2),
+          model4: h4.toFixed(2),
+          model5: h5.toFixed(2),
+          model6: h6.toFixed(2),
+          model7: h7.toFixed(2)
+        }
       };
+    }
+    
+    // 계산 결과를 엑셀로 다운로드하는 함수
+    function downloadResultsAsExcel() {
+      if (!window.allMeasurementResults || !window.allMeasurementResults.length) {
+        alert("다운로드할 결과가 없습니다. 엑셀 파일을 먼저 업로드하고 계산을 완료해주세요.");
+        return;
+      }
+      
+      console.log("Result data for download:", window.allMeasurementResults);
+      
+      try {
+        // ID 중복 확인 및 인덱스 맵 생성
+        const idCounts = {};
+        const idIndexMap = {};
+        
+        window.allMeasurementResults.forEach((result, idx) => {
+          if (result && result.rowData) {
+            const id = result.rowData["피험자 ID"] || "";
+            if (id) {
+              idCounts[id] = (idCounts[id] || 0) + 1;
+              idIndexMap[id] = idIndexMap[id] || [];
+              idIndexMap[id].push(idx);
+            }
+          }
+        });
+        
+        console.log("ID counts:", idCounts);
+        console.log("ID index map:", idIndexMap);
+        
+        // 데이터 준비
+        const resultsData = window.allMeasurementResults.map((result, index) => {
+          console.log(`Processing result item ${index}:`, result);
+          
+          // 데이터 구조 확인
+          if (!result || !result.rowData) {
+            console.warn("Invalid result item, missing rowData:", result);
+            return {
+              "피험자 ID": `데이터 없음 (${index})`,
+              "성별": "",
+              "나이": "",
+              "실제 키(cm)": "",
+              "모델1 예측키": "",
+              "모델2 예측키": "",
+              "모델3 예측키": "",
+              "모델4 예측키": "",
+              "모델5 예측키": "",
+              "모델6 예측키": "",
+              "모델7 예측키": "",
+              "평균 예측키": ""
+            };
+          }
+          
+          const rowData = result.rowData;
+          const heights = result.heights || {};
+          
+          // 각 모델의 값 추출 (HTML에서 숫자만 추출)
+          const getModelValue = (modelStr) => {
+            if (!modelStr) return "";
+            try {
+              const strongMatch = modelStr.match(/<strong>([\d.]+)<\/strong>/);
+              return strongMatch ? strongMatch[1] : "";
+            } catch (e) {
+              console.error("Error extracting model value:", e);
+              return "";
+            }
+          };
+          
+          // exactValues가 있으면 그것을 사용하고 없으면 HTML에서 추출
+          const getHeight = (modelName) => {
+            if (heights.exactValues && heights.exactValues[modelName]) {
+              return heights.exactValues[modelName];
+            }
+            return heights[modelName] ? getModelValue(heights[modelName]) : "";
+          };
+          
+          const model1Height = getHeight("model1");
+          const model2Height = getHeight("model2");
+          const model3Height = getHeight("model3");
+          const model4Height = getHeight("model4");
+          const model5Height = getHeight("model5");
+          const model6Height = getHeight("model6");
+          const model7Height = getHeight("model7");
+          
+          const average = [
+            parseFloat(model1Height || 0),
+            parseFloat(model2Height || 0),
+            parseFloat(model3Height || 0),
+            parseFloat(model4Height || 0),
+            parseFloat(model5Height || 0),
+            parseFloat(model6Height || 0),
+            parseFloat(model7Height || 0)
+          ].filter(v => v > 0);
+          
+          const avgHeight = average.length > 0 
+            ? (average.reduce((a, b) => a + b, 0) / average.length).toFixed(2)
+            : "";
+          
+          // 성별 필드를 다양한 형태로 찾기 (gender, 성별, Gender, GENDER 등)
+          let gender = "";
+          for (const key in rowData) {
+            const normalizedKey = key.toLowerCase().trim();
+            if (normalizedKey === 'gender' || normalizedKey === '성별') {
+              gender = rowData[key] || "";
+              break;
+            }
+          }
+          
+          // 중복 ID 처리를 위해 인덱스 추가
+          const subjectID = rowData["피험자 ID"] || "";
+          let displayID = subjectID || `데이터 ${index+1}`;
+          
+          // 중복 ID인 경우 인덱스 추가
+          if (subjectID && idCounts[subjectID] > 1) {
+            const idxInGroup = idIndexMap[subjectID].indexOf(index);
+            if (idxInGroup > -1) {
+              displayID = `${subjectID} (${idxInGroup + 1})`;
+            }
+          }
+          
+          return {
+            "피험자 ID": displayID,
+            "성별": gender,
+            "나이": rowData["age"] || rowData["나이"] || "",
+            "실제 키(cm)": rowData["height(cm)"] || rowData["실제 키(cm)"] || "",
+            "모델1 예측키": model1Height,
+            "모델2 예측키": model2Height,
+            "모델3 예측키": model3Height,
+            "모델4 예측키": model4Height,
+            "모델5 예측키": model5Height,
+            "모델6 예측키": model6Height,
+            "모델7 예측키": model7Height,
+            "평균 예측키": avgHeight
+          };
+        });
+        
+        // 워크시트 생성
+        const ws = XLSX.utils.json_to_sheet(resultsData);
+        
+        // 열 너비 설정
+        ws['!cols'] = [
+          { width: 12 }, // 피험자 ID
+          { width: 8 },  // 성별
+          { width: 8 },  // 나이
+          { width: 14 }, // 실제 키
+          { width: 14 }, // 모델1
+          { width: 14 }, // 모델2
+          { width: 14 }, // 모델3
+          { width: 14 }, // 모델4
+          { width: 14 }, // 모델5
+          { width: 14 }, // 모델6
+          { width: 14 }, // 모델7
+          { width: 14 }  // 평균
+        ];
+        
+        // 워크북 생성
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "키 예측 결과");
+        
+        // 파일 다운로드
+        XLSX.writeFile(wb, "키_예측_결과.xlsx");
+        
+        console.log("Excel file download complete");
+      } catch (error) {
+        console.error("Excel download error:", error);
+        alert("엑셀 파일 생성 중 오류가 발생했습니다: " + error.message);
+      }
     }
   </script>
 </body>
