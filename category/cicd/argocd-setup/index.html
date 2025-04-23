@@ -220,7 +220,7 @@ January 16, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>2 min to read</span>
+                    <span>9 min to read</span>
                 </p>
                 <h1 class="post-title">Setting up ArgoCD - GitOps Continuous Deployment Tool</h1>
                 <p class="post-subtitle"></p>
@@ -299,6 +299,55 @@ curl <span class="nt">-sL</span> <span class="nt">-o</span> argocd https://githu
 
 <p><br /></p>
 
+<h3 id="helm-values-example">Helm Values Example</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># values.yaml for Helm installation</span>
+<span class="na">server</span><span class="pi">:</span>
+  <span class="na">extraArgs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">--insecure</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">hosts</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">argocd.example.com</span>
+    <span class="na">annotations</span><span class="pi">:</span>
+      <span class="na">kubernetes.io/ingress.class</span><span class="pi">:</span> <span class="s">nginx</span>
+      <span class="na">nginx.ingress.kubernetes.io/force-ssl-redirect</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+      <span class="na">nginx.ingress.kubernetes.io/ssl-passthrough</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+      <span class="na">nginx.ingress.kubernetes.io/backend-protocol</span><span class="pi">:</span> <span class="s2">"</span><span class="s">HTTPS"</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">500m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">512Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">200m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">256Mi</span>
+  
+<span class="na">repoServer</span><span class="pi">:</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">300m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">512Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">100m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">256Mi</span>
+
+<span class="na">applicationSet</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+
+<span class="na">notifications</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+
+<span class="na">dex</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">false</span>
+</code></pre></div></div>
+
+<p>To install with custom values:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>argocd argo-cd <span class="nt">-f</span> values.yaml <span class="nt">--namespace</span> argocd <span class="nt">--create-namespace</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
 <h3 id="ingress-configuration">Ingress Configuration</h3>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Reference: https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/</span>
@@ -341,6 +390,244 @@ kubectl get po,svc,ingress,sts <span class="nt">-n</span> argocd
 
 <p><br /></p>
 
+<h2 id="managing-applications">Managing Applications</h2>
+
+<h3 id="application-definition">Application Definition</h3>
+
+<p>Create an application in ArgoCD:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># application.yaml</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">argoproj.io/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Application</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">guestbook</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">project</span><span class="pi">:</span> <span class="s">default</span>
+  <span class="na">source</span><span class="pi">:</span>
+    <span class="na">repoURL</span><span class="pi">:</span> <span class="s">https://github.com/argoproj/argocd-example-apps.git</span>
+    <span class="na">targetRevision</span><span class="pi">:</span> <span class="s">HEAD</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">guestbook</span>
+  <span class="na">destination</span><span class="pi">:</span>
+    <span class="na">server</span><span class="pi">:</span> <span class="s">https://kubernetes.default.svc</span>
+    <span class="na">namespace</span><span class="pi">:</span> <span class="s">guestbook</span>
+  <span class="na">syncPolicy</span><span class="pi">:</span>
+    <span class="na">automated</span><span class="pi">:</span>
+      <span class="na">prune</span><span class="pi">:</span> <span class="no">true</span>
+      <span class="na">selfHeal</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">syncOptions</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">CreateNamespace=true</span>
+</code></pre></div></div>
+
+<p>Apply the application:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl apply <span class="nt">-f</span> application.yaml
+</code></pre></div></div>
+
+<h3 id="cli-management">CLI Management</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Log in to ArgoCD</span>
+argocd login argocd.somaz.link
+
+<span class="c"># List applications</span>
+argocd app list
+
+<span class="c"># Get application details</span>
+argocd app get guestbook
+
+<span class="c"># Manually sync an application</span>
+argocd app <span class="nb">sync </span>guestbook
+
+<span class="c"># Create an application via CLI</span>
+argocd app create guestbook <span class="se">\</span>
+  <span class="nt">--repo</span> https://github.com/argoproj/argocd-example-apps.git <span class="se">\</span>
+  <span class="nt">--path</span> guestbook <span class="se">\</span>
+  <span class="nt">--dest-server</span> https://kubernetes.default.svc <span class="se">\</span>
+  <span class="nt">--dest-namespace</span> guestbook
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="advanced-configuration">Advanced Configuration</h2>
+
+<h3 id="sso-integration">SSO Integration</h3>
+
+<p>You can integrate ArgoCD with Identity Providers using OIDC:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-cm</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">url</span><span class="pi">:</span> <span class="s">https://argocd.somaz.link</span>
+  
+  <span class="c1"># OIDC Configuration</span>
+  <span class="na">oidc.config</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">name: Okta</span>
+    <span class="s">issuer: https://dev-123456.okta.com</span>
+    <span class="s">clientID: 0oabcdefghijklmn</span>
+    <span class="s">clientSecret: $oidc.okta.clientSecret</span>
+    <span class="s">requestedScopes: ["openid", "profile", "email", "groups"]</span>
+    <span class="s">requestedIDTokenClaims:</span>
+      <span class="s">groups:</span>
+        <span class="s">essential: true</span>
+</code></pre></div></div>
+
+<p>Create a secret for the client secret:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl create secret generic argocd-secret <span class="se">\</span>
+  <span class="nt">--from-literal</span><span class="o">=</span>oidc.okta.clientSecret<span class="o">=</span>your-client-secret <span class="se">\</span>
+  <span class="nt">-n</span> argocd
+</code></pre></div></div>
+
+<h3 id="rbac-configuration">RBAC Configuration</h3>
+
+<p>Configure RBAC in ArgoCD:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-rbac-cm</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">policy.csv</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s"># Project roles</span>
+    <span class="s">p, role:dev-readonly, applications, get, dev/*, allow</span>
+    <span class="s">p, role:dev-admin, applications, *, dev/*, allow</span>
+    
+    <span class="s"># Group mappings</span>
+    <span class="s">g, dev-team, role:dev-readonly</span>
+    <span class="s">g, devops-team, role:dev-admin</span>
+    
+    <span class="s"># Allow admins to do everything</span>
+    <span class="s">p, role:org-admin, applications, *, */*, allow</span>
+    <span class="s">g, admin-team, role:org-admin</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="applicationset-example">ApplicationSet Example</h3>
+
+<p>ApplicationSets help manage multiple similar applications:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">argoproj.io/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ApplicationSet</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">microservices</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">generators</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">list</span><span class="pi">:</span>
+      <span class="na">elements</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">api</span>
+        <span class="na">namespace</span><span class="pi">:</span> <span class="s">microservices</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">services/api</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">auth</span>
+        <span class="na">namespace</span><span class="pi">:</span> <span class="s">microservices</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">services/auth</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">frontend</span>
+        <span class="na">namespace</span><span class="pi">:</span> <span class="s">microservices</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">services/frontend</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">name</span><span class="pi">:</span> <span class="s1">'</span><span class="s">'</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">project</span><span class="pi">:</span> <span class="s">default</span>
+      <span class="na">source</span><span class="pi">:</span>
+        <span class="na">repoURL</span><span class="pi">:</span> <span class="s">https://github.com/myorg/microservices.git</span>
+        <span class="na">targetRevision</span><span class="pi">:</span> <span class="s">HEAD</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s1">'</span><span class="s">'</span>
+      <span class="na">destination</span><span class="pi">:</span>
+        <span class="na">server</span><span class="pi">:</span> <span class="s">https://kubernetes.default.svc</span>
+        <span class="na">namespace</span><span class="pi">:</span> <span class="s1">'</span><span class="s">'</span>
+      <span class="na">syncPolicy</span><span class="pi">:</span>
+        <span class="na">automated</span><span class="pi">:</span>
+          <span class="na">prune</span><span class="pi">:</span> <span class="no">true</span>
+          <span class="na">selfHeal</span><span class="pi">:</span> <span class="no">true</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="monitoring-and-troubleshooting">Monitoring and Troubleshooting</h2>
+
+<h3 id="health-status-dashboard">Health Status Dashboard</h3>
+
+<p>ArgoCD provides a dashboard to monitor the health of your applications. If you encounter issues, check these common problems:</p>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Common Issues and Solutions:</strong><br /><br />
+
+<strong>1. Application Out of Sync:</strong>
+   - Check Git repository connectivity<br />
+   - Verify branch/tag/commit reference<br />
+   - Inspect detailed sync status: <code>argocd app get [app-name]</code><br /><br />
+
+<strong>2. Authentication Failures:</strong>
+   - Ensure Git credentials are correct<br />
+   - Check SSH keys or access tokens<br />
+   - Verify network connectivity to Git provider<br /><br />
+
+<strong>3. Resource Creation Failures:</strong>
+   - Check RBAC permissions<br />
+   - Verify namespace exists (or enable auto-creation)<br />
+   - Look for validation errors: <code>kubectl logs deployment/argocd-repo-server -n argocd</code><br /><br />
+
+<strong>4. Webhook Integration Issues:</strong>
+   - Ensure webhook is properly configured<br />
+   - Check network connectivity from Git provider to ArgoCD<br />
+   - Verify payload structure and secrets<br /><br />
+</div>
+
+<h3 id="useful-diagnostic-commands">Useful Diagnostic Commands</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check ArgoCD server logs</span>
+kubectl logs <span class="nt">-n</span> argocd <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>argocd-server
+
+<span class="c"># Check repo server logs (for Git issues)</span>
+kubectl logs <span class="nt">-n</span> argocd <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>argocd-repo-server
+
+<span class="c"># Check controller logs (for sync issues)</span>
+kubectl logs <span class="nt">-n</span> argocd <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>argocd-application-controller
+
+<span class="c"># Get detailed application status</span>
+argocd app get myapp <span class="nt">--hard-refresh</span>
+
+<span class="c"># Check recent application events</span>
+kubectl get events <span class="nt">-n</span> argocd <span class="nt">--sort-by</span><span class="o">=</span><span class="s1">'.lastTimestamp'</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="backup-and-restore">Backup and Restore</h2>
+
+<h3 id="backup-argocd">Backup ArgoCD</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Backup ArgoCD application definitions</span>
+kubectl get applications <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-applications-backup.yaml
+
+<span class="c"># Backup ArgoCD projects</span>
+kubectl get appprojects <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-projects-backup.yaml
+
+<span class="c"># Backup ArgoCD settings and configurations</span>
+kubectl get configmap argocd-cm <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-cm-backup.yaml
+kubectl get configmap argocd-rbac-cm <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-rbac-cm-backup.yaml
+kubectl get secret argocd-secret <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-secret-backup.yaml
+</code></pre></div></div>
+
+<h3 id="restore-argocd">Restore ArgoCD</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Restore from backups</span>
+kubectl apply <span class="nt">-f</span> argocd-applications-backup.yaml
+kubectl apply <span class="nt">-f</span> argocd-projects-backup.yaml
+kubectl apply <span class="nt">-f</span> argocd-cm-backup.yaml
+kubectl apply <span class="nt">-f</span> argocd-rbac-cm-backup.yaml
+kubectl apply <span class="nt">-f</span> argocd-secret-backup.yaml
+</code></pre></div></div>
+
+<p><br /></p>
+
 <h3 id="best-practices">Best Practices</h3>
 
 <div class="info-box info-box-success">
@@ -348,17 +635,30 @@ kubectl get po,svc,ingress,sts <span class="nt">-n</span> argocd
 <strong>1. Security:</strong>
    - Change default admin password<br />
    - Use SSL/TLS<br />
-   - Implement RBAC<br /><br />
+   - Implement RBAC<br />
+   - Regularly rotate secrets and credentials<br />
+   - Use private Git repositories<br /><br />
 
 <strong>2. High Availability:</strong>
    - Use HA installation for production<br />
    - Configure proper backup<br />
-   - Monitor resources<br /><br />
+   - Monitor resources<br />
+   - Set appropriate resource limits<br />
+   - Use node affinity for critical components<br /><br />
 
 <strong>3. GitOps Workflow:</strong>
    - Use declarative configurations<br />
    - Version control everything<br />
-   - Automate deployments<br /><br />
+   - Automate deployments<br />
+   - Implement PR approval workflows<br />
+   - Organize repositories by environment<br /><br />
+
+<strong>4. Performance:</strong>
+   - Use ApplicationSets for managing multiple applications<br />
+   - Configure reasonable sync periods<br />
+   - Utilize webhooks for immediate updates<br />
+   - Implement proper caching strategies<br />
+   - Monitor and adjust resource limits as needed<br /><br />
 </div>
 
 <p><br /></p>
@@ -421,7 +721,7 @@ kubectl get po,svc,ingress,sts <span class="nt">-n</span> argocd
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="2">
+            <div class="time-bar" data-minutes="9">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -785,6 +1085,55 @@ sudo mv argocd /usr/local/bin/
 
 
 
+Helm Values Example
+
+# values.yaml for Helm installation
+server:
+  extraArgs:
+    - --insecure
+  ingress:
+    enabled: true
+    hosts:
+      - argocd.example.com
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/force-ssl-redirect: &quot;true&quot;
+      nginx.ingress.kubernetes.io/ssl-passthrough: &quot;true&quot;
+      nginx.ingress.kubernetes.io/backend-protocol: &quot;HTTPS&quot;
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  
+repoServer:
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+applicationSet:
+  enabled: true
+
+notifications:
+  enabled: true
+
+dex:
+  enabled: false
+
+
+To install with custom values:
+
+helm install argocd argo-cd -f values.yaml --namespace argocd --create-namespace
+
+
+
+
 Ingress Configuration
 
 # Reference: https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/
@@ -827,6 +1176,244 @@ Login
 
 
 
+Managing Applications
+
+Application Definition
+
+Create an application in ArgoCD:
+
+# application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: guestbook
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: guestbook
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+
+
+Apply the application:
+
+kubectl apply -f application.yaml
+
+
+CLI Management
+
+# Log in to ArgoCD
+argocd login argocd.somaz.link
+
+# List applications
+argocd app list
+
+# Get application details
+argocd app get guestbook
+
+# Manually sync an application
+argocd app sync guestbook
+
+# Create an application via CLI
+argocd app create guestbook \
+  --repo https://github.com/argoproj/argocd-example-apps.git \
+  --path guestbook \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace guestbook
+
+
+
+
+Advanced Configuration
+
+SSO Integration
+
+You can integrate ArgoCD with Identity Providers using OIDC:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  url: https://argocd.somaz.link
+  
+  # OIDC Configuration
+  oidc.config: |
+    name: Okta
+    issuer: https://dev-123456.okta.com
+    clientID: 0oabcdefghijklmn
+    clientSecret: $oidc.okta.clientSecret
+    requestedScopes: [&quot;openid&quot;, &quot;profile&quot;, &quot;email&quot;, &quot;groups&quot;]
+    requestedIDTokenClaims:
+      groups:
+        essential: true
+
+
+Create a secret for the client secret:
+
+kubectl create secret generic argocd-secret \
+  --from-literal=oidc.okta.clientSecret=your-client-secret \
+  -n argocd
+
+
+RBAC Configuration
+
+Configure RBAC in ArgoCD:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+data:
+  policy.csv: |
+    # Project roles
+    p, role:dev-readonly, applications, get, dev/*, allow
+    p, role:dev-admin, applications, *, dev/*, allow
+    
+    # Group mappings
+    g, dev-team, role:dev-readonly
+    g, devops-team, role:dev-admin
+    
+    # Allow admins to do everything
+    p, role:org-admin, applications, *, */*, allow
+    g, admin-team, role:org-admin
+
+
+
+
+ApplicationSet Example
+
+ApplicationSets help manage multiple similar applications:
+
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: microservices
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements:
+      - name: api
+        namespace: microservices
+        path: services/api
+      - name: auth
+        namespace: microservices
+        path: services/auth
+      - name: frontend
+        namespace: microservices
+        path: services/frontend
+  template:
+    metadata:
+      name: &apos;&apos;
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/myorg/microservices.git
+        targetRevision: HEAD
+        path: &apos;&apos;
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: &apos;&apos;
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+
+
+
+
+Monitoring and Troubleshooting
+
+Health Status Dashboard
+
+ArgoCD provides a dashboard to monitor the health of your applications. If you encounter issues, check these common problems:
+
+
+
+Common Issues and Solutions:
+
+1. Application Out of Sync:
+   - Check Git repository connectivity
+   - Verify branch/tag/commit reference
+   - Inspect detailed sync status: argocd app get [app-name]
+
+2. Authentication Failures:
+   - Ensure Git credentials are correct
+   - Check SSH keys or access tokens
+   - Verify network connectivity to Git provider
+
+3. Resource Creation Failures:
+   - Check RBAC permissions
+   - Verify namespace exists (or enable auto-creation)
+   - Look for validation errors: kubectl logs deployment/argocd-repo-server -n argocd
+
+4. Webhook Integration Issues:
+   - Ensure webhook is properly configured
+   - Check network connectivity from Git provider to ArgoCD
+   - Verify payload structure and secrets
+
+
+Useful Diagnostic Commands
+
+# Check ArgoCD server logs
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-server
+
+# Check repo server logs (for Git issues)
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-repo-server
+
+# Check controller logs (for sync issues)
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller
+
+# Get detailed application status
+argocd app get myapp --hard-refresh
+
+# Check recent application events
+kubectl get events -n argocd --sort-by=&apos;.lastTimestamp&apos;
+
+
+
+
+Backup and Restore
+
+Backup ArgoCD
+
+# Backup ArgoCD application definitions
+kubectl get applications -n argocd -o yaml &amp;gt; argocd-applications-backup.yaml
+
+# Backup ArgoCD projects
+kubectl get appprojects -n argocd -o yaml &amp;gt; argocd-projects-backup.yaml
+
+# Backup ArgoCD settings and configurations
+kubectl get configmap argocd-cm -n argocd -o yaml &amp;gt; argocd-cm-backup.yaml
+kubectl get configmap argocd-rbac-cm -n argocd -o yaml &amp;gt; argocd-rbac-cm-backup.yaml
+kubectl get secret argocd-secret -n argocd -o yaml &amp;gt; argocd-secret-backup.yaml
+
+
+Restore ArgoCD
+
+# Restore from backups
+kubectl apply -f argocd-applications-backup.yaml
+kubectl apply -f argocd-projects-backup.yaml
+kubectl apply -f argocd-cm-backup.yaml
+kubectl apply -f argocd-rbac-cm-backup.yaml
+kubectl apply -f argocd-secret-backup.yaml
+
+
+
+
 Best Practices
 
 
@@ -835,16 +1422,29 @@ Best Practices
    - Change default admin password
    - Use SSL/TLS
    - Implement RBAC
+   - Regularly rotate secrets and credentials
+   - Use private Git repositories
 
 2. High Availability:
    - Use HA installation for production
    - Configure proper backup
    - Monitor resources
+   - Set appropriate resource limits
+   - Use node affinity for critical components
 
 3. GitOps Workflow:
    - Use declarative configurations
    - Version control everything
    - Automate deployments
+   - Implement PR approval workflows
+   - Organize repositories by environment
+
+4. Performance:
+   - Use ApplicationSets for managing multiple applications
+   - Configure reasonable sync periods
+   - Utilize webhooks for immediate updates
+   - Implement proper caching strategies
+   - Monitor and adjust resource limits as needed
 
 
 
@@ -859,7 +1459,7 @@ Reference
   Picluster ArgoCD Guide
 
 ",
-            "wordcount": "500",
+            "wordcount": "1700",
             "inLanguage": "en",
             "dateCreated": "2025-01-16/",
             "datePublished": "2025-01-16/",

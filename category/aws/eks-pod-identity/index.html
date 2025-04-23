@@ -220,7 +220,7 @@ January 23, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>6 min to read</span>
                 </p>
                 <h1 class="post-title">Understanding Amazon EKS Pod Identity Addon</h1>
                 <p class="post-subtitle">A deep dive into EKS Pod Identity and comparison with IRSA</p>
@@ -460,6 +460,76 @@ January 23, 2025
 
 <p><br /></p>
 
+<h3 id="migration-from-irsa-to-pod-identity">Migration from IRSA to Pod Identity</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Migration Steps</strong>
+  <ul>
+    <li>Install the EKS Pod Identity Agent on your existing clusters</li>
+    <li>Create Pod Identity Associations between service accounts and IAM roles</li>
+    <li>Gradually transition workloads to use Pod Identity instead of IRSA</li>
+    <li>Update service account annotations to match the new format</li>
+  </ul>
+</div>
+
+<h4 id="example-pod-identity-association">Example Pod Identity Association</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">eks.amazonaws.com/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">PodIdentityAssociation</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-association</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">default</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">serviceAccount</span><span class="pi">:</span> <span class="s">my-service-account</span>
+  <span class="na">roleArn</span><span class="pi">:</span> <span class="s">arn:aws:iam::&lt;account-id&gt;:role/EKSPodIdentityRole</span>
+</code></pre></div></div>
+
+<h4 id="compatibility-with-existing-workloads">Compatibility with Existing Workloads</h4>
+<p>You can run both IRSA and Pod Identity in the same cluster during migration:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check existing IRSA setup</span>
+kubectl get serviceaccounts <span class="nt">-n</span> default my-service-account <span class="nt">-o</span> yaml
+
+<span class="c"># Create new Pod Identity Association</span>
+aws eks create-pod-identity-association <span class="se">\</span>
+  <span class="nt">--cluster-name</span> my-cluster <span class="se">\</span>
+  <span class="nt">--namespace</span> default <span class="se">\</span>
+  <span class="nt">--service-account</span> my-service-account <span class="se">\</span>
+  <span class="nt">--role-arn</span> arn:aws:iam::&lt;account-id&gt;:role/EKSPodIdentityRole
+
+<span class="c"># Verify Pod Identity Association</span>
+aws eks list-pod-identity-associations <span class="nt">--cluster-name</span> my-cluster
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="troubleshooting-pod-identity">Troubleshooting Pod Identity</h3>
+
+<div class="info-box info-box-warning">
+  <strong>Common Issues</strong>
+  <ul>
+    <li><strong>Credentials not available:</strong> Check Pod Identity Agent logs</li>
+    <li><strong>Permission denied:</strong> Verify IAM role has appropriate policies</li>
+    <li><strong>Association not working:</strong> Confirm Pod Identity Association exists</li>
+    <li><strong>Agent pods failing:</strong> Check for networking or RBAC issues</li>
+  </ul>
+</div>
+
+<h4 id="debugging-commands">Debugging Commands</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check Pod Identity Agent status</span>
+kubectl get pods <span class="nt">-n</span> kube-system | <span class="nb">grep </span>pod-identity-agent
+
+<span class="c"># View Agent logs</span>
+kubectl logs <span class="nt">-n</span> kube-system pod-identity-agent-xxxxx
+
+<span class="c"># Verify service account configuration</span>
+kubectl describe serviceaccount my-service-account <span class="nt">-n</span> default
+
+<span class="c"># Test AWS credentials from within a pod</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> my-pod <span class="nt">--</span> aws sts get-caller-identity
+</code></pre></div></div>
+
+<p><br /></p>
+
 <hr />
 
 <h3 id="references">References</h3>
@@ -517,7 +587,7 @@ January 23, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="6">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1042,6 +1112,76 @@ Example IMDSv2 Usage
 
 
 
+Migration from IRSA to Pod Identity
+
+
+  Migration Steps
+  
+    Install the EKS Pod Identity Agent on your existing clusters
+    Create Pod Identity Associations between service accounts and IAM roles
+    Gradually transition workloads to use Pod Identity instead of IRSA
+    Update service account annotations to match the new format
+  
+
+
+Example Pod Identity Association
+apiVersion: eks.amazonaws.com/v1beta1
+kind: PodIdentityAssociation
+metadata:
+  name: my-app-association
+  namespace: default
+spec:
+  serviceAccount: my-service-account
+  roleArn: arn:aws:iam::&amp;lt;account-id&amp;gt;:role/EKSPodIdentityRole
+
+
+Compatibility with Existing Workloads
+You can run both IRSA and Pod Identity in the same cluster during migration:
+
+# Check existing IRSA setup
+kubectl get serviceaccounts -n default my-service-account -o yaml
+
+# Create new Pod Identity Association
+aws eks create-pod-identity-association \
+  --cluster-name my-cluster \
+  --namespace default \
+  --service-account my-service-account \
+  --role-arn arn:aws:iam::&amp;lt;account-id&amp;gt;:role/EKSPodIdentityRole
+
+# Verify Pod Identity Association
+aws eks list-pod-identity-associations --cluster-name my-cluster
+
+
+
+
+Troubleshooting Pod Identity
+
+
+  Common Issues
+  
+    Credentials not available: Check Pod Identity Agent logs
+    Permission denied: Verify IAM role has appropriate policies
+    Association not working: Confirm Pod Identity Association exists
+    Agent pods failing: Check for networking or RBAC issues
+  
+
+
+Debugging Commands
+# Check Pod Identity Agent status
+kubectl get pods -n kube-system | grep pod-identity-agent
+
+# View Agent logs
+kubectl logs -n kube-system pod-identity-agent-xxxxx
+
+# Verify service account configuration
+kubectl describe serviceaccount my-service-account -n default
+
+# Test AWS credentials from within a pod
+kubectl exec -it my-pod -- aws sts get-caller-identity
+
+
+
+
 
 
 References
@@ -1051,7 +1191,7 @@ References
   IMDSv2 Documentation
 
 ",
-            "wordcount": "843",
+            "wordcount": "1143",
             "inLanguage": "en",
             "dateCreated": "2025-01-23/",
             "datePublished": "2025-01-23/",

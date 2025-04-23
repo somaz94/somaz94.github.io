@@ -220,7 +220,7 @@ January 20, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>3 min to read</span>
+                    <span>10 min to read</span>
                 </p>
                 <h1 class="post-title">What is GitLab, GitLab Runner?</h1>
                 <p class="post-subtitle">A comprehensive guide to GitLab, GitLab Runner installation and configuration</p>
@@ -339,6 +339,48 @@ curl <span class="nt">-sS</span> https://packages.gitlab.com/install/repositorie
 
 <p><br /></p>
 
+<h3 id="backup-and-restore">Backup and Restore</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create a backup (default location: /var/opt/gitlab/backups)</span>
+<span class="nb">sudo </span>gitlab-backup create
+
+<span class="c"># Create a backup with specific options</span>
+<span class="nb">sudo </span>gitlab-backup create <span class="nv">STRATEGY</span><span class="o">=</span>copy <span class="nv">SKIP</span><span class="o">=</span>uploads,repositories,builds <span class="nv">GZIP_RSYNCABLE</span><span class="o">=</span><span class="nb">yes</span>
+
+<span class="c"># Restore from a backup (for GitLab 14.0+)</span>
+<span class="nb">sudo </span>gitlab-backup restore <span class="nv">BACKUP</span><span class="o">=</span>1640289825_2021_12_23_14.6.3
+
+<span class="c"># Backup GitLab configuration files</span>
+<span class="nb">sudo cp</span> /etc/gitlab/gitlab-secrets.json /var/opt/gitlab/backups/gitlab-secrets.json
+<span class="nb">sudo cp</span> /etc/gitlab/gitlab.rb /var/opt/gitlab/backups/gitlab.rb
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="performance-tuning">Performance Tuning</h3>
+
+<p>For larger installations, you can optimize GitLab performance by editing <code class="language-plaintext highlighter-rouge">/etc/gitlab/gitlab.rb</code>:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># CPU and memory optimization</span>
+<span class="n">puma</span><span class="p">[</span><span class="s1">'worker_processes'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">puma</span><span class="p">[</span><span class="s1">'max_threads'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">sidekiq</span><span class="p">[</span><span class="s1">'concurrency'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">20</span>
+
+<span class="c1"># PostgreSQL optimization</span>
+<span class="n">postgresql</span><span class="p">[</span><span class="s1">'shared_buffers'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"2GB"</span>
+<span class="n">postgresql</span><span class="p">[</span><span class="s1">'work_mem'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"128MB"</span>
+<span class="n">postgresql</span><span class="p">[</span><span class="s1">'maintenance_work_mem'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"256MB"</span>
+
+<span class="c1"># Redis optimization</span>
+<span class="n">redis</span><span class="p">[</span><span class="s1">'tcp_timeout'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">60</span>
+<span class="n">redis</span><span class="p">[</span><span class="s1">'tcp_keepalive'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">300</span>
+
+<span class="c1"># Apply changes</span>
+<span class="c1"># sudo gitlab-ctl reconfigure</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
 <hr />
 
 <h2 id="gitlab-runner">GitLab Runner</h2>
@@ -385,6 +427,36 @@ curl <span class="nt">-sS</span> https://packages.gitlab.com/install/repositorie
 
 <p><br /></p>
 
+<h3 id="runner-executor-types">Runner Executor Types</h3>
+
+<div class="info-box info-box-default">
+  <strong>⚙️ Executor Options</strong>
+  <ul>
+    <li>
+      <strong>Shell</strong><br />
+      Executes jobs directly on the host machine. Simple but less isolated.
+    </li>
+    <li>
+      <strong>Docker</strong><br />
+      Runs each job in a separate Docker container. Provides good isolation and reproducibility.
+    </li>
+    <li>
+      <strong>Kubernetes</strong><br />
+      Creates pods in a Kubernetes cluster for each job. Highly scalable and flexible.
+    </li>
+    <li>
+      <strong>Virtual Machine</strong><br />
+      Uses VMs to run jobs. Maximum isolation but higher resource requirements.
+    </li>
+    <li>
+      <strong>SSH</strong><br />
+      Connects to remote machines via SSH to execute jobs. Good for specialized environments.
+    </li>
+  </ul>
+</div>
+
+<p><br /></p>
+
 <h3 id="installation-guide-helm">Installation Guide (Helm)</h3>
 
 <h4 id="1️⃣-prerequisites">1️⃣ Prerequisites</h4>
@@ -406,6 +478,245 @@ helm <span class="nb">install </span>gitlab-runner <span class="nt">-n</span> gi
 <span class="c"># Upgrade Runner</span>
 helm upgrade gitlab-runner <span class="nt">-n</span> gitlab-runner <span class="nt">-f</span> values.yaml gitlab/gitlab-runner
 </code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="basic-gitlab-runner-cli-commands">Basic GitLab Runner CLI Commands</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Register a new runner (interactive mode)</span>
+gitlab-runner register
+
+<span class="c"># Register a non-interactive runner</span>
+gitlab-runner register <span class="se">\</span>
+  <span class="nt">--non-interactive</span> <span class="se">\</span>
+  <span class="nt">--url</span> <span class="s2">"https://gitlab.example.com/"</span> <span class="se">\</span>
+  <span class="nt">--registration-token</span> <span class="s2">"PROJECT_REGISTRATION_TOKEN"</span> <span class="se">\</span>
+  <span class="nt">--executor</span> <span class="s2">"docker"</span> <span class="se">\</span>
+  <span class="nt">--docker-image</span> alpine:latest <span class="se">\</span>
+  <span class="nt">--description</span> <span class="s2">"docker-runner"</span> <span class="se">\</span>
+  <span class="nt">--tag-list</span> <span class="s2">"docker,aws"</span> <span class="se">\</span>
+  <span class="nt">--run-untagged</span><span class="o">=</span><span class="s2">"true"</span> <span class="se">\</span>
+  <span class="nt">--locked</span><span class="o">=</span><span class="s2">"false"</span>
+
+<span class="c"># List all configured runners</span>
+gitlab-runner list
+
+<span class="c"># Verify runner status</span>
+gitlab-runner verify
+
+<span class="c"># Unregister a runner</span>
+gitlab-runner unregister <span class="nt">--name</span> <span class="s2">"docker-runner"</span>
+
+<span class="c"># Start/stop/restart the runner service</span>
+gitlab-runner start
+gitlab-runner stop
+gitlab-runner restart
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="example-gitlab-ciyml-file">Example .gitlab-ci.yml File</h3>
+
+<p>Here’s a basic <code class="language-plaintext highlighter-rouge">.gitlab-ci.yml</code> file to get started with CI/CD:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">stages</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">build</span>
+  <span class="pi">-</span> <span class="s">test</span>
+  <span class="pi">-</span> <span class="s">deploy</span>
+
+<span class="na">variables</span><span class="pi">:</span>
+  <span class="na">IMAGE_TAG</span><span class="pi">:</span> <span class="s">$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG</span>
+
+<span class="na">build_job</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">build</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">docker:20.10.16</span>
+  <span class="na">services</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker:20.10.16-dind</span>
+  <span class="na">variables</span><span class="pi">:</span>
+    <span class="na">DOCKER_TLS_CERTDIR</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/certs"</span>
+  <span class="na">before_script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker build -t $IMAGE_TAG .</span>
+    <span class="pi">-</span> <span class="s">docker push $IMAGE_TAG</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"</span>
+
+<span class="na">test_job</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">test</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">$IMAGE_TAG</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Running tests..."</span>
+    <span class="pi">-</span> <span class="s">./run_tests.sh</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"</span>
+
+<span class="na">deploy_job</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">deploy</span>
+  <span class="na">image</span><span class="pi">:</span> 
+    <span class="na">name</span><span class="pi">:</span> <span class="s">bitnami/kubectl:latest</span>
+    <span class="na">entrypoint</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Deploying application..."</span>
+    <span class="pi">-</span> <span class="s">kubectl config use-context $KUBE_CONTEXT</span>
+    <span class="pi">-</span> <span class="s">kubectl apply -f k8s/deployment.yaml</span>
+  <span class="na">environment</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">production</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH == "main"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="advanced-runner-configuration">Advanced Runner Configuration</h3>
+
+<h4 id="cache-configuration">Cache Configuration</h4>
+
+<p>Optimize build times by caching dependencies:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># In .gitlab-ci.yml</span>
+<span class="na">cache</span><span class="pi">:</span>
+  <span class="na">key</span><span class="pi">:</span> <span class="s">${CI_COMMIT_REF_SLUG}</span>
+  <span class="na">paths</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">node_modules/</span>
+    <span class="pi">-</span> <span class="s">.npm/</span>
+    <span class="pi">-</span> <span class="s">vendor/</span>
+    <span class="pi">-</span> <span class="s">.gradle/</span>
+
+<span class="c1"># Runner config.toml cache settings</span>
+<span class="pi">[</span><span class="nv">runners.cache</span><span class="pi">]</span>
+  <span class="s">Type = "s3"</span>
+  <span class="s">Path = "gitlab-runner"</span>
+  <span class="s">Shared = </span><span class="no">true</span>
+  <span class="s">[runners.cache.s3]</span>
+    <span class="s">ServerAddress = "s3.amazonaws.com"</span>
+    <span class="s">AccessKey = "AWSACCESSKEY"</span>
+    <span class="s">SecretKey = "AWSSECRETKEY"</span>
+    <span class="s">BucketName = "my-bucket"</span>
+    <span class="s">BucketLocation = "us-east-1"</span>
+</code></pre></div></div>
+
+<h4 id="auto-scaling-runners-on-kubernetes">Auto-scaling Runners on Kubernetes</h4>
+
+<p>For efficient resource usage, configure auto-scaling:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># In Helm values.yaml</span>
+<span class="na">concurrent</span><span class="pi">:</span> <span class="m">10</span>
+<span class="na">checkInterval</span><span class="pi">:</span> <span class="m">30</span>
+
+<span class="na">runners</span><span class="pi">:</span>
+  <span class="na">config</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">[[runners]]</span>
+      <span class="s">[runners.kubernetes]</span>
+        <span class="s">image = "ubuntu:20.04"</span>
+        <span class="s">privileged = true</span>
+        <span class="s">namespace = "gitlab-runner"</span>
+        <span class="s">poll_timeout = 600</span>
+        <span class="s">cpu_request = "300m"</span>
+        <span class="s">cpu_limit = "1000m"</span>
+        <span class="s">memory_request = "500Mi"</span>
+        <span class="s">memory_limit = "2Gi"</span>
+        <span class="s">service_cpu_request = "100m"</span>
+        <span class="s">service_cpu_limit = "200m"</span>
+        <span class="s">service_memory_request = "100Mi"</span>
+        <span class="s">service_memory_limit = "200Mi"</span>
+        <span class="s">helper_cpu_request = "100m"</span>
+        <span class="s">helper_cpu_limit = "200m"</span>
+        <span class="s">helper_memory_request = "100Mi"</span>
+        <span class="s">helper_memory_limit = "200Mi"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Common GitLab Issues and Solutions:</strong><br /><br />
+
+<strong>1. GitLab Service Issues:</strong>
+   - Check service status: <code>sudo gitlab-ctl status</code><br />
+   - View logs: <code>sudo gitlab-ctl tail</code><br />
+   - Check specific component logs: <code>sudo gitlab-ctl tail nginx</code><br />
+   - Check disk space: <code>df -h</code><br /><br />
+
+<strong>2. Database Problems:</strong>
+   - Check PostgreSQL: <code>sudo gitlab-rails dbconsole</code><br />
+   - Database migrations: <code>sudo gitlab-rake db:migrate:status</code><br />
+   - Repair database: <code>sudo gitlab-rake db:migrate</code><br /><br />
+
+<strong>3. Runner Connection Issues:</strong>
+   - Check network connectivity between runner and GitLab<br />
+   - Verify registration token<br />
+   - Check runner logs: <code>sudo gitlab-runner --debug run</code><br />
+   - Verify SSL certificates if using HTTPS<br /><br />
+
+<strong>4. Pipeline Failures:</strong>
+   - Validate .gitlab-ci.yml syntax locally<br />
+   - Check if the runner has the right tags<br />
+   - Verify environment variables are set correctly<br />
+   - Increase resource limits for demanding jobs<br /><br />
+</div>
+
+<p><br /></p>
+
+<h3 id="gitlab-runner-debug-commands">GitLab Runner Debug Commands</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Run runner with debug output</span>
+<span class="nb">sudo </span>gitlab-runner <span class="nt">--debug</span> run
+
+<span class="c"># Show detailed runner information</span>
+<span class="nb">sudo </span>gitlab-runner verify <span class="nt">--verbose</span>
+
+<span class="c"># Check runner config file</span>
+<span class="nb">cat</span> /etc/gitlab-runner/config.toml
+
+<span class="c"># Test runner connection</span>
+gitlab-runner verify <span class="nt">--name</span> YOUR_RUNNER_NAME
+
+<span class="c"># Check pod status (for Kubernetes runners)</span>
+kubectl get pods <span class="nt">-n</span> gitlab-runner
+
+<span class="c"># Check runner pod logs</span>
+kubectl logs <span class="nt">-n</span> gitlab-runner <span class="si">$(</span>kubectl get pods <span class="nt">-n</span> gitlab-runner <span class="nt">-l</span> <span class="nv">app</span><span class="o">=</span>gitlab-runner <span class="nt">-o</span> name<span class="si">)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="best-practices">Best Practices</h2>
+
+<div class="info-box info-box-success">
+<br />
+<strong>GitLab Best Practices:</strong><br /><br />
+
+<strong>1. Security:</strong>
+   - Enable 2FA for all users<br />
+   - Regularly update GitLab instance<br />
+   - Use SSH keys instead of passwords<br />
+   - Implement proper access controls and permissions<br />
+   - Enable container scanning in CI pipelines<br /><br />
+
+<strong>2. Performance:</strong>
+   - Use PostgreSQL optimization for large instances<br />
+   - Implement Gitaly for repository storage<br />
+   - Configure proper caching mechanisms<br />
+   - Use object storage for artifacts, LFS, etc.<br />
+   - Schedule maintenance during off-hours<br /><br />
+
+<strong>3. CI/CD Pipeline:</strong>
+   - Keep pipelines fast and efficient<br />
+   - Use caching for dependencies<br />
+   - Implement parallel jobs when possible<br />
+   - Use staged rollouts for deployments<br />
+   - Implement proper test coverage<br /><br />
+
+<strong>4. Runners Management:</strong>
+   - Use runner tagging to direct specific jobs<br />
+   - Implement auto-scaling for cost efficiency<br />
+   - Separate production and testing runners<br />
+   - Monitor runner resources and performance<br />
+   - Regularly clean up runner cache<br /><br />
+</div>
 
 <p><br /></p>
 
@@ -468,7 +779,7 @@ helm upgrade gitlab-runner <span class="nt">-n</span> gitlab-runner <span class=
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="3">
+            <div class="time-bar" data-minutes="10">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -872,6 +1183,48 @@ sudo cat /etc/gitlab/initial_root_password
 
 
 
+Backup and Restore
+
+# Create a backup (default location: /var/opt/gitlab/backups)
+sudo gitlab-backup create
+
+# Create a backup with specific options
+sudo gitlab-backup create STRATEGY=copy SKIP=uploads,repositories,builds GZIP_RSYNCABLE=yes
+
+# Restore from a backup (for GitLab 14.0+)
+sudo gitlab-backup restore BACKUP=1640289825_2021_12_23_14.6.3
+
+# Backup GitLab configuration files
+sudo cp /etc/gitlab/gitlab-secrets.json /var/opt/gitlab/backups/gitlab-secrets.json
+sudo cp /etc/gitlab/gitlab.rb /var/opt/gitlab/backups/gitlab.rb
+
+
+
+
+Performance Tuning
+
+For larger installations, you can optimize GitLab performance by editing /etc/gitlab/gitlab.rb:
+
+# CPU and memory optimization
+puma[&apos;worker_processes&apos;] = 4
+puma[&apos;max_threads&apos;] = 4
+sidekiq[&apos;concurrency&apos;] = 20
+
+# PostgreSQL optimization
+postgresql[&apos;shared_buffers&apos;] = &quot;2GB&quot;
+postgresql[&apos;work_mem&apos;] = &quot;128MB&quot;
+postgresql[&apos;maintenance_work_mem&apos;] = &quot;256MB&quot;
+
+# Redis optimization
+redis[&apos;tcp_timeout&apos;] = 60
+redis[&apos;tcp_keepalive&apos;] = 300
+
+# Apply changes
+# sudo gitlab-ctl reconfigure
+
+
+
+
 
 
 GitLab Runner
@@ -918,6 +1271,36 @@ Types of Runners
 
 
 
+Runner Executor Types
+
+
+  ⚙️ Executor Options
+  
+    
+      Shell
+      Executes jobs directly on the host machine. Simple but less isolated.
+    
+    
+      Docker
+      Runs each job in a separate Docker container. Provides good isolation and reproducibility.
+    
+    
+      Kubernetes
+      Creates pods in a Kubernetes cluster for each job. Highly scalable and flexible.
+    
+    
+      Virtual Machine
+      Uses VMs to run jobs. Maximum isolation but higher resource requirements.
+    
+    
+      SSH
+      Connects to remote machines via SSH to execute jobs. Good for specialized environments.
+    
+  
+
+
+
+
 Installation Guide (Helm)
 
 1️⃣ Prerequisites
@@ -942,6 +1325,245 @@ helm upgrade gitlab-runner -n gitlab-runner -f values.yaml gitlab/gitlab-runner
 
 
 
+Basic GitLab Runner CLI Commands
+
+# Register a new runner (interactive mode)
+gitlab-runner register
+
+# Register a non-interactive runner
+gitlab-runner register \
+  --non-interactive \
+  --url &quot;https://gitlab.example.com/&quot; \
+  --registration-token &quot;PROJECT_REGISTRATION_TOKEN&quot; \
+  --executor &quot;docker&quot; \
+  --docker-image alpine:latest \
+  --description &quot;docker-runner&quot; \
+  --tag-list &quot;docker,aws&quot; \
+  --run-untagged=&quot;true&quot; \
+  --locked=&quot;false&quot;
+
+# List all configured runners
+gitlab-runner list
+
+# Verify runner status
+gitlab-runner verify
+
+# Unregister a runner
+gitlab-runner unregister --name &quot;docker-runner&quot;
+
+# Start/stop/restart the runner service
+gitlab-runner start
+gitlab-runner stop
+gitlab-runner restart
+
+
+
+
+Example .gitlab-ci.yml File
+
+Here’s a basic .gitlab-ci.yml file to get started with CI/CD:
+
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+build_job:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: &quot;/certs&quot;
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  rules:
+    - if: $CI_COMMIT_BRANCH == &quot;main&quot; || $CI_COMMIT_BRANCH == &quot;develop&quot;
+
+test_job:
+  stage: test
+  image: $IMAGE_TAG
+  script:
+    - echo &quot;Running tests...&quot;
+    - ./run_tests.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH == &quot;main&quot; || $CI_COMMIT_BRANCH == &quot;develop&quot;
+
+deploy_job:
+  stage: deploy
+  image: 
+    name: bitnami/kubectl:latest
+    entrypoint: [&quot;&quot;]
+  script:
+    - echo &quot;Deploying application...&quot;
+    - kubectl config use-context $KUBE_CONTEXT
+    - kubectl apply -f k8s/deployment.yaml
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == &quot;main&quot;
+
+
+
+
+Advanced Runner Configuration
+
+Cache Configuration
+
+Optimize build times by caching dependencies:
+
+# In .gitlab-ci.yml
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+    - .npm/
+    - vendor/
+    - .gradle/
+
+# Runner config.toml cache settings
+[runners.cache]
+  Type = &quot;s3&quot;
+  Path = &quot;gitlab-runner&quot;
+  Shared = true
+  [runners.cache.s3]
+    ServerAddress = &quot;s3.amazonaws.com&quot;
+    AccessKey = &quot;AWSACCESSKEY&quot;
+    SecretKey = &quot;AWSSECRETKEY&quot;
+    BucketName = &quot;my-bucket&quot;
+    BucketLocation = &quot;us-east-1&quot;
+
+
+Auto-scaling Runners on Kubernetes
+
+For efficient resource usage, configure auto-scaling:
+
+# In Helm values.yaml
+concurrent: 10
+checkInterval: 30
+
+runners:
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        image = &quot;ubuntu:20.04&quot;
+        privileged = true
+        namespace = &quot;gitlab-runner&quot;
+        poll_timeout = 600
+        cpu_request = &quot;300m&quot;
+        cpu_limit = &quot;1000m&quot;
+        memory_request = &quot;500Mi&quot;
+        memory_limit = &quot;2Gi&quot;
+        service_cpu_request = &quot;100m&quot;
+        service_cpu_limit = &quot;200m&quot;
+        service_memory_request = &quot;100Mi&quot;
+        service_memory_limit = &quot;200Mi&quot;
+        helper_cpu_request = &quot;100m&quot;
+        helper_cpu_limit = &quot;200m&quot;
+        helper_memory_request = &quot;100Mi&quot;
+        helper_memory_limit = &quot;200Mi&quot;
+
+
+
+
+Troubleshooting
+
+
+
+Common GitLab Issues and Solutions:
+
+1. GitLab Service Issues:
+   - Check service status: sudo gitlab-ctl status
+   - View logs: sudo gitlab-ctl tail
+   - Check specific component logs: sudo gitlab-ctl tail nginx
+   - Check disk space: df -h
+
+2. Database Problems:
+   - Check PostgreSQL: sudo gitlab-rails dbconsole
+   - Database migrations: sudo gitlab-rake db:migrate:status
+   - Repair database: sudo gitlab-rake db:migrate
+
+3. Runner Connection Issues:
+   - Check network connectivity between runner and GitLab
+   - Verify registration token
+   - Check runner logs: sudo gitlab-runner --debug run
+   - Verify SSL certificates if using HTTPS
+
+4. Pipeline Failures:
+   - Validate .gitlab-ci.yml syntax locally
+   - Check if the runner has the right tags
+   - Verify environment variables are set correctly
+   - Increase resource limits for demanding jobs
+
+
+
+
+GitLab Runner Debug Commands
+
+# Run runner with debug output
+sudo gitlab-runner --debug run
+
+# Show detailed runner information
+sudo gitlab-runner verify --verbose
+
+# Check runner config file
+cat /etc/gitlab-runner/config.toml
+
+# Test runner connection
+gitlab-runner verify --name YOUR_RUNNER_NAME
+
+# Check pod status (for Kubernetes runners)
+kubectl get pods -n gitlab-runner
+
+# Check runner pod logs
+kubectl logs -n gitlab-runner $(kubectl get pods -n gitlab-runner -l app=gitlab-runner -o name)
+
+
+
+
+Best Practices
+
+
+
+GitLab Best Practices:
+
+1. Security:
+   - Enable 2FA for all users
+   - Regularly update GitLab instance
+   - Use SSH keys instead of passwords
+   - Implement proper access controls and permissions
+   - Enable container scanning in CI pipelines
+
+2. Performance:
+   - Use PostgreSQL optimization for large instances
+   - Implement Gitaly for repository storage
+   - Configure proper caching mechanisms
+   - Use object storage for artifacts, LFS, etc.
+   - Schedule maintenance during off-hours
+
+3. CI/CD Pipeline:
+   - Keep pipelines fast and efficient
+   - Use caching for dependencies
+   - Implement parallel jobs when possible
+   - Use staged rollouts for deployments
+   - Implement proper test coverage
+
+4. Runners Management:
+   - Use runner tagging to direct specific jobs
+   - Implement auto-scaling for cost efficiency
+   - Separate production and testing runners
+   - Monitor runner resources and performance
+   - Regularly clean up runner cache
+
+
+
+
 
 
 Reference
@@ -953,7 +1575,7 @@ Reference
   GitLab Runner Kubernetes Installation
 
 ",
-            "wordcount": "698",
+            "wordcount": "1964",
             "inLanguage": "en",
             "dateCreated": "2025-01-20/",
             "datePublished": "2025-01-20/",

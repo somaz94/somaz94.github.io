@@ -220,7 +220,7 @@ January 21, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>12 min to read</span>
                 </p>
                 <h1 class="post-title">GitLab CI/CD Template Guide</h1>
                 <p class="post-subtitle">Optimizing Pipeline Implementation Using GitLab CI Templates</p>
@@ -412,6 +412,342 @@ January 21, 2025
   <li><a href="https://about.gitlab.com/blog/2020/09/23/get-started-ci-pipeline-templates/">Getting Started with CI Pipeline Templates</a></li>
 </ul>
 
+<h3 id="more-template-examples">More Template Examples</h3>
+
+<h4 id="docker-build-template-with-multiple-stages">Docker Build Template with Multiple Stages</h4>
+
+<p>This template handles Docker builds with dedicated stages for building, testing, and pushing:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">.docker_build_template</span><span class="pi">:</span> <span class="nl">&amp;docker_build_template</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">docker:20.10.16</span>
+  <span class="na">services</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker:20.10.16-dind</span>
+  <span class="na">variables</span><span class="pi">:</span>
+    <span class="na">DOCKER_TLS_CERTDIR</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/certs"</span>
+    <span class="na">DOCKER_BUILDKIT</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">before_script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY</span>
+    <span class="pi">-</span> <span class="s">export IMAGE_TAG=${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}</span>
+    <span class="pi">-</span> <span class="s">export FULL_IMAGE_NAME=$CI_REGISTRY_IMAGE:$IMAGE_TAG</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Building image $FULL_IMAGE_NAME"</span>
+    <span class="pi">-</span> <span class="pi">&gt;</span>
+      <span class="s">docker build </span>
+      <span class="s">--build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') </span>
+      <span class="s">--build-arg VCS_REF=$CI_COMMIT_SHORT_SHA</span>
+      <span class="s">--build-arg VERSION=$CI_COMMIT_REF_NAME</span>
+      <span class="s">-t $FULL_IMAGE_NAME</span>
+      <span class="s">-t $CI_REGISTRY_IMAGE:latest</span>
+      <span class="s">.</span>
+    <span class="pi">-</span> <span class="s">docker push $FULL_IMAGE_NAME</span>
+    <span class="pi">-</span> <span class="s">docker push $CI_REGISTRY_IMAGE:latest</span>
+</code></pre></div></div>
+
+<h4 id="multi-environment-deployment-template">Multi-Environment Deployment Template</h4>
+
+<p>Template for deploying to different environments based on conditions:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">.deploy_template</span><span class="pi">:</span> <span class="nl">&amp;deploy_template</span>
+  <span class="na">image</span><span class="pi">:</span> 
+    <span class="na">name</span><span class="pi">:</span> <span class="s">bitnami/kubectl:latest</span>
+    <span class="na">entrypoint</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span>
+  <span class="na">variables</span><span class="pi">:</span>
+    <span class="na">GIT_STRATEGY</span><span class="pi">:</span> <span class="s">none</span>
+  <span class="na">before_script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">kubectl config use-context $KUBE_CONTEXT</span>
+    <span class="pi">-</span> <span class="pi">|</span>
+      <span class="s">if [[ -n "$NAMESPACE" ]]; then</span>
+        <span class="s"># Ensure namespace exists</span>
+        <span class="s">kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE</span>
+      <span class="s">fi</span>
+
+<span class="c1"># Development deployment</span>
+<span class="na">.deploy_dev</span><span class="pi">:</span> <span class="nl">&amp;deploy_dev</span>
+  <span class="na">&lt;&lt;</span><span class="pi">:</span> <span class="nv">*deploy_template</span>
+  <span class="na">variables</span><span class="pi">:</span>
+    <span class="na">NAMESPACE</span><span class="pi">:</span> <span class="s">development</span>
+    <span class="na">REPLICAS</span><span class="pi">:</span> <span class="m">1</span>
+    <span class="na">RESOURCES_REQUESTS_CPU</span><span class="pi">:</span> <span class="s">100m</span>
+    <span class="na">RESOURCES_REQUESTS_MEMORY</span><span class="pi">:</span> <span class="s">128Mi</span>
+    <span class="na">RESOURCES_LIMITS_CPU</span><span class="pi">:</span> <span class="s">200m</span>
+    <span class="na">RESOURCES_LIMITS_MEMORY</span><span class="pi">:</span> <span class="s">256Mi</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Deploying to development environment"</span>
+    <span class="pi">-</span> <span class="s">envsubst &lt; k8s/dev/deployment.yml | kubectl apply -f -</span>
+    <span class="pi">-</span> <span class="s">kubectl rollout status deployment/$CI_PROJECT_NAME -n $NAMESPACE</span>
+  <span class="na">environment</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">development</span>
+    <span class="na">url</span><span class="pi">:</span> <span class="s">https://dev.example.com</span>
+  <span class="na">only</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">develop</span>
+
+<span class="c1"># Production deployment</span>
+<span class="na">.deploy_prod</span><span class="pi">:</span> <span class="nl">&amp;deploy_prod</span>
+  <span class="na">&lt;&lt;</span><span class="pi">:</span> <span class="nv">*deploy_template</span>
+  <span class="na">variables</span><span class="pi">:</span>
+    <span class="na">NAMESPACE</span><span class="pi">:</span> <span class="s">production</span>
+    <span class="na">REPLICAS</span><span class="pi">:</span> <span class="m">3</span>
+    <span class="na">RESOURCES_REQUESTS_CPU</span><span class="pi">:</span> <span class="s">200m</span>
+    <span class="na">RESOURCES_REQUESTS_MEMORY</span><span class="pi">:</span> <span class="s">256Mi</span>
+    <span class="na">RESOURCES_LIMITS_CPU</span><span class="pi">:</span> <span class="s">400m</span>
+    <span class="na">RESOURCES_LIMITS_MEMORY</span><span class="pi">:</span> <span class="s">512Mi</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Deploying to production environment"</span>
+    <span class="pi">-</span> <span class="s">envsubst &lt; k8s/prod/deployment.yml | kubectl apply -f -</span>
+    <span class="pi">-</span> <span class="s">kubectl rollout status deployment/$CI_PROJECT_NAME -n $NAMESPACE</span>
+  <span class="na">environment</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">production</span>
+    <span class="na">url</span><span class="pi">:</span> <span class="s">https://example.com</span>
+  <span class="na">only</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">main</span>
+  <span class="na">when</span><span class="pi">:</span> <span class="s">manual</span>
+</code></pre></div></div>
+
+<h4 id="test-templates-for-different-languages">Test Templates for Different Languages</h4>
+
+<p>Templates for running tests in different languages:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Node.js testing template</span>
+<span class="na">.node_test_template</span><span class="pi">:</span> <span class="nl">&amp;node_test_template</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">node:16-alpine</span>
+  <span class="na">cache</span><span class="pi">:</span>
+    <span class="na">key</span><span class="pi">:</span> <span class="s">${CI_COMMIT_REF_SLUG}-node</span>
+    <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">node_modules/</span>
+  <span class="na">before_script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm ci</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm run lint</span>
+    <span class="pi">-</span> <span class="s">npm run test:ci</span>
+  <span class="na">artifacts</span><span class="pi">:</span>
+    <span class="na">reports</span><span class="pi">:</span>
+      <span class="na">junit</span><span class="pi">:</span> <span class="s">junit-reports/*.xml</span>
+      <span class="na">coverage_report</span><span class="pi">:</span>
+        <span class="na">coverage_format</span><span class="pi">:</span> <span class="s">cobertura</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">coverage/cobertura-coverage.xml</span>
+
+<span class="c1"># Python testing template</span>
+<span class="na">.python_test_template</span><span class="pi">:</span> <span class="nl">&amp;python_test_template</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">python:3.9-slim</span>
+  <span class="na">cache</span><span class="pi">:</span>
+    <span class="na">key</span><span class="pi">:</span> <span class="s">${CI_COMMIT_REF_SLUG}-python</span>
+    <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">.pip-cache/</span>
+  <span class="na">variables</span><span class="pi">:</span>
+    <span class="na">PIP_CACHE_DIR</span><span class="pi">:</span> <span class="s2">"</span><span class="s">$CI_PROJECT_DIR/.pip-cache"</span>
+    <span class="na">PYTHONPATH</span><span class="pi">:</span> <span class="s2">"</span><span class="s">$CI_PROJECT_DIR"</span>
+  <span class="na">before_script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">python -m pip install --upgrade pip</span>
+    <span class="pi">-</span> <span class="s">pip install -r requirements.txt</span>
+    <span class="pi">-</span> <span class="s">pip install pytest pytest-cov</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">python -m pytest --cov=./ --cov-report=xml --junitxml=junit.xml</span>
+  <span class="na">artifacts</span><span class="pi">:</span>
+    <span class="na">reports</span><span class="pi">:</span>
+      <span class="na">junit</span><span class="pi">:</span> <span class="s">junit.xml</span>
+      <span class="na">coverage_report</span><span class="pi">:</span>
+        <span class="na">coverage_format</span><span class="pi">:</span> <span class="s">cobertura</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">coverage.xml</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="advanced-template-organization">Advanced Template Organization</h3>
+
+<h4 id="splitting-templates-into-files">Splitting Templates into Files</h4>
+
+<p>For larger projects, you can organize templates in separate files:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>project-root/
+├── .gitlab-ci.yml
+└── .gitlab/
+    ├── ci/
+    │   ├── templates/
+    │   │   ├── build.yml
+    │   │   ├── test.yml
+    │   │   ├── deploy.yml
+    │   │   └── notify.yml
+    │   └── jobs/
+    │       ├── frontend.yml
+    │       └── backend.yml
+</code></pre></div></div>
+
+<p>Main <code class="language-plaintext highlighter-rouge">.gitlab-ci.yml</code>:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">include</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">local</span><span class="pi">:</span> <span class="s1">'</span><span class="s">.gitlab/ci/templates/build.yml'</span>
+  <span class="pi">-</span> <span class="na">local</span><span class="pi">:</span> <span class="s1">'</span><span class="s">.gitlab/ci/templates/test.yml'</span>
+  <span class="pi">-</span> <span class="na">local</span><span class="pi">:</span> <span class="s1">'</span><span class="s">.gitlab/ci/templates/deploy.yml'</span>
+  <span class="pi">-</span> <span class="na">local</span><span class="pi">:</span> <span class="s1">'</span><span class="s">.gitlab/ci/templates/notify.yml'</span>
+  <span class="pi">-</span> <span class="na">local</span><span class="pi">:</span> <span class="s1">'</span><span class="s">.gitlab/ci/jobs/frontend.yml'</span>
+  <span class="pi">-</span> <span class="na">local</span><span class="pi">:</span> <span class="s1">'</span><span class="s">.gitlab/ci/jobs/backend.yml'</span>
+
+<span class="na">stages</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">build</span>
+  <span class="pi">-</span> <span class="s">test</span>
+  <span class="pi">-</span> <span class="s">deploy</span>
+  <span class="pi">-</span> <span class="s">notify</span>
+
+<span class="na">variables</span><span class="pi">:</span>
+  <span class="na">GLOBAL_VAR</span><span class="pi">:</span> <span class="s2">"</span><span class="s">value"</span>
+</code></pre></div></div>
+
+<h4 id="creating-pipeline-template-library">Creating Pipeline Template Library</h4>
+
+<p>For shared templates across multiple projects, create a dedicated template repository:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># In your template repository</span>
+<span class="c1"># templates/docker-build.yml</span>
+<span class="na">.docker_build</span><span class="pi">:</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">docker:latest</span>
+  <span class="na">services</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker:dind</span>
+  <span class="na">variables</span><span class="pi">:</span>
+    <span class="na">DOCKER_TLS_CERTDIR</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/certs"</span>
+  <span class="na">before_script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG .</span>
+    <span class="pi">-</span> <span class="s">docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG</span>
+</code></pre></div></div>
+
+<p>Usage in your project:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">include</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">project</span><span class="pi">:</span> <span class="s1">'</span><span class="s">your-group/gitlab-ci-templates'</span>
+    <span class="na">ref</span><span class="pi">:</span> <span class="s">main</span>
+    <span class="na">file</span><span class="pi">:</span> <span class="s1">'</span><span class="s">/templates/docker-build.yml'</span>
+
+<span class="na">build_image</span><span class="pi">:</span>
+  <span class="na">extends</span><span class="pi">:</span> <span class="s">.docker_build</span>
+  <span class="c1"># Add custom configuration here</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="generating-dynamic-templates">Generating Dynamic Templates</h3>
+
+<h4 id="template-with-environment-variables">Template with Environment Variables</h4>
+
+<p>Create templates with variables that can be substituted:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">.deploy_template</span><span class="pi">:</span> <span class="nl">&amp;deploy_template</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Deploying to ${ENVIRONMENT} environment"</span>
+    <span class="pi">-</span> <span class="pi">|</span>
+      <span class="s">cat &gt; kubernetes/${ENVIRONMENT}/kustomization.yaml &lt;&lt; EOF</span>
+      <span class="s">apiVersion: kustomize.config.k8s.io/v1beta1</span>
+      <span class="s">kind: Kustomization</span>
+      <span class="s">namespace: ${NAMESPACE}</span>
+      <span class="s">resources:</span>
+        <span class="s">- deployment.yaml</span>
+        <span class="s">- service.yaml</span>
+      <span class="s">images:</span>
+        <span class="s">- name: app-image</span>
+          <span class="s">newName: ${CI_REGISTRY_IMAGE}</span>
+          <span class="s">newTag: ${CI_COMMIT_SHORT_SHA}</span>
+      <span class="s">EOF</span>
+    <span class="pi">-</span> <span class="s">kubectl apply -k kubernetes/${ENVIRONMENT}/</span>
+</code></pre></div></div>
+
+<h4 id="matrix-jobs-with-templates">Matrix Jobs with Templates</h4>
+
+<p>Use GitLab’s matrix feature to generate multiple jobs from a template:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">.test_template</span><span class="pi">:</span> <span class="nl">&amp;test_template</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">test</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Running tests for ${PYTHON_VERSION} on ${OS}"</span>
+    <span class="pi">-</span> <span class="s">pip install -r requirements.txt</span>
+    <span class="pi">-</span> <span class="s">pytest</span>
+
+<span class="na">python-tests</span><span class="pi">:</span>
+  <span class="na">parallel</span><span class="pi">:</span>
+    <span class="na">matrix</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">PYTHON_VERSION</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">3.8"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">3.9"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">3.10"</span><span class="pi">]</span>
+        <span class="na">OS</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">linux"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">windows"</span><span class="pi">]</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">python:${PYTHON_VERSION}-${OS}</span>
+  <span class="na">&lt;&lt;</span><span class="pi">:</span> <span class="nv">*test_template</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="template-best-practices">Template Best Practices</h2>
+
+<div class="info-box info-box-success">
+<br />
+<strong>Template Design Principles:</strong><br /><br />
+
+<strong>1. Reusability:</strong>
+   - Make templates generic enough to be used in different contexts<br />
+   - Use variables for customizable parts<br />
+   - Document required variables and their formats<br />
+   - Avoid hardcoding project-specific values<br /><br />
+
+<strong>2. Maintainability:</strong>
+   - Keep templates focused on specific responsibilities<br />
+   - Add comments to explain complex logic<br />
+   - Version templates with semantic versioning<br />
+   - Use descriptive names for templates and anchors<br /><br />
+
+<strong>3. Performance:</strong>
+   - Keep templates lightweight<br />
+   - Use caching where appropriate<br />
+   - Consider pipeline execution time when designing templates<br />
+   - Avoid unnecessary logic or commands<br /><br />
+
+<strong>4. Fault Tolerance:</strong>
+   - Include proper error handling<br />
+   - Add retry mechanisms for network-dependent operations<br />
+   - Provide informative error messages<br />
+   - Validate inputs and prerequisites<br /><br />
+</div>
+
+<p><br /></p>
+
+<h3 id="troubleshooting-templates">Troubleshooting Templates</h3>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Common Template Issues:</strong><br /><br />
+
+<strong>1. Reference Errors:</strong>
+   - Verify anchor names match their references<br />
+   - Check for typos in variable names<br />
+   - Ensure templates are included before they're referenced<br />
+   - Look for YAML indentation issues<br /><br />
+
+<strong>2. Variable Scope Problems:</strong>
+   - Remember that job-level variables override global ones<br />
+   - Use YAML anchors to share variable definitions<br />
+   - Consider how variables interact with included templates<br />
+   - Watch for CI_* variable name collisions<br /><br />
+
+<strong>3. Include Issues:</strong>
+   - Verify project paths and file names in includes<br />
+   - Check access permissions for included projects<br />
+   - Ensure referenced branches or tags exist<br />
+   - Look for circular includes<br /><br />
+</div>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Debug job for CI variables</span>
+<span class="na">debug_variables</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">.pre</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">alpine:latest</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "== CI Variables =="</span>
+    <span class="pi">-</span> <span class="s">env | grep "^CI_" | sort</span>
+    <span class="pi">-</span> <span class="s">echo "== Custom Variables =="</span>
+    <span class="pi">-</span> <span class="s">env | grep -v "^CI_" | sort</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s1">'</span><span class="s">$CI_PIPELINE_SOURCE</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">"web"'</span>
+      <span class="na">when</span><span class="pi">:</span> <span class="s">manual</span>
+  <span class="na">tags</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">linux</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
 
                 <!-- Pagination links -->
 
@@ -460,7 +796,7 @@ January 21, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="12">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -936,8 +1272,344 @@ Reference
   GitLab CI/CD Job Templates
   Getting Started with CI Pipeline Templates
 
+
+More Template Examples
+
+Docker Build Template with Multiple Stages
+
+This template handles Docker builds with dedicated stages for building, testing, and pushing:
+
+.docker_build_template: &amp;amp;docker_build_template
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: &quot;/certs&quot;
+    DOCKER_BUILDKIT: 1
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - export IMAGE_TAG=${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}
+    - export FULL_IMAGE_NAME=$CI_REGISTRY_IMAGE:$IMAGE_TAG
+  script:
+    - echo &quot;Building image $FULL_IMAGE_NAME&quot;
+    - &amp;gt;
+      docker build 
+      --build-arg BUILD_DATE=$(date -u +&apos;%Y-%m-%dT%H:%M:%SZ&apos;) 
+      --build-arg VCS_REF=$CI_COMMIT_SHORT_SHA
+      --build-arg VERSION=$CI_COMMIT_REF_NAME
+      -t $FULL_IMAGE_NAME
+      -t $CI_REGISTRY_IMAGE:latest
+      .
+    - docker push $FULL_IMAGE_NAME
+    - docker push $CI_REGISTRY_IMAGE:latest
+
+
+Multi-Environment Deployment Template
+
+Template for deploying to different environments based on conditions:
+
+.deploy_template: &amp;amp;deploy_template
+  image: 
+    name: bitnami/kubectl:latest
+    entrypoint: [&quot;&quot;]
+  variables:
+    GIT_STRATEGY: none
+  before_script:
+    - kubectl config use-context $KUBE_CONTEXT
+    - |
+      if [[ -n &quot;$NAMESPACE&quot; ]]; then
+        # Ensure namespace exists
+        kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
+      fi
+
+# Development deployment
+.deploy_dev: &amp;amp;deploy_dev
+  &amp;lt;&amp;lt;: *deploy_template
+  variables:
+    NAMESPACE: development
+    REPLICAS: 1
+    RESOURCES_REQUESTS_CPU: 100m
+    RESOURCES_REQUESTS_MEMORY: 128Mi
+    RESOURCES_LIMITS_CPU: 200m
+    RESOURCES_LIMITS_MEMORY: 256Mi
+  script:
+    - echo &quot;Deploying to development environment&quot;
+    - envsubst &amp;lt; k8s/dev/deployment.yml | kubectl apply -f -
+    - kubectl rollout status deployment/$CI_PROJECT_NAME -n $NAMESPACE
+  environment:
+    name: development
+    url: https://dev.example.com
+  only:
+    - develop
+
+# Production deployment
+.deploy_prod: &amp;amp;deploy_prod
+  &amp;lt;&amp;lt;: *deploy_template
+  variables:
+    NAMESPACE: production
+    REPLICAS: 3
+    RESOURCES_REQUESTS_CPU: 200m
+    RESOURCES_REQUESTS_MEMORY: 256Mi
+    RESOURCES_LIMITS_CPU: 400m
+    RESOURCES_LIMITS_MEMORY: 512Mi
+  script:
+    - echo &quot;Deploying to production environment&quot;
+    - envsubst &amp;lt; k8s/prod/deployment.yml | kubectl apply -f -
+    - kubectl rollout status deployment/$CI_PROJECT_NAME -n $NAMESPACE
+  environment:
+    name: production
+    url: https://example.com
+  only:
+    - main
+  when: manual
+
+
+Test Templates for Different Languages
+
+Templates for running tests in different languages:
+
+# Node.js testing template
+.node_test_template: &amp;amp;node_test_template
+  image: node:16-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-node
+    paths:
+      - node_modules/
+  before_script:
+    - npm ci
+  script:
+    - npm run lint
+    - npm run test:ci
+  artifacts:
+    reports:
+      junit: junit-reports/*.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+
+# Python testing template
+.python_test_template: &amp;amp;python_test_template
+  image: python:3.9-slim
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-python
+    paths:
+      - .pip-cache/
+  variables:
+    PIP_CACHE_DIR: &quot;$CI_PROJECT_DIR/.pip-cache&quot;
+    PYTHONPATH: &quot;$CI_PROJECT_DIR&quot;
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov
+  script:
+    - python -m pytest --cov=./ --cov-report=xml --junitxml=junit.xml
+  artifacts:
+    reports:
+      junit: junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+
+
+
+Advanced Template Organization
+
+Splitting Templates into Files
+
+For larger projects, you can organize templates in separate files:
+
+project-root/
+├── .gitlab-ci.yml
+└── .gitlab/
+    ├── ci/
+    │   ├── templates/
+    │   │   ├── build.yml
+    │   │   ├── test.yml
+    │   │   ├── deploy.yml
+    │   │   └── notify.yml
+    │   └── jobs/
+    │       ├── frontend.yml
+    │       └── backend.yml
+
+
+Main .gitlab-ci.yml:
+include:
+  - local: &apos;.gitlab/ci/templates/build.yml&apos;
+  - local: &apos;.gitlab/ci/templates/test.yml&apos;
+  - local: &apos;.gitlab/ci/templates/deploy.yml&apos;
+  - local: &apos;.gitlab/ci/templates/notify.yml&apos;
+  - local: &apos;.gitlab/ci/jobs/frontend.yml&apos;
+  - local: &apos;.gitlab/ci/jobs/backend.yml&apos;
+
+stages:
+  - build
+  - test
+  - deploy
+  - notify
+
+variables:
+  GLOBAL_VAR: &quot;value&quot;
+
+
+Creating Pipeline Template Library
+
+For shared templates across multiple projects, create a dedicated template repository:
+
+# In your template repository
+# templates/docker-build.yml
+.docker_build:
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_TLS_CERTDIR: &quot;/certs&quot;
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+
+Usage in your project:
+include:
+  - project: &apos;your-group/gitlab-ci-templates&apos;
+    ref: main
+    file: &apos;/templates/docker-build.yml&apos;
+
+build_image:
+  extends: .docker_build
+  # Add custom configuration here
+
+
+
+
+Generating Dynamic Templates
+
+Template with Environment Variables
+
+Create templates with variables that can be substituted:
+
+.deploy_template: &amp;amp;deploy_template
+  script:
+    - echo &quot;Deploying to ${ENVIRONMENT} environment&quot;
+    - |
+      cat &amp;gt; kubernetes/${ENVIRONMENT}/kustomization.yaml &amp;lt;&amp;lt; EOF
+      apiVersion: kustomize.config.k8s.io/v1beta1
+      kind: Kustomization
+      namespace: ${NAMESPACE}
+      resources:
+        - deployment.yaml
+        - service.yaml
+      images:
+        - name: app-image
+          newName: ${CI_REGISTRY_IMAGE}
+          newTag: ${CI_COMMIT_SHORT_SHA}
+      EOF
+    - kubectl apply -k kubernetes/${ENVIRONMENT}/
+
+
+Matrix Jobs with Templates
+
+Use GitLab’s matrix feature to generate multiple jobs from a template:
+
+.test_template: &amp;amp;test_template
+  stage: test
+  script:
+    - echo &quot;Running tests for ${PYTHON_VERSION} on ${OS}&quot;
+    - pip install -r requirements.txt
+    - pytest
+
+python-tests:
+  parallel:
+    matrix:
+      - PYTHON_VERSION: [&quot;3.8&quot;, &quot;3.9&quot;, &quot;3.10&quot;]
+        OS: [&quot;linux&quot;, &quot;windows&quot;]
+  image: python:${PYTHON_VERSION}-${OS}
+  &amp;lt;&amp;lt;: *test_template
+
+
+
+
+Template Best Practices
+
+
+
+Template Design Principles:
+
+1. Reusability:
+   - Make templates generic enough to be used in different contexts
+   - Use variables for customizable parts
+   - Document required variables and their formats
+   - Avoid hardcoding project-specific values
+
+2. Maintainability:
+   - Keep templates focused on specific responsibilities
+   - Add comments to explain complex logic
+   - Version templates with semantic versioning
+   - Use descriptive names for templates and anchors
+
+3. Performance:
+   - Keep templates lightweight
+   - Use caching where appropriate
+   - Consider pipeline execution time when designing templates
+   - Avoid unnecessary logic or commands
+
+4. Fault Tolerance:
+   - Include proper error handling
+   - Add retry mechanisms for network-dependent operations
+   - Provide informative error messages
+   - Validate inputs and prerequisites
+
+
+
+
+Troubleshooting Templates
+
+
+
+Common Template Issues:
+
+1. Reference Errors:
+   - Verify anchor names match their references
+   - Check for typos in variable names
+   - Ensure templates are included before they&apos;re referenced
+   - Look for YAML indentation issues
+
+2. Variable Scope Problems:
+   - Remember that job-level variables override global ones
+   - Use YAML anchors to share variable definitions
+   - Consider how variables interact with included templates
+   - Watch for CI_* variable name collisions
+
+3. Include Issues:
+   - Verify project paths and file names in includes
+   - Check access permissions for included projects
+   - Ensure referenced branches or tags exist
+   - Look for circular includes
+
+
+# Debug job for CI variables
+debug_variables:
+  stage: .pre
+  image: alpine:latest
+  script:
+    - echo &quot;== CI Variables ==&quot;
+    - env | grep &quot;^CI_&quot; | sort
+    - echo &quot;== Custom Variables ==&quot;
+    - env | grep -v &quot;^CI_&quot; | sort
+  rules:
+    - if: &apos;$CI_PIPELINE_SOURCE == &quot;web&quot;&apos;
+      when: manual
+  tags:
+    - linux
+
+
+
+
+
 ",
-            "wordcount": "757",
+            "wordcount": "2220",
             "inLanguage": "en",
             "dateCreated": "2025-01-21/",
             "datePublished": "2025-01-21/",

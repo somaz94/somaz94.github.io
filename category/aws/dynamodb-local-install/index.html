@@ -220,7 +220,7 @@ February 21, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>2 min to read</span>
+                    <span>11 min to read</span>
                 </p>
                 <h1 class="post-title">Installing AWS DynamoDB Local on Kubernetes Cluster</h1>
                 <p class="post-subtitle">A guide to setting up DynamoDB locally for development and testing</p>
@@ -392,6 +392,321 @@ SharedDb: <span class="nb">true
 
 <hr />
 
+<h2 id="accessing-dynamodb-local">Accessing DynamoDB Local</h2>
+
+<p>Once you’ve installed DynamoDB Local, you’ll need to access it to create tables and perform operations.</p>
+
+<h3 id="service-configuration">Service Configuration</h3>
+
+<p>Create a Kubernetes service to expose DynamoDB Local:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">dynamodb-local</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">dynamodb-local</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ports</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">8000</span>
+    <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8000</span>
+    <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">stateful-dynamodb</span>  <span class="c1"># or stateless-dynamodb depending on your installation</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">ClusterIP</span>
+</code></pre></div></div>
+
+<h3 id="aws-cli-access">AWS CLI Access</h3>
+
+<p>You can use AWS CLI to interact with your local DynamoDB by specifying the endpoint URL:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># List tables</span>
+aws dynamodb list-tables <span class="nt">--endpoint-url</span> http://dynamodb-local:8000
+
+<span class="c"># Create a table</span>
+aws dynamodb create-table <span class="se">\</span>
+    <span class="nt">--table-name</span> Music <span class="se">\</span>
+    <span class="nt">--attribute-definitions</span> <span class="se">\</span>
+        <span class="nv">AttributeName</span><span class="o">=</span>Artist,AttributeType<span class="o">=</span>S <span class="se">\</span>
+        <span class="nv">AttributeName</span><span class="o">=</span>SongTitle,AttributeType<span class="o">=</span>S <span class="se">\</span>
+    <span class="nt">--key-schema</span> <span class="se">\</span>
+        <span class="nv">AttributeName</span><span class="o">=</span>Artist,KeyType<span class="o">=</span>HASH <span class="se">\</span>
+        <span class="nv">AttributeName</span><span class="o">=</span>SongTitle,KeyType<span class="o">=</span>RANGE <span class="se">\</span>
+    <span class="nt">--provisioned-throughput</span> <span class="se">\</span>
+        <span class="nv">ReadCapacityUnits</span><span class="o">=</span>5,WriteCapacityUnits<span class="o">=</span>5 <span class="se">\</span>
+    <span class="nt">--endpoint-url</span> http://dynamodb-local:8000
+
+<span class="c"># Put an item</span>
+aws dynamodb put-item <span class="se">\</span>
+    <span class="nt">--table-name</span> Music <span class="se">\</span>
+    <span class="nt">--item</span> <span class="s1">'{"Artist": {"S": "Metallica"}, "SongTitle": {"S": "Enter Sandman"}, "Year": {"N": "1991"}}'</span> <span class="se">\</span>
+    <span class="nt">--endpoint-url</span> http://dynamodb-local:8000
+
+<span class="c"># Query data</span>
+aws dynamodb query <span class="se">\</span>
+    <span class="nt">--table-name</span> Music <span class="se">\</span>
+    <span class="nt">--key-condition-expression</span> <span class="s2">"Artist = :artist"</span> <span class="se">\</span>
+    <span class="nt">--expression-attribute-values</span> <span class="s1">'{":artist": {"S": "Metallica"}}'</span> <span class="se">\</span>
+    <span class="nt">--endpoint-url</span> http://dynamodb-local:8000
+</code></pre></div></div>
+
+<h3 id="accessing-from-applications">Accessing from Applications</h3>
+
+<h4 id="python-example-boto3">Python Example (boto3)</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">boto3</span>
+
+<span class="c1"># Create a DynamoDB client
+</span><span class="n">dynamodb</span> <span class="o">=</span> <span class="n">boto3</span><span class="p">.</span><span class="n">resource</span><span class="p">(</span><span class="s">'dynamodb'</span><span class="p">,</span> 
+                         <span class="n">endpoint_url</span><span class="o">=</span><span class="s">'http://dynamodb-local:8000'</span><span class="p">,</span>
+                         <span class="n">region_name</span><span class="o">=</span><span class="s">'us-west-2'</span><span class="p">,</span>
+                         <span class="n">aws_access_key_id</span><span class="o">=</span><span class="s">'dummy'</span><span class="p">,</span>
+                         <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="s">'dummy'</span><span class="p">)</span>
+
+<span class="c1"># Create a table
+</span><span class="n">table</span> <span class="o">=</span> <span class="n">dynamodb</span><span class="p">.</span><span class="n">create_table</span><span class="p">(</span>
+    <span class="n">TableName</span><span class="o">=</span><span class="s">'Users'</span><span class="p">,</span>
+    <span class="n">KeySchema</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s">'AttributeName'</span><span class="p">:</span> <span class="s">'username'</span><span class="p">,</span>
+            <span class="s">'KeyType'</span><span class="p">:</span> <span class="s">'HASH'</span>  <span class="c1"># Partition key
+</span>        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s">'AttributeName'</span><span class="p">:</span> <span class="s">'last_login'</span><span class="p">,</span>
+            <span class="s">'KeyType'</span><span class="p">:</span> <span class="s">'RANGE'</span>  <span class="c1"># Sort key
+</span>        <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="n">AttributeDefinitions</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s">'AttributeName'</span><span class="p">:</span> <span class="s">'username'</span><span class="p">,</span>
+            <span class="s">'AttributeType'</span><span class="p">:</span> <span class="s">'S'</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s">'AttributeName'</span><span class="p">:</span> <span class="s">'last_login'</span><span class="p">,</span>
+            <span class="s">'AttributeType'</span><span class="p">:</span> <span class="s">'S'</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+    <span class="n">ProvisionedThroughput</span><span class="o">=</span><span class="p">{</span>
+        <span class="s">'ReadCapacityUnits'</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="s">'WriteCapacityUnits'</span><span class="p">:</span> <span class="mi">5</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Wait until the table exists
+</span><span class="n">table</span><span class="p">.</span><span class="n">meta</span><span class="p">.</span><span class="n">client</span><span class="p">.</span><span class="n">get_waiter</span><span class="p">(</span><span class="s">'table_exists'</span><span class="p">).</span><span class="n">wait</span><span class="p">(</span><span class="n">TableName</span><span class="o">=</span><span class="s">'Users'</span><span class="p">)</span>
+
+<span class="c1"># Add an item
+</span><span class="n">table</span><span class="p">.</span><span class="n">put_item</span><span class="p">(</span>
+   <span class="n">Item</span><span class="o">=</span><span class="p">{</span>
+        <span class="s">'username'</span><span class="p">:</span> <span class="s">'johndoe'</span><span class="p">,</span>
+        <span class="s">'last_login'</span><span class="p">:</span> <span class="s">'2022-01-01'</span><span class="p">,</span>
+        <span class="s">'first_name'</span><span class="p">:</span> <span class="s">'John'</span><span class="p">,</span>
+        <span class="s">'last_name'</span><span class="p">:</span> <span class="s">'Doe'</span><span class="p">,</span>
+        <span class="s">'age'</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
+        <span class="s">'account_type'</span><span class="p">:</span> <span class="s">'standard'</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Query the table
+</span><span class="n">response</span> <span class="o">=</span> <span class="n">table</span><span class="p">.</span><span class="n">query</span><span class="p">(</span>
+    <span class="n">KeyConditionExpression</span><span class="o">=</span><span class="n">boto3</span><span class="p">.</span><span class="n">dynamodb</span><span class="p">.</span><span class="n">conditions</span><span class="p">.</span><span class="n">Key</span><span class="p">(</span><span class="s">'username'</span><span class="p">).</span><span class="n">eq</span><span class="p">(</span><span class="s">'johndoe'</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">response</span><span class="p">[</span><span class="s">'Items'</span><span class="p">]:</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h4 id="nodejs-example-aws-sdk">Node.js Example (AWS SDK)</h4>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">AWS</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">aws-sdk</span><span class="dl">'</span><span class="p">);</span>
+
+<span class="c1">// Configure the DynamoDB client</span>
+<span class="kd">const</span> <span class="nx">dynamodb</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">AWS</span><span class="p">.</span><span class="nx">DynamoDB</span><span class="p">({</span>
+  <span class="na">endpoint</span><span class="p">:</span> <span class="dl">'</span><span class="s1">http://dynamodb-local:8000</span><span class="dl">'</span><span class="p">,</span>
+  <span class="na">region</span><span class="p">:</span> <span class="dl">'</span><span class="s1">us-west-2</span><span class="dl">'</span><span class="p">,</span>
+  <span class="na">accessKeyId</span><span class="p">:</span> <span class="dl">'</span><span class="s1">dummy</span><span class="dl">'</span><span class="p">,</span>
+  <span class="na">secretAccessKey</span><span class="p">:</span> <span class="dl">'</span><span class="s1">dummy</span><span class="dl">'</span>
+<span class="p">});</span>
+
+<span class="kd">const</span> <span class="nx">docClient</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">AWS</span><span class="p">.</span><span class="nx">DynamoDB</span><span class="p">.</span><span class="nx">DocumentClient</span><span class="p">({</span>
+  <span class="na">endpoint</span><span class="p">:</span> <span class="dl">'</span><span class="s1">http://dynamodb-local:8000</span><span class="dl">'</span><span class="p">,</span>
+  <span class="na">region</span><span class="p">:</span> <span class="dl">'</span><span class="s1">us-west-2</span><span class="dl">'</span><span class="p">,</span>
+  <span class="na">accessKeyId</span><span class="p">:</span> <span class="dl">'</span><span class="s1">dummy</span><span class="dl">'</span><span class="p">,</span>
+  <span class="na">secretAccessKey</span><span class="p">:</span> <span class="dl">'</span><span class="s1">dummy</span><span class="dl">'</span>
+<span class="p">});</span>
+
+<span class="c1">// Create a table</span>
+<span class="kd">const</span> <span class="nx">params</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="na">TableName</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Products</span><span class="dl">'</span><span class="p">,</span>
+  <span class="na">KeySchema</span><span class="p">:</span> <span class="p">[</span>
+    <span class="p">{</span> <span class="na">AttributeName</span><span class="p">:</span> <span class="dl">'</span><span class="s1">id</span><span class="dl">'</span><span class="p">,</span> <span class="na">KeyType</span><span class="p">:</span> <span class="dl">'</span><span class="s1">HASH</span><span class="dl">'</span> <span class="p">},</span> <span class="c1">// Partition key</span>
+    <span class="p">{</span> <span class="na">AttributeName</span><span class="p">:</span> <span class="dl">'</span><span class="s1">created_at</span><span class="dl">'</span><span class="p">,</span> <span class="na">KeyType</span><span class="p">:</span> <span class="dl">'</span><span class="s1">RANGE</span><span class="dl">'</span> <span class="p">}</span> <span class="c1">// Sort key</span>
+  <span class="p">],</span>
+  <span class="na">AttributeDefinitions</span><span class="p">:</span> <span class="p">[</span>
+    <span class="p">{</span> <span class="na">AttributeName</span><span class="p">:</span> <span class="dl">'</span><span class="s1">id</span><span class="dl">'</span><span class="p">,</span> <span class="na">AttributeType</span><span class="p">:</span> <span class="dl">'</span><span class="s1">S</span><span class="dl">'</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="na">AttributeName</span><span class="p">:</span> <span class="dl">'</span><span class="s1">created_at</span><span class="dl">'</span><span class="p">,</span> <span class="na">AttributeType</span><span class="p">:</span> <span class="dl">'</span><span class="s1">S</span><span class="dl">'</span> <span class="p">}</span>
+  <span class="p">],</span>
+  <span class="na">ProvisionedThroughput</span><span class="p">:</span> <span class="p">{</span>
+    <span class="na">ReadCapacityUnits</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="na">WriteCapacityUnits</span><span class="p">:</span> <span class="mi">5</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="nx">dynamodb</span><span class="p">.</span><span class="nx">createTable</span><span class="p">(</span><span class="nx">params</span><span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="dl">'</span><span class="s1">Error creating table:</span><span class="dl">'</span><span class="p">,</span> <span class="nx">err</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Table created successfully:</span><span class="dl">'</span><span class="p">,</span> <span class="nx">data</span><span class="p">);</span>
+
+    <span class="c1">// Add an item to the table</span>
+    <span class="kd">const</span> <span class="nx">itemParams</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="na">TableName</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Products</span><span class="dl">'</span><span class="p">,</span>
+      <span class="na">Item</span><span class="p">:</span> <span class="p">{</span>
+        <span class="dl">'</span><span class="s1">id</span><span class="dl">'</span><span class="p">:</span> <span class="dl">'</span><span class="s1">prod-1</span><span class="dl">'</span><span class="p">,</span>
+        <span class="dl">'</span><span class="s1">created_at</span><span class="dl">'</span><span class="p">:</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">toISOString</span><span class="p">(),</span>
+        <span class="dl">'</span><span class="s1">name</span><span class="dl">'</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Awesome Product</span><span class="dl">'</span><span class="p">,</span>
+        <span class="dl">'</span><span class="s1">price</span><span class="dl">'</span><span class="p">:</span> <span class="mf">29.99</span><span class="p">,</span>
+        <span class="dl">'</span><span class="s1">categories</span><span class="dl">'</span><span class="p">:</span> <span class="p">[</span><span class="dl">'</span><span class="s1">electronics</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">gadgets</span><span class="dl">'</span><span class="p">],</span>
+        <span class="dl">'</span><span class="s1">inventory</span><span class="dl">'</span><span class="p">:</span> <span class="mi">100</span>
+      <span class="p">}</span>
+    <span class="p">};</span>
+
+    <span class="nx">docClient</span><span class="p">.</span><span class="nx">put</span><span class="p">(</span><span class="nx">itemParams</span><span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="dl">'</span><span class="s1">Error adding item:</span><span class="dl">'</span><span class="p">,</span> <span class="nx">err</span><span class="p">);</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Item added successfully</span><span class="dl">'</span><span class="p">);</span>
+
+        <span class="c1">// Query the table</span>
+        <span class="kd">const</span> <span class="nx">queryParams</span> <span class="o">=</span> <span class="p">{</span>
+          <span class="na">TableName</span><span class="p">:</span> <span class="dl">'</span><span class="s1">Products</span><span class="dl">'</span><span class="p">,</span>
+          <span class="na">KeyConditionExpression</span><span class="p">:</span> <span class="dl">'</span><span class="s1">id = :id</span><span class="dl">'</span><span class="p">,</span>
+          <span class="na">ExpressionAttributeValues</span><span class="p">:</span> <span class="p">{</span>
+            <span class="dl">'</span><span class="s1">:id</span><span class="dl">'</span><span class="p">:</span> <span class="dl">'</span><span class="s1">prod-1</span><span class="dl">'</span>
+          <span class="p">}</span>
+        <span class="p">};</span>
+
+        <span class="nx">docClient</span><span class="p">.</span><span class="nx">query</span><span class="p">(</span><span class="nx">queryParams</span><span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+          <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="dl">'</span><span class="s1">Error querying:</span><span class="dl">'</span><span class="p">,</span> <span class="nx">err</span><span class="p">);</span>
+          <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Query results:</span><span class="dl">'</span><span class="p">,</span> <span class="nx">data</span><span class="p">.</span><span class="nx">Items</span><span class="p">);</span>
+          <span class="p">}</span>
+        <span class="p">});</span>
+      <span class="p">}</span>
+    <span class="p">});</span>
+  <span class="p">}</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="advanced-configuration">Advanced Configuration</h2>
+
+<h3 id="persistent-volume-claim">Persistent Volume Claim</h3>
+
+<p>For the stateful installation, you need a PVC to store data:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">PersistentVolumeClaim</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">stateful-dynamodb-pvc</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">accessModes</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">ReadWriteOnce</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">storage</span><span class="pi">:</span> <span class="s">1Gi</span>
+  <span class="na">storageClassName</span><span class="pi">:</span> <span class="s">standard</span>
+</code></pre></div></div>
+
+<h3 id="container-resource-limits">Container Resource Limits</h3>
+
+<p>To ensure DynamoDB Local has sufficient resources:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">resources</span><span class="pi">:</span>
+  <span class="na">limits</span><span class="pi">:</span>
+    <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1"</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1Gi"</span>
+  <span class="na">requests</span><span class="pi">:</span>
+    <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0.5"</span>
+    <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">512Mi"</span>
+</code></pre></div></div>
+
+<h3 id="health-check-configuration">Health Check Configuration</h3>
+
+<p>Add health checks to your deployment:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">livenessProbe</span><span class="pi">:</span>
+  <span class="na">httpGet</span><span class="pi">:</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">/shell/</span>
+    <span class="na">port</span><span class="pi">:</span> <span class="m">8000</span>
+  <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="m">30</span>
+  <span class="na">periodSeconds</span><span class="pi">:</span> <span class="m">15</span>
+<span class="na">readinessProbe</span><span class="pi">:</span>
+  <span class="na">httpGet</span><span class="pi">:</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">/shell/</span>
+    <span class="na">port</span><span class="pi">:</span> <span class="m">8000</span>
+  <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="m">5</span>
+  <span class="na">periodSeconds</span><span class="pi">:</span> <span class="m">10</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Common Issues and Solutions:</strong><br /><br />
+
+<strong>1. Connection Refused Errors:</strong>
+   - Check if the DynamoDB Local pod is running<br />
+   - Verify the service name and port in your endpoint URL<br />
+   - Ensure network policies allow traffic to port 8000<br /><br />
+
+<strong>2. Persistence Issues:</strong>
+   - For stateful installation, verify PVC is correctly mounted<br />
+   - Check pod logs for file permission errors<br />
+   - Ensure sufficient disk space on the node<br /><br />
+
+<strong>3. Performance Problems:</strong>
+   - Consider increasing resource limits for the container<br />
+   - For heavy workloads, adjust Java heap settings with: <code>-Xmx1G</code><br />
+   - Reduce logging level with: <code>-Djava.library.path=./DynamoDBLocal_lib</code><br /><br />
+
+<strong>4. AWS SDK Errors:</strong>
+   - Ensure dummy credentials are provided when using SDKs<br />
+   - Verify endpoint URL is correctly formatted<br />
+   - Check for any network connectivity issues<br /><br />
+</div>
+
+<h3 id="dynamodb-local-vs-real-dynamodb-differences">DynamoDB Local vs. Real DynamoDB Differences</h3>
+
+<p>There are some differences between DynamoDB Local and the AWS DynamoDB service:</p>
+
+<ol>
+  <li><strong>Authentication</strong>: DynamoDB Local accepts any credentials</li>
+  <li><strong>Latency</strong>: Local version has lower latency with no throttling</li>
+  <li><strong>Features</strong>: Some features like global tables, backups, and auto-scaling are unavailable locally</li>
+  <li><strong>Consistency</strong>: DynamoDB Local doesn’t fully replicate eventual consistency behaviors</li>
+</ol>
+
+<p><br /></p>
+
+<h2 id="best-practices-for-development">Best Practices for Development</h2>
+
+<ol>
+  <li><strong>Data Modeling</strong>: Test your data access patterns before deploying to production</li>
+  <li><strong>Migration Path</strong>: Establish a clear process for migrating schemas to production</li>
+  <li><strong>Integration Testing</strong>: Use DynamoDB Local in CI/CD pipelines for integration tests</li>
+  <li><strong>Local Development</strong>: Configure profiles in your IDE and applications for local development</li>
+  <li><strong>Backup Strategy</strong>: For long-running development, consider backing up the data directory</li>
+</ol>
+
+<p><br /></p>
+
+<hr />
+
 <h3 id="references">References</h3>
 <ul>
   <li><a href="https://hub.docker.com/r/amazon/dynamodb-local/tags">DynamoDB Local Docker Image</a></li>
@@ -445,7 +760,7 @@ SharedDb: <span class="nb">true
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="2">
+            <div class="time-bar" data-minutes="11">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -902,12 +1217,327 @@ CorsParams: null
 
 
 
+Accessing DynamoDB Local
+
+Once you’ve installed DynamoDB Local, you’ll need to access it to create tables and perform operations.
+
+Service Configuration
+
+Create a Kubernetes service to expose DynamoDB Local:
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: dynamodb-local
+  labels:
+    app: dynamodb-local
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: stateful-dynamodb  # or stateless-dynamodb depending on your installation
+  type: ClusterIP
+
+
+AWS CLI Access
+
+You can use AWS CLI to interact with your local DynamoDB by specifying the endpoint URL:
+
+# List tables
+aws dynamodb list-tables --endpoint-url http://dynamodb-local:8000
+
+# Create a table
+aws dynamodb create-table \
+    --table-name Music \
+    --attribute-definitions \
+        AttributeName=Artist,AttributeType=S \
+        AttributeName=SongTitle,AttributeType=S \
+    --key-schema \
+        AttributeName=Artist,KeyType=HASH \
+        AttributeName=SongTitle,KeyType=RANGE \
+    --provisioned-throughput \
+        ReadCapacityUnits=5,WriteCapacityUnits=5 \
+    --endpoint-url http://dynamodb-local:8000
+
+# Put an item
+aws dynamodb put-item \
+    --table-name Music \
+    --item &apos;{&quot;Artist&quot;: {&quot;S&quot;: &quot;Metallica&quot;}, &quot;SongTitle&quot;: {&quot;S&quot;: &quot;Enter Sandman&quot;}, &quot;Year&quot;: {&quot;N&quot;: &quot;1991&quot;}}&apos; \
+    --endpoint-url http://dynamodb-local:8000
+
+# Query data
+aws dynamodb query \
+    --table-name Music \
+    --key-condition-expression &quot;Artist = :artist&quot; \
+    --expression-attribute-values &apos;{&quot;:artist&quot;: {&quot;S&quot;: &quot;Metallica&quot;}}&apos; \
+    --endpoint-url http://dynamodb-local:8000
+
+
+Accessing from Applications
+
+Python Example (boto3)
+
+import boto3
+
+# Create a DynamoDB client
+dynamodb = boto3.resource(&apos;dynamodb&apos;, 
+                         endpoint_url=&apos;http://dynamodb-local:8000&apos;,
+                         region_name=&apos;us-west-2&apos;,
+                         aws_access_key_id=&apos;dummy&apos;,
+                         aws_secret_access_key=&apos;dummy&apos;)
+
+# Create a table
+table = dynamodb.create_table(
+    TableName=&apos;Users&apos;,
+    KeySchema=[
+        {
+            &apos;AttributeName&apos;: &apos;username&apos;,
+            &apos;KeyType&apos;: &apos;HASH&apos;  # Partition key
+        },
+        {
+            &apos;AttributeName&apos;: &apos;last_login&apos;,
+            &apos;KeyType&apos;: &apos;RANGE&apos;  # Sort key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            &apos;AttributeName&apos;: &apos;username&apos;,
+            &apos;AttributeType&apos;: &apos;S&apos;
+        },
+        {
+            &apos;AttributeName&apos;: &apos;last_login&apos;,
+            &apos;AttributeType&apos;: &apos;S&apos;
+        },
+    ],
+    ProvisionedThroughput={
+        &apos;ReadCapacityUnits&apos;: 5,
+        &apos;WriteCapacityUnits&apos;: 5
+    }
+)
+
+# Wait until the table exists
+table.meta.client.get_waiter(&apos;table_exists&apos;).wait(TableName=&apos;Users&apos;)
+
+# Add an item
+table.put_item(
+   Item={
+        &apos;username&apos;: &apos;johndoe&apos;,
+        &apos;last_login&apos;: &apos;2022-01-01&apos;,
+        &apos;first_name&apos;: &apos;John&apos;,
+        &apos;last_name&apos;: &apos;Doe&apos;,
+        &apos;age&apos;: 25,
+        &apos;account_type&apos;: &apos;standard&apos;
+    }
+)
+
+# Query the table
+response = table.query(
+    KeyConditionExpression=boto3.dynamodb.conditions.Key(&apos;username&apos;).eq(&apos;johndoe&apos;)
+)
+
+for item in response[&apos;Items&apos;]:
+    print(item)
+
+
+Node.js Example (AWS SDK)
+
+const AWS = require(&apos;aws-sdk&apos;);
+
+// Configure the DynamoDB client
+const dynamodb = new AWS.DynamoDB({
+  endpoint: &apos;http://dynamodb-local:8000&apos;,
+  region: &apos;us-west-2&apos;,
+  accessKeyId: &apos;dummy&apos;,
+  secretAccessKey: &apos;dummy&apos;
+});
+
+const docClient = new AWS.DynamoDB.DocumentClient({
+  endpoint: &apos;http://dynamodb-local:8000&apos;,
+  region: &apos;us-west-2&apos;,
+  accessKeyId: &apos;dummy&apos;,
+  secretAccessKey: &apos;dummy&apos;
+});
+
+// Create a table
+const params = {
+  TableName: &apos;Products&apos;,
+  KeySchema: [
+    { AttributeName: &apos;id&apos;, KeyType: &apos;HASH&apos; }, // Partition key
+    { AttributeName: &apos;created_at&apos;, KeyType: &apos;RANGE&apos; } // Sort key
+  ],
+  AttributeDefinitions: [
+    { AttributeName: &apos;id&apos;, AttributeType: &apos;S&apos; },
+    { AttributeName: &apos;created_at&apos;, AttributeType: &apos;S&apos; }
+  ],
+  ProvisionedThroughput: {
+    ReadCapacityUnits: 5,
+    WriteCapacityUnits: 5
+  }
+};
+
+dynamodb.createTable(params, (err, data) =&amp;gt; {
+  if (err) {
+    console.error(&apos;Error creating table:&apos;, err);
+  } else {
+    console.log(&apos;Table created successfully:&apos;, data);
+
+    // Add an item to the table
+    const itemParams = {
+      TableName: &apos;Products&apos;,
+      Item: {
+        &apos;id&apos;: &apos;prod-1&apos;,
+        &apos;created_at&apos;: new Date().toISOString(),
+        &apos;name&apos;: &apos;Awesome Product&apos;,
+        &apos;price&apos;: 29.99,
+        &apos;categories&apos;: [&apos;electronics&apos;, &apos;gadgets&apos;],
+        &apos;inventory&apos;: 100
+      }
+    };
+
+    docClient.put(itemParams, (err, data) =&amp;gt; {
+      if (err) {
+        console.error(&apos;Error adding item:&apos;, err);
+      } else {
+        console.log(&apos;Item added successfully&apos;);
+
+        // Query the table
+        const queryParams = {
+          TableName: &apos;Products&apos;,
+          KeyConditionExpression: &apos;id = :id&apos;,
+          ExpressionAttributeValues: {
+            &apos;:id&apos;: &apos;prod-1&apos;
+          }
+        };
+
+        docClient.query(queryParams, (err, data) =&amp;gt; {
+          if (err) {
+            console.error(&apos;Error querying:&apos;, err);
+          } else {
+            console.log(&apos;Query results:&apos;, data.Items);
+          }
+        });
+      }
+    });
+  }
+});
+
+
+
+
+Advanced Configuration
+
+Persistent Volume Claim
+
+For the stateful installation, you need a PVC to store data:
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stateful-dynamodb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+
+
+Container Resource Limits
+
+To ensure DynamoDB Local has sufficient resources:
+
+resources:
+  limits:
+    cpu: &quot;1&quot;
+    memory: &quot;1Gi&quot;
+  requests:
+    cpu: &quot;0.5&quot;
+    memory: &quot;512Mi&quot;
+
+
+Health Check Configuration
+
+Add health checks to your deployment:
+
+livenessProbe:
+  httpGet:
+    path: /shell/
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 15
+readinessProbe:
+  httpGet:
+    path: /shell/
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+
+
+
+Troubleshooting
+
+
+
+Common Issues and Solutions:
+
+1. Connection Refused Errors:
+   - Check if the DynamoDB Local pod is running
+   - Verify the service name and port in your endpoint URL
+   - Ensure network policies allow traffic to port 8000
+
+2. Persistence Issues:
+   - For stateful installation, verify PVC is correctly mounted
+   - Check pod logs for file permission errors
+   - Ensure sufficient disk space on the node
+
+3. Performance Problems:
+   - Consider increasing resource limits for the container
+   - For heavy workloads, adjust Java heap settings with: -Xmx1G
+   - Reduce logging level with: -Djava.library.path=./DynamoDBLocal_lib
+
+4. AWS SDK Errors:
+   - Ensure dummy credentials are provided when using SDKs
+   - Verify endpoint URL is correctly formatted
+   - Check for any network connectivity issues
+
+
+DynamoDB Local vs. Real DynamoDB Differences
+
+There are some differences between DynamoDB Local and the AWS DynamoDB service:
+
+
+  Authentication: DynamoDB Local accepts any credentials
+  Latency: Local version has lower latency with no throttling
+  Features: Some features like global tables, backups, and auto-scaling are unavailable locally
+  Consistency: DynamoDB Local doesn’t fully replicate eventual consistency behaviors
+
+
+
+
+Best Practices for Development
+
+
+  Data Modeling: Test your data access patterns before deploying to production
+  Migration Path: Establish a clear process for migrating schemas to production
+  Integration Testing: Use DynamoDB Local in CI/CD pipelines for integration tests
+  Local Development: Configure profiles in your IDE and applications for local development
+  Backup Strategy: For long-running development, consider backing up the data directory
+
+
+
+
+
+
 References
 
   DynamoDB Local Docker Image
 
 ",
-            "wordcount": "519",
+            "wordcount": "2141",
             "inLanguage": "en",
             "dateCreated": "2025-02-21/",
             "datePublished": "2025-02-21/",

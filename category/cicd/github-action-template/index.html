@@ -220,7 +220,7 @@ January 22, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>1 min to read</span>
+                    <span>11 min to read</span>
                 </p>
                 <h1 class="post-title">Creating and Publishing GitHub Actions</h1>
                 <p class="post-subtitle">A guide to creating custom GitHub Actions and publishing them to the Marketplace</p>
@@ -256,6 +256,53 @@ January 22, 2025
 
 <hr />
 
+<h2 id="types-of-github-actions">Types of GitHub Actions</h2>
+
+<p>GitHub Actions can be implemented in three different ways, each with its own advantages and use cases:</p>
+
+<div class="info-box info-box-default">
+  <ul>
+    <li>
+      <strong>JavaScript Actions</strong><br />
+      Run directly on the runner, execute quickly with no container overhead, and can leverage the GitHub Actions Toolkit.
+    </li>
+    <li>
+      <strong>Docker Container Actions</strong><br />
+      Run in an isolated container environment, can use any language, and can include specific dependencies.
+    </li>
+    <li>
+      <strong>Composite Actions</strong><br />
+      Combine multiple workflow steps within one action, reuse shared steps, and can reference other actions.
+    </li>
+  </ul>
+</div>
+
+<h3 id="choosing-the-right-action-type">Choosing the Right Action Type</h3>
+
+<div class="info-box info-box-default-not-check">
+<br />
+<strong>When to use each action type:</strong><br /><br />
+
+<strong>JavaScript Actions:</strong>
+   - When performance matters (faster execution)<br />
+   - For lightweight operations that don't need external dependencies<br />
+   - When you want to leverage GitHub's Actions Toolkit<br />
+   - Cross-platform compatibility is required<br /><br />
+
+<strong>Docker Container Actions:</strong>
+   - When you need specific environments or dependencies<br />
+   - For actions written in languages other than JavaScript<br />
+   - When isolation between steps is important<br />
+   - For more complex processing with system-level access<br /><br />
+
+<strong>Composite Actions:</strong>
+   - To combine and reuse multiple steps<br />
+   - When you need to refactor repeated steps across workflows<br />
+   - For simple sequences of shell commands and existing actions<br /><br />
+</div>
+
+<p><br /></p>
+
 <h3 id="creating-github-action-template">Creating GitHub Action Template</h3>
 
 <h4 id="1-create-action-repository">1. Create Action Repository</h4>
@@ -285,17 +332,146 @@ docker build <span class="nt">-f</span> Dockerfile <span class="nt">-t</span> ex
 <span class="c"># Run test</span>
 &lt;script <span class="nv">src</span><span class="o">=</span><span class="s2">"https://gist.github.com/somaz94/82f0c273847b6768718acee90fb65f55.js"</span><span class="o">&gt;</span>&lt;/script&gt;
 
-
 &lt;br/&gt;
 
-<span class="nt">----------------------------------------------</span>
+<span class="c">### Creating JavaScript Action</span>
 
-<span class="c">### Publishing to GitHub Marketplace</span>
-- <span class="o">[</span>Github Marketplace Docs]<span class="o">(</span>https://docs.github.com/en/actions/creating-actions/publishing-actions-in-github-marketplace#publishing-an-action<span class="o">)</span>
+<span class="sb">```</span>javascript
+// index.js
+const core <span class="o">=</span> require<span class="o">(</span><span class="s1">'@actions/core'</span><span class="o">)</span><span class="p">;</span>
+const github <span class="o">=</span> require<span class="o">(</span><span class="s1">'@actions/github'</span><span class="o">)</span><span class="p">;</span>
 
-<span class="c">#### 1. Version Management</span>
-<span class="sb">```</span>bash
-<span class="c"># Create new version</span>
+async <span class="k">function </span>run<span class="o">()</span> <span class="o">{</span>
+  try <span class="o">{</span>
+    // Get inputs
+    const name <span class="o">=</span> core.getInput<span class="o">(</span><span class="s1">'name'</span><span class="o">)</span><span class="p">;</span>
+    
+    // Log the inputs
+    console.log<span class="o">(</span><span class="sb">`</span>Hello <span class="k">${</span><span class="nv">name</span><span class="k">}</span><span class="o">!</span><span class="sb">`</span><span class="o">)</span><span class="p">;</span>
+    
+    // Set outputs
+    core.setOutput<span class="o">(</span><span class="s1">'greeting'</span>, <span class="sb">`</span>Hello <span class="k">${</span><span class="nv">name</span><span class="k">}</span><span class="o">!</span><span class="sb">`</span><span class="o">)</span><span class="p">;</span>
+  <span class="o">}</span> catch <span class="o">(</span>error<span class="o">)</span> <span class="o">{</span>
+    core.setFailed<span class="o">(</span>error.message<span class="o">)</span><span class="p">;</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+run<span class="o">()</span><span class="p">;</span>
+</code></pre></div></div>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># action.yml for JavaScript Action</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Hello</span><span class="nv"> </span><span class="s">World</span><span class="nv"> </span><span class="s">JavaScript</span><span class="nv"> </span><span class="s">Action'</span>
+<span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Say</span><span class="nv"> </span><span class="s">hello</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">world</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">specific</span><span class="nv"> </span><span class="s">person'</span>
+<span class="na">inputs</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Who</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">greet'</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">default</span><span class="pi">:</span> <span class="s1">'</span><span class="s">World'</span>
+<span class="na">outputs</span><span class="pi">:</span>
+  <span class="na">greeting</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">The</span><span class="nv"> </span><span class="s">greeting</span><span class="nv"> </span><span class="s">message'</span>
+<span class="na">runs</span><span class="pi">:</span>
+  <span class="na">using</span><span class="pi">:</span> <span class="s1">'</span><span class="s">node16'</span>
+  <span class="na">main</span><span class="pi">:</span> <span class="s1">'</span><span class="s">index.js'</span>
+</code></pre></div></div>
+
+<h3 id="creating-composite-action">Creating Composite Action</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># action.yml for Composite Action</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Setup</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">Test'</span>
+<span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Setup</span><span class="nv"> </span><span class="s">environment</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">run</span><span class="nv"> </span><span class="s">tests'</span>
+<span class="na">inputs</span><span class="pi">:</span>
+  <span class="na">node-version</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Node.js</span><span class="nv"> </span><span class="s">version'</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">false</span>
+    <span class="na">default</span><span class="pi">:</span> <span class="s1">'</span><span class="s">16'</span>
+  <span class="na">run-lint</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Whether</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">run</span><span class="nv"> </span><span class="s">linting'</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">false</span>
+    <span class="na">default</span><span class="pi">:</span> <span class="s1">'</span><span class="s">true'</span>
+<span class="na">runs</span><span class="pi">:</span>
+  <span class="na">using</span><span class="pi">:</span> <span class="s2">"</span><span class="s">composite"</span>
+  <span class="na">steps</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Setup Node.js</span>
+      <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-node@v3</span>
+      <span class="na">with</span><span class="pi">:</span>
+        <span class="na">node-version</span><span class="pi">:</span> <span class="s">$</span>
+        
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install dependencies</span>
+      <span class="na">shell</span><span class="pi">:</span> <span class="s">bash</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="s">npm ci</span>
+      
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Run linting</span>
+      <span class="na">if</span><span class="pi">:</span> <span class="s">inputs.run-lint == 'true'</span>
+      <span class="na">shell</span><span class="pi">:</span> <span class="s">bash</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="s">npm run lint</span>
+      
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Run tests</span>
+      <span class="na">shell</span><span class="pi">:</span> <span class="s">bash</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="s">npm test</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="advanced-github-actions-features">Advanced GitHub Actions Features</h3>
+
+<h4 id="1-using-inputs-and-outputs">1. Using Inputs and Outputs</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># In action.yml</span>
+<span class="na">inputs</span><span class="pi">:</span>
+  <span class="na">config-path</span><span class="pi">:</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Path</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">configuration</span><span class="nv"> </span><span class="s">file'</span>
+<span class="na">outputs</span><span class="pi">:</span>
+  <span class="na">result</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">The</span><span class="nv"> </span><span class="s">result</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">operation'</span>
+</code></pre></div></div>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// In JavaScript</span>
+<span class="kd">const</span> <span class="nx">configPath</span> <span class="o">=</span> <span class="nx">core</span><span class="p">.</span><span class="nx">getInput</span><span class="p">(</span><span class="dl">'</span><span class="s1">config-path</span><span class="dl">'</span><span class="p">);</span>
+<span class="c1">// ... do something ...</span>
+<span class="nx">core</span><span class="p">.</span><span class="nx">setOutput</span><span class="p">(</span><span class="dl">'</span><span class="s1">result</span><span class="dl">'</span><span class="p">,</span> <span class="nx">result</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h4 id="2-handling-secrets">2. Handling Secrets</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># In workflow</span>
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">my-job</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/my-action@v1</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">token</span><span class="pi">:</span> <span class="s">$</span>
+</code></pre></div></div>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// In JavaScript</span>
+<span class="kd">const</span> <span class="nx">token</span> <span class="o">=</span> <span class="nx">core</span><span class="p">.</span><span class="nx">getInput</span><span class="p">(</span><span class="dl">'</span><span class="s1">token</span><span class="dl">'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">octokit</span> <span class="o">=</span> <span class="nx">github</span><span class="p">.</span><span class="nx">getOctokit</span><span class="p">(</span><span class="nx">token</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h4 id="3-versioning-strategies">3. Versioning Strategies</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Semantic versioning with tags</span>
+git tag <span class="nt">-a</span> v1.0.0 <span class="nt">-m</span> <span class="s2">"Release v1.0.0"</span>
+git push origin v1.0.0
+
+<span class="c"># Major version tag (always points to latest in major version)</span>
+git tag <span class="nt">-f</span> v1 v1.0.0
+git push <span class="nt">-f</span> origin v1
+
+<span class="c"># Using SHA for immutability</span>
+uses: actions/my-action@a1b2c3d
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h3 id="publishing-to-github-marketplace">Publishing to GitHub Marketplace</h3>
+<ul>
+  <li><a href="https://docs.github.com/en/actions/creating-actions/publishing-actions-in-github-marketplace#publishing-an-action">Github Marketplace Docs</a></li>
+</ul>
+
+<h4 id="1-version-management">1. Version Management</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create new version</span>
 git tag v1.0.1
 git push origin v1.0.1
 
@@ -307,6 +483,188 @@ git push <span class="nt">-f</span> origin v1
 <h4 id="2-action-usage-example">2. Action Usage Example</h4>
 <script src="https://gist.github.com/somaz94/a3d4cfc4a91f4c0a3907b95bcc3c5ff1.js"></script>
 
+<h4 id="3-publishing-checklist">3. Publishing Checklist</h4>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Before Publishing:</strong><br /><br />
+
+✅ Ensure your repository is public<br />
+✅ Create a valid action.yml in the root<br />
+✅ Include proper documentation in README.md<br />
+✅ Add LICENSE file (MIT or other open source)<br />
+✅ Use semantic versioning tags<br />
+✅ Add proper icon and color in action.yml<br />
+✅ Test the action thoroughly<br />
+✅ Create a release on GitHub<br />
+</div>
+
+<p><br /></p>
+
+<h3 id="testing-strategies-for-github-actions">Testing Strategies for GitHub Actions</h3>
+
+<h4 id="1-unit-testing-javascript-actions">1. Unit Testing JavaScript Actions</h4>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// hello.test.js</span>
+<span class="kd">const</span> <span class="nx">process</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">process</span><span class="dl">'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">cp</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">child_process</span><span class="dl">'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">path</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">path</span><span class="dl">'</span><span class="p">);</span>
+
+<span class="c1">// Mock the GitHub Actions core library</span>
+<span class="nx">jest</span><span class="p">.</span><span class="nx">mock</span><span class="p">(</span><span class="dl">'</span><span class="s1">@actions/core</span><span class="dl">'</span><span class="p">);</span>
+<span class="kd">const</span> <span class="nx">core</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">@actions/core</span><span class="dl">'</span><span class="p">);</span>
+
+<span class="nx">describe</span><span class="p">(</span><span class="dl">'</span><span class="s1">Hello Action</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="nx">it</span><span class="p">(</span><span class="dl">'</span><span class="s1">Outputs greeting with input name</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">INPUT_NAME</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">Developer</span><span class="dl">'</span><span class="p">;</span>
+    <span class="kd">const</span> <span class="nx">ip</span> <span class="o">=</span> <span class="nx">path</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span> <span class="dl">'</span><span class="s1">index.js</span><span class="dl">'</span><span class="p">);</span>
+    
+    <span class="c1">// Execute the action</span>
+    <span class="nx">cp</span><span class="p">.</span><span class="nx">execSync</span><span class="p">(</span><span class="s2">`node </span><span class="p">${</span><span class="nx">ip</span><span class="p">}</span><span class="s2">`</span><span class="p">,</span> <span class="p">{</span><span class="na">env</span><span class="p">:</span> <span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">});</span>
+    
+    <span class="c1">// Verify output was set</span>
+    <span class="nx">expect</span><span class="p">(</span><span class="nx">core</span><span class="p">.</span><span class="nx">setOutput</span><span class="p">).</span><span class="nx">toHaveBeenCalledWith</span><span class="p">(</span>
+      <span class="dl">'</span><span class="s1">greeting</span><span class="dl">'</span><span class="p">,</span> 
+      <span class="dl">'</span><span class="s1">Hello Developer!</span><span class="dl">'</span>
+    <span class="p">);</span>
+  <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h4 id="2-integration-testing">2. Integration Testing</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># .github/workflows/test.yml</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s">Test Action</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span> <span class="nv">main</span> <span class="pi">]</span>
+  <span class="na">pull_request</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span> <span class="nv">main</span> <span class="pi">]</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">test</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v3</span>
+      
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Test local action</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">./</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">World</span>
+      
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Verify action output</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">if [[ "$" != "Hello World!" ]]; then</span>
+            <span class="s">echo "Unexpected output"</span>
+            <span class="s">exit 1</span>
+          <span class="s">fi</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="best-practices-for-github-actions">Best Practices for GitHub Actions</h2>
+
+<div class="info-box info-box-success">
+<br />
+<strong>Action Design Principles:</strong><br /><br />
+
+<strong>1. Follow Single Responsibility Principle</strong><br />
+   - Design actions to do one thing well<br />
+   - Compose complex workflows from simple actions<br />
+   - Keep the interface simple and focused<br /><br />
+
+<strong>2. Optimize for Performance</strong><br />
+   - Use JavaScript actions for speed when possible<br />
+   - Keep Docker images small and efficient<br />
+   - Implement appropriate caching strategies<br />
+   - Use alpine-based images for containers<br /><br />
+
+<strong>3. Handle Errors Gracefully</strong><br />
+   - Implement proper error handling and reporting<br />
+   - Set appropriate exit codes<br />
+   - Provide clear error messages<br />
+   - Include debugging information when failures occur<br /><br />
+
+<strong>4. Document Thoroughly</strong><br />
+   - Document all inputs, outputs, and environment variables<br />
+   - Include usage examples in README.md<br />
+   - Provide real-world examples<br />
+   - Document limitations and requirements<br /><br />
+
+<strong>5. Version Properly</strong><br />
+   - Use semantic versioning<br />
+   - Maintain a CHANGELOG.md<br />
+   - Test thoroughly before publishing new versions<br />
+   - Consider the impact of breaking changes<br /><br />
+</div>
+
+<p><br /></p>
+
+<h3 id="common-use-cases-and-examples">Common Use Cases and Examples</h3>
+
+<h4 id="1-environment-setup-action">1. Environment Setup Action</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># action.yml</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Setup</span><span class="nv"> </span><span class="s">Development</span><span class="nv"> </span><span class="s">Environment'</span>
+<span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Sets</span><span class="nv"> </span><span class="s">up</span><span class="nv"> </span><span class="s">consistent</span><span class="nv"> </span><span class="s">development</span><span class="nv"> </span><span class="s">environment</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">dependencies'</span>
+<span class="na">inputs</span><span class="pi">:</span>
+  <span class="na">node-version</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Node.js</span><span class="nv"> </span><span class="s">version'</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">false</span>
+    <span class="na">default</span><span class="pi">:</span> <span class="s1">'</span><span class="s">16'</span>
+  <span class="na">python-version</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Python</span><span class="nv"> </span><span class="s">version'</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">false</span>
+    <span class="na">default</span><span class="pi">:</span> <span class="s1">'</span><span class="s">3.10'</span>
+  <span class="na">install-deps</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Install</span><span class="nv"> </span><span class="s">dependencies'</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">false</span>
+    <span class="na">default</span><span class="pi">:</span> <span class="s1">'</span><span class="s">true'</span>
+<span class="na">runs</span><span class="pi">:</span>
+  <span class="na">using</span><span class="pi">:</span> <span class="s2">"</span><span class="s">composite"</span>
+  <span class="na">steps</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Setup Node.js</span>
+      <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-node@v3</span>
+      <span class="na">with</span><span class="pi">:</span>
+        <span class="na">node-version</span><span class="pi">:</span> <span class="s">$</span>
+        
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Setup Python</span>
+      <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-python@v4</span>
+      <span class="na">with</span><span class="pi">:</span>
+        <span class="na">python-version</span><span class="pi">:</span> <span class="s">$</span>
+        
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install dependencies</span>
+      <span class="na">if</span><span class="pi">:</span> <span class="s">inputs.install-deps == 'true'</span>
+      <span class="na">shell</span><span class="pi">:</span> <span class="s">bash</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+        <span class="s">npm ci</span>
+        <span class="s">pip install -r requirements.txt</span>
+</code></pre></div></div>
+
+<h4 id="2-release-management-action">2. Release Management Action</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># action.yml</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Semver</span><span class="nv"> </span><span class="s">Release'</span>
+<span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Creates</span><span class="nv"> </span><span class="s">semantic</span><span class="nv"> </span><span class="s">versioned</span><span class="nv"> </span><span class="s">releases</span><span class="nv"> </span><span class="s">based</span><span class="nv"> </span><span class="s">on</span><span class="nv"> </span><span class="s">commit</span><span class="nv"> </span><span class="s">messages'</span>
+<span class="na">inputs</span><span class="pi">:</span>
+  <span class="na">github-token</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">GitHub</span><span class="nv"> </span><span class="s">token</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">creating</span><span class="nv"> </span><span class="s">releases'</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">release-type</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Release</span><span class="nv"> </span><span class="s">type</span><span class="nv"> </span><span class="s">(auto,</span><span class="nv"> </span><span class="s">patch,</span><span class="nv"> </span><span class="s">minor,</span><span class="nv"> </span><span class="s">major)'</span>
+    <span class="na">required</span><span class="pi">:</span> <span class="no">false</span>
+    <span class="na">default</span><span class="pi">:</span> <span class="s1">'</span><span class="s">auto'</span>
+<span class="na">outputs</span><span class="pi">:</span>
+  <span class="na">new-version</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">The</span><span class="nv"> </span><span class="s">new</span><span class="nv"> </span><span class="s">version</span><span class="nv"> </span><span class="s">created'</span>
+  <span class="na">changelog</span><span class="pi">:</span>
+    <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Generated</span><span class="nv"> </span><span class="s">changelog</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">release'</span>
+<span class="na">runs</span><span class="pi">:</span>
+  <span class="na">using</span><span class="pi">:</span> <span class="s1">'</span><span class="s">node16'</span>
+  <span class="na">main</span><span class="pi">:</span> <span class="s1">'</span><span class="s">dist/index.js'</span>
+</code></pre></div></div>
+
 <p><br /></p>
 
 <hr />
@@ -316,6 +674,9 @@ git push <span class="nt">-f</span> origin v1
   <li><a href="https://github.com/actions/container-action">Container Action Template</a></li>
   <li><a href="https://docs.github.com/en/actions/creating-actions/publishing-actions-in-github-marketplace">Publishing Actions Guide</a></li>
   <li><a href="https://github.com/marketplace/actions/extract-commit-action">Extract Commit Action</a></li>
+  <li><a href="https://github.com/actions/toolkit">GitHub Actions Toolkit</a></li>
+  <li><a href="https://github.com/actions/javascript-action">JavaScript Action Template</a></li>
+  <li><a href="https://github.blog/changelog/2021-08-25-github-actions-reduce-duplication-with-action-composition/">Composite Action Examples</a></li>
 </ul>
 
 
@@ -366,7 +727,7 @@ git push <span class="nt">-f</span> origin v1
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="1">
+            <div class="time-bar" data-minutes="11">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -687,6 +1048,53 @@ My Published Actions
 
 
 
+Types of GitHub Actions
+
+GitHub Actions can be implemented in three different ways, each with its own advantages and use cases:
+
+
+  
+    
+      JavaScript Actions
+      Run directly on the runner, execute quickly with no container overhead, and can leverage the GitHub Actions Toolkit.
+    
+    
+      Docker Container Actions
+      Run in an isolated container environment, can use any language, and can include specific dependencies.
+    
+    
+      Composite Actions
+      Combine multiple workflow steps within one action, reuse shared steps, and can reference other actions.
+    
+  
+
+
+Choosing the Right Action Type
+
+
+
+When to use each action type:
+
+JavaScript Actions:
+   - When performance matters (faster execution)
+   - For lightweight operations that don&apos;t need external dependencies
+   - When you want to leverage GitHub&apos;s Actions Toolkit
+   - Cross-platform compatibility is required
+
+Docker Container Actions:
+   - When you need specific environments or dependencies
+   - For actions written in languages other than JavaScript
+   - When isolation between steps is important
+   - For more complex processing with system-level access
+
+Composite Actions:
+   - To combine and reuse multiple steps
+   - When you need to refactor repeated steps across workflows
+   - For simple sequences of shell commands and existing actions
+
+
+
+
 Creating GitHub Action Template
 
 1. Create Action Repository
@@ -716,16 +1124,145 @@ docker build -f Dockerfile -t extract-commit-action .
 # Run test
 &amp;lt;script src=&quot;https://gist.github.com/somaz94/82f0c273847b6768718acee90fb65f55.js&quot;&amp;gt;&amp;lt;/script&amp;gt;
 
-
 &amp;lt;br/&amp;gt;
 
-----------------------------------------------
+### Creating JavaScript Action
 
-### Publishing to GitHub Marketplace
-- [Github Marketplace Docs](https://docs.github.com/en/actions/creating-actions/publishing-actions-in-github-marketplace#publishing-an-action)
+```javascript
+// index.js
+const core = require(&apos;@actions/core&apos;);
+const github = require(&apos;@actions/github&apos;);
 
-#### 1. Version Management
-```bash
+async function run() {
+  try {
+    // Get inputs
+    const name = core.getInput(&apos;name&apos;);
+    
+    // Log the inputs
+    console.log(`Hello ${name}!`);
+    
+    // Set outputs
+    core.setOutput(&apos;greeting&apos;, `Hello ${name}!`);
+  } catch (error) {
+    core.setFailed(error.message);
+  }
+}
+
+run();
+
+
+# action.yml for JavaScript Action
+name: &apos;Hello World JavaScript Action&apos;
+description: &apos;Say hello to the world or to a specific person&apos;
+inputs:
+  name:
+    description: &apos;Who to greet&apos;
+    required: true
+    default: &apos;World&apos;
+outputs:
+  greeting:
+    description: &apos;The greeting message&apos;
+runs:
+  using: &apos;node16&apos;
+  main: &apos;index.js&apos;
+
+
+Creating Composite Action
+
+# action.yml for Composite Action
+name: &apos;Setup and Test&apos;
+description: &apos;Setup environment and run tests&apos;
+inputs:
+  node-version:
+    description: &apos;Node.js version&apos;
+    required: false
+    default: &apos;16&apos;
+  run-lint:
+    description: &apos;Whether to run linting&apos;
+    required: false
+    default: &apos;true&apos;
+runs:
+  using: &quot;composite&quot;
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: $
+        
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+      
+    - name: Run linting
+      if: inputs.run-lint == &apos;true&apos;
+      shell: bash
+      run: npm run lint
+      
+    - name: Run tests
+      shell: bash
+      run: npm test
+
+
+
+
+Advanced GitHub Actions Features
+
+1. Using Inputs and Outputs
+# In action.yml
+inputs:
+  config-path:
+    required: true
+    description: &apos;Path to configuration file&apos;
+outputs:
+  result:
+    description: &apos;The result of the operation&apos;
+
+
+// In JavaScript
+const configPath = core.getInput(&apos;config-path&apos;);
+// ... do something ...
+core.setOutput(&apos;result&apos;, result);
+
+
+2. Handling Secrets
+# In workflow
+jobs:
+  my-job:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/my-action@v1
+        with:
+          token: $
+
+
+// In JavaScript
+const token = core.getInput(&apos;token&apos;);
+const octokit = github.getOctokit(token);
+
+
+3. Versioning Strategies
+# Semantic versioning with tags
+git tag -a v1.0.0 -m &quot;Release v1.0.0&quot;
+git push origin v1.0.0
+
+# Major version tag (always points to latest in major version)
+git tag -f v1 v1.0.0
+git push -f origin v1
+
+# Using SHA for immutability
+uses: actions/my-action@a1b2c3d
+
+
+
+
+
+
+Publishing to GitHub Marketplace
+
+  Github Marketplace Docs
+
+
+1. Version Management
 # Create new version
 git tag v1.0.1
 git push origin v1.0.1
@@ -738,6 +1275,188 @@ git push -f origin v1
 2. Action Usage Example
 
 
+3. Publishing Checklist
+
+
+
+Before Publishing:
+
+✅ Ensure your repository is public
+✅ Create a valid action.yml in the root
+✅ Include proper documentation in README.md
+✅ Add LICENSE file (MIT or other open source)
+✅ Use semantic versioning tags
+✅ Add proper icon and color in action.yml
+✅ Test the action thoroughly
+✅ Create a release on GitHub
+
+
+
+
+Testing Strategies for GitHub Actions
+
+1. Unit Testing JavaScript Actions
+
+// hello.test.js
+const process = require(&apos;process&apos;);
+const cp = require(&apos;child_process&apos;);
+const path = require(&apos;path&apos;);
+
+// Mock the GitHub Actions core library
+jest.mock(&apos;@actions/core&apos;);
+const core = require(&apos;@actions/core&apos;);
+
+describe(&apos;Hello Action&apos;, () =&amp;gt; {
+  it(&apos;Outputs greeting with input name&apos;, () =&amp;gt; {
+    process.env.INPUT_NAME = &apos;Developer&apos;;
+    const ip = path.join(__dirname, &apos;index.js&apos;);
+    
+    // Execute the action
+    cp.execSync(`node ${ip}`, {env: process.env});
+    
+    // Verify output was set
+    expect(core.setOutput).toHaveBeenCalledWith(
+      &apos;greeting&apos;, 
+      &apos;Hello Developer!&apos;
+    );
+  });
+});
+
+
+2. Integration Testing
+
+# .github/workflows/test.yml
+name: Test Action
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Test local action
+        uses: ./
+        with:
+          name: World
+      
+      - name: Verify action output
+        run: |
+          if [[ &quot;$&quot; != &quot;Hello World!&quot; ]]; then
+            echo &quot;Unexpected output&quot;
+            exit 1
+          fi
+
+
+
+
+Best Practices for GitHub Actions
+
+
+
+Action Design Principles:
+
+1. Follow Single Responsibility Principle
+   - Design actions to do one thing well
+   - Compose complex workflows from simple actions
+   - Keep the interface simple and focused
+
+2. Optimize for Performance
+   - Use JavaScript actions for speed when possible
+   - Keep Docker images small and efficient
+   - Implement appropriate caching strategies
+   - Use alpine-based images for containers
+
+3. Handle Errors Gracefully
+   - Implement proper error handling and reporting
+   - Set appropriate exit codes
+   - Provide clear error messages
+   - Include debugging information when failures occur
+
+4. Document Thoroughly
+   - Document all inputs, outputs, and environment variables
+   - Include usage examples in README.md
+   - Provide real-world examples
+   - Document limitations and requirements
+
+5. Version Properly
+   - Use semantic versioning
+   - Maintain a CHANGELOG.md
+   - Test thoroughly before publishing new versions
+   - Consider the impact of breaking changes
+
+
+
+
+Common Use Cases and Examples
+
+1. Environment Setup Action
+
+# action.yml
+name: &apos;Setup Development Environment&apos;
+description: &apos;Sets up consistent development environment with dependencies&apos;
+inputs:
+  node-version:
+    description: &apos;Node.js version&apos;
+    required: false
+    default: &apos;16&apos;
+  python-version:
+    description: &apos;Python version&apos;
+    required: false
+    default: &apos;3.10&apos;
+  install-deps:
+    description: &apos;Install dependencies&apos;
+    required: false
+    default: &apos;true&apos;
+runs:
+  using: &quot;composite&quot;
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: $
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: $
+        
+    - name: Install dependencies
+      if: inputs.install-deps == &apos;true&apos;
+      shell: bash
+      run: |
+        npm ci
+        pip install -r requirements.txt
+
+
+2. Release Management Action
+
+# action.yml
+name: &apos;Semver Release&apos;
+description: &apos;Creates semantic versioned releases based on commit messages&apos;
+inputs:
+  github-token:
+    description: &apos;GitHub token for creating releases&apos;
+    required: true
+  release-type:
+    description: &apos;Release type (auto, patch, minor, major)&apos;
+    required: false
+    default: &apos;auto&apos;
+outputs:
+  new-version:
+    description: &apos;The new version created&apos;
+  changelog:
+    description: &apos;Generated changelog for the release&apos;
+runs:
+  using: &apos;node16&apos;
+  main: &apos;dist/index.js&apos;
+
+
 
 
 
@@ -747,9 +1466,12 @@ Reference
   Container Action Template
   Publishing Actions Guide
   Extract Commit Action
+  GitHub Actions Toolkit
+  JavaScript Action Template
+  Composite Action Examples
 
 ",
-            "wordcount": "229",
+            "wordcount": "2113",
             "inLanguage": "en",
             "dateCreated": "2025-01-22/",
             "datePublished": "2025-01-22/",

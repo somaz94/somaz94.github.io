@@ -220,7 +220,7 @@ March 14, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>3 min to read</span>
+                    <span>12 min to read</span>
                 </p>
                 <h1 class="post-title">Setting up ArgoCD SSO with GitLab</h1>
                 <p class="post-subtitle">A comprehensive guide to implementing ArgoCD SSO with GitLab</p>
@@ -246,6 +246,29 @@ March 14, 2025
 
 <p>This post explains how to configure Single Sign-On (SSO) for ArgoCD using GitLab. We’ll walk through the process of setting up GitLab OAuth and integrating it with ArgoCD.</p>
 
+<h3 id="benefits-of-gitlab-sso-integration">Benefits of GitLab SSO Integration</h3>
+
+<div class="info-box info-box-default">
+  <ul>
+    <li>
+      <strong>Unified Authentication</strong><br />
+      Allows developers to use their existing GitLab credentials for ArgoCD access.
+    </li>
+    <li>
+      <strong>Streamlined Access Management</strong><br />
+      Leverages GitLab's groups and user management for ArgoCD authorization.
+    </li>
+    <li>
+      <strong>Improved Developer Experience</strong><br />
+      Eliminates the need to manage separate credentials for GitLab and ArgoCD.
+    </li>
+    <li>
+      <strong>Consistent Permissions</strong><br />
+      GitLab groups can be mapped directly to ArgoCD roles for consistent access control.
+    </li>
+  </ul>
+</div>
+
 <p><br /></p>
 
 <h2 id="prerequisites">Prerequisites</h2>
@@ -253,6 +276,7 @@ March 14, 2025
   <li>GitLab instance</li>
   <li>ArgoCD installed on a Kubernetes cluster</li>
   <li>Administrative access to both GitLab and ArgoCD</li>
+  <li>Properly configured DNS for ArgoCD server</li>
 </ul>
 
 <p><br /></p>
@@ -285,6 +309,36 @@ March 14, 2025
         <li>Secret (Client Secret)</li>
       </ul>
   </ol>
+</div>
+
+<h4 id="command-line-setup">Command Line Setup</h4>
+
+<p>If you’re using GitLab API to create the application:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create Application using GitLab API</span>
+curl <span class="nt">--request</span> POST <span class="nt">--header</span> <span class="s2">"PRIVATE-TOKEN: &lt;your_access_token&gt;"</span> <span class="se">\</span>
+     <span class="nt">--data</span> <span class="s2">"name=ArgoCD&amp;redirect_uri=https://argocd.your-domain.com/api/dex/callback&amp;scopes=read_user+openid+profile+email"</span> <span class="se">\</span>
+     <span class="s2">"https://gitlab.your-domain.com/api/v4/applications"</span>
+</code></pre></div></div>
+
+<h4 id="gitlab-application-security-considerations">GitLab Application Security Considerations</h4>
+
+<div class="info-box info-box-info">
+<br />
+<strong>Application Security Tips:</strong><br /><br />
+
+<strong>1. Scopes Selection:</strong>
+   - Only select required scopes (read_user, openid, profile, email)<br />
+   - Avoid adding unnecessary permissions<br /><br />
+
+<strong>2. Application Configuration:</strong>
+   - Use a descriptive application name for audit purposes<br />
+   - Consider setting application expiration date for security<br />
+   - Rotate client secrets periodically<br /><br />
+
+<strong>3. Access Management:</strong>
+   - Limit admin access to GitLab application settings<br />
+   - Document the integration for security reviews<br /><br />
 </div>
 
 <p><br /></p>
@@ -387,6 +441,321 @@ kubectl rollout restart <span class="nt">-n</span> argocd deployment argocd-dex-
 
 <p><br /></p>
 
+<h2 id="advanced-gitlab-sso-configuration">Advanced GitLab SSO Configuration</h2>
+
+<h3 id="role-based-access-control-with-gitlab-groups">Role-Based Access Control with GitLab Groups</h3>
+
+<p>You can map different GitLab groups to different ArgoCD roles for granular access control:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">configs</span><span class="pi">:</span>
+  <span class="na">rbac</span><span class="pi">:</span>
+    <span class="na">policy.csv</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s"># Administrators with full access</span>
+      <span class="s">p, role:admin, applications, *, */*, allow</span>
+      <span class="s">p, role:admin, clusters, *, *, allow</span>
+      <span class="s">p, role:admin, repositories, *, *, allow</span>
+      <span class="s">p, role:admin, projects, *, *, allow</span>
+      <span class="s">p, role:admin, accounts, *, *, allow</span>
+      <span class="s">p, role:admin, gpgkeys, *, *, allow</span>
+      <span class="s">p, role:admin, logs, *, *, allow</span>
+      <span class="s">p, role:admin, exec, *, *, allow</span>
+      <span class="s">p, role:admin, certificates, *, *, allow</span>
+      
+      <span class="s"># DevOps team with broad access but not admin</span>
+      <span class="s">p, role:devops, applications, *, */*, allow</span>
+      <span class="s">p, role:devops, clusters, get, *, allow</span>
+      <span class="s">p, role:devops, repositories, *, *, allow</span>
+      <span class="s">p, role:devops, logs, *, *, allow</span>
+      <span class="s">p, role:devops, exec, create, */*, allow</span>
+      
+      <span class="s"># Developers with limited access</span>
+      <span class="s">p, role:developer, applications, get, */*, allow</span>
+      <span class="s">p, role:developer, applications, sync, */*, allow</span>
+      <span class="s">p, role:developer, repositories, get, *, allow</span>
+      <span class="s">p, role:developer, logs, get, */*, allow</span>
+      
+      <span class="s"># Map GitLab groups to roles</span>
+      <span class="s">g, gitlab:platform-admin, role:admin</span>
+      <span class="s">g, gitlab:devops-team, role:devops</span>
+      <span class="s">g, gitlab:developers, role:developer</span>
+</code></pre></div></div>
+
+<h3 id="project-specific-access-control">Project-Specific Access Control</h3>
+
+<p>You can also configure access to specific ArgoCD projects:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">configs</span><span class="pi">:</span>
+  <span class="na">rbac</span><span class="pi">:</span>
+    <span class="na">policy.csv</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s"># Team A access to Team A projects only</span>
+      <span class="s">p, role:team-a, applications, *, team-a/*, allow</span>
+      <span class="s">p, role:team-a, logs, *, team-a/*, allow</span>
+      <span class="s">g, gitlab:team-a, role:team-a</span>
+      
+      <span class="s"># Team B access to Team B projects only</span>
+      <span class="s">p, role:team-b, applications, *, team-b/*, allow</span>
+      <span class="s">p, role:team-b, logs, *, team-b/*, allow</span>
+      <span class="s">g, gitlab:team-b, role:team-b</span>
+</code></pre></div></div>
+
+<h3 id="using-gitlab-subgroups">Using GitLab Subgroups</h3>
+
+<p>If you have GitLab subgroups, you can map them in ArgoCD:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">configs</span><span class="pi">:</span>
+  <span class="na">cm</span><span class="pi">:</span>
+    <span class="na">dex.config</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">connectors:</span>
+        <span class="s">- type: gitlab</span>
+          <span class="s">id: gitlab</span>
+          <span class="s">name: GitLab</span>
+          <span class="s">config:</span>
+            <span class="s">baseURL: https://gitlab.your-domain.com</span>
+            <span class="s">clientID: &lt;application_id&gt;</span>
+            <span class="s">clientSecret: &lt;secret&gt;</span>
+            <span class="s">redirectURI: https://argocd.your-domain.com/api/dex/callback</span>
+            <span class="s">groups:</span>
+              <span class="s">- engineering/backend</span>
+              <span class="s">- engineering/frontend</span>
+              <span class="s">- operations/platform</span>
+</code></pre></div></div>
+
+<h2 id="manual-installation-and-configuration">Manual Installation and Configuration</h2>
+
+<p>If you’re not using Helm, here’s how to configure ArgoCD manually:</p>
+
+<h3 id="1-create-argocd-cm-configmap">1. Create argocd-cm ConfigMap</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-cm</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">url</span><span class="pi">:</span> <span class="s">https://argocd.your-domain.com</span>
+  <span class="na">dex.config</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">connectors:</span>
+      <span class="s">- type: gitlab</span>
+        <span class="s">id: gitlab</span>
+        <span class="s">name: GitLab</span>
+        <span class="s">config:</span>
+          <span class="s">baseURL: https://gitlab.your-domain.com</span>
+          <span class="s">clientID: &lt;application_id&gt;</span>
+          <span class="s">clientSecret: $dex.gitlab.clientSecret</span>
+          <span class="s">redirectURI: https://argocd.your-domain.com/api/dex/callback</span>
+          <span class="s">groups:</span>
+            <span class="s">- devops</span>
+            <span class="s">- engineering</span>
+</code></pre></div></div>
+
+<h3 id="2-create-argocd-secret-for-gitlab-credentials">2. Create argocd-secret for GitLab Credentials</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Convert client secret to base64</span>
+<span class="nv">GITLAB_CLIENT_SECRET_BASE64</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"your-gitlab-client-secret"</span> | <span class="nb">base64</span><span class="si">)</span>
+
+<span class="c"># Apply the secret</span>
+kubectl patch secret argocd-secret <span class="nt">-n</span> argocd <span class="nt">--type</span><span class="o">=</span>json <span class="se">\</span>
+  <span class="nt">-p</span><span class="o">=</span><span class="s1">'[{"op": "add", "path": "/data/dex.gitlab.clientSecret", "value":"'</span><span class="nv">$GITLAB_CLIENT_SECRET_BASE64</span><span class="s1">'"}]'</span>
+</code></pre></div></div>
+
+<h3 id="3-configure-rbac">3. Configure RBAC</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-rbac-cm</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">policy.csv</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">p, role:org-admin, applications, *, */*, allow</span>
+    <span class="s">p, role:org-admin, clusters, get, *, allow</span>
+    <span class="s">p, role:org-admin, repositories, *, *, allow</span>
+    <span class="s">p, role:org-admin, projects, get, *, allow</span>
+    <span class="s">p, role:org-admin, logs, get, *, allow</span>
+    <span class="s">p, role:org-admin, exec, create, */*, allow</span>
+    
+    <span class="s">g, gitlab:devops, role:org-admin</span>
+  <span class="na">policy.default</span><span class="pi">:</span> <span class="s">role:readonly</span>
+  <span class="na">scopes</span><span class="pi">:</span> <span class="s2">"</span><span class="s">[groups,</span><span class="nv"> </span><span class="s">email]"</span>
+</code></pre></div></div>
+
+<h2 id="troubleshooting-gitlab-sso">Troubleshooting GitLab SSO</h2>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Common Issues and Solutions:</strong><br /><br />
+
+<strong>1. Authentication Failed:</strong>
+   - Verify client ID and secret match GitLab application<br />
+   - Check baseURL points to correct GitLab instance<br />
+   - Ensure redirectURI matches exactly (including trailing slash)<br />
+   - Verify required scopes are enabled in GitLab application<br /><br />
+
+<strong>2. User Successfully Authenticates but Has No Access:</strong>
+   - Check if user belongs to the correct GitLab group<br />
+   - Verify groups are correctly mapped in RBAC policy<br />
+   - Confirm 'groups' is included in scopes setting<br />
+   - Check ArgoCD logs for group claim issues<br /><br />
+
+<strong>3. Redirect URI Error:</strong>
+   - Double check the redirect URI in both GitLab and ArgoCD config<br />
+   - Ensure the ArgoCD server is accessible at the configured URL<br />
+   - Check for TLS/SSL certificate issues<br /><br />
+
+<strong>4. Timeout During Authentication:</strong>
+   - Check network connectivity between ArgoCD and GitLab<br />
+   - Verify GitLab instance is running and accessible<br />
+   - Check for firewall or proxy issues<br /><br />
+</div>
+
+<h3 id="debugging-steps">Debugging Steps</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check Dex logs for authentication issues</span>
+kubectl logs <span class="nt">-n</span> argocd <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>argocd-dex-server
+
+<span class="c"># Check ArgoCD server logs</span>
+kubectl logs <span class="nt">-n</span> argocd <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>argocd-server
+
+<span class="c"># Verify configuration</span>
+kubectl get configmap argocd-cm <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml
+kubectl get configmap argocd-rbac-cm <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml
+
+<span class="c"># Check if secret is properly configured (will be masked)</span>
+kubectl get secret argocd-secret <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml
+</code></pre></div></div>
+
+<h3 id="self-hosted-gitlab-ssl-issues">Self-Hosted GitLab SSL Issues</h3>
+
+<p>If you’re using a self-signed certificate with GitLab, you may need to add it to ArgoCD:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-cm</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="c1"># ... existing config ...</span>
+  <span class="na">dex.config</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">connectors:</span>
+      <span class="s">- type: gitlab</span>
+        <span class="s">id: gitlab</span>
+        <span class="s">name: GitLab</span>
+        <span class="s">config:</span>
+          <span class="s">baseURL: https://gitlab.your-domain.com</span>
+          <span class="s">clientID: &lt;application_id&gt;</span>
+          <span class="s">clientSecret: $dex.gitlab.clientSecret</span>
+          <span class="s">redirectURI: https://argocd.your-domain.com/api/dex/callback</span>
+          <span class="s">groups:</span>
+            <span class="s">- devops</span>
+          <span class="s"># For self-signed certificates:</span>
+          <span class="s">insecureSkipVerify: true</span>
+</code></pre></div></div>
+
+<p><strong>Note</strong>: Using <code class="language-plaintext highlighter-rouge">insecureSkipVerify: true</code> is not recommended for production environments. Instead, properly configure certificates.</p>
+
+<h2 id="security-best-practices">Security Best Practices</h2>
+
+<div class="info-box info-box-success">
+<br />
+<strong>Security Recommendations:</strong><br /><br />
+
+<strong>1. Access Control:</strong>
+   - Implement least privilege principle in RBAC policies<br />
+   - Regularly audit group memberships in GitLab<br />
+   - Periodically review ArgoCD access<br /><br />
+
+<strong>2. Credentials Management:</strong>
+   - Rotate GitLab client secret periodically<br />
+   - Store secrets in Kubernetes secrets, not in plain text<br />
+   - Consider using a secrets management solution<br /><br />
+
+<strong>3. Network Security:</strong>
+   - Use HTTPS for all communication<br />
+   - Implement network policies in Kubernetes<br />
+   - Consider IP restrictions if applicable<br /><br />
+
+<strong>4. Audit and Monitoring:</strong>
+   - Enable and review audit logs<br />
+   - Set up alerts for unauthorized access attempts<br />
+   - Monitor SSO configuration changes<br /><br />
+</div>
+
+<h3 id="automation-script">Automation Script</h3>
+
+<p>Here’s a script to automate GitLab SSO configuration:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">set</span> <span class="nt">-e</span>
+
+<span class="c"># Variables</span>
+<span class="nv">NAMESPACE</span><span class="o">=</span><span class="s2">"argocd"</span>
+<span class="nv">ARGOCD_URL</span><span class="o">=</span><span class="s2">"https://argocd.your-domain.com"</span>
+<span class="nv">GITLAB_URL</span><span class="o">=</span><span class="s2">"https://gitlab.your-domain.com"</span>
+<span class="nv">GITLAB_CLIENT_ID</span><span class="o">=</span><span class="s2">"your-client-id"</span>
+<span class="nv">GITLAB_CLIENT_SECRET</span><span class="o">=</span><span class="s2">"your-client-secret"</span>
+<span class="nv">GITLAB_GROUP</span><span class="o">=</span><span class="s2">"your-gitlab-group"</span>
+
+<span class="c"># Backup existing configurations</span>
+kubectl get cm argocd-cm <span class="nt">-n</span> <span class="nv">$NAMESPACE</span> <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-cm-backup.yaml
+kubectl get cm argocd-rbac-cm <span class="nt">-n</span> <span class="nv">$NAMESPACE</span> <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-rbac-cm-backup.yaml
+kubectl get secret argocd-secret <span class="nt">-n</span> <span class="nv">$NAMESPACE</span> <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-secret-backup.yaml
+
+<span class="c"># Update argocd-cm ConfigMap</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: </span><span class="nv">$NAMESPACE</span><span class="sh">
+data:
+  url: </span><span class="nv">$ARGOCD_URL</span><span class="sh">
+  dex.config: |
+    connectors:
+      - type: gitlab
+        id: gitlab
+        name: GitLab
+        config:
+          baseURL: </span><span class="nv">$GITLAB_URL</span><span class="sh">
+          clientID: </span><span class="nv">$GITLAB_CLIENT_ID</span><span class="sh">
+          clientSecret: </span><span class="se">\$</span><span class="sh">dex.gitlab.clientSecret
+          redirectURI: </span><span class="nv">$ARGOCD_URL</span><span class="sh">/api/dex/callback
+          groups:
+            - </span><span class="nv">$GITLAB_GROUP</span><span class="sh">
+</span><span class="no">EOF
+
+</span><span class="c"># Update argocd-rbac-cm ConfigMap</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: </span><span class="nv">$NAMESPACE</span><span class="sh">
+data:
+  policy.csv: |
+    p, role:org-admin, applications, *, */*, allow
+    p, role:org-admin, clusters, get, *, allow
+    p, role:org-admin, repositories, *, *, allow
+    p, role:org-admin, projects, get, *, allow
+    p, role:org-admin, logs, get, *, allow
+    p, role:org-admin, exec, create, */*, allow
+    
+    g, gitlab:</span><span class="nv">$GITLAB_GROUP</span><span class="sh">, role:org-admin
+  policy.default: role:readonly
+  scopes: "[groups, email]"
+</span><span class="no">EOF
+
+</span><span class="c"># Update GitLab client secret</span>
+<span class="nv">GITLAB_SECRET_BASE64</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$GITLAB_CLIENT_SECRET</span><span class="s2">"</span> | <span class="nb">base64</span><span class="si">)</span>
+kubectl patch secret argocd-secret <span class="nt">-n</span> <span class="nv">$NAMESPACE</span> <span class="nt">--type</span><span class="o">=</span>json <span class="se">\</span>
+  <span class="nt">-p</span><span class="o">=</span><span class="s1">'[{"op": "add", "path": "/data/dex.gitlab.clientSecret", "value":"'</span><span class="nv">$GITLAB_SECRET_BASE64</span><span class="s1">'"}]'</span>
+
+<span class="c"># Restart components</span>
+kubectl rollout restart deployment argocd-server <span class="nt">-n</span> <span class="nv">$NAMESPACE</span>
+kubectl rollout restart deployment argocd-dex-server <span class="nt">-n</span> <span class="nv">$NAMESPACE</span>
+
+<span class="nb">echo</span> <span class="s2">"GitLab SSO configuration completed. Please wait for pods to restart."</span>
+</code></pre></div></div>
+
 <h3 id="authentication-processes">Authentication Processes</h3>
 <ul>
   <li>OAuth Authentication</li>
@@ -409,6 +778,13 @@ kubectl rollout restart <span class="nt">-n</span> argocd deployment argocd-dex-
         <li>Proper mapping between GitLab groups and ArgoCD roles</li>
       </ul>
     </li>
+    <li>For enterprise environments:
+      <ul>
+        <li>Consider implementing session timeouts</li>
+        <li>Set up a disaster recovery plan for authentication</li>
+        <li>Document the SSO configuration and approval workflow</li>
+      </ul>
+    </li>
   </ul>
 </div>
 
@@ -420,6 +796,9 @@ kubectl rollout restart <span class="nt">-n</span> argocd deployment argocd-dex-
 <ul>
   <li><a href="https://argo-cd.readthedocs.io/en/stable/">ArgoCD Documentation</a></li>
   <li><a href="https://docs.gitlab.com/ee/integration/oauth_provider.html">GitLab OAuth Documentation</a></li>
+  <li><a href="https://dexidp.io/docs/connectors/gitlab/">Dex Authenticator Documentation</a></li>
+  <li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/">ArgoCD RBAC Configuration</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/configuration/secret/">Kubernetes Secret Management</a></li>
 </ul>
 
 
@@ -470,7 +849,7 @@ kubectl rollout restart <span class="nt">-n</span> argocd deployment argocd-dex-
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="3">
+            <div class="time-bar" data-minutes="12">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -781,6 +1160,29 @@ In the last post, I tried configuring ArgoCD SSO using Google Oauth,
 
 This post explains how to configure Single Sign-On (SSO) for ArgoCD using GitLab. We’ll walk through the process of setting up GitLab OAuth and integrating it with ArgoCD.
 
+Benefits of GitLab SSO Integration
+
+
+  
+    
+      Unified Authentication
+      Allows developers to use their existing GitLab credentials for ArgoCD access.
+    
+    
+      Streamlined Access Management
+      Leverages GitLab&apos;s groups and user management for ArgoCD authorization.
+    
+    
+      Improved Developer Experience
+      Eliminates the need to manage separate credentials for GitLab and ArgoCD.
+    
+    
+      Consistent Permissions
+      GitLab groups can be mapped directly to ArgoCD roles for consistent access control.
+    
+  
+
+
 
 
 Prerequisites
@@ -788,6 +1190,7 @@ Prerequisites
   GitLab instance
   ArgoCD installed on a Kubernetes cluster
   Administrative access to both GitLab and ArgoCD
+  Properly configured DNS for ArgoCD server
 
 
 
@@ -820,6 +1223,36 @@ Steps
         Secret (Client Secret)
       
   
+
+
+Command Line Setup
+
+If you’re using GitLab API to create the application:
+
+# Create Application using GitLab API
+curl --request POST --header &quot;PRIVATE-TOKEN: &amp;lt;your_access_token&amp;gt;&quot; \
+     --data &quot;name=ArgoCD&amp;amp;redirect_uri=https://argocd.your-domain.com/api/dex/callback&amp;amp;scopes=read_user+openid+profile+email&quot; \
+     &quot;https://gitlab.your-domain.com/api/v4/applications&quot;
+
+
+GitLab Application Security Considerations
+
+
+
+Application Security Tips:
+
+1. Scopes Selection:
+   - Only select required scopes (read_user, openid, profile, email)
+   - Avoid adding unnecessary permissions
+
+2. Application Configuration:
+   - Use a descriptive application name for audit purposes
+   - Consider setting application expiration date for security
+   - Rotate client secrets periodically
+
+3. Access Management:
+   - Limit admin access to GitLab application settings
+   - Document the integration for security reviews
 
 
 
@@ -922,6 +1355,321 @@ Access your ArgoCD instance and verify GitLab SSO login works correctly.
 
 
 
+Advanced GitLab SSO Configuration
+
+Role-Based Access Control with GitLab Groups
+
+You can map different GitLab groups to different ArgoCD roles for granular access control:
+
+configs:
+  rbac:
+    policy.csv: |
+      # Administrators with full access
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters, *, *, allow
+      p, role:admin, repositories, *, *, allow
+      p, role:admin, projects, *, *, allow
+      p, role:admin, accounts, *, *, allow
+      p, role:admin, gpgkeys, *, *, allow
+      p, role:admin, logs, *, *, allow
+      p, role:admin, exec, *, *, allow
+      p, role:admin, certificates, *, *, allow
+      
+      # DevOps team with broad access but not admin
+      p, role:devops, applications, *, */*, allow
+      p, role:devops, clusters, get, *, allow
+      p, role:devops, repositories, *, *, allow
+      p, role:devops, logs, *, *, allow
+      p, role:devops, exec, create, */*, allow
+      
+      # Developers with limited access
+      p, role:developer, applications, get, */*, allow
+      p, role:developer, applications, sync, */*, allow
+      p, role:developer, repositories, get, *, allow
+      p, role:developer, logs, get, */*, allow
+      
+      # Map GitLab groups to roles
+      g, gitlab:platform-admin, role:admin
+      g, gitlab:devops-team, role:devops
+      g, gitlab:developers, role:developer
+
+
+Project-Specific Access Control
+
+You can also configure access to specific ArgoCD projects:
+
+configs:
+  rbac:
+    policy.csv: |
+      # Team A access to Team A projects only
+      p, role:team-a, applications, *, team-a/*, allow
+      p, role:team-a, logs, *, team-a/*, allow
+      g, gitlab:team-a, role:team-a
+      
+      # Team B access to Team B projects only
+      p, role:team-b, applications, *, team-b/*, allow
+      p, role:team-b, logs, *, team-b/*, allow
+      g, gitlab:team-b, role:team-b
+
+
+Using GitLab Subgroups
+
+If you have GitLab subgroups, you can map them in ArgoCD:
+
+configs:
+  cm:
+    dex.config: |
+      connectors:
+        - type: gitlab
+          id: gitlab
+          name: GitLab
+          config:
+            baseURL: https://gitlab.your-domain.com
+            clientID: &amp;lt;application_id&amp;gt;
+            clientSecret: &amp;lt;secret&amp;gt;
+            redirectURI: https://argocd.your-domain.com/api/dex/callback
+            groups:
+              - engineering/backend
+              - engineering/frontend
+              - operations/platform
+
+
+Manual Installation and Configuration
+
+If you’re not using Helm, here’s how to configure ArgoCD manually:
+
+1. Create argocd-cm ConfigMap
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  url: https://argocd.your-domain.com
+  dex.config: |
+    connectors:
+      - type: gitlab
+        id: gitlab
+        name: GitLab
+        config:
+          baseURL: https://gitlab.your-domain.com
+          clientID: &amp;lt;application_id&amp;gt;
+          clientSecret: $dex.gitlab.clientSecret
+          redirectURI: https://argocd.your-domain.com/api/dex/callback
+          groups:
+            - devops
+            - engineering
+
+
+2. Create argocd-secret for GitLab Credentials
+
+# Convert client secret to base64
+GITLAB_CLIENT_SECRET_BASE64=$(echo -n &quot;your-gitlab-client-secret&quot; | base64)
+
+# Apply the secret
+kubectl patch secret argocd-secret -n argocd --type=json \
+  -p=&apos;[{&quot;op&quot;: &quot;add&quot;, &quot;path&quot;: &quot;/data/dex.gitlab.clientSecret&quot;, &quot;value&quot;:&quot;&apos;$GITLAB_CLIENT_SECRET_BASE64&apos;&quot;}]&apos;
+
+
+3. Configure RBAC
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+data:
+  policy.csv: |
+    p, role:org-admin, applications, *, */*, allow
+    p, role:org-admin, clusters, get, *, allow
+    p, role:org-admin, repositories, *, *, allow
+    p, role:org-admin, projects, get, *, allow
+    p, role:org-admin, logs, get, *, allow
+    p, role:org-admin, exec, create, */*, allow
+    
+    g, gitlab:devops, role:org-admin
+  policy.default: role:readonly
+  scopes: &quot;[groups, email]&quot;
+
+
+Troubleshooting GitLab SSO
+
+
+
+Common Issues and Solutions:
+
+1. Authentication Failed:
+   - Verify client ID and secret match GitLab application
+   - Check baseURL points to correct GitLab instance
+   - Ensure redirectURI matches exactly (including trailing slash)
+   - Verify required scopes are enabled in GitLab application
+
+2. User Successfully Authenticates but Has No Access:
+   - Check if user belongs to the correct GitLab group
+   - Verify groups are correctly mapped in RBAC policy
+   - Confirm &apos;groups&apos; is included in scopes setting
+   - Check ArgoCD logs for group claim issues
+
+3. Redirect URI Error:
+   - Double check the redirect URI in both GitLab and ArgoCD config
+   - Ensure the ArgoCD server is accessible at the configured URL
+   - Check for TLS/SSL certificate issues
+
+4. Timeout During Authentication:
+   - Check network connectivity between ArgoCD and GitLab
+   - Verify GitLab instance is running and accessible
+   - Check for firewall or proxy issues
+
+
+Debugging Steps
+
+# Check Dex logs for authentication issues
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-dex-server
+
+# Check ArgoCD server logs
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-server
+
+# Verify configuration
+kubectl get configmap argocd-cm -n argocd -o yaml
+kubectl get configmap argocd-rbac-cm -n argocd -o yaml
+
+# Check if secret is properly configured (will be masked)
+kubectl get secret argocd-secret -n argocd -o yaml
+
+
+Self-Hosted GitLab SSL Issues
+
+If you’re using a self-signed certificate with GitLab, you may need to add it to ArgoCD:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  # ... existing config ...
+  dex.config: |
+    connectors:
+      - type: gitlab
+        id: gitlab
+        name: GitLab
+        config:
+          baseURL: https://gitlab.your-domain.com
+          clientID: &amp;lt;application_id&amp;gt;
+          clientSecret: $dex.gitlab.clientSecret
+          redirectURI: https://argocd.your-domain.com/api/dex/callback
+          groups:
+            - devops
+          # For self-signed certificates:
+          insecureSkipVerify: true
+
+
+Note: Using insecureSkipVerify: true is not recommended for production environments. Instead, properly configure certificates.
+
+Security Best Practices
+
+
+
+Security Recommendations:
+
+1. Access Control:
+   - Implement least privilege principle in RBAC policies
+   - Regularly audit group memberships in GitLab
+   - Periodically review ArgoCD access
+
+2. Credentials Management:
+   - Rotate GitLab client secret periodically
+   - Store secrets in Kubernetes secrets, not in plain text
+   - Consider using a secrets management solution
+
+3. Network Security:
+   - Use HTTPS for all communication
+   - Implement network policies in Kubernetes
+   - Consider IP restrictions if applicable
+
+4. Audit and Monitoring:
+   - Enable and review audit logs
+   - Set up alerts for unauthorized access attempts
+   - Monitor SSO configuration changes
+
+
+Automation Script
+
+Here’s a script to automate GitLab SSO configuration:
+
+#!/bin/bash
+set -e
+
+# Variables
+NAMESPACE=&quot;argocd&quot;
+ARGOCD_URL=&quot;https://argocd.your-domain.com&quot;
+GITLAB_URL=&quot;https://gitlab.your-domain.com&quot;
+GITLAB_CLIENT_ID=&quot;your-client-id&quot;
+GITLAB_CLIENT_SECRET=&quot;your-client-secret&quot;
+GITLAB_GROUP=&quot;your-gitlab-group&quot;
+
+# Backup existing configurations
+kubectl get cm argocd-cm -n $NAMESPACE -o yaml &amp;gt; argocd-cm-backup.yaml
+kubectl get cm argocd-rbac-cm -n $NAMESPACE -o yaml &amp;gt; argocd-rbac-cm-backup.yaml
+kubectl get secret argocd-secret -n $NAMESPACE -o yaml &amp;gt; argocd-secret-backup.yaml
+
+# Update argocd-cm ConfigMap
+cat &amp;lt;&amp;lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: $NAMESPACE
+data:
+  url: $ARGOCD_URL
+  dex.config: |
+    connectors:
+      - type: gitlab
+        id: gitlab
+        name: GitLab
+        config:
+          baseURL: $GITLAB_URL
+          clientID: $GITLAB_CLIENT_ID
+          clientSecret: \$dex.gitlab.clientSecret
+          redirectURI: $ARGOCD_URL/api/dex/callback
+          groups:
+            - $GITLAB_GROUP
+EOF
+
+# Update argocd-rbac-cm ConfigMap
+cat &amp;lt;&amp;lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: $NAMESPACE
+data:
+  policy.csv: |
+    p, role:org-admin, applications, *, */*, allow
+    p, role:org-admin, clusters, get, *, allow
+    p, role:org-admin, repositories, *, *, allow
+    p, role:org-admin, projects, get, *, allow
+    p, role:org-admin, logs, get, *, allow
+    p, role:org-admin, exec, create, */*, allow
+    
+    g, gitlab:$GITLAB_GROUP, role:org-admin
+  policy.default: role:readonly
+  scopes: &quot;[groups, email]&quot;
+EOF
+
+# Update GitLab client secret
+GITLAB_SECRET_BASE64=$(echo -n &quot;$GITLAB_CLIENT_SECRET&quot; | base64)
+kubectl patch secret argocd-secret -n $NAMESPACE --type=json \
+  -p=&apos;[{&quot;op&quot;: &quot;add&quot;, &quot;path&quot;: &quot;/data/dex.gitlab.clientSecret&quot;, &quot;value&quot;:&quot;&apos;$GITLAB_SECRET_BASE64&apos;&quot;}]&apos;
+
+# Restart components
+kubectl rollout restart deployment argocd-server -n $NAMESPACE
+kubectl rollout restart deployment argocd-dex-server -n $NAMESPACE
+
+echo &quot;GitLab SSO configuration completed. Please wait for pods to restart.&quot;
+
+
 Authentication Processes
 
   OAuth Authentication
@@ -944,6 +1692,13 @@ Authentication Processes
         Proper mapping between GitLab groups and ArgoCD roles
       
     
+    For enterprise environments:
+      
+        Consider implementing session timeouts
+        Set up a disaster recovery plan for authentication
+        Document the SSO configuration and approval workflow
+      
+    
   
 
 
@@ -955,9 +1710,12 @@ References
 
   ArgoCD Documentation
   GitLab OAuth Documentation
+  Dex Authenticator Documentation
+  ArgoCD RBAC Configuration
+  Kubernetes Secret Management
 
 ",
-            "wordcount": "565",
+            "wordcount": "2252",
             "inLanguage": "en",
             "dateCreated": "2025-03-14/",
             "datePublished": "2025-03-14/",

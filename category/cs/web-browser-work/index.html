@@ -220,7 +220,7 @@ January 2, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>3 min to read</span>
+                    <span>8 min to read</span>
                 </p>
                 <h1 class="post-title">How Web Browsers Work</h1>
                 <p class="post-subtitle">Understanding the internal working mechanism of web browsers, from DNS lookup to page rendering.</p>
@@ -242,6 +242,22 @@ January 2, 2025
 
 <h2 id="overview">Overview</h2>
 <p>Let’s explore how web browsers work internally, from the moment a user enters a URL until the page is displayed.</p>
+
+<h3 id="browser-components">Browser Components</h3>
+
+<p>Modern web browsers consist of several main components:</p>
+
+<ol>
+  <li><strong>User Interface</strong> - Address bar, back/forward buttons, bookmarks, etc.</li>
+  <li><strong>Browser Engine</strong> - Marshals actions between the UI and the rendering engine</li>
+  <li><strong>Rendering Engine</strong> - Responsible for displaying requested content (parses HTML and CSS)</li>
+  <li><strong>Networking</strong> - Handles HTTP requests</li>
+  <li><strong>JavaScript Engine</strong> - Parses and executes JavaScript code (e.g., V8 in Chrome)</li>
+  <li><strong>UI Backend</strong> - Used for drawing basic widgets like combo boxes and windows</li>
+  <li><strong>Data Storage</strong> - Persistence layer (cookies, localStorage, IndexedDB, etc.)</li>
+</ol>
+
+<p><br /></p>
 
 <h3 id="summary">Summary</h3>
 
@@ -319,36 +335,44 @@ January 2, 2025
   }
 </style>
 
-<div class="info-box info-box-default">
+<div class="info-box info-box-default-not-check">
   <strong>Construction Phase</strong>
   <ul>
     <li>
       <strong>STEP 1: Browser - DNS</strong><br />
       - User enters website URL (www.a.com).<br />
-      - Browser queries DNS for host's IP address.<br />
+      - Browser checks its cache for DNS records.<br />
+      - If not found, browser queries DNS resolver cache.<br />
+      - If still not found, DNS server performs recursive query to find IP.<br />
       - DNS returns IP address (e.g., 1.1.1.1).
     </li>
     <li>
       <strong>STEP 2: Browser - Server</strong><br />
       - Browser connects to server with IP address using random sequence number.<br />
       - Performs 3-Way Handshake (SYN → SYN/ACK → ACK).<br />
-      - Browser sends HTTP Request.<br />
-      - Server responds with HTTP Response.
+      - For HTTPS, TLS handshake occurs (cipher suites, certificate validation).<br />
+      - Browser sends HTTP Request with headers (User-Agent, Accept, etc.).<br />
+      - Server processes request and prepares response.<br />
+      - Server responds with HTTP Response (status code, headers, content).
     </li>
     <li>
       <strong>STEP 3: Browser - Parsing</strong><br />
       - Browser parses received data according to W3C specifications.<br />
-      - Rendering engine creates DOM Tree from HTML.<br />
+      - Rendering engine creates DOM Tree from HTML (document object model).<br />
       - When encountering Style tags:<br />
         - Pauses DOM creation.<br />
-        - Parses CSS to create CSSOM Tree.<br />
+        - Parses CSS to create CSSOM Tree (CSS object model).<br />
+        - Prioritizes render-critical CSS.<br />
+        - Resolves styles with specificity rules.<br />
         - Resumes DOM creation.<br />
       - When encountering Script tags:<br />
-        - Pauses parsing.<br />
+        - Pauses parsing (unless async/defer attributes).<br />
         - Passes control to JS Engine.<br />
         - Creates AST (Abstract Syntax Tree).<br />
-        - Executes JavaScript code.<br />
-      - Creates Render Tree (DOM Tree + CSSOM Tree).
+        - Compiles JavaScript to bytecode.<br />
+        - Executes JavaScript code which may modify DOM/CSSOM.<br />
+      - Creates Render Tree by combining DOM + CSSOM.<br />
+      - Render Tree only includes visible elements (excludes display:none).
     </li>
   </ul>
 
@@ -356,16 +380,26 @@ January 2, 2025
   <ul>
     <li>
       <strong>STEP 1: Layout</strong><br />
-      - Rendering engine positions Render Tree nodes correctly on the screen.
+      - Rendering engine calculates exact position and size of each element.<br />
+      - Computes the geometry of all elements on the page (width, height, position).<br />
+      - Determines how elements affect each other (ex: parent element dimensions).<br />
+      - Handles responsive layouts with media queries.<br />
+      - This process was historically called "Reflow" in some browsers.
     </li>
     <li>
       <strong>STEP 2: Painting</strong><br />
-      - UI Backend draws UI by traversing Render Tree nodes.
+      - UI Backend converts layout information into actual pixels on screen.<br />
+      - Draws every visual part of the elements (text, colors, borders, shadows, etc.).<br />
+      - Creates multiple layers when necessary for efficient updates.<br />
+      - Uses GPU acceleration for certain CSS properties when available.
     </li>
     <li>
       <strong>STEP 3: Composition</strong><br />
+      - Combines the painted layers into final screens.<br />
       - Arranges node layers in order (based on z-index).<br />
-      - Lower z-index elements first, followed by higher ones.
+      - Lower z-index elements first, followed by higher ones.<br />
+      - Handles transparency and blending between layers.<br />
+      - Most efficient for animations and scrolling (avoids repainting).
     </li>
   </ul>
 </div>
@@ -373,6 +407,117 @@ January 2, 2025
 <p><br /></p>
 
 <hr />
+
+<h3 id="critical-rendering-path">Critical Rendering Path</h3>
+
+<div class="info-box info-box-default-not-check">
+  <p>The Critical Rendering Path is the sequence of steps browsers take to convert HTML, CSS, and JavaScript into actual pixels on the screen:</p>
+  
+  <ol>
+    <li><strong>HTML Processing → DOM:</strong> Parse HTML to create the Document Object Model</li>
+    <li><strong>CSS Processing → CSSOM:</strong> Parse CSS to create the CSS Object Model</li>
+    <li><strong>JavaScript Execution:</strong> Execute JavaScript that might modify DOM and CSSOM</li>
+    <li><strong>Render Tree Construction:</strong> Combine DOM and CSSOM into a render tree</li>
+    <li><strong>Layout:</strong> Calculate the exact position and size of each element</li>
+    <li><strong>Paint:</strong> Fill in pixels for all visible content</li>
+    <li><strong>Composite:</strong> Draw the layers in the correct order</li>
+  </ol>
+  
+  <p><strong>Optimizing the Critical Rendering Path:</strong></p>
+  <ul>
+    <li>Minimize number of critical resources (HTML, CSS, JS needed for initial render)</li>
+    <li>Minimize critical path length by optimizing the order resources are loaded</li>
+    <li>Minimize number of critical bytes by compressing and optimizing resources</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h3 id="performance-optimization-techniques">Performance Optimization Techniques</h3>
+
+<div class="info-box info-box-default-not-check">
+  <ul>
+    <li>
+      <strong>Resource Loading Optimization:</strong>
+      <ul>
+        <li>Use <code>async</code> and <code>defer</code> attributes for non-critical JavaScript</li>
+        <li>Load critical CSS inline and non-critical CSS asynchronously</li>
+        <li>Implement resource hints: preload, prefetch, preconnect</li>
+        <li>Use HTTP/2 for parallel loading of resources</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Rendering Optimization:</strong>
+      <ul>
+        <li>Avoid layout thrashing (multiple forced reflows)</li>
+        <li>Use CSS <code>will-change</code> property for elements that will animate</li>
+        <li>Use hardware-accelerated CSS properties (transform, opacity) for animations</li>
+        <li>Implement code-splitting to reduce initial JavaScript load</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Measurement Tools:</strong>
+      <ul>
+        <li>Lighthouse for performance auditing</li>
+        <li>Chrome DevTools Performance panel</li>
+        <li>WebPageTest for detailed waterfall analysis</li>
+        <li>Core Web Vitals metrics (LCP, FID, CLS)</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h3 id="browser-differences">Browser Differences</h3>
+
+<div class="info-box info-box-default-not-check">
+  <p>Different browsers use different rendering engines and JavaScript engines:</p>
+  
+  <table style="width:100%">
+    <tr>
+      <th>Browser</th>
+      <th>Rendering Engine</th>
+      <th>JavaScript Engine</th>
+    </tr>
+    <tr>
+      <td>Chrome</td>
+      <td>Blink</td>
+      <td>V8</td>
+    </tr>
+    <tr>
+      <td>Firefox</td>
+      <td>Gecko</td>
+      <td>SpiderMonkey</td>
+    </tr>
+    <tr>
+      <td>Safari</td>
+      <td>WebKit</td>
+      <td>JavaScriptCore (Nitro)</td>
+    </tr>
+    <tr>
+      <td>Edge (modern)</td>
+      <td>Blink</td>
+      <td>V8</td>
+    </tr>
+    <tr>
+      <td>Internet Explorer</td>
+      <td>Trident</td>
+      <td>Chakra</td>
+    </tr>
+  </table>
+  
+  <p><strong>Key Differences:</strong></p>
+  <ul>
+    <li>Feature support (check caniuse.com for compatibility)</li>
+    <li>Performance characteristics</li>
+    <li>Developer tools capabilities</li>
+    <li>Implementation of standards</li>
+    <li>Security model and sandboxing</li>
+  </ul>
+</div>
+
+<p><br /></p>
 
 <h3 id="additional-notes">Additional Notes</h3>
 
@@ -383,11 +528,33 @@ January 2, 2025
   <li>This explains why web pages load progressively rather than all at once</li>
 </ul>
 
+<h3 id="real-world-example-loading-a-modern-web-page">Real-World Example: Loading a Modern Web Page</h3>
+
+<div class="info-box info-box-default">
+  <p>When loading a typical website (e.g., an e-commerce site):</p>
+  
+  <ol>
+    <li>Browser resolves DNS and establishes HTTPS connection</li>
+    <li>Receives initial HTML (first contentful paint may occur)</li>
+    <li>Requests CSS files referenced in HTML</li>
+    <li>Requests JavaScript files (async/defer determines when they execute)</li>
+    <li>Requests web fonts</li>
+    <li>JavaScript might fetch additional data via AJAX/fetch API</li>
+    <li>Single Page Applications (SPAs) perform client-side rendering after initial load</li>
+    <li>Progressive Web Apps (PWAs) might use service workers to cache resources</li>
+    <li>Third-party scripts (analytics, ads) might load additional resources</li>
+    <li>Lazy-loading might defer images and other content until scrolled into view</li>
+  </ol>
+</div>
+
 <h3 id="-key-points">🔑 Key Points</h3>
 <ol>
   <li>CSS is a render-blocking resource, not a parsing-blocking resource</li>
-  <li>JavaScript execution blocks parsing</li>
+  <li>JavaScript execution blocks parsing (unless async/defer is used)</li>
   <li>Progressive rendering improves perceived performance</li>
+  <li>DOM and CSSOM construction must complete before render tree creation</li>
+  <li>Layout and painting are computationally expensive operations</li>
+  <li>Compositing allows for efficient animations and scrolling</li>
 </ol>
 
 <p><br /></p>
@@ -400,6 +567,10 @@ January 2, 2025
   <li><a href="https://all-young.tistory.com/21">Understanding Browser Rendering</a></li>
   <li><a href="https://ddangjiwon.tistory.com/138">Web Browser Architecture</a></li>
   <li><a href="https://bbangson.tistory.com/87">Browser Rendering Process</a></li>
+  <li><a href="https://developer.chrome.com/docs/devtools/">Chrome DevTools Documentation</a></li>
+  <li><a href="https://developers.google.com/web/fundamentals/performance/critical-rendering-path">Critical Rendering Path - Google Web Fundamentals</a></li>
+  <li><a href="https://developers.google.com/web/updates/2018/09/inside-browser-part1">Inside look at modern web browser (Chrome) - Google</a></li>
+  <li><a href="https://html.spec.whatwg.org/">HTML Living Standard - WHATWG</a></li>
 </ul>
 
 
@@ -450,7 +621,7 @@ January 2, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="3">
+            <div class="time-bar" data-minutes="8">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -758,6 +929,22 @@ January 2, 2025
 Overview
 Let’s explore how web browsers work internally, from the moment a user enters a URL until the page is displayed.
 
+Browser Components
+
+Modern web browsers consist of several main components:
+
+
+  User Interface - Address bar, back/forward buttons, bookmarks, etc.
+  Browser Engine - Marshals actions between the UI and the rendering engine
+  Rendering Engine - Responsible for displaying requested content (parses HTML and CSS)
+  Networking - Handles HTTP requests
+  JavaScript Engine - Parses and executes JavaScript code (e.g., V8 in Chrome)
+  UI Backend - Used for drawing basic widgets like combo boxes and windows
+  Data Storage - Persistence layer (cookies, localStorage, IndexedDB, etc.)
+
+
+
+
 Summary
 
 
@@ -827,30 +1014,38 @@ Web Browser Working Process Flow Chart
     
       STEP 1: Browser - DNS
       - User enters website URL (www.a.com).
-      - Browser queries DNS for host&apos;s IP address.
+      - Browser checks its cache for DNS records.
+      - If not found, browser queries DNS resolver cache.
+      - If still not found, DNS server performs recursive query to find IP.
       - DNS returns IP address (e.g., 1.1.1.1).
     
     
       STEP 2: Browser - Server
       - Browser connects to server with IP address using random sequence number.
       - Performs 3-Way Handshake (SYN → SYN/ACK → ACK).
-      - Browser sends HTTP Request.
-      - Server responds with HTTP Response.
+      - For HTTPS, TLS handshake occurs (cipher suites, certificate validation).
+      - Browser sends HTTP Request with headers (User-Agent, Accept, etc.).
+      - Server processes request and prepares response.
+      - Server responds with HTTP Response (status code, headers, content).
     
     
       STEP 3: Browser - Parsing
       - Browser parses received data according to W3C specifications.
-      - Rendering engine creates DOM Tree from HTML.
+      - Rendering engine creates DOM Tree from HTML (document object model).
       - When encountering Style tags:
         - Pauses DOM creation.
-        - Parses CSS to create CSSOM Tree.
+        - Parses CSS to create CSSOM Tree (CSS object model).
+        - Prioritizes render-critical CSS.
+        - Resolves styles with specificity rules.
         - Resumes DOM creation.
       - When encountering Script tags:
-        - Pauses parsing.
+        - Pauses parsing (unless async/defer attributes).
         - Passes control to JS Engine.
         - Creates AST (Abstract Syntax Tree).
-        - Executes JavaScript code.
-      - Creates Render Tree (DOM Tree + CSSOM Tree).
+        - Compiles JavaScript to bytecode.
+        - Executes JavaScript code which may modify DOM/CSSOM.
+      - Creates Render Tree by combining DOM + CSSOM.
+      - Render Tree only includes visible elements (excludes display:none).
     
   
 
@@ -858,20 +1053,141 @@ Web Browser Working Process Flow Chart
   
     
       STEP 1: Layout
-      - Rendering engine positions Render Tree nodes correctly on the screen.
+      - Rendering engine calculates exact position and size of each element.
+      - Computes the geometry of all elements on the page (width, height, position).
+      - Determines how elements affect each other (ex: parent element dimensions).
+      - Handles responsive layouts with media queries.
+      - This process was historically called &quot;Reflow&quot; in some browsers.
     
     
       STEP 2: Painting
-      - UI Backend draws UI by traversing Render Tree nodes.
+      - UI Backend converts layout information into actual pixels on screen.
+      - Draws every visual part of the elements (text, colors, borders, shadows, etc.).
+      - Creates multiple layers when necessary for efficient updates.
+      - Uses GPU acceleration for certain CSS properties when available.
     
     
       STEP 3: Composition
+      - Combines the painted layers into final screens.
       - Arranges node layers in order (based on z-index).
       - Lower z-index elements first, followed by higher ones.
+      - Handles transparency and blending between layers.
+      - Most efficient for animations and scrolling (avoids repainting).
     
   
 
 
+
+
+
+
+Critical Rendering Path
+
+
+  The Critical Rendering Path is the sequence of steps browsers take to convert HTML, CSS, and JavaScript into actual pixels on the screen:
+  
+  
+    HTML Processing → DOM: Parse HTML to create the Document Object Model
+    CSS Processing → CSSOM: Parse CSS to create the CSS Object Model
+    JavaScript Execution: Execute JavaScript that might modify DOM and CSSOM
+    Render Tree Construction: Combine DOM and CSSOM into a render tree
+    Layout: Calculate the exact position and size of each element
+    Paint: Fill in pixels for all visible content
+    Composite: Draw the layers in the correct order
+  
+  
+  Optimizing the Critical Rendering Path:
+  
+    Minimize number of critical resources (HTML, CSS, JS needed for initial render)
+    Minimize critical path length by optimizing the order resources are loaded
+    Minimize number of critical bytes by compressing and optimizing resources
+  
+
+
+
+
+Performance Optimization Techniques
+
+
+  
+    
+      Resource Loading Optimization:
+      
+        Use async and defer attributes for non-critical JavaScript
+        Load critical CSS inline and non-critical CSS asynchronously
+        Implement resource hints: preload, prefetch, preconnect
+        Use HTTP/2 for parallel loading of resources
+      
+    
+    
+      Rendering Optimization:
+      
+        Avoid layout thrashing (multiple forced reflows)
+        Use CSS will-change property for elements that will animate
+        Use hardware-accelerated CSS properties (transform, opacity) for animations
+        Implement code-splitting to reduce initial JavaScript load
+      
+    
+    
+      Measurement Tools:
+      
+        Lighthouse for performance auditing
+        Chrome DevTools Performance panel
+        WebPageTest for detailed waterfall analysis
+        Core Web Vitals metrics (LCP, FID, CLS)
+      
+    
+  
+
+
+
+
+Browser Differences
+
+
+  Different browsers use different rendering engines and JavaScript engines:
+  
+  
+    
+      Browser
+      Rendering Engine
+      JavaScript Engine
+    
+    
+      Chrome
+      Blink
+      V8
+    
+    
+      Firefox
+      Gecko
+      SpiderMonkey
+    
+    
+      Safari
+      WebKit
+      JavaScriptCore (Nitro)
+    
+    
+      Edge (modern)
+      Blink
+      V8
+    
+    
+      Internet Explorer
+      Trident
+      Chakra
+    
+  
+  
+  Key Differences:
+  
+    Feature support (check caniuse.com for compatibility)
+    Performance characteristics
+    Developer tools capabilities
+    Implementation of standards
+    Security model and sandboxing
+  
 
 
 
@@ -885,11 +1201,33 @@ The parsing, layout, and UI drawing processes don’t wait for all data to be re
   This explains why web pages load progressively rather than all at once
 
 
+Real-World Example: Loading a Modern Web Page
+
+
+  When loading a typical website (e.g., an e-commerce site):
+  
+  
+    Browser resolves DNS and establishes HTTPS connection
+    Receives initial HTML (first contentful paint may occur)
+    Requests CSS files referenced in HTML
+    Requests JavaScript files (async/defer determines when they execute)
+    Requests web fonts
+    JavaScript might fetch additional data via AJAX/fetch API
+    Single Page Applications (SPAs) perform client-side rendering after initial load
+    Progressive Web Apps (PWAs) might use service workers to cache resources
+    Third-party scripts (analytics, ads) might load additional resources
+    Lazy-loading might defer images and other content until scrolled into view
+  
+
+
 🔑 Key Points
 
   CSS is a render-blocking resource, not a parsing-blocking resource
-  JavaScript execution blocks parsing
+  JavaScript execution blocks parsing (unless async/defer is used)
   Progressive rendering improves perceived performance
+  DOM and CSSOM construction must complete before render tree creation
+  Layout and painting are computationally expensive operations
+  Compositing allows for efficient animations and scrolling
 
 
 
@@ -902,9 +1240,13 @@ Reference
   Understanding Browser Rendering
   Web Browser Architecture
   Browser Rendering Process
+  Chrome DevTools Documentation
+  Critical Rendering Path - Google Web Fundamentals
+  Inside look at modern web browser (Chrome) - Google
+  HTML Living Standard - WHATWG
 
 ",
-            "wordcount": "677",
+            "wordcount": "1458",
             "inLanguage": "en",
             "dateCreated": "2025-01-02/",
             "datePublished": "2025-01-02/",

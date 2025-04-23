@@ -220,7 +220,7 @@ January 23, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>13 min to read</span>
                 </p>
                 <h1 class="post-title">Setting up GitHub Action Self-Hosted Runner on Kubernetes</h1>
                 <p class="post-subtitle">A comprehensive guide to implementing GitHub Action Hosted Runner with Helm</p>
@@ -271,6 +271,40 @@ January 23, 2025
     <li>Controls scaling and lifecycle through GitHub Actions API</li>
     <li>Optimizes communication between workflows and runners</li>
   </ul>
+</div>
+
+<h4 id="self-hosted-vs-github-hosted-runners-comparison">Self-Hosted vs. GitHub-Hosted Runners Comparison</h4>
+
+<div class="info-box info-box-info">
+<br />
+<strong>Self-Hosted Runners:</strong><br /><br />
+
+<strong>Advantages:</strong>
+   - Custom hardware specifications<br />
+   - Access to internal network resources<br />
+   - No minute limitations<br />
+   - Better performance for specific workloads<br />
+   - More control over the environment<br /><br />
+
+<strong>Disadvantages:</strong>
+   - Requires maintenance and updates<br />
+   - Security considerations for public repositories<br />
+   - Infrastructure costs<br />
+   - Setup and configuration overhead<br /><br />
+
+<strong>GitHub-Hosted Runners:</strong><br /><br />
+
+<strong>Advantages:</strong>
+   - Zero maintenance<br />
+   - Automatic updates<br />
+   - Clean environment for each job<br />
+   - Simple setup<br /><br />
+
+<strong>Disadvantages:</strong>
+   - Limited job execution time (6 hours)<br />
+   - Limited storage and CPU<br />
+   - Minute limitations on free/paid plans<br />
+   - No access to internal network resources<br /><br />
 </div>
 
 <p><br /></p>
@@ -421,6 +455,150 @@ January 23, 2025
 
 <p><br /></p>
 
+<h3 id="advanced-runner-configurations">Advanced Runner Configurations</h3>
+
+<h4 id="1-auto-scaling-runners">1. Auto-Scaling Runners</h4>
+
+<p>Create a Horizontal Pod Autoscaler (HPA) for runners:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">HorizontalRunnerAutoscaler</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">runner-autoscaler</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">scaleTargetRef</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">example-runner</span>
+  <span class="na">minReplicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">maxReplicas</span><span class="pi">:</span> <span class="m">10</span>
+  <span class="na">metrics</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">type</span><span class="pi">:</span> <span class="s">TotalNumberOfQueuedAndInProgressWorkflowRuns</span>
+    <span class="na">repositoryNames</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">your-github-username/your-repository</span>
+</code></pre></div></div>
+
+<h4 id="2-organization-level-runners">2. Organization-Level Runners</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RunnerDeployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">org-runner</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">2</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">organization</span><span class="pi">:</span> <span class="s2">"</span><span class="s">your-organization"</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">org-runner</span>
+        <span class="pi">-</span> <span class="s">linux</span>
+        <span class="pi">-</span> <span class="s">x64</span>
+</code></pre></div></div>
+
+<h4 id="3-runner-with-docker-in-docker-dind-support">3. Runner with Docker-in-Docker (DinD) Support</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RunnerDeployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">docker-runner</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">repository</span><span class="pi">:</span> <span class="s2">"</span><span class="s">your-github-username/your-repository"</span>
+      <span class="na">image</span><span class="pi">:</span> <span class="s">summerwind/actions-runner:latest</span>
+      <span class="na">dockerEnabled</span><span class="pi">:</span> <span class="no">true</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">docker</span>
+        <span class="pi">-</span> <span class="s">linux</span>
+</code></pre></div></div>
+
+<h4 id="4-ephemeral-runners-run-once-and-terminate">4. Ephemeral Runners (Run once and terminate)</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RunnerDeployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">ephemeral-runner</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">repository</span><span class="pi">:</span> <span class="s2">"</span><span class="s">your-github-username/your-repository"</span>
+      <span class="na">ephemeral</span><span class="pi">:</span> <span class="no">true</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">ephemeral</span>
+        <span class="pi">-</span> <span class="s">linux</span>
+</code></pre></div></div>
+
+<h4 id="5-github-app-authentication-configuration">5. GitHub App Authentication Configuration</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># GitHub App Secret</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">github-app-secret</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">actions-runner-system</span>
+<span class="na">type</span><span class="pi">:</span> <span class="s">Opaque</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">app-id</span><span class="pi">:</span> <span class="s2">"</span><span class="s">APP_ID_BASE64"</span>
+  <span class="na">installation-id</span><span class="pi">:</span> <span class="s2">"</span><span class="s">INSTALLATION_ID_BASE64"</span>
+  <span class="na">private-key</span><span class="pi">:</span> <span class="s2">"</span><span class="s">PRIVATE_KEY_BASE64"</span>
+
+<span class="c1"># Controller configuration</span>
+<span class="na">authSecret</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">create</span><span class="pi">:</span> <span class="no">false</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">github-app-secret"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="resource-management-and-optimization">Resource Management and Optimization</h3>
+
+<h4 id="1-runner-resource-configuration">1. Runner Resource Configuration</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RunnerDeployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">resource-optimized-runner</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">repository</span><span class="pi">:</span> <span class="s2">"</span><span class="s">your-github-username/your-repository"</span>
+      <span class="na">resources</span><span class="pi">:</span>
+        <span class="na">limits</span><span class="pi">:</span>
+          <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2.0"</span>
+          <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">4Gi"</span>
+        <span class="na">requests</span><span class="pi">:</span>
+          <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1.0"</span>
+          <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2Gi"</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">resource-optimized</span>
+</code></pre></div></div>
+
+<h4 id="2-runner-with-node-selectors-and-tolerations">2. Runner with Node Selectors and Tolerations</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RunnerDeployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">dedicated-node-runner</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">repository</span><span class="pi">:</span> <span class="s2">"</span><span class="s">your-github-username/your-repository"</span>
+      <span class="na">nodeSelector</span><span class="pi">:</span>
+        <span class="na">node-type</span><span class="pi">:</span> <span class="s">actions-runner</span>
+      <span class="na">tolerations</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">key</span><span class="pi">:</span> <span class="s2">"</span><span class="s">dedicated"</span>
+        <span class="na">operator</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Equal"</span>
+        <span class="na">value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">actions-runner"</span>
+        <span class="na">effect</span><span class="pi">:</span> <span class="s2">"</span><span class="s">NoSchedule"</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">dedicated-node</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
 <h3 id="verification">Verification</h3>
 
 <h4 id="check-installation">Check Installation</h4>
@@ -445,6 +623,211 @@ kubectl get runnerdeployments.actions.summerwind.dev
     <span class="na">steps</span><span class="pi">:</span>
       <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Test Step</span>
         <span class="na">run</span><span class="pi">:</span> <span class="s">echo "Running on self-hosted runner"</span>
+</code></pre></div></div>
+
+<h4 id="advanced-workflow-examples">Advanced Workflow Examples</h4>
+
+<h5 id="using-docker-in-self-hosted-runner">Using Docker in Self-Hosted Runner</h5>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">Docker Build and Test</span>
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">main</span><span class="pi">]</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">build</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">self-hosted</span><span class="pi">,</span> <span class="nv">docker</span><span class="pi">]</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v3</span>
+      
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Build Docker image</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">docker build -t my-app:$ .</span>
+          
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Test Docker image</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">docker run --rm my-app:$ npm test</span>
+</code></pre></div></div>
+
+<h5 id="workflow-with-multiple-runner-types">Workflow with Multiple Runner Types</h5>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">Multi-Runner Workflow</span>
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">pull_request</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">main</span><span class="pi">]</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">build</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">self-hosted</span><span class="pi">,</span> <span class="nv">linux</span><span class="pi">,</span> <span class="nv">build</span><span class="pi">]</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v3</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Build App</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">npm ci &amp;&amp; npm run build</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Upload Artifact</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/upload-artifact@v3</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">build</span>
+          <span class="na">path</span><span class="pi">:</span> <span class="s">build/</span>
+          
+  <span class="na">test</span><span class="pi">:</span>
+    <span class="na">needs</span><span class="pi">:</span> <span class="s">build</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">self-hosted</span><span class="pi">,</span> <span class="nv">linux</span><span class="pi">,</span> <span class="nv">test</span><span class="pi">]</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v3</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Download Artifact</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/download-artifact@v3</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">build</span>
+          <span class="na">path</span><span class="pi">:</span> <span class="s">build/</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Run Tests</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">npm ci &amp;&amp; npm test</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="troubleshooting">Troubleshooting</h3>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Common Issues and Solutions:</strong><br /><br />
+
+<strong>1. Runner Registration Failures:</strong>
+   - Check PAT token or GitHub App authentication<br />
+   - Verify network connectivity to GitHub<br />
+   - Ensure proper permissions for tokens<br />
+   - Check logs: `kubectl logs -n actions-runner-system deployment/actions-runner-controller-controller-manager`<br /><br />
+
+<strong>2. Runner Pod Crashes:</strong>
+   - Check resource limits<br />
+   - Verify container image compatibility<br />
+   - Inspect pod logs: `kubectl logs -n actions-runner-system pod/runner-pod-name`<br />
+   - Check pod events: `kubectl describe pod -n actions-runner-system runner-pod-name`<br /><br />
+
+<strong>3. Runners Not Picking Up Jobs:</strong>
+   - Verify runner labels match workflow configuration<br />
+   - Check if runners are idle or busy<br />
+   - Ensure proper repository/organization configuration<br />
+   - Check runner status in GitHub UI<br /><br />
+
+<strong>4. Docker-in-Docker Issues:</strong>
+   - Verify `dockerEnabled: true` is set<br />
+   - Check if runner has proper privileges<br />
+   - Inspect DinD sidecar logs<br />
+   - Consider volume configuration for Docker socket<br /><br />
+</div>
+
+<h4 id="useful-debugging-commands">Useful Debugging Commands</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check controller status</span>
+kubectl logs <span class="nt">-n</span> actions-runner-system deployment/actions-runner-controller-controller-manager
+
+<span class="c"># View runner deployment status</span>
+kubectl describe runnerdeployments.actions.summerwind.dev example-runner
+
+<span class="c"># Check runner pod logs</span>
+kubectl logs <span class="nt">-n</span> actions-runner-system pod/example-runner-pod-name
+
+<span class="c"># Verify runner set status</span>
+kubectl get runnersets.actions.summerwind.dev <span class="nt">-n</span> actions-runner-system
+
+<span class="c"># Check runner autoscaler status</span>
+kubectl describe horizontalrunnerautoscaler.actions.summerwind.dev runner-autoscaler
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="security-best-practices">Security Best Practices</h3>
+
+<div class="info-box info-box-success">
+<br />
+<strong>Security Recommendations:</strong><br /><br />
+
+<strong>1. Runner Isolation:</strong>
+   - Use ephemeral runners for untrusted code<br />
+   - Isolate runners in dedicated namespaces<br />
+   - Consider using runner groups for sensitive projects<br />
+   - Implement network policies to restrict communication<br /><br />
+
+<strong>2. Authentication:</strong>
+   - Use GitHub Apps instead of PAT tokens<br />
+   - Rotate private keys regularly<br />
+   - Store secrets securely using Kubernetes Secrets<br />
+   - Implement least privilege principle for tokens<br /><br />
+
+<strong>3. Runner Protection:</strong>
+   - Don't grant sudo/admin privileges unless necessary<br />
+   - Limit runner capabilities<br />
+   - Consider using gVisor or similar sandbox technologies<br />
+   - Scan runner images for vulnerabilities<br /><br />
+
+<strong>4. Docker Security:</strong>
+   - Use rootless Docker when possible<br />
+   - Implement proper resource limits<br />
+   - Consider alternatives like Kaniko for building without Docker daemon<br />
+   - Scan container images during build<br /><br />
+</div>
+
+<h4 id="sample-secure-runner-configuration">Sample Secure Runner Configuration</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RunnerDeployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">secure-runner</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">repository</span><span class="pi">:</span> <span class="s2">"</span><span class="s">your-github-username/your-repository"</span>
+      <span class="na">ephemeral</span><span class="pi">:</span> <span class="no">true</span>
+      <span class="na">securityContext</span><span class="pi">:</span>
+        <span class="na">runAsNonRoot</span><span class="pi">:</span> <span class="no">true</span>
+        <span class="na">runAsUser</span><span class="pi">:</span> <span class="m">1000</span>
+        <span class="na">fsGroup</span><span class="pi">:</span> <span class="m">1000</span>
+      <span class="na">volumeMounts</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">tmp</span>
+          <span class="na">mountPath</span><span class="pi">:</span> <span class="s">/tmp</span>
+      <span class="na">volumes</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">tmp</span>
+          <span class="na">emptyDir</span><span class="pi">:</span> <span class="pi">{}</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">secure-runner</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="upgrade-and-maintenance">Upgrade and Maintenance</h3>
+
+<h4 id="upgrading-actions-runner-controller">Upgrading Actions Runner Controller</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update Helm repository</span>
+helm repo update
+
+<span class="c"># Upgrade controller</span>
+helm upgrade actions-runner-controller actions-runner-controller/actions-runner-controller <span class="se">\</span>
+    <span class="nt">-n</span> actions-runner-system <span class="se">\</span>
+    <span class="nt">-f</span> runner.yaml
+</code></pre></div></div>
+
+<h4 id="scaling-for-production-workloads">Scaling for Production Workloads</h4>
+
+<p>For production environments, consider the following scaling configurations:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">actions.summerwind.dev/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">HorizontalRunnerAutoscaler</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">production-runner-autoscaler</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">scaleTargetRef</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">production-runner</span>
+  <span class="na">minReplicas</span><span class="pi">:</span> <span class="m">2</span>
+  <span class="na">maxReplicas</span><span class="pi">:</span> <span class="m">20</span>
+  <span class="na">scaleDownDelaySecondsAfterScaleOut</span><span class="pi">:</span> <span class="m">300</span>
+  <span class="na">metrics</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">type</span><span class="pi">:</span> <span class="s">PercentageRunnersBusy</span>
+    <span class="na">scaleUpThreshold</span><span class="pi">:</span> <span class="s1">'</span><span class="s">0.75'</span>
+    <span class="na">scaleDownThreshold</span><span class="pi">:</span> <span class="s1">'</span><span class="s">0.25'</span>
+    <span class="na">scaleUpFactor</span><span class="pi">:</span> <span class="s1">'</span><span class="s">2'</span>
+    <span class="na">scaleDownFactor</span><span class="pi">:</span> <span class="s1">'</span><span class="s">0.5'</span>
 </code></pre></div></div>
 
 <p><br /></p>
@@ -475,6 +858,9 @@ kubectl get runnerdeployments.actions.summerwind.dev
   <li><a href="https://github.com/actions/actions-runner-controller">Actions Runner Controller GitHub</a></li>
   <li><a href="https://docs.github.com/en/actions/hosting-your-own-runners">GitHub Self-Hosted Runners Documentation</a></li>
   <li><a href="https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners">Managing Self-Hosted Runners</a></li>
+  <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/rbac/">Kubernetes RBAC Documentation</a></li>
+  <li><a href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions">GitHub Actions Security Hardening</a></li>
+  <li><a href="https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/">Autoscaling with Kubernetes</a></li>
 </ul>
 
 
@@ -525,7 +911,7 @@ kubectl get runnerdeployments.actions.summerwind.dev
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="13">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -863,6 +1249,40 @@ Components Overview
   
 
 
+Self-Hosted vs. GitHub-Hosted Runners Comparison
+
+
+
+Self-Hosted Runners:
+
+Advantages:
+   - Custom hardware specifications
+   - Access to internal network resources
+   - No minute limitations
+   - Better performance for specific workloads
+   - More control over the environment
+
+Disadvantages:
+   - Requires maintenance and updates
+   - Security considerations for public repositories
+   - Infrastructure costs
+   - Setup and configuration overhead
+
+GitHub-Hosted Runners:
+
+Advantages:
+   - Zero maintenance
+   - Automatic updates
+   - Clean environment for each job
+   - Simple setup
+
+Disadvantages:
+   - Limited job execution time (6 hours)
+   - Limited storage and CPU
+   - Minute limitations on free/paid plans
+   - No access to internal network resources
+
+
 
 
 Prerequisites
@@ -1011,6 +1431,150 @@ spec:
 
 
 
+Advanced Runner Configurations
+
+1. Auto-Scaling Runners
+
+Create a Horizontal Pod Autoscaler (HPA) for runners:
+
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: runner-autoscaler
+spec:
+  scaleTargetRef:
+    name: example-runner
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
+    repositoryNames:
+    - your-github-username/your-repository
+
+
+2. Organization-Level Runners
+
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: org-runner
+spec:
+  replicas: 2
+  template:
+    spec:
+      organization: &quot;your-organization&quot;
+      labels:
+        - org-runner
+        - linux
+        - x64
+
+
+3. Runner with Docker-in-Docker (DinD) Support
+
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: docker-runner
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: &quot;your-github-username/your-repository&quot;
+      image: summerwind/actions-runner:latest
+      dockerEnabled: true
+      labels:
+        - docker
+        - linux
+
+
+4. Ephemeral Runners (Run once and terminate)
+
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: ephemeral-runner
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: &quot;your-github-username/your-repository&quot;
+      ephemeral: true
+      labels:
+        - ephemeral
+        - linux
+
+
+5. GitHub App Authentication Configuration
+
+# GitHub App Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-app-secret
+  namespace: actions-runner-system
+type: Opaque
+data:
+  app-id: &quot;APP_ID_BASE64&quot;
+  installation-id: &quot;INSTALLATION_ID_BASE64&quot;
+  private-key: &quot;PRIVATE_KEY_BASE64&quot;
+
+# Controller configuration
+authSecret:
+  enabled: true
+  create: false
+  name: &quot;github-app-secret&quot;
+
+
+
+
+Resource Management and Optimization
+
+1. Runner Resource Configuration
+
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: resource-optimized-runner
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: &quot;your-github-username/your-repository&quot;
+      resources:
+        limits:
+          cpu: &quot;2.0&quot;
+          memory: &quot;4Gi&quot;
+        requests:
+          cpu: &quot;1.0&quot;
+          memory: &quot;2Gi&quot;
+      labels:
+        - resource-optimized
+
+
+2. Runner with Node Selectors and Tolerations
+
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: dedicated-node-runner
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: &quot;your-github-username/your-repository&quot;
+      nodeSelector:
+        node-type: actions-runner
+      tolerations:
+      - key: &quot;dedicated&quot;
+        operator: &quot;Equal&quot;
+        value: &quot;actions-runner&quot;
+        effect: &quot;NoSchedule&quot;
+      labels:
+        - dedicated-node
+
+
+
+
 Verification
 
 Check Installation
@@ -1035,6 +1599,211 @@ jobs:
     steps:
       - name: Test Step
         run: echo &quot;Running on self-hosted runner&quot;
+
+
+Advanced Workflow Examples
+
+Using Docker in Self-Hosted Runner
+
+name: Docker Build and Test
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: [self-hosted, docker]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Docker image
+        run: |
+          docker build -t my-app:$ .
+          
+      - name: Test Docker image
+        run: |
+          docker run --rm my-app:$ npm test
+
+
+Workflow with Multiple Runner Types
+
+name: Multi-Runner Workflow
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux, build]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build App
+        run: npm ci &amp;amp;&amp;amp; npm run build
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: build/
+          
+  test:
+    needs: build
+    runs-on: [self-hosted, linux, test]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: build/
+      - name: Run Tests
+        run: npm ci &amp;amp;&amp;amp; npm test
+
+
+
+
+Troubleshooting
+
+
+
+Common Issues and Solutions:
+
+1. Runner Registration Failures:
+   - Check PAT token or GitHub App authentication
+   - Verify network connectivity to GitHub
+   - Ensure proper permissions for tokens
+   - Check logs: `kubectl logs -n actions-runner-system deployment/actions-runner-controller-controller-manager`
+
+2. Runner Pod Crashes:
+   - Check resource limits
+   - Verify container image compatibility
+   - Inspect pod logs: `kubectl logs -n actions-runner-system pod/runner-pod-name`
+   - Check pod events: `kubectl describe pod -n actions-runner-system runner-pod-name`
+
+3. Runners Not Picking Up Jobs:
+   - Verify runner labels match workflow configuration
+   - Check if runners are idle or busy
+   - Ensure proper repository/organization configuration
+   - Check runner status in GitHub UI
+
+4. Docker-in-Docker Issues:
+   - Verify `dockerEnabled: true` is set
+   - Check if runner has proper privileges
+   - Inspect DinD sidecar logs
+   - Consider volume configuration for Docker socket
+
+
+Useful Debugging Commands
+
+# Check controller status
+kubectl logs -n actions-runner-system deployment/actions-runner-controller-controller-manager
+
+# View runner deployment status
+kubectl describe runnerdeployments.actions.summerwind.dev example-runner
+
+# Check runner pod logs
+kubectl logs -n actions-runner-system pod/example-runner-pod-name
+
+# Verify runner set status
+kubectl get runnersets.actions.summerwind.dev -n actions-runner-system
+
+# Check runner autoscaler status
+kubectl describe horizontalrunnerautoscaler.actions.summerwind.dev runner-autoscaler
+
+
+
+
+Security Best Practices
+
+
+
+Security Recommendations:
+
+1. Runner Isolation:
+   - Use ephemeral runners for untrusted code
+   - Isolate runners in dedicated namespaces
+   - Consider using runner groups for sensitive projects
+   - Implement network policies to restrict communication
+
+2. Authentication:
+   - Use GitHub Apps instead of PAT tokens
+   - Rotate private keys regularly
+   - Store secrets securely using Kubernetes Secrets
+   - Implement least privilege principle for tokens
+
+3. Runner Protection:
+   - Don&apos;t grant sudo/admin privileges unless necessary
+   - Limit runner capabilities
+   - Consider using gVisor or similar sandbox technologies
+   - Scan runner images for vulnerabilities
+
+4. Docker Security:
+   - Use rootless Docker when possible
+   - Implement proper resource limits
+   - Consider alternatives like Kaniko for building without Docker daemon
+   - Scan container images during build
+
+
+Sample Secure Runner Configuration
+
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: secure-runner
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: &quot;your-github-username/your-repository&quot;
+      ephemeral: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      labels:
+        - secure-runner
+
+
+
+
+Upgrade and Maintenance
+
+Upgrading Actions Runner Controller
+
+# Update Helm repository
+helm repo update
+
+# Upgrade controller
+helm upgrade actions-runner-controller actions-runner-controller/actions-runner-controller \
+    -n actions-runner-system \
+    -f runner.yaml
+
+
+Scaling for Production Workloads
+
+For production environments, consider the following scaling configurations:
+
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: production-runner-autoscaler
+spec:
+  scaleTargetRef:
+    name: production-runner
+  minReplicas: 2
+  maxReplicas: 20
+  scaleDownDelaySecondsAfterScaleOut: 300
+  metrics:
+  - type: PercentageRunnersBusy
+    scaleUpThreshold: &apos;0.75&apos;
+    scaleDownThreshold: &apos;0.25&apos;
+    scaleUpFactor: &apos;2&apos;
+    scaleDownFactor: &apos;0.5&apos;
 
 
 
@@ -1065,9 +1834,12 @@ References
   Actions Runner Controller GitHub
   GitHub Self-Hosted Runners Documentation
   Managing Self-Hosted Runners
+  Kubernetes RBAC Documentation
+  GitHub Actions Security Hardening
+  Autoscaling with Kubernetes
 
 ",
-            "wordcount": "740",
+            "wordcount": "2345",
             "inLanguage": "en",
             "dateCreated": "2025-01-23/",
             "datePublished": "2025-01-23/",

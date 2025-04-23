@@ -220,7 +220,7 @@ January 21, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>5 min to read</span>
+                    <span>15 min to read</span>
                 </p>
                 <h1 class="post-title">GitLab CI/CD Pipeline Configuration Guide</h1>
                 <p class="post-subtitle">Understanding GitLab CI/CD workflow and .gitlab-ci.yml configuration</p>
@@ -484,6 +484,439 @@ CI_REGISTRY_PASSWORD  <span class="c"># GitLab registry password</span>
 
 <p><br /></p>
 
+<h3 id="multi-environment-deployment-with-auto-devops">Multi-Environment Deployment with Auto DevOps</h3>
+
+<p>Here’s an example pipeline that automatically deploys to different environments based on branch names:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">stages</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">build</span>
+  <span class="pi">-</span> <span class="s">test</span>
+  <span class="pi">-</span> <span class="s">review</span>
+  <span class="pi">-</span> <span class="s">staging</span>
+  <span class="pi">-</span> <span class="s">production</span>
+
+<span class="na">variables</span><span class="pi">:</span>
+  <span class="na">DOCKER_DRIVER</span><span class="pi">:</span> <span class="s">overlay2</span>
+  <span class="na">DOCKER_TLS_CERTDIR</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+  <span class="na">ROLLOUT_RESOURCE_TYPE</span><span class="pi">:</span> <span class="s">deployment</span>
+
+<span class="na">include</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">template</span><span class="pi">:</span> <span class="s">Auto-DevOps.gitlab-ci.yml</span>
+
+<span class="na">build</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">build</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">docker:20.10.16</span>
+  <span class="na">services</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker:20.10.16-dind</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY</span>
+    <span class="pi">-</span> <span class="s">docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG .</span>
+    <span class="pi">-</span> <span class="s">docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG</span>
+
+<span class="na">test</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">test</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm ci</span>
+    <span class="pi">-</span> <span class="s">npm test</span>
+
+<span class="na">review</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">review</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">kubectl apply -f k8s/review/</span>
+  <span class="na">environment</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">review/$CI_COMMIT_REF_NAME</span>
+    <span class="na">url</span><span class="pi">:</span> <span class="s">https://review-$CI_COMMIT_REF_SLUG.$KUBE_INGRESS_BASE_DOMAIN</span>
+    <span class="na">on_stop</span><span class="pi">:</span> <span class="s">stop_review</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH != "main" &amp;&amp; $CI_COMMIT_BRANCH != "production"</span>
+
+<span class="na">stop_review</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">review</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">kubectl delete -f k8s/review/</span>
+  <span class="na">environment</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">review/$CI_COMMIT_REF_NAME</span>
+    <span class="na">action</span><span class="pi">:</span> <span class="s">stop</span>
+  <span class="na">when</span><span class="pi">:</span> <span class="s">manual</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH != "main" &amp;&amp; $CI_COMMIT_BRANCH != "production"</span>
+
+<span class="na">staging</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">staging</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">kubectl apply -f k8s/staging/</span>
+  <span class="na">environment</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">staging</span>
+    <span class="na">url</span><span class="pi">:</span> <span class="s">https://staging.$KUBE_INGRESS_BASE_DOMAIN</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH == "main"</span>
+
+<span class="na">production</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">production</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">kubectl apply -f k8s/production/</span>
+  <span class="na">environment</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">production</span>
+    <span class="na">url</span><span class="pi">:</span> <span class="s">https://$KUBE_INGRESS_BASE_DOMAIN</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH == "production"</span>
+  <span class="na">when</span><span class="pi">:</span> <span class="s">manual</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="caching-and-artifacts">Caching and Artifacts</h3>
+
+<p>Efficient usage of caching and artifacts can dramatically speed up pipelines:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">stages</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">build</span>
+  <span class="pi">-</span> <span class="s">test</span>
+  <span class="pi">-</span> <span class="s">deploy</span>
+
+<span class="c1"># Global cache definition</span>
+<span class="na">cache</span><span class="pi">:</span>
+  <span class="na">key</span><span class="pi">:</span> <span class="s">${CI_COMMIT_REF_SLUG}</span>
+  <span class="na">paths</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">node_modules/</span>
+    <span class="pi">-</span> <span class="s">.yarn</span>
+    <span class="pi">-</span> <span class="s">.npm</span>
+
+<span class="na">variables</span><span class="pi">:</span>
+  <span class="na">npm_config_cache</span><span class="pi">:</span> <span class="s">.npm</span>
+  <span class="na">YARN_CACHE_FOLDER</span><span class="pi">:</span> <span class="s">.yarn</span>
+
+<span class="na">build_app</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">build</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">node:16-alpine</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">yarn install</span>
+    <span class="pi">-</span> <span class="s">yarn build</span>
+  <span class="na">artifacts</span><span class="pi">:</span>
+    <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">dist/</span>
+    <span class="na">expire_in</span><span class="pi">:</span> <span class="s">1 week</span>
+
+<span class="na">test_app</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">test</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">node:16-alpine</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">yarn install</span>
+    <span class="pi">-</span> <span class="s">yarn test</span>
+  <span class="na">artifacts</span><span class="pi">:</span>
+    <span class="na">reports</span><span class="pi">:</span>
+      <span class="na">junit</span><span class="pi">:</span> <span class="s">junit.xml</span>
+      <span class="na">coverage_report</span><span class="pi">:</span>
+        <span class="na">coverage_format</span><span class="pi">:</span> <span class="s">cobertura</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">coverage/cobertura-coverage.xml</span>
+
+<span class="c1"># Using cache and artifacts together</span>
+<span class="na">deploy_app</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">deploy</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">alpine:latest</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">apk add --no-cache curl</span>
+    <span class="pi">-</span> <span class="s">cd dist</span>
+    <span class="pi">-</span> <span class="s">tar -czf application.tar.gz *</span>
+    <span class="pi">-</span> <span class="s1">'</span><span class="s">curl</span><span class="nv"> </span><span class="s">--header</span><span class="nv"> </span><span class="s">"JOB-TOKEN:</span><span class="nv"> </span><span class="s">$CI_JOB_TOKEN"</span><span class="nv"> </span><span class="s">--upload-file</span><span class="nv"> </span><span class="s">application.tar.gz</span><span class="nv"> </span><span class="s">"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/my-package/1.0.0/application.tar.gz"'</span>
+  <span class="na">dependencies</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">build_app</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="gitlab-cicd-with-docker-compose">GitLab CI/CD with Docker Compose</h3>
+
+<p>This example shows how to use Docker Compose for integration testing:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">stages</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">build</span>
+  <span class="pi">-</span> <span class="s">test</span>
+  <span class="pi">-</span> <span class="s">deploy</span>
+
+<span class="na">variables</span><span class="pi">:</span>
+  <span class="na">DOCKER_HOST</span><span class="pi">:</span> <span class="s">tcp://docker:2375/</span>
+  <span class="na">DOCKER_TLS_CERTDIR</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+
+<span class="na">services</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">docker:20.10.16-dind</span>
+
+<span class="na">build</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">build</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">docker:20.10.16</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker-compose build</span>
+  <span class="na">artifacts</span><span class="pi">:</span>
+    <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">docker-compose.yml</span>
+
+<span class="na">integration_test</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">test</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">docker:20.10.16</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">docker-compose up -d</span>
+    <span class="pi">-</span> <span class="s">sleep </span><span class="m">10</span>  <span class="c1"># Wait for services to start</span>
+    <span class="pi">-</span> <span class="s">docker-compose exec -T app npm run integration-tests</span>
+    <span class="pi">-</span> <span class="s">docker-compose down</span>
+  <span class="na">dependencies</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">build</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="parallel-testing-for-faster-pipelines">Parallel Testing for Faster Pipelines</h3>
+
+<p>Breaking tests into parallel jobs can significantly speed up pipelines:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">stages</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">build</span>
+  <span class="pi">-</span> <span class="s">test</span>
+  <span class="pi">-</span> <span class="s">deploy</span>
+
+<span class="na">build_app</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">build</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm ci</span>
+    <span class="pi">-</span> <span class="s">npm run build</span>
+  <span class="na">artifacts</span><span class="pi">:</span>
+    <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">dist/</span>
+      <span class="pi">-</span> <span class="s">node_modules/</span>
+
+<span class="na">.test_template</span><span class="pi">:</span> <span class="nl">&amp;test_template</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">test</span>
+  <span class="na">needs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">build_app</span>
+  <span class="na">artifacts</span><span class="pi">:</span>
+    <span class="na">when</span><span class="pi">:</span> <span class="s">always</span>
+    <span class="na">reports</span><span class="pi">:</span>
+      <span class="na">junit</span><span class="pi">:</span> <span class="s">junit-*.xml</span>
+
+<span class="na">unit_tests</span><span class="pi">:</span>
+  <span class="na">&lt;&lt;</span><span class="pi">:</span> <span class="nv">*test_template</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm run test:unit</span>
+
+<span class="na">integration_tests</span><span class="pi">:</span>
+  <span class="na">&lt;&lt;</span><span class="pi">:</span> <span class="nv">*test_template</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm run test:integration</span>
+
+<span class="na">e2e_tests_group1</span><span class="pi">:</span>
+  <span class="na">&lt;&lt;</span><span class="pi">:</span> <span class="nv">*test_template</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm run test:e2e -- --group=1</span>
+
+<span class="na">e2e_tests_group2</span><span class="pi">:</span>
+  <span class="na">&lt;&lt;</span><span class="pi">:</span> <span class="nv">*test_template</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm run test:e2e -- --group=2</span>
+
+<span class="na">deploy_app</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">deploy</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">npm run deploy</span>
+  <span class="na">environment</span><span class="pi">:</span> <span class="s">production</span>
+  <span class="na">only</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">main</span>
+  <span class="na">when</span><span class="pi">:</span> <span class="s">manual</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="advanced-configuration-techniques">Advanced Configuration Techniques</h2>
+
+<h3 id="dynamic-environment-configuration">Dynamic Environment Configuration</h3>
+
+<p>This example demonstrates dynamic environment configuration based on Git branches:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">.env_config</span><span class="pi">:</span> <span class="nl">&amp;env_config</span>
+  <span class="na">before_script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="pi">|</span>
+      <span class="s">if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then</span>
+        <span class="s">export ENVIRONMENT="staging"</span>
+        <span class="s">export API_URL="https://api.staging.example.com"</span>
+      <span class="s">elif [[ "$CI_COMMIT_BRANCH" == "production" ]]; then</span>
+        <span class="s">export ENVIRONMENT="production"</span>
+        <span class="s">export API_URL="https://api.example.com"</span>
+      <span class="s">else</span>
+        <span class="s">export ENVIRONMENT="review"</span>
+        <span class="s">export API_URL="https://api.review.example.com"</span>
+      <span class="s">fi</span>
+    <span class="pi">-</span> <span class="s">echo "Configuring for $ENVIRONMENT environment"</span>
+
+<span class="na">build_config</span><span class="pi">:</span>
+  <span class="na">&lt;&lt;</span><span class="pi">:</span> <span class="nv">*env_config</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Building for $ENVIRONMENT using $API_URL"</span>
+    <span class="pi">-</span> <span class="s">cat &gt; .env &lt;&lt; EOF</span>
+      <span class="s">API_URL=$API_URL</span>
+      <span class="s">ENVIRONMENT=$ENVIRONMENT</span>
+      <span class="s">BUILD_TIME=$(date)</span>
+      <span class="s">COMMIT_SHA=$CI_COMMIT_SHORT_SHA</span>
+      <span class="s">EOF</span>
+    <span class="pi">-</span> <span class="s">npm run build</span>
+</code></pre></div></div>
+
+<h3 id="using-gitlab-ci-with-monorepos">Using GitLab CI with Monorepos</h3>
+
+<p>For monorepo setups, you can use different pipelines for different components:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">workflow</span><span class="pi">:</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_PIPELINE_SOURCE == "merge_request_event"</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH == "main"</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$CI_COMMIT_BRANCH == "develop"</span>
+
+<span class="na">stages</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">detect_changes</span>
+  <span class="pi">-</span> <span class="s">build</span>
+  <span class="pi">-</span> <span class="s">test</span>
+  <span class="pi">-</span> <span class="s">deploy</span>
+
+<span class="na">detect_changes</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">detect_changes</span>
+  <span class="na">image</span><span class="pi">:</span> <span class="s">alpine:latest</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="pi">|</span>
+      <span class="s">echo "Detecting changes..."</span>
+      <span class="s">git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA &gt; changes.txt</span>
+      
+      <span class="s">if grep -q "^frontend/" changes.txt; then</span>
+        <span class="s">echo "FRONTEND_CHANGES=true" &gt;&gt; variables.env</span>
+      <span class="s">else</span>
+        <span class="s">echo "FRONTEND_CHANGES=false" &gt;&gt; variables.env</span>
+      <span class="s">fi</span>
+      
+      <span class="s">if grep -q "^backend/" changes.txt; then</span>
+        <span class="s">echo "BACKEND_CHANGES=true" &gt;&gt; variables.env</span>
+      <span class="s">else</span>
+        <span class="s">echo "BACKEND_CHANGES=false" &gt;&gt; variables.env</span>
+      <span class="s">fi</span>
+  <span class="na">artifacts</span><span class="pi">:</span>
+    <span class="na">reports</span><span class="pi">:</span>
+      <span class="na">dotenv</span><span class="pi">:</span> <span class="s">variables.env</span>
+
+<span class="na">build_frontend</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">build</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Building frontend..."</span>
+    <span class="pi">-</span> <span class="s">cd frontend &amp;&amp; npm ci &amp;&amp; npm run build</span>
+  <span class="na">needs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">detect_changes</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$FRONTEND_CHANGES == "true"</span>
+
+<span class="na">build_backend</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">build</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">echo "Building backend..."</span>
+    <span class="pi">-</span> <span class="s">cd backend &amp;&amp; npm ci &amp;&amp; npm run build</span>
+  <span class="na">needs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">detect_changes</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">if</span><span class="pi">:</span> <span class="s">$BACKEND_CHANGES == "true"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="troubleshooting-gitlab-ci-pipelines">Troubleshooting GitLab CI Pipelines</h2>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Common Pipeline Issues and Solutions:</strong><br /><br />
+
+<strong>1. Pipeline Won't Start:</strong>
+   - Check runner availability and tags<br />
+   - Verify `.gitlab-ci.yml` syntax with the CI Lint tool<br />
+   - Ensure project has correct permissions<br />
+   - Check if you've reached concurrent job limits<br /><br />
+
+<strong>2. Job Failures:</strong>
+   - Check job logs for specific error messages<br />
+   - Verify environment variables are set correctly<br />
+   - Check if Docker image is available and correct<br />
+   - Ensure runner has sufficient resources<br /><br />
+
+<strong>3. Pipeline Performance Issues:</strong>
+   - Use caching for dependencies<br />
+   - Implement parallel jobs for tests<br />
+   - Only run necessary jobs with conditional rules<br />
+   - Use more specific Docker images<br /><br />
+
+<strong>4. Cache Problems:</strong>
+   - Verify cache paths are correct<br />
+   - Use different cache keys for different branches<br />
+   - Check if cache is too large<br />
+   - Ensure runner has sufficient storage<br /><br />
+</div>
+
+<h3 id="pipeline-debugging-tips">Pipeline Debugging Tips</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">debug_job</span><span class="pi">:</span>
+  <span class="na">stage</span><span class="pi">:</span> <span class="s">test</span>
+  <span class="na">script</span><span class="pi">:</span>
+    <span class="c1"># List environment variables</span>
+    <span class="pi">-</span> <span class="s">env | sort</span>
+    
+    <span class="c1"># Show GitLab CI variables</span>
+    <span class="pi">-</span> <span class="s">echo "Project path</span><span class="err">:</span> <span class="s">$CI_PROJECT_PATH"</span>
+    <span class="pi">-</span> <span class="s">echo "Job name</span><span class="err">:</span> <span class="s">$CI_JOB_NAME"</span>
+    <span class="pi">-</span> <span class="s">echo "Commit SHA</span><span class="err">:</span> <span class="s">$CI_COMMIT_SHA"</span>
+    
+    <span class="c1"># Show file system information</span>
+    <span class="pi">-</span> <span class="s">df -h</span>
+    <span class="pi">-</span> <span class="s">ls -la</span>
+    
+    <span class="c1"># Show network information</span>
+    <span class="pi">-</span> <span class="s">ip addr</span>
+    <span class="pi">-</span> <span class="s">cat /etc/hosts</span>
+    
+    <span class="c1"># Show Docker info (if available)</span>
+    <span class="pi">-</span> <span class="s">docker info || echo "Docker not available"</span>
+  <span class="na">when</span><span class="pi">:</span> <span class="s">manual</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="best-practices">Best Practices</h2>
+
+<div class="info-box info-box-success">
+<br />
+<strong>GitLab CI/CD Best Practices:</strong><br /><br />
+
+<strong>1. Pipeline Structure:</strong>
+   - Keep pipelines simple and focused<br />
+   - Use stages to organize jobs logically<br />
+   - Group related jobs using templates<br />
+   - Use parent-child pipelines for complex workflows<br />
+   - Implement DAG (Directed Acyclic Graph) dependencies<br /><br />
+
+<strong>2. Performance Optimization:</strong>
+   - Use caching effectively to speed up builds<br />
+   - Parallelize tests when possible<br />
+   - Use specific, lightweight Docker images<br />
+   - Only run necessary jobs with rules<br />
+   - Keep build artifacts small and focused<br /><br />
+
+<strong>3. Security Considerations:</strong>
+   - Use secret variables for sensitive information<br />
+   - Implement branch protection rules<br />
+   - Run security scanners in your pipeline<br />
+   - Limit access to protected environments<br />
+   - Review Docker images for vulnerabilities<br /><br />
+
+<strong>4. Maintainability:</strong>
+   - Document pipeline behavior in README<br />
+   - Use includes to share common configurations<br />
+   - Keep pipeline configuration in version control<br />
+   - Follow naming conventions for jobs and stages<br />
+   - Use anchors and templates to reduce duplication<br /><br />
+</div>
+
+<p><br /></p>
+
 <hr />
 
 <h2 id="reference">Reference</h2>
@@ -541,7 +974,7 @@ CI_REGISTRY_PASSWORD  <span class="c"># GitLab registry password</span>
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="5">
+            <div class="time-bar" data-minutes="15">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1090,6 +1523,439 @@ build_job:
 
 
 
+Multi-Environment Deployment with Auto DevOps
+
+Here’s an example pipeline that automatically deploys to different environments based on branch names:
+
+stages:
+  - build
+  - test
+  - review
+  - staging
+  - production
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: &quot;&quot;
+  ROLLOUT_RESOURCE_TYPE: deployment
+
+include:
+  - template: Auto-DevOps.gitlab-ci.yml
+
+build:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+test:
+  stage: test
+  image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  script:
+    - npm ci
+    - npm test
+
+review:
+  stage: review
+  script:
+    - kubectl apply -f k8s/review/
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: https://review-$CI_COMMIT_REF_SLUG.$KUBE_INGRESS_BASE_DOMAIN
+    on_stop: stop_review
+  rules:
+    - if: $CI_COMMIT_BRANCH != &quot;main&quot; &amp;amp;&amp;amp; $CI_COMMIT_BRANCH != &quot;production&quot;
+
+stop_review:
+  stage: review
+  script:
+    - kubectl delete -f k8s/review/
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH != &quot;main&quot; &amp;amp;&amp;amp; $CI_COMMIT_BRANCH != &quot;production&quot;
+
+staging:
+  stage: staging
+  script:
+    - kubectl apply -f k8s/staging/
+  environment:
+    name: staging
+    url: https://staging.$KUBE_INGRESS_BASE_DOMAIN
+  rules:
+    - if: $CI_COMMIT_BRANCH == &quot;main&quot;
+
+production:
+  stage: production
+  script:
+    - kubectl apply -f k8s/production/
+  environment:
+    name: production
+    url: https://$KUBE_INGRESS_BASE_DOMAIN
+  rules:
+    - if: $CI_COMMIT_BRANCH == &quot;production&quot;
+  when: manual
+
+
+
+
+Caching and Artifacts
+
+Efficient usage of caching and artifacts can dramatically speed up pipelines:
+
+stages:
+  - build
+  - test
+  - deploy
+
+# Global cache definition
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+    - .yarn
+    - .npm
+
+variables:
+  npm_config_cache: .npm
+  YARN_CACHE_FOLDER: .yarn
+
+build_app:
+  stage: build
+  image: node:16-alpine
+  script:
+    - yarn install
+    - yarn build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+test_app:
+  stage: test
+  image: node:16-alpine
+  script:
+    - yarn install
+    - yarn test
+  artifacts:
+    reports:
+      junit: junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+
+# Using cache and artifacts together
+deploy_app:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - apk add --no-cache curl
+    - cd dist
+    - tar -czf application.tar.gz *
+    - &apos;curl --header &quot;JOB-TOKEN: $CI_JOB_TOKEN&quot; --upload-file application.tar.gz &quot;${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/my-package/1.0.0/application.tar.gz&quot;&apos;
+  dependencies:
+    - build_app
+
+
+
+
+GitLab CI/CD with Docker Compose
+
+This example shows how to use Docker Compose for integration testing:
+
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_HOST: tcp://docker:2375/
+  DOCKER_TLS_CERTDIR: &quot;&quot;
+
+services:
+  - docker:20.10.16-dind
+
+build:
+  stage: build
+  image: docker:20.10.16
+  script:
+    - docker-compose build
+  artifacts:
+    paths:
+      - docker-compose.yml
+
+integration_test:
+  stage: test
+  image: docker:20.10.16
+  script:
+    - docker-compose up -d
+    - sleep 10  # Wait for services to start
+    - docker-compose exec -T app npm run integration-tests
+    - docker-compose down
+  dependencies:
+    - build
+
+
+
+
+Parallel Testing for Faster Pipelines
+
+Breaking tests into parallel jobs can significantly speed up pipelines:
+
+stages:
+  - build
+  - test
+  - deploy
+
+build_app:
+  stage: build
+  script:
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+      - node_modules/
+
+.test_template: &amp;amp;test_template
+  stage: test
+  needs:
+    - build_app
+  artifacts:
+    when: always
+    reports:
+      junit: junit-*.xml
+
+unit_tests:
+  &amp;lt;&amp;lt;: *test_template
+  script:
+    - npm run test:unit
+
+integration_tests:
+  &amp;lt;&amp;lt;: *test_template
+  script:
+    - npm run test:integration
+
+e2e_tests_group1:
+  &amp;lt;&amp;lt;: *test_template
+  script:
+    - npm run test:e2e -- --group=1
+
+e2e_tests_group2:
+  &amp;lt;&amp;lt;: *test_template
+  script:
+    - npm run test:e2e -- --group=2
+
+deploy_app:
+  stage: deploy
+  script:
+    - npm run deploy
+  environment: production
+  only:
+    - main
+  when: manual
+
+
+
+
+Advanced Configuration Techniques
+
+Dynamic Environment Configuration
+
+This example demonstrates dynamic environment configuration based on Git branches:
+
+.env_config: &amp;amp;env_config
+  before_script:
+    - |
+      if [[ &quot;$CI_COMMIT_BRANCH&quot; == &quot;main&quot; ]]; then
+        export ENVIRONMENT=&quot;staging&quot;
+        export API_URL=&quot;https://api.staging.example.com&quot;
+      elif [[ &quot;$CI_COMMIT_BRANCH&quot; == &quot;production&quot; ]]; then
+        export ENVIRONMENT=&quot;production&quot;
+        export API_URL=&quot;https://api.example.com&quot;
+      else
+        export ENVIRONMENT=&quot;review&quot;
+        export API_URL=&quot;https://api.review.example.com&quot;
+      fi
+    - echo &quot;Configuring for $ENVIRONMENT environment&quot;
+
+build_config:
+  &amp;lt;&amp;lt;: *env_config
+  script:
+    - echo &quot;Building for $ENVIRONMENT using $API_URL&quot;
+    - cat &amp;gt; .env &amp;lt;&amp;lt; EOF
+      API_URL=$API_URL
+      ENVIRONMENT=$ENVIRONMENT
+      BUILD_TIME=$(date)
+      COMMIT_SHA=$CI_COMMIT_SHORT_SHA
+      EOF
+    - npm run build
+
+
+Using GitLab CI with Monorepos
+
+For monorepo setups, you can use different pipelines for different components:
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == &quot;merge_request_event&quot;
+    - if: $CI_COMMIT_BRANCH == &quot;main&quot;
+    - if: $CI_COMMIT_BRANCH == &quot;develop&quot;
+
+stages:
+  - detect_changes
+  - build
+  - test
+  - deploy
+
+detect_changes:
+  stage: detect_changes
+  image: alpine:latest
+  script:
+    - |
+      echo &quot;Detecting changes...&quot;
+      git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA &amp;gt; changes.txt
+      
+      if grep -q &quot;^frontend/&quot; changes.txt; then
+        echo &quot;FRONTEND_CHANGES=true&quot; &amp;gt;&amp;gt; variables.env
+      else
+        echo &quot;FRONTEND_CHANGES=false&quot; &amp;gt;&amp;gt; variables.env
+      fi
+      
+      if grep -q &quot;^backend/&quot; changes.txt; then
+        echo &quot;BACKEND_CHANGES=true&quot; &amp;gt;&amp;gt; variables.env
+      else
+        echo &quot;BACKEND_CHANGES=false&quot; &amp;gt;&amp;gt; variables.env
+      fi
+  artifacts:
+    reports:
+      dotenv: variables.env
+
+build_frontend:
+  stage: build
+  script:
+    - echo &quot;Building frontend...&quot;
+    - cd frontend &amp;amp;&amp;amp; npm ci &amp;amp;&amp;amp; npm run build
+  needs:
+    - detect_changes
+  rules:
+    - if: $FRONTEND_CHANGES == &quot;true&quot;
+
+build_backend:
+  stage: build
+  script:
+    - echo &quot;Building backend...&quot;
+    - cd backend &amp;amp;&amp;amp; npm ci &amp;amp;&amp;amp; npm run build
+  needs:
+    - detect_changes
+  rules:
+    - if: $BACKEND_CHANGES == &quot;true&quot;
+
+
+
+
+Troubleshooting GitLab CI Pipelines
+
+
+
+Common Pipeline Issues and Solutions:
+
+1. Pipeline Won&apos;t Start:
+   - Check runner availability and tags
+   - Verify `.gitlab-ci.yml` syntax with the CI Lint tool
+   - Ensure project has correct permissions
+   - Check if you&apos;ve reached concurrent job limits
+
+2. Job Failures:
+   - Check job logs for specific error messages
+   - Verify environment variables are set correctly
+   - Check if Docker image is available and correct
+   - Ensure runner has sufficient resources
+
+3. Pipeline Performance Issues:
+   - Use caching for dependencies
+   - Implement parallel jobs for tests
+   - Only run necessary jobs with conditional rules
+   - Use more specific Docker images
+
+4. Cache Problems:
+   - Verify cache paths are correct
+   - Use different cache keys for different branches
+   - Check if cache is too large
+   - Ensure runner has sufficient storage
+
+
+Pipeline Debugging Tips
+
+debug_job:
+  stage: test
+  script:
+    # List environment variables
+    - env | sort
+    
+    # Show GitLab CI variables
+    - echo &quot;Project path: $CI_PROJECT_PATH&quot;
+    - echo &quot;Job name: $CI_JOB_NAME&quot;
+    - echo &quot;Commit SHA: $CI_COMMIT_SHA&quot;
+    
+    # Show file system information
+    - df -h
+    - ls -la
+    
+    # Show network information
+    - ip addr
+    - cat /etc/hosts
+    
+    # Show Docker info (if available)
+    - docker info || echo &quot;Docker not available&quot;
+  when: manual
+
+
+
+
+Best Practices
+
+
+
+GitLab CI/CD Best Practices:
+
+1. Pipeline Structure:
+   - Keep pipelines simple and focused
+   - Use stages to organize jobs logically
+   - Group related jobs using templates
+   - Use parent-child pipelines for complex workflows
+   - Implement DAG (Directed Acyclic Graph) dependencies
+
+2. Performance Optimization:
+   - Use caching effectively to speed up builds
+   - Parallelize tests when possible
+   - Use specific, lightweight Docker images
+   - Only run necessary jobs with rules
+   - Keep build artifacts small and focused
+
+3. Security Considerations:
+   - Use secret variables for sensitive information
+   - Implement branch protection rules
+   - Run security scanners in your pipeline
+   - Limit access to protected environments
+   - Review Docker images for vulnerabilities
+
+4. Maintainability:
+   - Document pipeline behavior in README
+   - Use includes to share common configurations
+   - Keep pipeline configuration in version control
+   - Follow naming conventions for jobs and stages
+   - Use anchors and templates to reduce duplication
+
+
+
+
 
 
 Reference
@@ -1099,7 +1965,7 @@ Reference
   GitLab Pipeline Architecture
 
 ",
-            "wordcount": "1010",
+            "wordcount": "2809",
             "inLanguage": "en",
             "dateCreated": "2025-01-21/",
             "datePublished": "2025-01-21/",

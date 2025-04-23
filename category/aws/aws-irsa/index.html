@@ -220,7 +220,7 @@ January 28, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>2 min to read</span>
+                    <span>7 min to read</span>
                 </p>
                 <h1 class="post-title">AWS IRSA (IAM Roles for Service Accounts)</h1>
                 <p class="post-subtitle">A comprehensive guide to AWS IRSA implementation and workflow</p>
@@ -341,6 +341,182 @@ January 28, 2025
 
 <p><br /></p>
 
+<h3 id="implementation-steps">Implementation Steps</h3>
+
+<h4 id="1-create-an-oidc-provider-for-your-eks-cluster">1. Create an OIDC Provider for your EKS Cluster</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Get your EKS cluster OIDC issuer URL</span>
+<span class="nv">OIDC_PROVIDER</span><span class="o">=</span><span class="si">$(</span>aws eks describe-cluster <span class="nt">--name</span> my-cluster <span class="nt">--query</span> <span class="s2">"cluster.identity.oidc.issuer"</span> <span class="nt">--output</span> text | <span class="nb">sed</span> <span class="nt">-e</span> <span class="s2">"s/^https:</span><span class="se">\/\/</span><span class="s2">//"</span><span class="si">)</span>
+
+<span class="c"># Create the OIDC Identity Provider in IAM</span>
+aws iam create-open-id-connect-provider <span class="se">\</span>
+  <span class="nt">--url</span> https://<span class="nv">$OIDC_PROVIDER</span> <span class="se">\</span>
+  <span class="nt">--client-id-list</span> sts.amazonaws.com <span class="se">\</span>
+  <span class="nt">--thumbprint-list</span> &lt;thumbprint&gt;
+</code></pre></div></div>
+
+<h4 id="2-create-an-iam-role-with-trust-policy">2. Create an IAM Role with Trust Policy</h4>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"Statement"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"Principal"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"Federated"</span><span class="p">:</span><span class="w"> </span><span class="s2">"arn:aws:iam::&lt;ACCOUNT_ID&gt;:oidc-provider/&lt;OIDC_PROVIDER&gt;"</span><span class="w">
+      </span><span class="p">},</span><span class="w">
+      </span><span class="nl">"Action"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sts:AssumeRoleWithWebIdentity"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"Condition"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"StringEquals"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+          </span><span class="nl">"&lt;OIDC_PROVIDER&gt;:sub"</span><span class="p">:</span><span class="w"> </span><span class="s2">"system:serviceaccount:default:my-service-account"</span><span class="p">,</span><span class="w">
+          </span><span class="nl">"&lt;OIDC_PROVIDER&gt;:aud"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sts.amazonaws.com"</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+      </span><span class="p">}</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h4 id="3-create-a-kubernetes-serviceaccount">3. Create a Kubernetes ServiceAccount</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-service-account</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">default</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">eks.amazonaws.com/role-arn</span><span class="pi">:</span> <span class="s">arn:aws:iam::&lt;ACCOUNT_ID&gt;:role/my-iam-role</span>
+</code></pre></div></div>
+
+<h4 id="4-reference-the-serviceaccount-in-your-pod">4. Reference the ServiceAccount in Your Pod</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">serviceAccountName</span><span class="pi">:</span> <span class="s">my-service-account</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">aws-cli</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">amazon/aws-cli</span>
+        <span class="na">command</span><span class="pi">:</span> <span class="pi">[</span><span class="s1">'</span><span class="s">sh'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">-c'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">aws</span><span class="nv"> </span><span class="s">s3</span><span class="nv"> </span><span class="s">ls</span><span class="nv"> </span><span class="s">&amp;&amp;</span><span class="nv"> </span><span class="s">sleep</span><span class="nv"> </span><span class="s">3600'</span><span class="pi">]</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="common-use-cases">Common Use Cases</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Popular IRSA Implementations</strong>
+  <ul>
+    <li><strong>S3 Access:</strong> Applications reading/writing to S3 buckets</li>
+    <li><strong>DynamoDB:</strong> Microservices with their own database tables</li>
+    <li><strong>SQS/SNS:</strong> Event-driven applications processing messages</li>
+    <li><strong>Secrets Manager:</strong> Securely retrieving configuration secrets</li>
+    <li><strong>CloudWatch:</strong> Custom logging and monitoring</li>
+  </ul>
+</div>
+
+<h4 id="example-application-reading-from-sqs-queue">Example: Application Reading from SQS Queue</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">sqs-consumer</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">2</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">sqs-consumer</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">sqs-consumer</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">serviceAccountName</span><span class="pi">:</span> <span class="s">sqs-consumer-sa</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-sqs-consumer:latest</span>
+        <span class="na">env</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">AWS_REGION</span>
+          <span class="na">value</span><span class="pi">:</span> <span class="s">us-west-2</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">SQS_QUEUE_URL</span>
+          <span class="na">value</span><span class="pi">:</span> <span class="s">https://sqs.us-west-2.amazonaws.com/123456789012/my-queue</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="best-practices">Best Practices</h3>
+
+<div class="info-box info-box-success">
+<br />
+<strong>1. Security:</strong>
+   - Apply the principle of least privilege to all IAM roles<br />
+   - Use namespaced service accounts to isolate permissions<br />
+   - Regularly audit and rotate IAM roles<br />
+   - Limit service account usage to specific pods<br /><br />
+
+<strong>2. Implementation:</strong>
+   - Use infrastructure as code (IaC) to manage IRSA setup<br />
+   - Keep trust policies specific to namespaces and service accounts<br />
+   - Consider using tools like ExternalDNS, Cluster Autoscaler with IRSA<br />
+   - Implement proper error handling for credential failures<br /><br />
+
+<strong>3. Monitoring:</strong>
+   - Enable CloudTrail for IRSA-related actions<br />
+   - Set up alerts for suspicious or high-volume credential requests<br />
+   - Monitor for unauthorized AssumeRoleWithWebIdentity calls<br />
+   - Use AWS CloudWatch to track API calls made with IRSA credentials<br /><br />
+</div>
+
+<p><br /></p>
+
+<h3 id="troubleshooting-irsa">Troubleshooting IRSA</h3>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>1. Authentication Failures:</strong>
+   - Verify OIDC provider is correctly configured<br />
+   - Check IAM role trust policy for proper namespace/service account<br />
+   - Ensure AWS SDK is using the EKS Pod Identity webhook credentials<br />
+   - Verify service account annotation has the correct IAM role ARN<br /><br />
+
+<strong>2. Permission Issues:</strong>
+   - Check that IAM role has required permission policies<br />
+   - Verify request is coming from the correct service account<br />
+   - Use AWS STS get-caller-identity to debug credential chain<br />
+   - Review CloudTrail for specific permission denials<br /><br />
+
+<strong>3. Common Errors:</strong>
+   - "An error occurred (AccessDenied) when calling the AssumeRoleWithWebIdentity operation"<br />
+   - "Error validating provider information"<br />
+   - "Not authorized to perform sts:AssumeRoleWithWebIdentity"<br /><br />
+</div>
+
+<h4 id="debugging-commands">Debugging Commands</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check if service account has the correct annotation</span>
+kubectl describe serviceaccount my-service-account
+
+<span class="c"># Test AWS API access from a pod</span>
+kubectl run aws-cli <span class="nt">--image</span><span class="o">=</span>amazon/aws-cli <span class="nt">--command</span> <span class="nt">--</span> <span class="nb">sleep </span>infinity
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> aws-cli <span class="nt">--</span> aws sts get-caller-identity
+
+<span class="c"># Check for recent authentication events</span>
+aws cloudtrail lookup-events <span class="nt">--lookup-attributes</span> <span class="nv">AttributeKey</span><span class="o">=</span>EventName,AttributeValue<span class="o">=</span>AssumeRoleWithWebIdentity
+</code></pre></div></div>
+
+<p><br /></p>
+
 <hr />
 
 <h2 id="references">References</h2>
@@ -398,7 +574,7 @@ January 28, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="2">
+            <div class="time-bar" data-minutes="7">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -804,6 +980,182 @@ JWT (JSON Web Token)
 
 
 
+Implementation Steps
+
+1. Create an OIDC Provider for your EKS Cluster
+
+# Get your EKS cluster OIDC issuer URL
+OIDC_PROVIDER=$(aws eks describe-cluster --name my-cluster --query &quot;cluster.identity.oidc.issuer&quot; --output text | sed -e &quot;s/^https:\/\///&quot;)
+
+# Create the OIDC Identity Provider in IAM
+aws iam create-open-id-connect-provider \
+  --url https://$OIDC_PROVIDER \
+  --client-id-list sts.amazonaws.com \
+  --thumbprint-list &amp;lt;thumbprint&amp;gt;
+
+
+2. Create an IAM Role with Trust Policy
+
+{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Principal&quot;: {
+        &quot;Federated&quot;: &quot;arn:aws:iam::&amp;lt;ACCOUNT_ID&amp;gt;:oidc-provider/&amp;lt;OIDC_PROVIDER&amp;gt;&quot;
+      },
+      &quot;Action&quot;: &quot;sts:AssumeRoleWithWebIdentity&quot;,
+      &quot;Condition&quot;: {
+        &quot;StringEquals&quot;: {
+          &quot;&amp;lt;OIDC_PROVIDER&amp;gt;:sub&quot;: &quot;system:serviceaccount:default:my-service-account&quot;,
+          &quot;&amp;lt;OIDC_PROVIDER&amp;gt;:aud&quot;: &quot;sts.amazonaws.com&quot;
+        }
+      }
+    }
+  ]
+}
+
+
+3. Create a Kubernetes ServiceAccount
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-service-account
+  namespace: default
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::&amp;lt;ACCOUNT_ID&amp;gt;:role/my-iam-role
+
+
+4. Reference the ServiceAccount in Your Pod
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      serviceAccountName: my-service-account
+      containers:
+      - name: aws-cli
+        image: amazon/aws-cli
+        command: [&apos;sh&apos;, &apos;-c&apos;, &apos;aws s3 ls &amp;amp;&amp;amp; sleep 3600&apos;]
+
+
+
+
+Common Use Cases
+
+
+  Popular IRSA Implementations
+  
+    S3 Access: Applications reading/writing to S3 buckets
+    DynamoDB: Microservices with their own database tables
+    SQS/SNS: Event-driven applications processing messages
+    Secrets Manager: Securely retrieving configuration secrets
+    CloudWatch: Custom logging and monitoring
+  
+
+
+Example: Application Reading from SQS Queue
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqs-consumer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sqs-consumer
+  template:
+    metadata:
+      labels:
+        app: sqs-consumer
+    spec:
+      serviceAccountName: sqs-consumer-sa
+      containers:
+      - name: app
+        image: my-sqs-consumer:latest
+        env:
+        - name: AWS_REGION
+          value: us-west-2
+        - name: SQS_QUEUE_URL
+          value: https://sqs.us-west-2.amazonaws.com/123456789012/my-queue
+
+
+
+
+Best Practices
+
+
+
+1. Security:
+   - Apply the principle of least privilege to all IAM roles
+   - Use namespaced service accounts to isolate permissions
+   - Regularly audit and rotate IAM roles
+   - Limit service account usage to specific pods
+
+2. Implementation:
+   - Use infrastructure as code (IaC) to manage IRSA setup
+   - Keep trust policies specific to namespaces and service accounts
+   - Consider using tools like ExternalDNS, Cluster Autoscaler with IRSA
+   - Implement proper error handling for credential failures
+
+3. Monitoring:
+   - Enable CloudTrail for IRSA-related actions
+   - Set up alerts for suspicious or high-volume credential requests
+   - Monitor for unauthorized AssumeRoleWithWebIdentity calls
+   - Use AWS CloudWatch to track API calls made with IRSA credentials
+
+
+
+
+Troubleshooting IRSA
+
+
+
+1. Authentication Failures:
+   - Verify OIDC provider is correctly configured
+   - Check IAM role trust policy for proper namespace/service account
+   - Ensure AWS SDK is using the EKS Pod Identity webhook credentials
+   - Verify service account annotation has the correct IAM role ARN
+
+2. Permission Issues:
+   - Check that IAM role has required permission policies
+   - Verify request is coming from the correct service account
+   - Use AWS STS get-caller-identity to debug credential chain
+   - Review CloudTrail for specific permission denials
+
+3. Common Errors:
+   - &quot;An error occurred (AccessDenied) when calling the AssumeRoleWithWebIdentity operation&quot;
+   - &quot;Error validating provider information&quot;
+   - &quot;Not authorized to perform sts:AssumeRoleWithWebIdentity&quot;
+
+
+Debugging Commands
+
+# Check if service account has the correct annotation
+kubectl describe serviceaccount my-service-account
+
+# Test AWS API access from a pod
+kubectl run aws-cli --image=amazon/aws-cli --command -- sleep infinity
+kubectl exec -it aws-cli -- aws sts get-caller-identity
+
+# Check for recent authentication events
+aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=AssumeRoleWithWebIdentity
+
+
+
+
 
 
 References
@@ -813,7 +1165,7 @@ References
   AWS STS Documentation
 
 ",
-            "wordcount": "481",
+            "wordcount": "1333",
             "inLanguage": "en",
             "dateCreated": "2025-01-28/",
             "datePublished": "2025-01-28/",

@@ -220,7 +220,7 @@ March 7, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>5 min to read</span>
+                    <span>13 min to read</span>
                 </p>
                 <h1 class="post-title">Setting up ArgoCD SSO with GCP OAuth</h1>
                 <p class="post-subtitle">A comprehensive guide to implementing ArgoCD SSO with GCP OAuth</p>
@@ -243,11 +243,35 @@ March 7, 2025
 <h2 id="overview">Overview</h2>
 <p>This post explains how to configure Single Sign-On (SSO) for ArgoCD using Google Cloud Platform (GCP) OAuth.</p>
 
+<h3 id="benefits-of-using-sso-with-argocd">Benefits of Using SSO with ArgoCD</h3>
+
+<div class="info-box info-box-default">
+  <ul>
+    <li>
+      <strong>Centralized Authentication</strong><br />
+      Streamlines access management by integrating with your organization's existing identity provider.
+    </li>
+    <li>
+      <strong>Enhanced Security</strong><br />
+      Leverages Google's security features including MFA, suspicious login detection, and centralized user management.
+    </li>
+    <li>
+      <strong>Simplified User Experience</strong><br />
+      Provides seamless login experience without requiring separate ArgoCD credentials.
+    </li>
+    <li>
+      <strong>Improved Compliance</strong><br />
+      Facilitates audit logging and access controls through centralized identity management.
+    </li>
+  </ul>
+</div>
+
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
   <li>A GCP project with OAuth 2.0 configured</li>
   <li>ArgoCD installed on a Kubernetes cluster</li>
   <li>Administrative access to both GCP and ArgoCD</li>
+  <li>Domain with proper DNS configuration for ArgoCD</li>
 </ul>
 
 <h2 id="steps">Steps</h2>
@@ -413,7 +437,38 @@ k get secrets <span class="nt">-n</span> argocd argocd-secret <span class="nt">-
     <span class="na">dex.google.clientSecret</span><span class="pi">:</span> <span class="s2">"</span><span class="s">gloas-a9...</span><span class="nv"> </span><span class="s">#</span><span class="nv"> </span><span class="s">TODO:</span><span class="nv"> </span><span class="s">change</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">your</span><span class="nv"> </span><span class="s">Google</span><span class="nv"> </span><span class="s">client</span><span class="nv"> </span><span class="s">secret"</span>
 </code></pre></div></div>
 
-<h3 id="3-restart-argocd-components">3. Restart ArgoCD Components</h3>
+<h3 id="3-create-argocd-secret-for-oauth">3. Create argocd-secret for OAuth</h3>
+
+<p>If you’re using the Google OAuth connector, you need to store the client secret securely:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-secret</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">app.kubernetes.io/name</span><span class="pi">:</span> <span class="s">argocd-secret</span>
+    <span class="na">app.kubernetes.io/part-of</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">type</span><span class="pi">:</span> <span class="s">Opaque</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="c1"># Base64 encoded client secret</span>
+  <span class="na">dex.google.clientSecret</span><span class="pi">:</span> <span class="s">R3h4eHgtb3h4eHh4eHh4eHh4eHh4eHh4eHh4</span>
+  <span class="c1"># Add other existing ArgoCD secrets here as well</span>
+</code></pre></div></div>
+
+<p>To create this secret manually:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Convert your client secret to base64</span>
+<span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"YOUR-CLIENT-SECRET"</span> | <span class="nb">base64</span>
+
+<span class="c"># Create the secret</span>
+kubectl create secret generic argocd-secret <span class="se">\</span>
+  <span class="nt">--namespace</span> argocd <span class="se">\</span>
+  <span class="nt">--from-literal</span><span class="o">=</span>dex.google.clientSecret<span class="o">=</span>YOUR-BASE64-ENCODED-SECRET <span class="se">\</span>
+  <span class="nt">--dry-run</span><span class="o">=</span>client <span class="nt">-o</span> yaml | kubectl apply <span class="nt">-f</span> -
+</code></pre></div></div>
+
+<h3 id="4-restart-argocd-components">4. Restart ArgoCD Components</h3>
 
 <p>Check deployments:</p>
 
@@ -426,12 +481,273 @@ k get secrets <span class="nt">-n</span> argocd argocd-secret <span class="nt">-
 k rollout restart deploy <span class="nt">-n</span> argocd argocd-dex-server
 </code></pre></div></div>
 
-<h3 id="4-test-login">4. Test Login</h3>
+<h3 id="5-test-login">5. Test Login</h3>
 <p>Access your ArgoCD instance and verify that Google Workspace SSO login works correctly.</p>
 
 <p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1739942455/argocd-sso-google-oauth-login_x9xd84.png" alt="ArgoCD SSO Google OAuth Login" /></p>
 
 <p><br /></p>
+
+<h2 id="advanced-configuration">Advanced Configuration</h2>
+
+<h3 id="group-based-access-control">Group-Based Access Control</h3>
+
+<p>You can map Google Workspace groups to ArgoCD roles for more granular permissions management:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-rbac-cm</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">policy.csv</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s"># Allow members of 'platform-team@example.com' to be admins</span>
+    <span class="s">g, platform-team@example.com, role:admin</span>
+
+    <span class="s"># Allow members of 'developers@example.com' to only access certain projects</span>
+    <span class="s">p, role:developers, applications, get, dev-team/*, allow</span>
+    <span class="s">p, role:developers, applications, sync, dev-team/*, allow</span>
+    <span class="s">g, developers@example.com, role:developers</span>
+
+    <span class="s"># Default permissions for all users</span>
+    <span class="s">p, role:readonly, applications, get, */*, allow</span>
+    <span class="s">p, role:readonly, clusters, get, *, allow</span>
+  
+  <span class="na">scopes</span><span class="pi">:</span> <span class="s1">'</span><span class="s">[groups,</span><span class="nv"> </span><span class="s">email]'</span>
+</code></pre></div></div>
+
+<h3 id="configuring-google-groups-integration">Configuring Google Groups Integration</h3>
+
+<p>To enable group membership checking, update the Dex connector configuration:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">dex.config</span><span class="pi">:</span> <span class="pi">|</span>
+  <span class="s">connectors:</span>
+    <span class="s">- type: oidc</span>
+      <span class="s">id: google</span>
+      <span class="s">name: Google</span>
+      <span class="s">config:</span>
+        <span class="s">issuer: https://accounts.google.com</span>
+        <span class="s">clientID: &lt;YOUR-CLIENT-ID&gt;</span>
+        <span class="s">clientSecret: $dex.google.clientSecret</span>
+        <span class="s">redirectURI: https://argocd.somaz.link/api/dex/callback</span>
+  <span class="no">      </span>
+        <span class="s"># Enable Google Groups integration</span>
+        <span class="s">groups:</span>
+          <span class="s"># True to use Google Groups for group membership claims</span>
+          <span class="s">useGroupsAsWhitelist: true</span>
+          <span class="s"># Filtering to specific Google Groups</span>
+          <span class="s">filterGroups: ["dev-team@example.com", "platform-team@example.com"]</span>
+  <span class="no">      </span>
+        <span class="s"># Restrict to specific domains</span>
+        <span class="s">hostedDomains:</span>
+          <span class="s">- example.com</span>
+</code></pre></div></div>
+
+<h2 id="hardening-your-sso-configuration">Hardening Your SSO Configuration</h2>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Security Best Practices:</strong><br /><br />
+
+<strong>1. Session Management:</strong>
+   - Configure reasonable session timeouts<br />
+   - Enable secure session storage<br />
+   - Implement session revocation mechanisms<br /><br />
+
+<strong>2. Access Control:</strong>
+   - Apply the principle of least privilege<br />
+   - Regularly audit user access and permissions<br />
+   - Implement role-based access control<br /><br />
+
+<strong>3. Network Security:</strong>
+   - Use HTTPS with valid certificates<br />
+   - Implement network policies to restrict access<br />
+   - Consider adding IP-based restrictions<br /><br />
+
+<strong>4. Monitoring and Logging:</strong>
+   - Enable comprehensive audit logging<br />
+   - Monitor for suspicious login attempts<br />
+   - Set up alerts for permission changes<br /><br />
+</div>
+
+<h3 id="session-configuration-example">Session Configuration Example</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-cm</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">url</span><span class="pi">:</span> <span class="s">https://argocd.somaz.link</span>
+  
+  <span class="c1"># Session settings</span>
+  <span class="na">application.instanceLabelKey</span><span class="pi">:</span> <span class="s">argocd.argoproj.io/instance</span>
+  <span class="na">admin.enabled</span><span class="pi">:</span> <span class="s2">"</span><span class="s">false"</span>
+  <span class="na">timeout.reconciliation</span><span class="pi">:</span> <span class="s">180s</span>
+  
+  <span class="c1"># Session security settings</span>
+  <span class="na">session.duration</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8h"</span>  <span class="c1"># Session valid for 8 hours</span>
+</code></pre></div></div>
+
+<h2 id="tls-configuration">TLS Configuration</h2>
+
+<p>Ensure your ArgoCD instance is properly secured with TLS:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-cmd-params-cm</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="c1"># Disable insecure connections</span>
+  <span class="na">server.insecure</span><span class="pi">:</span> <span class="s2">"</span><span class="s">false"</span>
+  
+  <span class="c1"># Enable strict TLS</span>
+  <span class="na">server.strict-tls</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+</code></pre></div></div>
+
+<p>For Ingress with TLS:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-server-ingress</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">kubernetes.io/ingress.class</span><span class="pi">:</span> <span class="s">nginx</span>
+    <span class="na">cert-manager.io/cluster-issuer</span><span class="pi">:</span> <span class="s">letsencrypt-prod</span>
+    <span class="na">nginx.ingress.kubernetes.io/backend-protocol</span><span class="pi">:</span> <span class="s">HTTPS</span>
+    <span class="c1"># Required for OAuth redirects</span>
+    <span class="na">nginx.ingress.kubernetes.io/ssl-passthrough</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="s">argocd.somaz.link</span>
+    <span class="na">http</span><span class="pi">:</span>
+      <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+        <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+        <span class="na">backend</span><span class="pi">:</span>
+          <span class="na">service</span><span class="pi">:</span>
+            <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-server</span>
+            <span class="na">port</span><span class="pi">:</span>
+              <span class="na">name</span><span class="pi">:</span> <span class="s">https</span>
+  <span class="na">tls</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">hosts</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">argocd.somaz.link</span>
+    <span class="na">secretName</span><span class="pi">:</span> <span class="s">argocd-secret-tls</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="common-issues">Common Issues</h3>
+
+<div class="info-box info-box-warning">
+<br />
+<strong>Typical Problems and Solutions:</strong><br /><br />
+
+<strong>1. Authentication Failed:</strong>
+   - Check client ID and secret<br />
+   - Verify redirect URI configuration<br />
+   - Ensure domain settings match<br />
+   - Check ArgoCD server URL configuration<br /><br />
+
+<strong>2. User Cannot Login:</strong>
+   - Verify the user's email domain matches hostedDomains<br />
+   - Check RBAC configuration<br />
+   - Inspect Dex logs for errors<br /><br />
+
+<strong>3. Insufficient Permissions:</strong>
+   - Review RBAC policy configuration<br />
+   - Check user's group membership<br />
+   - Verify scopes include 'groups' and 'email'<br /><br />
+
+<strong>4. Certificate Issues:</strong>
+   - Ensure SSL certificates are valid<br />
+   - Check TLS configuration<br />
+   - Verify proper URL redirection<br /><br />
+</div>
+
+<h3 id="debug-commands">Debug Commands</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check ArgoCD server logs</span>
+kubectl logs <span class="nt">-n</span> argocd <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>argocd-server
+
+<span class="c"># Check Dex server logs</span>
+kubectl logs <span class="nt">-n</span> argocd <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>argocd-dex-server
+
+<span class="c"># View configuration</span>
+kubectl get cm argocd-cm <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml
+
+<span class="c"># Check RBAC configuration</span>
+kubectl get cm argocd-rbac-cm <span class="nt">-n</span> argocd <span class="nt">-o</span> yaml
+
+<span class="c"># Test network connectivity</span>
+kubectl run <span class="nt">-it</span> <span class="nt">--rm</span> debug <span class="nt">--image</span><span class="o">=</span>curlimages/curl:7.73.0 <span class="nt">--</span> curl <span class="nt">-vk</span> https://argocd-server.argocd.svc.cluster.local
+</code></pre></div></div>
+
+<h3 id="checking-dex-status">Checking Dex Status</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Port forward to Dex metrics</span>
+kubectl port-forward <span class="nt">-n</span> argocd svc/argocd-dex-server 5558
+
+<span class="c"># In a new terminal</span>
+curl localhost:5558/metrics | <span class="nb">grep </span>dex
+</code></pre></div></div>
+
+<h2 id="automating-the-setup">Automating the Setup</h2>
+
+<h3 id="setup-script">Setup Script</h3>
+
+<p>Here’s a script to automate the configuration:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">set</span> <span class="nt">-e</span>
+
+<span class="c"># Variables</span>
+<span class="nv">NAMESPACE</span><span class="o">=</span><span class="s2">"argocd"</span>
+<span class="nv">ARGOCD_URL</span><span class="o">=</span><span class="s2">"https://argocd.somaz.link"</span>
+<span class="nv">CLIENT_ID</span><span class="o">=</span><span class="s2">"your-client-id"</span>
+<span class="nv">CLIENT_SECRET</span><span class="o">=</span><span class="s2">"your-client-secret"</span>
+
+<span class="c"># Create argocd-cm ConfigMap with Google SSO</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: </span><span class="k">${</span><span class="nv">NAMESPACE</span><span class="k">}</span><span class="sh">
+data:
+  url: </span><span class="k">${</span><span class="nv">ARGOCD_URL</span><span class="k">}</span><span class="sh">
+  dex.config: |
+    connectors:
+      - type: oidc
+        id: google
+        name: Google
+        config:
+          issuer: https://accounts.google.com
+          clientID: </span><span class="k">${</span><span class="nv">CLIENT_ID</span><span class="k">}</span><span class="sh">
+          clientSecret: </span><span class="se">\$</span><span class="sh">dex.google.clientSecret
+          redirectURI: </span><span class="k">${</span><span class="nv">ARGOCD_URL</span><span class="k">}</span><span class="sh">/api/dex/callback
+          hostedDomains:
+            - example.com
+</span><span class="no">EOF
+
+</span><span class="c"># Encode the client secret</span>
+<span class="nv">ENCODED_SECRET</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"</span><span class="k">${</span><span class="nv">CLIENT_SECRET</span><span class="k">}</span><span class="s2">"</span> | <span class="nb">base64</span><span class="si">)</span>
+
+<span class="c"># Update argocd-secret with Google client secret</span>
+kubectl patch secret argocd-secret <span class="nt">-n</span> <span class="k">${</span><span class="nv">NAMESPACE</span><span class="k">}</span> <span class="nt">--type</span><span class="o">=</span><span class="s1">'json'</span> <span class="nt">-p</span><span class="o">=</span><span class="s2">"[
+  {</span><span class="se">\"</span><span class="s2">op</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="s2">add</span><span class="se">\"</span><span class="s2">, </span><span class="se">\"</span><span class="s2">path</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="s2">/data/dex.google.clientSecret</span><span class="se">\"</span><span class="s2">, </span><span class="se">\"</span><span class="s2">value</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="k">${</span><span class="nv">ENCODED_SECRET</span><span class="k">}</span><span class="se">\"</span><span class="s2">}
+]"</span>
+
+<span class="c"># Restart components</span>
+kubectl rollout restart deployment argocd-server <span class="nt">-n</span> <span class="k">${</span><span class="nv">NAMESPACE</span><span class="k">}</span>
+kubectl rollout restart deployment argocd-dex-server <span class="nt">-n</span> <span class="k">${</span><span class="nv">NAMESPACE</span><span class="k">}</span>
+
+<span class="nb">echo</span> <span class="s2">"Google SSO configuration applied. Please allow a few minutes for pods to restart."</span>
+</code></pre></div></div>
 
 <h3 id="authentication-processes">Authentication Processes</h3>
 <ul>
@@ -445,7 +761,28 @@ k rollout restart deploy <span class="nt">-n</span> argocd argocd-dex-server
   <li>Consider domain settings, security policies, and network configurations for production environments</li>
   <li>Keep up with the latest documentation as GCP Console and ArgoCD settings may change</li>
   <li>Ensure proper backup before making configuration changes</li>
+  <li>Use separate test and production environments for SSO configuration testing</li>
 </ul>
+
+<h2 id="security-considerations">Security Considerations</h2>
+
+<h3 id="argocd-sso-security-checklist">ArgoCD SSO Security Checklist</h3>
+
+<div class="info-box info-box-success">
+<br />
+<strong>Security Checklist:</strong><br /><br />
+
+✅ Use HTTPS with valid certificates<br />
+✅ Implement least privilege RBAC policies<br />
+✅ Restrict by hosted domains<br />
+✅ Enable appropriate session timeouts<br />
+✅ Regularly rotate client secrets<br />
+✅ Audit SSO access regularly<br />
+✅ Backup configurations before changes<br />
+✅ Implement network policies<br />
+✅ Monitor for suspicious login attempts<br />
+✅ Enable multi-factor authentication in Google<br />
+</div>
 
 <p><br /></p>
 
@@ -454,6 +791,10 @@ k rollout restart deploy <span class="nt">-n</span> argocd argocd-dex-server
 <h2 id="references">References</h2>
 <ul>
   <li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/google/">ArgoCD SSO with GCP OAuth</a></li>
+  <li><a href="https://dexidp.io/docs/connectors/oidc/">Dex Authentication Documentation</a></li>
+  <li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/">ArgoCD RBAC Configuration</a></li>
+  <li><a href="https://developers.google.com/identity/protocols/oauth2/web-server">Google OAuth 2.0 for Server Applications</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/ingress/#tls">Kubernetes Ingress with TLS</a></li>
 </ul>
 
 
@@ -504,7 +845,7 @@ k rollout restart deploy <span class="nt">-n</span> argocd argocd-dex-server
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="5">
+            <div class="time-bar" data-minutes="13">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -812,11 +1153,35 @@ k rollout restart deploy <span class="nt">-n</span> argocd argocd-dex-server
 Overview
 This post explains how to configure Single Sign-On (SSO) for ArgoCD using Google Cloud Platform (GCP) OAuth.
 
+Benefits of Using SSO with ArgoCD
+
+
+  
+    
+      Centralized Authentication
+      Streamlines access management by integrating with your organization&apos;s existing identity provider.
+    
+    
+      Enhanced Security
+      Leverages Google&apos;s security features including MFA, suspicious login detection, and centralized user management.
+    
+    
+      Simplified User Experience
+      Provides seamless login experience without requiring separate ArgoCD credentials.
+    
+    
+      Improved Compliance
+      Facilitates audit logging and access controls through centralized identity management.
+    
+  
+
+
 Prerequisites
 
   A GCP project with OAuth 2.0 configured
   ArgoCD installed on a Kubernetes cluster
   Administrative access to both GCP and ArgoCD
+  Domain with proper DNS configuration for ArgoCD
 
 
 Steps
@@ -982,7 +1347,38 @@ configs:
     dex.google.clientSecret: &quot;gloas-a9... # TODO: change to your Google client secret&quot;
 
 
-3. Restart ArgoCD Components
+3. Create argocd-secret for OAuth
+
+If you’re using the Google OAuth connector, you need to store the client secret securely:
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-secret
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-secret
+    app.kubernetes.io/part-of: argocd
+type: Opaque
+data:
+  # Base64 encoded client secret
+  dex.google.clientSecret: R3h4eHgtb3h4eHh4eHh4eHh4eHh4eHh4eHh4
+  # Add other existing ArgoCD secrets here as well
+
+
+To create this secret manually:
+
+# Convert your client secret to base64
+echo -n &quot;YOUR-CLIENT-SECRET&quot; | base64
+
+# Create the secret
+kubectl create secret generic argocd-secret \
+  --namespace argocd \
+  --from-literal=dex.google.clientSecret=YOUR-BASE64-ENCODED-SECRET \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+
+4. Restart ArgoCD Components
 
 Check deployments:
 
@@ -995,11 +1391,272 @@ k rollout restart deploy -n argocd argocd-server
 k rollout restart deploy -n argocd argocd-dex-server
 
 
-4. Test Login
+5. Test Login
 Access your ArgoCD instance and verify that Google Workspace SSO login works correctly.
 
 
 
+
+
+Advanced Configuration
+
+Group-Based Access Control
+
+You can map Google Workspace groups to ArgoCD roles for more granular permissions management:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+data:
+  policy.csv: |
+    # Allow members of &apos;platform-team@example.com&apos; to be admins
+    g, platform-team@example.com, role:admin
+
+    # Allow members of &apos;developers@example.com&apos; to only access certain projects
+    p, role:developers, applications, get, dev-team/*, allow
+    p, role:developers, applications, sync, dev-team/*, allow
+    g, developers@example.com, role:developers
+
+    # Default permissions for all users
+    p, role:readonly, applications, get, */*, allow
+    p, role:readonly, clusters, get, *, allow
+  
+  scopes: &apos;[groups, email]&apos;
+
+
+Configuring Google Groups Integration
+
+To enable group membership checking, update the Dex connector configuration:
+
+dex.config: |
+  connectors:
+    - type: oidc
+      id: google
+      name: Google
+      config:
+        issuer: https://accounts.google.com
+        clientID: &amp;lt;YOUR-CLIENT-ID&amp;gt;
+        clientSecret: $dex.google.clientSecret
+        redirectURI: https://argocd.somaz.link/api/dex/callback
+        
+        # Enable Google Groups integration
+        groups:
+          # True to use Google Groups for group membership claims
+          useGroupsAsWhitelist: true
+          # Filtering to specific Google Groups
+          filterGroups: [&quot;dev-team@example.com&quot;, &quot;platform-team@example.com&quot;]
+        
+        # Restrict to specific domains
+        hostedDomains:
+          - example.com
+
+
+Hardening Your SSO Configuration
+
+
+
+Security Best Practices:
+
+1. Session Management:
+   - Configure reasonable session timeouts
+   - Enable secure session storage
+   - Implement session revocation mechanisms
+
+2. Access Control:
+   - Apply the principle of least privilege
+   - Regularly audit user access and permissions
+   - Implement role-based access control
+
+3. Network Security:
+   - Use HTTPS with valid certificates
+   - Implement network policies to restrict access
+   - Consider adding IP-based restrictions
+
+4. Monitoring and Logging:
+   - Enable comprehensive audit logging
+   - Monitor for suspicious login attempts
+   - Set up alerts for permission changes
+
+
+Session Configuration Example
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  url: https://argocd.somaz.link
+  
+  # Session settings
+  application.instanceLabelKey: argocd.argoproj.io/instance
+  admin.enabled: &quot;false&quot;
+  timeout.reconciliation: 180s
+  
+  # Session security settings
+  session.duration: &quot;8h&quot;  # Session valid for 8 hours
+
+
+TLS Configuration
+
+Ensure your ArgoCD instance is properly secured with TLS:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: argocd
+data:
+  # Disable insecure connections
+  server.insecure: &quot;false&quot;
+  
+  # Enable strict TLS
+  server.strict-tls: &quot;true&quot;
+
+
+For Ingress with TLS:
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    # Required for OAuth redirects
+    nginx.ingress.kubernetes.io/ssl-passthrough: &quot;true&quot;
+spec:
+  rules:
+  - host: argocd.somaz.link
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              name: https
+  tls:
+  - hosts:
+    - argocd.somaz.link
+    secretName: argocd-secret-tls
+
+
+
+
+Troubleshooting
+
+Common Issues
+
+
+
+Typical Problems and Solutions:
+
+1. Authentication Failed:
+   - Check client ID and secret
+   - Verify redirect URI configuration
+   - Ensure domain settings match
+   - Check ArgoCD server URL configuration
+
+2. User Cannot Login:
+   - Verify the user&apos;s email domain matches hostedDomains
+   - Check RBAC configuration
+   - Inspect Dex logs for errors
+
+3. Insufficient Permissions:
+   - Review RBAC policy configuration
+   - Check user&apos;s group membership
+   - Verify scopes include &apos;groups&apos; and &apos;email&apos;
+
+4. Certificate Issues:
+   - Ensure SSL certificates are valid
+   - Check TLS configuration
+   - Verify proper URL redirection
+
+
+Debug Commands
+
+# Check ArgoCD server logs
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-server
+
+# Check Dex server logs
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-dex-server
+
+# View configuration
+kubectl get cm argocd-cm -n argocd -o yaml
+
+# Check RBAC configuration
+kubectl get cm argocd-rbac-cm -n argocd -o yaml
+
+# Test network connectivity
+kubectl run -it --rm debug --image=curlimages/curl:7.73.0 -- curl -vk https://argocd-server.argocd.svc.cluster.local
+
+
+Checking Dex Status
+
+# Port forward to Dex metrics
+kubectl port-forward -n argocd svc/argocd-dex-server 5558
+
+# In a new terminal
+curl localhost:5558/metrics | grep dex
+
+
+Automating the Setup
+
+Setup Script
+
+Here’s a script to automate the configuration:
+
+#!/bin/bash
+set -e
+
+# Variables
+NAMESPACE=&quot;argocd&quot;
+ARGOCD_URL=&quot;https://argocd.somaz.link&quot;
+CLIENT_ID=&quot;your-client-id&quot;
+CLIENT_SECRET=&quot;your-client-secret&quot;
+
+# Create argocd-cm ConfigMap with Google SSO
+cat &amp;lt;&amp;lt;EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: ${NAMESPACE}
+data:
+  url: ${ARGOCD_URL}
+  dex.config: |
+    connectors:
+      - type: oidc
+        id: google
+        name: Google
+        config:
+          issuer: https://accounts.google.com
+          clientID: ${CLIENT_ID}
+          clientSecret: \$dex.google.clientSecret
+          redirectURI: ${ARGOCD_URL}/api/dex/callback
+          hostedDomains:
+            - example.com
+EOF
+
+# Encode the client secret
+ENCODED_SECRET=$(echo -n &quot;${CLIENT_SECRET}&quot; | base64)
+
+# Update argocd-secret with Google client secret
+kubectl patch secret argocd-secret -n ${NAMESPACE} --type=&apos;json&apos; -p=&quot;[
+  {\&quot;op\&quot;: \&quot;add\&quot;, \&quot;path\&quot;: \&quot;/data/dex.google.clientSecret\&quot;, \&quot;value\&quot;: \&quot;${ENCODED_SECRET}\&quot;}
+]&quot;
+
+# Restart components
+kubectl rollout restart deployment argocd-server -n ${NAMESPACE}
+kubectl rollout restart deployment argocd-dex-server -n ${NAMESPACE}
+
+echo &quot;Google SSO configuration applied. Please allow a few minutes for pods to restart.&quot;
 
 
 Authentication Processes
@@ -1014,6 +1671,27 @@ Important Notes
   Consider domain settings, security policies, and network configurations for production environments
   Keep up with the latest documentation as GCP Console and ArgoCD settings may change
   Ensure proper backup before making configuration changes
+  Use separate test and production environments for SSO configuration testing
+
+
+Security Considerations
+
+ArgoCD SSO Security Checklist
+
+
+
+Security Checklist:
+
+✅ Use HTTPS with valid certificates
+✅ Implement least privilege RBAC policies
+✅ Restrict by hosted domains
+✅ Enable appropriate session timeouts
+✅ Regularly rotate client secrets
+✅ Audit SSO access regularly
+✅ Backup configurations before changes
+✅ Implement network policies
+✅ Monitor for suspicious login attempts
+✅ Enable multi-factor authentication in Google
 
 
 
@@ -1023,9 +1701,13 @@ Important Notes
 References
 
   ArgoCD SSO with GCP OAuth
+  Dex Authentication Documentation
+  ArgoCD RBAC Configuration
+  Google OAuth 2.0 for Server Applications
+  Kubernetes Ingress with TLS
 
 ",
-            "wordcount": "943",
+            "wordcount": "2393",
             "inLanguage": "en",
             "dateCreated": "2025-03-07/",
             "datePublished": "2025-03-07/",
