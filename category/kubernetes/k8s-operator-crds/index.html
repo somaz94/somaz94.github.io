@@ -40,7 +40,7 @@
     <title>Kubernetes Operators and Custom Resource Definitions (CRDs) | somaz</title>
     <meta name="description" content="A comprehensive guide to Kubernetes Operators, CRDs, and Kubebuilder framework">
     
-        <meta name="keywords" content="kubernetes, operator, crds, kubebuilder">
+        <meta name="keywords" content="kubernetes, operator, crds, kubebuilder, controllers, kubernetes-extensions">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 13, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>6 min to read</span>
+                    <span>18 min to read</span>
                 </p>
                 <h1 class="post-title">Kubernetes Operators and Custom Resource Definitions (CRDs)</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">Extending Kubernetes with domain-specific automation and custom APIs</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737351792/kubernetes-operator-crd_jdeuae.png" alt="Featured image" class="post-cover">
@@ -245,107 +245,729 @@ January 13, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p>Understanding Kubernetes Operators and Custom Resource Definitions (CRDs), essential components for extending Kubernetes functionality.</p>
 
-<div class="info-box info-box-default">
-  In the Kubernetes ecosystem, the Operator is a method of packaging, deploying, and managing Kubernetes applications. <br /><br /> Kubernetes applications are distributed to Kubernetes and managed using the Kubernetes API and kubectl tools. <br /><br /> The Operator follows the Kubernetes principle of the controller, a loop that monitors cluster health and then makes changes or requests, if necessary. <br /><br /> The Operator expands Kubernetes to automate the full life cycle management of a particular application.
+<p>Kubernetes Operators and Custom Resource Definitions (CRDs) are powerful mechanisms for extending Kubernetes functionality beyond its built-in capabilities. This guide covers what they are, how they work together, and how to develop your own extensions to Kubernetes.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Kubernetes API Server] --&gt; B[Built-in Resources]
+      A --&gt; C[Custom Resources]
+      B --&gt; D[Pods]
+      B --&gt; E[Services]
+      B --&gt; F[Deployments]
+      C --&gt; G[CRDs]
+      G --&gt; H[Custom Controller/Operator]
+      H --&gt; I[Domain-specific Logic]
+      I --&gt; J[Automated Operations]
+      
+      style A fill:#326ce5,stroke:#fff,color:#fff
+      style G fill:#ffa726,stroke:#fff,color:#000
+      style H fill:#ffa726,stroke:#fff,color:#000
+      style I fill:#ffa726,stroke:#fff,color:#000
+  </div>
+</div>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Key Concepts</strong>
+  <p>At its core, Kubernetes operates on a simple principle: define the desired state of your system, and controllers will work to maintain that state. Operators extend this paradigm to complex, application-specific operations by encoding operational knowledge into software.</p>
 </div>
 
 <p><br /></p>
 
-<h3 id="kubernetes-operator-basics">Kubernetes Operator Basics</h3>
+<h2 id="kubernetes-operators-automation-for-complex-applications">Kubernetes Operators: Automation for Complex Applications</h2>
 
-<h4 id="what-is-an-operator">What is an Operator?</h4>
-<ul>
-  <li>Custom controller that extends Kubernetes functionality</li>
-  <li>Automates application lifecycle management</li>
-  <li>Implements domain-specific operational knowledge</li>
-  <li>Follows Kubernetes control loop principles</li>
-</ul>
+<h3 id="what-is-an-operator">What is an Operator?</h3>
 
-<h4 id="why-use-operators">Why Use Operators?</h4>
-<ul>
-  <li>Automation
+<p>An Operator is a Kubernetes-native application that watches and takes action on specific resources, implementing domain-specific operational knowledge in code.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant U as User
+      participant A as Kubernetes API
+      participant O as Operator
+      participant CR as Custom Resource
+      participant K as Kubernetes Objects
+      
+      U-&gt;&gt;A: Create/Update Custom Resource
+      A-&gt;&gt;CR: Store in etcd
+      A-&gt;&gt;O: Notify via Watch API
+      O-&gt;&gt;CR: Read desired state
+      O-&gt;&gt;K: Create/Update required objects
+      O-&gt;&gt;CR: Update status with current state
+      U-&gt;&gt;A: Get Custom Resource status
+      A-&gt;&gt;U: Return current status
+  </div>
+</div>
+
+<h4 id="operator-components">Operator Components:</h4>
+
+<ol>
+  <li><strong>Custom Resource Definition (CRD)</strong>:
     <ul>
-      <li>Application deployment</li>
-      <li>Configuration management</li>
-      <li>Updates and upgrades</li>
-      <li>Backup and recovery</li>
+      <li>Defines a new resource type in the Kubernetes API</li>
+      <li>Describes the schema and validation rules</li>
     </ul>
   </li>
-  <li>Consistency
+  <li><strong>Controller</strong>:
     <ul>
-      <li>Standardized operations</li>
-      <li>Reduced human error</li>
-      <li>Repeatable processes</li>
+      <li>Implements the control loop logic</li>
+      <li>Watches for changes to custom resources</li>
+      <li>Takes actions to reconcile actual state with desired state</li>
     </ul>
   </li>
-</ul>
+  <li><strong>Domain-specific Knowledge</strong>:
+    <ul>
+      <li>Encoded operational expertise</li>
+      <li>Application lifecycle management rules</li>
+      <li>Complex operational procedures automated in code</li>
+    </ul>
+  </li>
+</ol>
+
+<div class="info-box info-box-default">
+  <strong>The Origin of Operators</strong>
+  <p>The concept of Operators was introduced by CoreOS (now part of Red Hat) in 2016. They were designed to solve the challenge of managing stateful applications in Kubernetes, which require domain-specific knowledge for operations like scaling, upgrading, and backup/restore.</p>
+  <p>The name "Operator" comes from the human operators who traditionally managed such complex applications manually.</p>
+</div>
 
 <p><br /></p>
 
-<h4 id="manage-life-cycles">Manage life cycles</h4>
+<h3 id="the-operator-pattern">The Operator Pattern</h3>
 
-<p>Operator uses Kubernetes’ concept of control loop to manage applications. Application-specific actions are taken to continuously monitor the state of the application and to correct inconsistencies with the desired state.</p>
+<p>Operators follow the Kubernetes reconciliation pattern:</p>
 
-<ul>
-  <li>Automated deployment of applications and potential support services</li>
-  <li>Seamlessly handle upgrades and downgrades, including complex stateful applications</li>
-  <li>Application configuration and confidentiality management</li>
-  <li>Automatically scale based on load or other metrics</li>
-  <li>Error recovery, automatic replacement or reconfiguration of abnormal instances</li>
-  <li>Backup and Restore</li>
-</ul>
+<ol>
+  <li><strong>Observe</strong>: Monitor the state of the custom resource</li>
+  <li><strong>Analyze</strong>: Compare current state with desired state</li>
+  <li><strong>Act</strong>: Execute changes to reach the desired state</li>
+  <li><strong>Update</strong>: Record the current state in the resource’s status</li>
+</ol>
 
-<h4 id="operator-development">Operator development</h4>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Observe] --&gt; B[Analyze]
+      B --&gt; C[Act]
+      C --&gt; D[Update Status]
+      D --&gt; A
+      
+      style A fill:#4CAF50,stroke:#fff,color:#fff
+      style B fill:#2196F3,stroke:#fff,color:#fff
+      style C fill:#FFC107,stroke:#000,color:#000
+      style D fill:#9C27B0,stroke:#fff,color:#fff
+  </div>
+</div>
 
-<p>There are frameworks and tools for developing operators.</p>
+<h3 id="why-use-operators">Why Use Operators?</h3>
 
-<ul>
-  <li>Operator SDK (Operator SDK): Help develop, test, and package operators.</li>
-  <li>Operator Lifecycle Manager (OLM): It manages operators on the Kubernetes cluster, and is responsible for installing, updating, and life cycle management of operators.</li>
-  <li>Operator Metering: This is for reporting on the resources used by the operator.</li>
-</ul>
+<div class="info-box info-box-success-not-check">
+  <strong>Benefits of Operators</strong>
+  <ul>
+    <li><strong>Automation</strong>: Codify complex operational tasks to reduce manual intervention</li>
+    <li><strong>Consistency</strong>: Ensure identical operations across environments</li>
+    <li><strong>Reliability</strong>: Reduce human error through tested, automated procedures</li>
+    <li><strong>Domain-specific</strong>: Encode specialized knowledge for specific applications</li>
+    <li><strong>Kubernetes-native</strong>: Integrate with existing Kubernetes tools and workflows</li>
+  </ul>
+</div>
+
+<h3 id="real-world-applications">Real-world Applications</h3>
+
+<p>Operators are particularly valuable for managing:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Application Type</th>
+      <th style="width: 40%;">Operational Challenges</th>
+      <th style="width: 35%;">Example Operators</th>
+    </tr>
+    <tr>
+      <td>Databases</td>
+      <td>
+        - Replication configuration<br />
+        - Scaling with data integrity<br />
+        - Backup and restore<br />
+        - Version upgrades
+      </td>
+      <td>
+        - PostgreSQL Operator<br />
+        - MongoDB Community Operator<br />
+        - Redis Operator<br />
+        - Cassandra Operator
+      </td>
+    </tr>
+    <tr>
+      <td>Message Queues</td>
+      <td>
+        - Cluster configuration<br />
+        - Topic management<br />
+        - Network partitioning
+      </td>
+      <td>
+        - Kafka Operator<br />
+        - RabbitMQ Operator
+      </td>
+    </tr>
+    <tr>
+      <td>Infrastructure</td>
+      <td>
+        - Certificate management<br />
+        - Network policy enforcement<br />
+        - Monitoring configuration
+      </td>
+      <td>
+        - cert-manager<br />
+        - Prometheus Operator<br />
+        - Istio Operator
+      </td>
+    </tr>
+  </table>
+</div>
 
 <p><br /></p>
 
-<hr />
-<h3 id="custom-resource-definitions-crds">Custom Resource Definitions (CRDs)</h3>
+<h3 id="operator-maturity-model">Operator Maturity Model</h3>
 
-<h4 id="what-is-crd">What is CRD?</h4>
+<p>Operators range in sophistication according to the Red Hat Operator Maturity Model:</p>
 
-<div class="info-box info-box-default">
-  Kubernetes Custom Resource Definition (CRD) is a powerful feature that allows you to extend Kubernetes capabilities to user-defined resources. <br /><br /> CRD allows you to create specific resources that are unique within a Kubernetes cluster in a manner similar to how standard Kubernetes resources, such as fords, deployments, or services, are handled. <br /><br /> This can be very useful in developing custom applications or integrations based on the Kubernetes platform.
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Level 1: Basic Install] --&gt; B[Level 2: Seamless Upgrades]
+      B --&gt; C[Level 3: Full Lifecycle]
+      C --&gt; D[Level 4: Deep Insights]
+      D --&gt; E[Level 5: Auto Pilot]
+      
+      style A fill:#c5e1a5,stroke:#333,stroke-width:1px
+      style B fill:#aed581,stroke:#333,stroke-width:1px
+      style C fill:#8bc34a,stroke:#333,stroke-width:1px
+      style D fill:#689f38,stroke:#333,stroke-width:1px
+      style E fill:#33691e,stroke:#333,stroke-width:1px,color:#fff
+  </div>
 </div>
 
-<h4 id="what-is-custom-resource">What is Custom Resource?</h4>
+<ol>
+  <li><strong>Level 1 - Basic Install</strong>: Automated application installation and configuration</li>
+  <li><strong>Level 2 - Seamless Upgrades</strong>: Patch and minor version upgrades</li>
+  <li><strong>Level 3 - Full Lifecycle</strong>: Application backups, failure recovery</li>
+  <li><strong>Level 4 - Deep Insights</strong>: Application metrics, alerts, optimized configurations based on usage</li>
+  <li><strong>Level 5 - Auto Pilot</strong>: Automatic scaling, auto-tuning, anomaly detection and resolution</li>
+</ol>
 
-<div class="info-box info-box-default">
-  Custom resources are extensions of the Kubernetes API that are not necessarily available in the basic Kubernetes installation. <br /><br /> This is basically a method of customizing Kubernetes to meet your needs by adding new resources in addition to the resources provided.
+<p><br /></p>
+
+<h2 id="custom-resource-definitions-crds-extending-the-kubernetes-api">Custom Resource Definitions (CRDs): Extending the Kubernetes API</h2>
+
+<h3 id="what-are-crds">What are CRDs?</h3>
+
+<p>CRDs allow you to define new resource types that extend the Kubernetes API, making custom resources feel like native Kubernetes objects.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Custom Resources vs. Built-in Resources</strong>
+  <p>Custom resources work just like native Kubernetes resources:</p>
+  <ul>
+    <li>Accessed through the same API endpoints</li>
+    <li>Managed with kubectl and other Kubernetes clients</li>
+    <li>Secured through RBAC and admission controls</li>
+    <li>Stored in etcd alongside built-in resources</li>
+    <li>Watched for changes through the same mechanisms</li>
+  </ul>
 </div>
 
-<h4 id="why-do-i-use-crd">Why do I use CRD?</h4>
+<h3 id="crd-architecture">CRD Architecture</h3>
 
-<ul>
-  <li>Extensibility: Kubernetes can be extended to their own APIs that can be used with Kuberectl and other Kubernetes API clients.</li>
-  <li>Flexibility: You can define new resources that act like basic Kubernetes resources.</li>
-  <li>Integration: CRD is useful for building operators, which are custom controllers that manage applications and their components based on custom resources.</li>
-</ul>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[CustomResourceDefinition] --&gt;|defines| B[Custom Resource Type]
+      B --&gt;|instances of| C[Custom Resource Objects]
+      D[Controller/Operator] --&gt;|watches| C
+      D --&gt;|creates/updates| E[Kubernetes Resources]
+      
+      style A fill:#FFC107,stroke:#333,stroke-width:1px
+      style B fill:#FF9800,stroke:#333,stroke-width:1px
+      style C fill:#FF5722,stroke:#333,stroke-width:1px
+      style D fill:#673AB7,stroke:#333,stroke-width:1px,color:#fff
+      style E fill:#2196F3,stroke:#333,stroke-width:1px,color:#fff
+  </div>
+</div>
 
-<h4 id="how-does-crd-work">How does CRD work?</h4>
+<h3 id="crd-components">CRD Components</h3>
 
-<ul>
-  <li>To implement CRD, as with other Kubernetes resources, it is defined using YAML. This definition specifies a new kind of resource, its name, and schema. The schema is used to validate the configuration of a CRD (also known as a custom resource).</li>
-  <li>The basic structure of the CRD definition is as follows.</li>
-</ul>
+<h4 id="1-the-crd-itself">1. The CRD Itself</h4>
 
-<h4 id="basic-crd-example">Basic CRD Example</h4>
+<p>Defines the schema, validation, and naming for your custom resource type:</p>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apiextensions.k8s.io/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">CustomResourceDefinition</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">crdtype.mycompany.com</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">databases.example.com</span>
 <span class="na">spec</span><span class="pi">:</span>
-  <span class="na">group</span><span class="pi">:</span> <span class="s">mycompany.com</span>
+  <span class="na">group</span><span class="pi">:</span> <span class="s">example.com</span>
+  <span class="na">names</span><span class="pi">:</span>
+    <span class="na">kind</span><span class="pi">:</span> <span class="s">Database</span>
+    <span class="na">plural</span><span class="pi">:</span> <span class="s">databases</span>
+    <span class="na">singular</span><span class="pi">:</span> <span class="s">database</span>
+    <span class="na">shortNames</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">db</span>
+  <span class="na">scope</span><span class="pi">:</span> <span class="s">Namespaced</span>
+  <span class="na">versions</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">v1</span>
+    <span class="na">served</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">storage</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">schema</span><span class="pi">:</span>
+      <span class="na">openAPIV3Schema</span><span class="pi">:</span>
+        <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+        <span class="na">required</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">spec"</span><span class="pi">]</span>
+        <span class="na">properties</span><span class="pi">:</span>
+          <span class="na">spec</span><span class="pi">:</span>
+            <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+            <span class="na">required</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">engine"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">version"</span><span class="pi">]</span>
+            <span class="na">properties</span><span class="pi">:</span>
+              <span class="na">engine</span><span class="pi">:</span>
+                <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                <span class="na">enum</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">postgres"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">mysql"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">mongodb"</span><span class="pi">]</span>
+              <span class="na">version</span><span class="pi">:</span>
+                <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+              <span class="na">replicas</span><span class="pi">:</span>
+                <span class="na">type</span><span class="pi">:</span> <span class="s">integer</span>
+                <span class="na">minimum</span><span class="pi">:</span> <span class="m">1</span>
+                <span class="na">default</span><span class="pi">:</span> <span class="m">1</span>
+              <span class="na">storage</span><span class="pi">:</span>
+                <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                <span class="na">pattern</span><span class="pi">:</span> <span class="s2">"</span><span class="s">^</span><span class="se">\\</span><span class="s">d+Gi$"</span>
+          <span class="na">status</span><span class="pi">:</span>
+            <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+            <span class="na">properties</span><span class="pi">:</span>
+              <span class="na">phase</span><span class="pi">:</span>
+                <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+              <span class="na">readyReplicas</span><span class="pi">:</span>
+                <span class="na">type</span><span class="pi">:</span> <span class="s">integer</span>
+    <span class="na">subresources</span><span class="pi">:</span>
+      <span class="na">status</span><span class="pi">:</span> <span class="pi">{}</span>
+    <span class="na">additionalPrinterColumns</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Engine</span>
+      <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+      <span class="na">jsonPath</span><span class="pi">:</span> <span class="s">.spec.engine</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Version</span>
+      <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+      <span class="na">jsonPath</span><span class="pi">:</span> <span class="s">.spec.version</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Replicas</span>
+      <span class="na">type</span><span class="pi">:</span> <span class="s">integer</span>
+      <span class="na">jsonPath</span><span class="pi">:</span> <span class="s">.spec.replicas</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Status</span>
+      <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+      <span class="na">jsonPath</span><span class="pi">:</span> <span class="s">.status.phase</span>
+</code></pre></div></div>
+
+<h4 id="2-custom-resources">2. Custom Resources</h4>
+
+<p>Instances of your custom type that users create:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">example.com/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Database</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-production-db</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">engine</span><span class="pi">:</span> <span class="s">postgres</span>
+  <span class="na">version</span><span class="pi">:</span> <span class="s2">"</span><span class="s">13.4"</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>
+  <span class="na">storage</span><span class="pi">:</span> <span class="s2">"</span><span class="s">20Gi"</span>
+</code></pre></div></div>
+
+<h4 id="3-controlleroperator">3. Controller/Operator</h4>
+
+<p>Software that watches for custom resources and takes actions to align the actual state with the desired state.</p>
+
+<p><br /></p>
+
+<h3 id="advanced-crd-features">Advanced CRD Features</h3>
+
+<h4 id="schema-validation">Schema Validation</h4>
+
+<p>The schema section of a CRD defines the structure and validation rules for your custom resource:</p>
+
+<ul>
+  <li><strong>Required fields</strong>: Enforce mandatory configuration</li>
+  <li><strong>Field types</strong>: Validate data types (string, integer, boolean, object, array)</li>
+  <li><strong>Enumerations</strong>: Restrict values to a predefined set</li>
+  <li><strong>Patterns</strong>: Validate format using regular expressions</li>
+  <li><strong>Ranges</strong>: Set minimum and maximum values for numbers</li>
+  <li><strong>Defaults</strong>: Provide default values when not specified</li>
+</ul>
+
+<h4 id="additional-printer-columns">Additional Printer Columns</h4>
+
+<p>Define custom columns for <code class="language-plaintext highlighter-rouge">kubectl get</code> output:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>kubectl get databases
+NAME              ENGINE     VERSION   REPLICAS   STATUS
+my-production-db  postgres   13.4      3          Running
+dev-database      mysql      8.0       1          Provisioning
+</code></pre></div></div>
+
+<h4 id="subresources">Subresources</h4>
+
+<p>Subresources provide special endpoints for custom resources:</p>
+
+<ul>
+  <li><strong>Status</strong>: Separate the “spec” (desired state) from “status” (actual state)</li>
+  <li><strong>Scale</strong>: Enable scaling operations via the scale subresource</li>
+</ul>
+
+<p><br /></p>
+
+<h2 id="building-operators-tools-and-frameworks">Building Operators: Tools and Frameworks</h2>
+
+<p>Multiple frameworks exist to simplify operator development:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Framework</th>
+      <th style="width: 55%;">Description</th>
+      <th style="width: 25%;">Best For</th>
+    </tr>
+    <tr>
+      <td>Kubebuilder</td>
+      <td>
+        - Developed by Kubernetes SIG API Machinery<br />
+        - Uses Go programming language<br />
+        - Includes scaffolding, testing tools, and libraries
+      </td>
+      <td>
+        - Complex operators<br />
+        - Large-scale projects<br />
+        - Deep integration
+      </td>
+    </tr>
+    <tr>
+      <td>Operator SDK</td>
+      <td>
+        - Part of the Operator Framework by Red Hat<br />
+        - Supports Go, Ansible, and Helm<br />
+        - Includes Operator Lifecycle Manager integration
+      </td>
+      <td>
+        - Multi-language support<br />
+        - Quick prototyping<br />
+        - OLM deployment
+      </td>
+    </tr>
+    <tr>
+      <td>KUDO</td>
+      <td>
+        - CNCF sandbox project<br />
+        - Declarative approach<br />
+        - Operator building for non-programmers
+      </td>
+      <td>
+        - Simple operators<br />
+        - Non-developers<br />
+        - Quick adoption
+      </td>
+    </tr>
+    <tr>
+      <td>Kopf</td>
+      <td>
+        - Python-based framework<br />
+        - Lightweight design<br />
+        - Focus on simplicity
+      </td>
+      <td>
+        - Python developers<br />
+        - Rapid prototyping<br />
+        - Smaller projects
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="deep-dive-kubebuilder-framework">Deep Dive: Kubebuilder Framework</h3>
+
+<p>Kubebuilder is a popular framework for building Kubernetes APIs and controllers using Go.</p>
+
+<h4 id="project-structure">Project Structure</h4>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.
+├── Dockerfile                # Container image definition
+├── Makefile                  # Build, test, deploy commands
+├── PROJECT                   # Project metadata
+├── api/                      # CRD API definitions
+│   └── v1/
+│       ├── database_types.go # Custom resource type definition
+│       ├── groupversion_info.go
+│       └── zz_generated.deepcopy.go
+├── config/                   # Kubernetes manifests
+│   ├── crd/                  # Generated CRD YAML
+│   ├── rbac/                 # Role-based access control
+│   ├── manager/              # Controller manager deployment
+│   └── samples/              # Example custom resources
+├── controllers/              # Controller implementation
+│   ├── database_controller.go
+│   └── suite_test.go
+└── main.go                   # Entry point
+</code></pre></div></div>
+
+<h4 id="core-components-in-code">Core Components in Code</h4>
+
+<p><strong>1. API Type Definition:</strong></p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// Database is the Schema for the databases API</span>
+<span class="k">type</span> <span class="n">Database</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="n">metav1</span><span class="o">.</span><span class="n">TypeMeta</span>   <span class="s">`json:",inline"`</span>
+    <span class="n">metav1</span><span class="o">.</span><span class="n">ObjectMeta</span> <span class="s">`json:"metadata,omitempty"`</span>
+
+    <span class="n">Spec</span>   <span class="n">DatabaseSpec</span>   <span class="s">`json:"spec,omitempty"`</span>
+    <span class="n">Status</span> <span class="n">DatabaseStatus</span> <span class="s">`json:"status,omitempty"`</span>
+<span class="p">}</span>
+
+<span class="c">// DatabaseSpec defines the desired state of Database</span>
+<span class="k">type</span> <span class="n">DatabaseSpec</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="n">Engine</span>   <span class="kt">string</span> <span class="s">`json:"engine"`</span>
+    <span class="n">Version</span>  <span class="kt">string</span> <span class="s">`json:"version"`</span>
+    <span class="n">Replicas</span> <span class="kt">int</span>    <span class="s">`json:"replicas,omitempty"`</span>
+    <span class="n">Storage</span>  <span class="kt">string</span> <span class="s">`json:"storage,omitempty"`</span>
+<span class="p">}</span>
+
+<span class="c">// DatabaseStatus defines the observed state of Database</span>
+<span class="k">type</span> <span class="n">DatabaseStatus</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="n">Phase</span>         <span class="kt">string</span> <span class="s">`json:"phase,omitempty"`</span>
+    <span class="n">ReadyReplicas</span> <span class="kt">int</span>    <span class="s">`json:"readyReplicas,omitempty"`</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>2. Controller Implementation:</strong></p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// DatabaseReconciler reconciles a Database object</span>
+<span class="k">type</span> <span class="n">DatabaseReconciler</span> <span class="k">struct</span> <span class="p">{</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">Client</span>
+    <span class="n">Log</span>    <span class="n">logr</span><span class="o">.</span><span class="n">Logger</span>
+    <span class="n">Scheme</span> <span class="o">*</span><span class="n">runtime</span><span class="o">.</span><span class="n">Scheme</span>
+<span class="p">}</span>
+
+<span class="c">// +kubebuilder:rbac:groups=example.com,resources=databases,verbs=get;list;watch;create;update;patch;delete</span>
+<span class="c">// +kubebuilder:rbac:groups=example.com,resources=databases/status,verbs=get;update;patch</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">r</span> <span class="o">*</span><span class="n">DatabaseReconciler</span><span class="p">)</span> <span class="n">Reconcile</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">req</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Request</span><span class="p">)</span> <span class="p">(</span><span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">log</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">Log</span><span class="o">.</span><span class="n">WithValues</span><span class="p">(</span><span class="s">"database"</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">NamespacedName</span><span class="p">)</span>
+
+    <span class="c">// Fetch the Database instance</span>
+    <span class="k">var</span> <span class="n">database</span> <span class="n">examplecomv1</span><span class="o">.</span><span class="n">Database</span>
+    <span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">Get</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">NamespacedName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">database</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{},</span> <span class="n">client</span><span class="o">.</span><span class="n">IgnoreNotFound</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c">// Your reconciliation logic here</span>
+    <span class="c">// 1. Check if StatefulSet exists, create if not</span>
+    <span class="c">// 2. Ensure StatefulSet matches desired state</span>
+    <span class="c">// 3. Update status with current state</span>
+
+    <span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{},</span> <span class="no">nil</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><strong>3. Main Function:</strong></p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c">// Setup manager, scheme, controllers</span>
+    <span class="n">mgr</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">NewManager</span><span class="p">(</span><span class="n">ctrl</span><span class="o">.</span><span class="n">GetConfigOrDie</span><span class="p">(),</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Options</span><span class="p">{</span>
+        <span class="n">Scheme</span><span class="o">:</span>             <span class="n">scheme</span><span class="p">,</span>
+        <span class="n">MetricsBindAddress</span><span class="o">:</span> <span class="n">metricsAddr</span><span class="p">,</span>
+        <span class="n">Port</span><span class="o">:</span>               <span class="m">9443</span><span class="p">,</span>
+        <span class="n">LeaderElection</span><span class="o">:</span>     <span class="n">enableLeaderElection</span><span class="p">,</span>
+    <span class="p">})</span>
+    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+        <span class="n">setupLog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">"unable to start manager"</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="m">1</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c">// Register controller</span>
+    <span class="k">if</span> <span class="n">err</span> <span class="o">=</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">controllers</span><span class="o">.</span><span class="n">DatabaseReconciler</span><span class="p">{</span>
+        <span class="n">Client</span><span class="o">:</span> <span class="n">mgr</span><span class="o">.</span><span class="n">GetClient</span><span class="p">(),</span>
+        <span class="n">Log</span><span class="o">:</span>    <span class="n">ctrl</span><span class="o">.</span><span class="n">Log</span><span class="o">.</span><span class="n">WithName</span><span class="p">(</span><span class="s">"controllers"</span><span class="p">)</span><span class="o">.</span><span class="n">WithName</span><span class="p">(</span><span class="s">"Database"</span><span class="p">),</span>
+        <span class="n">Scheme</span><span class="o">:</span> <span class="n">mgr</span><span class="o">.</span><span class="n">GetScheme</span><span class="p">(),</span>
+    <span class="p">})</span><span class="o">.</span><span class="n">SetupWithManager</span><span class="p">(</span><span class="n">mgr</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+        <span class="n">setupLog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">"unable to create controller"</span><span class="p">,</span> <span class="s">"controller"</span><span class="p">,</span> <span class="s">"Database"</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="m">1</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c">// Start manager</span>
+    <span class="n">setupLog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"starting manager"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">mgr</span><span class="o">.</span><span class="n">Start</span><span class="p">(</span><span class="n">ctrl</span><span class="o">.</span><span class="n">SetupSignalHandler</span><span class="p">());</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+        <span class="n">setupLog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">"problem running manager"</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="m">1</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="common-development-commands">Common Development Commands</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Initialize new project</span>
+kubebuilder init <span class="nt">--domain</span> example.com
+
+<span class="c"># Create API (generates CRD and controller)</span>
+kubebuilder create api <span class="nt">--group</span> example <span class="nt">--version</span> v1 <span class="nt">--kind</span> Database
+
+<span class="c"># Generate manifests</span>
+make manifests
+
+<span class="c"># Install CRDs</span>
+make <span class="nb">install</span>
+
+<span class="c"># Run controller locally (development)</span>
+make run
+
+<span class="c"># Build and push container image</span>
+make docker-build docker-push <span class="nv">IMG</span><span class="o">=</span>example.com/operator:v0.1.0
+
+<span class="c"># Deploy to cluster</span>
+make deploy <span class="nv">IMG</span><span class="o">=</span>example.com/operator:v0.1.0
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="development-workflow">Development Workflow</h2>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Design CRD] --&gt; B[Define Types in Go]
+      B --&gt; C[Implement Controller Logic]
+      C --&gt; D[Test Locally]
+      D --&gt;|Issues| C
+      D --&gt;|Success| E[Build &amp; Deploy]
+      E --&gt; F[Monitor &amp; Iterate]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#90caf9,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#42a5f5,stroke:#333,stroke-width:1px
+      style E fill:#2196f3,stroke:#333,stroke-width:1px,color:#fff
+      style F fill:#1976d2,stroke:#333,stroke-width:1px,color:#fff
+  </div>
+</div>
+
+<h3 id="stages-of-operator-development">Stages of Operator Development</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Stage</th>
+      <th style="width: 35%;">Activities</th>
+      <th style="width: 45%;">Best Practices</th>
+    </tr>
+    <tr>
+      <td>Design</td>
+      <td>
+        - Define CRD specs<br />
+        - Plan controller logic<br />
+        - Design API schema
+      </td>
+      <td>
+        - Keep schema simple and focused<br />
+        - Define clear validation rules<br />
+        - Consider versioning strategy early<br />
+        - Document field purposes and constraints
+      </td>
+    </tr>
+    <tr>
+      <td>Implementation</td>
+      <td>
+        - Write controller code<br />
+        - Implement reconciliation<br />
+        - Add validation
+      </td>
+      <td>
+        - Follow idempotent design patterns<br />
+        - Use owner references for created resources<br />
+        - Handle edge cases and error conditions<br />
+        - Leverage finalizers for cleanup logic
+      </td>
+    </tr>
+    <tr>
+      <td>Testing</td>
+      <td>
+        - Unit tests<br />
+        - Integration tests<br />
+        - E2E testing
+      </td>
+      <td>
+        - Mock external dependencies<br />
+        - Test scenarios for error handling<br />
+        - Use envtest for controller tests<br />
+        - Create test fixtures for common scenarios
+      </td>
+    </tr>
+    <tr>
+      <td>Deployment</td>
+      <td>
+        - Build container image<br />
+        - Deploy to cluster<br />
+        - Monitor performance
+      </td>
+      <td>
+        - Use minimal base images<br />
+        - Set resource requests/limits<br />
+        - Configure proper RBAC permissions<br />
+        - Implement health checks and metrics
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h2 id="best-practices">Best Practices</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>CRD Design:</strong>
+  <ul>
+    <li><strong>Follow Kubernetes conventions</strong> for naming, structure, and versioning</li>
+    <li><strong>Use semantic versioning</strong> for your API versions</li>
+    <li><strong>Make fields optional</strong> when possible to improve forward compatibility</li>
+    <li><strong>Set defaults</strong> for optional fields to simplify usage</li>
+    <li><strong>Use strong validation</strong> to catch misconfigurations early</li>
+    <li><strong>Document all fields</strong> with clear descriptions</li>
+  </ul>
+  
+  <strong>Controller Implementation:</strong>
+  <ul>
+    <li><strong>Design for idempotency</strong> - controllers should safely retry operations</li>
+    <li><strong>Handle errors gracefully</strong> with appropriate retries and backoffs</li>
+    <li><strong>Implement informative logging</strong> for debugging and auditing</li>
+    <li><strong>Update status frequently</strong> to reflect the current state</li>
+    <li><strong>Add finalizers</strong> for proper cleanup on deletion</li>
+    <li><strong>Set owner references</strong> for automatic cleanup of dependent resources</li>
+  </ul>
+  
+  <strong>Testing and Reliability:</strong>
+  <ul>
+    <li><strong>Write comprehensive tests</strong> for controller logic</li>
+    <li><strong>Test edge cases</strong> and recovery scenarios</li>
+    <li><strong>Implement leader election</strong> for high availability</li>
+    <li><strong>Export metrics</strong> for performance monitoring</li>
+    <li><strong>Add thorough documentation</strong> for users of your operator</li>
+  </ul>
+</div>
+
+<h2 id="real-world-example-simple-namespace-synchronization-operator">Real-world Example: Simple Namespace Synchronization Operator</h2>
+
+<p>This example demonstrates a basic operator that synchronizes configurations across namespaces.</p>
+
+<h3 id="crd-definition">CRD Definition</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apiextensions.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">CustomResourceDefinition</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">namespacesynchronizations.sync.example.com</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">group</span><span class="pi">:</span> <span class="s">sync.example.com</span>
   <span class="na">versions</span><span class="pi">:</span>
     <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">v1</span>
       <span class="na">served</span><span class="pi">:</span> <span class="no">true</span>
@@ -357,148 +979,98 @@ January 13, 2025
             <span class="na">spec</span><span class="pi">:</span>
               <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
               <span class="na">properties</span><span class="pi">:</span>
-                <span class="na">myField</span><span class="pi">:</span>
+                <span class="na">sourceNamespace</span><span class="pi">:</span>
                   <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
-  <span class="na">scope</span><span class="pi">:</span> <span class="s">Namespaced</span>
+                <span class="na">targetNamespaces</span><span class="pi">:</span>
+                  <span class="na">type</span><span class="pi">:</span> <span class="s">array</span>
+                  <span class="na">items</span><span class="pi">:</span>
+                    <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                <span class="na">resources</span><span class="pi">:</span>
+                  <span class="na">type</span><span class="pi">:</span> <span class="s">array</span>
+                  <span class="na">items</span><span class="pi">:</span>
+                    <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+                    <span class="na">properties</span><span class="pi">:</span>
+                      <span class="na">kind</span><span class="pi">:</span>
+                        <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                      <span class="na">name</span><span class="pi">:</span>
+                        <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+            <span class="na">status</span><span class="pi">:</span>
+              <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+              <span class="na">properties</span><span class="pi">:</span>
+                <span class="na">conditions</span><span class="pi">:</span>
+                  <span class="na">type</span><span class="pi">:</span> <span class="s">array</span>
+                  <span class="na">items</span><span class="pi">:</span>
+                    <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+                    <span class="na">properties</span><span class="pi">:</span>
+                      <span class="na">type</span><span class="pi">:</span>
+                        <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                      <span class="na">status</span><span class="pi">:</span>
+                        <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                      <span class="na">lastTransitionTime</span><span class="pi">:</span>
+                        <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                      <span class="na">reason</span><span class="pi">:</span>
+                        <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                      <span class="na">message</span><span class="pi">:</span>
+                        <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+  <span class="na">scope</span><span class="pi">:</span> <span class="s">Cluster</span>
   <span class="na">names</span><span class="pi">:</span>
-    <span class="na">plural</span><span class="pi">:</span> <span class="s">crdtypes</span>
-    <span class="na">singular</span><span class="pi">:</span> <span class="s">crdtype</span>
-    <span class="na">kind</span><span class="pi">:</span> <span class="s">CrdType</span>
+    <span class="na">plural</span><span class="pi">:</span> <span class="s">namespacesynchronizations</span>
+    <span class="na">singular</span><span class="pi">:</span> <span class="s">namespacesynchronization</span>
+    <span class="na">kind</span><span class="pi">:</span> <span class="s">NamespaceSynchronization</span>
     <span class="na">shortNames</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="s">ct</span>
+    <span class="pi">-</span> <span class="s">nssync</span>
 </code></pre></div></div>
 
-<h4 id="lifecycle-and-controllers">Lifecycle and Controllers</h4>
+<h3 id="custom-resource-example">Custom Resource Example</h3>
 
-<ul>
-  <li>After you define and apply CRD in the cluster, you can create and manage that instance, just like any other resource in Kubernetes.</li>
-  <li>The following is a basic example of a user-defined resource.</li>
-</ul>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apiVersion: mycompany.com/v1
-kind: CrdType
-metadata:
-  name: example-crdtype
-spec:
-  myField: <span class="s2">"Hello, world!"</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sync.example.com/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">NamespaceSynchronization</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">config-sync</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">sourceNamespace</span><span class="pi">:</span> <span class="s">base-config</span>
+  <span class="na">targetNamespaces</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">team-a</span>
+  <span class="pi">-</span> <span class="s">team-b</span>
+  <span class="pi">-</span> <span class="s">team-c</span>
+  <span class="na">resources</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">shared-config</span>
+  <span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">common-credentials</span>
 </code></pre></div></div>
-<ul>
-  <li>In general, CRD is part of an operator consisting of the CRD itself and a user-defined controller. The controller monitors events related to custom resources and responds by creating, updating, deleting, or coordinating resources accordingly.</li>
-</ul>
+
+<h3 id="controller-logic-overview">Controller Logic Overview</h3>
+
+<p>The controller would:</p>
+
+<ol>
+  <li>Watch for NamespaceSynchronization resources</li>
+  <li>List the specified resources in the source namespace</li>
+  <li>For each target namespace:
+    <ul>
+      <li>Create or update the resources</li>
+      <li>Handle differences in metadata (e.g., namespace)</li>
+      <li>Apply owner references for tracking</li>
+    </ul>
+  </li>
+  <li>Update the status with sync results</li>
+</ol>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="kubebuilder-framework">Kubebuilder Framework</h3>
-<p>Kubbuilder is an SDK for developing Kubernetes Operator. It is a framework that makes it easy to develop CRD and controllers using the Go language.</p>
+<h2 id="references">References</h2>
 
-<h4 id="project-structure">Project Structure</h4>
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.
-├── Dockerfile
-├── Makefile                  # Build, test, deploy commands
-├── PROJECT                   # Project metadata
-├── api/                      # CRD API definitions
-│   └── v1/
-├── config/                   # Kubernetes manifests
-│   ├── crd/
-│   ├── rbac/
-│   └── manager/
-└── main.go                   # Entry point
-</code></pre></div></div>
-
-<h4 id="common-commands">Common Commands</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Initialize new project</span>
-kubebuilder init <span class="nt">--domain</span> example.com
-
-<span class="c"># Create API</span>
-kubebuilder create api <span class="nt">--group</span> <span class="nb">sync</span> <span class="nt">--version</span> v1 <span class="nt">--kind</span> MyResource
-
-<span class="c"># Build and deploy</span>
-make <span class="nb">install
-</span>make run
-make docker-build
-make deploy
-</code></pre></div></div>
-
-<p><br /></p>
-
-<h3 id="development-workflow">Development Workflow</h3>
-
-<table class="table-modern">
-  <tr>
-    <th style="width: 27%;">Stage</th>
-    <th style="width: 73%;">Activities</th>
-  </tr>
-  <tr>
-    <td>Design</td>
-    <td>
-      - Define CRD specs<br />
-      - Plan controller logic<br />
-      - Design API schema
-    </td>
-  </tr>
-  <tr>
-    <td>Implementation</td>
-    <td>
-      - Write controller code<br />
-      - Implement reconciliation<br />
-      - Add validation
-    </td>
-  </tr>
-  <tr>
-    <td>Testing</td>
-    <td>
-      - Unit tests<br />
-      - Integration tests<br />
-      - E2E testing
-    </td>
-  </tr>
-  <tr>
-    <td>Deployment</td>
-    <td>
-      - Build container image<br />
-      - Deploy to cluster<br />
-      - Monitor performance
-    </td>
-  </tr>
-</table>
-
-<p><br /></p>
-
-<h3 id="best-practices">Best Practices</h3>
-
-<div class="info-box info-box-success">
-<br />
-<strong>1. API Design:</strong>
-   - Use semantic versioning<br />
-   - Include validation rules<br />
-   - Document fields properly<br /><br />
-
-<strong>2. Controller Implementation:</strong>
-   - Handle errors gracefully<br />
-   - Implement proper logging<br />
-   - Use status subresource<br /><br />
-
-<strong>3. Testing:</strong>
-   - Write comprehensive tests<br />
-   - Use test fixtures<br />
-   - Mock external dependencies<br /><br />
-
-<strong>4. Deployment:</strong>
-   - Use proper RBAC<br />
-   - Monitor resource usage<br />
-   - Implement graceful shutdown
-</div>
-
-<p><br /></p>
-
-<hr />
-
-<h3 id="reference">Reference</h3>
 <ul>
   <li><a href="https://www.cncf.io/blog/2022/06/15/kubernetes-operators-what-are-they-some-examples/">CNCF Blog - Kubernetes Operators</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/">Kubernetes Documentation - Custom Resources</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/operator/">Kubernetes Documentation - Operator Pattern</a></li>
+  <li><a href="https://book.kubebuilder.io/">Kubebuilder Documentation</a></li>
+  <li><a href="https://sdk.operatorframework.io/">Operator Framework Documentation</a></li>
   <li><a href="https://github.com/somaz94/k8s-namespace-sync">Kubernetes Namespace Sync Example</a></li>
+  <li><a href="https://operatorframework.io/operator-capabilities/">Red Hat - Operator Maturity Model</a></li>
   <li><a href="https://github.com/somaz94/DevOps-Engineer/wiki/KR_%EC%BF%A0%EB%B2%84%EB%84%A4%ED%8B%B0%EC%8A%A4#12-operator%EB%9E%80-with-kubernetes">DevOps Engineer Wiki</a></li>
 </ul>
 
@@ -550,7 +1122,7 @@ make deploy
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="6">
+            <div class="time-bar" data-minutes="18">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -592,7 +1164,7 @@ make deploy
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Kubernetes Operators, CRDs, and Kubebuilder framework&quot;%20https://somaz.blog/category/kubernetes/k8s-operator-crds/%20via%20&#64;twitter_username&hashtags=kubernetes,operator,crds,kubebuilder"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Kubernetes Operators, CRDs, and Kubebuilder framework&quot;%20https://somaz.blog/category/kubernetes/k8s-operator-crds/%20via%20&#64;twitter_username&hashtags=kubernetes,operator,crds,kubebuilder,controllers,kubernetes-extensions"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -847,7 +1419,7 @@ make deploy
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Kubernetes Operators and Custom Resource Definitions (CRDs)",
-            "headline": "",
+            "headline": "Extending Kubernetes with domain-specific automation and custom APIs",
             "description": "A comprehensive guide to Kubernetes Operators, CRDs, and Kubebuilder framework",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737351792/kubernetes-operator-crd_jdeuae.png",
             "url": "https://somaz.blog/category/kubernetes/k8s-operator-crds/",
@@ -860,107 +1432,729 @@ make deploy
 
 
 Overview
-Understanding Kubernetes Operators and Custom Resource Definitions (CRDs), essential components for extending Kubernetes functionality.
+
+Kubernetes Operators and Custom Resource Definitions (CRDs) are powerful mechanisms for extending Kubernetes functionality beyond its built-in capabilities. This guide covers what they are, how they work together, and how to develop your own extensions to Kubernetes.
 
 
-  In the Kubernetes ecosystem, the Operator is a method of packaging, deploying, and managing Kubernetes applications.  Kubernetes applications are distributed to Kubernetes and managed using the Kubernetes API and kubectl tools.  The Operator follows the Kubernetes principle of the controller, a loop that monitors cluster health and then makes changes or requests, if necessary.  The Operator expands Kubernetes to automate the full life cycle management of a particular application.
+  
+    graph TD
+      A[Kubernetes API Server] --&amp;gt; B[Built-in Resources]
+      A --&amp;gt; C[Custom Resources]
+      B --&amp;gt; D[Pods]
+      B --&amp;gt; E[Services]
+      B --&amp;gt; F[Deployments]
+      C --&amp;gt; G[CRDs]
+      G --&amp;gt; H[Custom Controller/Operator]
+      H --&amp;gt; I[Domain-specific Logic]
+      I --&amp;gt; J[Automated Operations]
+      
+      style A fill:#326ce5,stroke:#fff,color:#fff
+      style G fill:#ffa726,stroke:#fff,color:#000
+      style H fill:#ffa726,stroke:#fff,color:#000
+      style I fill:#ffa726,stroke:#fff,color:#000
+  
+
+
+
+  Key Concepts
+  At its core, Kubernetes operates on a simple principle: define the desired state of your system, and controllers will work to maintain that state. Operators extend this paradigm to complex, application-specific operations by encoding operational knowledge into software.
 
 
 
 
-Kubernetes Operator Basics
+Kubernetes Operators: Automation for Complex Applications
 
 What is an Operator?
 
-  Custom controller that extends Kubernetes functionality
-  Automates application lifecycle management
-  Implements domain-specific operational knowledge
-  Follows Kubernetes control loop principles
+An Operator is a Kubernetes-native application that watches and takes action on specific resources, implementing domain-specific operational knowledge in code.
+
+
+  
+    sequenceDiagram
+      participant U as User
+      participant A as Kubernetes API
+      participant O as Operator
+      participant CR as Custom Resource
+      participant K as Kubernetes Objects
+      
+      U-&amp;gt;&amp;gt;A: Create/Update Custom Resource
+      A-&amp;gt;&amp;gt;CR: Store in etcd
+      A-&amp;gt;&amp;gt;O: Notify via Watch API
+      O-&amp;gt;&amp;gt;CR: Read desired state
+      O-&amp;gt;&amp;gt;K: Create/Update required objects
+      O-&amp;gt;&amp;gt;CR: Update status with current state
+      U-&amp;gt;&amp;gt;A: Get Custom Resource status
+      A-&amp;gt;&amp;gt;U: Return current status
+  
+
+
+Operator Components:
+
+
+  Custom Resource Definition (CRD):
+    
+      Defines a new resource type in the Kubernetes API
+      Describes the schema and validation rules
+    
+  
+  Controller:
+    
+      Implements the control loop logic
+      Watches for changes to custom resources
+      Takes actions to reconcile actual state with desired state
+    
+  
+  Domain-specific Knowledge:
+    
+      Encoded operational expertise
+      Application lifecycle management rules
+      Complex operational procedures automated in code
+    
+  
+
+
+
+  The Origin of Operators
+  The concept of Operators was introduced by CoreOS (now part of Red Hat) in 2016. They were designed to solve the challenge of managing stateful applications in Kubernetes, which require domain-specific knowledge for operations like scaling, upgrading, and backup/restore.
+  The name &quot;Operator&quot; comes from the human operators who traditionally managed such complex applications manually.
+
+
+
+
+The Operator Pattern
+
+Operators follow the Kubernetes reconciliation pattern:
+
+
+  Observe: Monitor the state of the custom resource
+  Analyze: Compare current state with desired state
+  Act: Execute changes to reach the desired state
+  Update: Record the current state in the resource’s status
+
+
+
+  
+    graph LR
+      A[Observe] --&amp;gt; B[Analyze]
+      B --&amp;gt; C[Act]
+      C --&amp;gt; D[Update Status]
+      D --&amp;gt; A
+      
+      style A fill:#4CAF50,stroke:#fff,color:#fff
+      style B fill:#2196F3,stroke:#fff,color:#fff
+      style C fill:#FFC107,stroke:#000,color:#000
+      style D fill:#9C27B0,stroke:#fff,color:#fff
+  
 
 
 Why Use Operators?
 
-  Automation
-    
-      Application deployment
-      Configuration management
-      Updates and upgrades
-      Backup and recovery
-    
+
+  Benefits of Operators
   
-  Consistency
-    
-      Standardized operations
-      Reduced human error
-      Repeatable processes
-    
+    Automation: Codify complex operational tasks to reduce manual intervention
+    Consistency: Ensure identical operations across environments
+    Reliability: Reduce human error through tested, automated procedures
+    Domain-specific: Encode specialized knowledge for specific applications
+    Kubernetes-native: Integrate with existing Kubernetes tools and workflows
   
 
 
+Real-world Applications
+
+Operators are particularly valuable for managing:
 
 
-Manage life cycles
-
-Operator uses Kubernetes’ concept of control loop to manage applications. Application-specific actions are taken to continuously monitor the state of the application and to correct inconsistencies with the desired state.
-
-
-  Automated deployment of applications and potential support services
-  Seamlessly handle upgrades and downgrades, including complex stateful applications
-  Application configuration and confidentiality management
-  Automatically scale based on load or other metrics
-  Error recovery, automatic replacement or reconfiguration of abnormal instances
-  Backup and Restore
-
-
-Operator development
-
-There are frameworks and tools for developing operators.
-
-
-  Operator SDK (Operator SDK): Help develop, test, and package operators.
-  Operator Lifecycle Manager (OLM): It manages operators on the Kubernetes cluster, and is responsible for installing, updating, and life cycle management of operators.
-  Operator Metering: This is for reporting on the resources used by the operator.
-
-
-
-
-
-Custom Resource Definitions (CRDs)
-
-What is CRD?
-
-
-  Kubernetes Custom Resource Definition (CRD) is a powerful feature that allows you to extend Kubernetes capabilities to user-defined resources.  CRD allows you to create specific resources that are unique within a Kubernetes cluster in a manner similar to how standard Kubernetes resources, such as fords, deployments, or services, are handled.  This can be very useful in developing custom applications or integrations based on the Kubernetes platform.
-
-
-What is Custom Resource?
-
-
-  Custom resources are extensions of the Kubernetes API that are not necessarily available in the basic Kubernetes installation.  This is basically a method of customizing Kubernetes to meet your needs by adding new resources in addition to the resources provided.
-
-
-Why do I use CRD?
-
-
-  Extensibility: Kubernetes can be extended to their own APIs that can be used with Kuberectl and other Kubernetes API clients.
-  Flexibility: You can define new resources that act like basic Kubernetes resources.
-  Integration: CRD is useful for building operators, which are custom controllers that manage applications and their components based on custom resources.
-
-
-How does CRD work?
+  
+    
+      Application Type
+      Operational Challenges
+      Example Operators
+    
+    
+      Databases
+      
+        - Replication configuration
+        - Scaling with data integrity
+        - Backup and restore
+        - Version upgrades
+      
+      
+        - PostgreSQL Operator
+        - MongoDB Community Operator
+        - Redis Operator
+        - Cassandra Operator
+      
+    
+    
+      Message Queues
+      
+        - Cluster configuration
+        - Topic management
+        - Network partitioning
+      
+      
+        - Kafka Operator
+        - RabbitMQ Operator
+      
+    
+    
+      Infrastructure
+      
+        - Certificate management
+        - Network policy enforcement
+        - Monitoring configuration
+      
+      
+        - cert-manager
+        - Prometheus Operator
+        - Istio Operator
+      
+    
+  
 
 
-  To implement CRD, as with other Kubernetes resources, it is defined using YAML. This definition specifies a new kind of resource, its name, and schema. The schema is used to validate the configuration of a CRD (also known as a custom resource).
-  The basic structure of the CRD definition is as follows.
 
 
-Basic CRD Example
+Operator Maturity Model
+
+Operators range in sophistication according to the Red Hat Operator Maturity Model:
+
+
+  
+    graph TD
+      A[Level 1: Basic Install] --&amp;gt; B[Level 2: Seamless Upgrades]
+      B --&amp;gt; C[Level 3: Full Lifecycle]
+      C --&amp;gt; D[Level 4: Deep Insights]
+      D --&amp;gt; E[Level 5: Auto Pilot]
+      
+      style A fill:#c5e1a5,stroke:#333,stroke-width:1px
+      style B fill:#aed581,stroke:#333,stroke-width:1px
+      style C fill:#8bc34a,stroke:#333,stroke-width:1px
+      style D fill:#689f38,stroke:#333,stroke-width:1px
+      style E fill:#33691e,stroke:#333,stroke-width:1px,color:#fff
+  
+
+
+
+  Level 1 - Basic Install: Automated application installation and configuration
+  Level 2 - Seamless Upgrades: Patch and minor version upgrades
+  Level 3 - Full Lifecycle: Application backups, failure recovery
+  Level 4 - Deep Insights: Application metrics, alerts, optimized configurations based on usage
+  Level 5 - Auto Pilot: Automatic scaling, auto-tuning, anomaly detection and resolution
+
+
+
+
+Custom Resource Definitions (CRDs): Extending the Kubernetes API
+
+What are CRDs?
+
+CRDs allow you to define new resource types that extend the Kubernetes API, making custom resources feel like native Kubernetes objects.
+
+
+  Custom Resources vs. Built-in Resources
+  Custom resources work just like native Kubernetes resources:
+  
+    Accessed through the same API endpoints
+    Managed with kubectl and other Kubernetes clients
+    Secured through RBAC and admission controls
+    Stored in etcd alongside built-in resources
+    Watched for changes through the same mechanisms
+  
+
+
+CRD Architecture
+
+
+  
+    graph TD
+      A[CustomResourceDefinition] --&amp;gt;|defines| B[Custom Resource Type]
+      B --&amp;gt;|instances of| C[Custom Resource Objects]
+      D[Controller/Operator] --&amp;gt;|watches| C
+      D --&amp;gt;|creates/updates| E[Kubernetes Resources]
+      
+      style A fill:#FFC107,stroke:#333,stroke-width:1px
+      style B fill:#FF9800,stroke:#333,stroke-width:1px
+      style C fill:#FF5722,stroke:#333,stroke-width:1px
+      style D fill:#673AB7,stroke:#333,stroke-width:1px,color:#fff
+      style E fill:#2196F3,stroke:#333,stroke-width:1px,color:#fff
+  
+
+
+CRD Components
+
+1. The CRD Itself
+
+Defines the schema, validation, and naming for your custom resource type:
+
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: crdtype.mycompany.com
+  name: databases.example.com
 spec:
-  group: mycompany.com
+  group: example.com
+  names:
+    kind: Database
+    plural: databases
+    singular: database
+    shortNames:
+    - db
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        required: [&quot;spec&quot;]
+        properties:
+          spec:
+            type: object
+            required: [&quot;engine&quot;, &quot;version&quot;]
+            properties:
+              engine:
+                type: string
+                enum: [&quot;postgres&quot;, &quot;mysql&quot;, &quot;mongodb&quot;]
+              version:
+                type: string
+              replicas:
+                type: integer
+                minimum: 1
+                default: 1
+              storage:
+                type: string
+                pattern: &quot;^\\d+Gi$&quot;
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+              readyReplicas:
+                type: integer
+    subresources:
+      status: {}
+    additionalPrinterColumns:
+    - name: Engine
+      type: string
+      jsonPath: .spec.engine
+    - name: Version
+      type: string
+      jsonPath: .spec.version
+    - name: Replicas
+      type: integer
+      jsonPath: .spec.replicas
+    - name: Status
+      type: string
+      jsonPath: .status.phase
+
+
+2. Custom Resources
+
+Instances of your custom type that users create:
+
+apiVersion: example.com/v1
+kind: Database
+metadata:
+  name: my-production-db
+spec:
+  engine: postgres
+  version: &quot;13.4&quot;
+  replicas: 3
+  storage: &quot;20Gi&quot;
+
+
+3. Controller/Operator
+
+Software that watches for custom resources and takes actions to align the actual state with the desired state.
+
+
+
+Advanced CRD Features
+
+Schema Validation
+
+The schema section of a CRD defines the structure and validation rules for your custom resource:
+
+
+  Required fields: Enforce mandatory configuration
+  Field types: Validate data types (string, integer, boolean, object, array)
+  Enumerations: Restrict values to a predefined set
+  Patterns: Validate format using regular expressions
+  Ranges: Set minimum and maximum values for numbers
+  Defaults: Provide default values when not specified
+
+
+Additional Printer Columns
+
+Define custom columns for kubectl get output:
+
+$ kubectl get databases
+NAME              ENGINE     VERSION   REPLICAS   STATUS
+my-production-db  postgres   13.4      3          Running
+dev-database      mysql      8.0       1          Provisioning
+
+
+Subresources
+
+Subresources provide special endpoints for custom resources:
+
+
+  Status: Separate the “spec” (desired state) from “status” (actual state)
+  Scale: Enable scaling operations via the scale subresource
+
+
+
+
+Building Operators: Tools and Frameworks
+
+Multiple frameworks exist to simplify operator development:
+
+
+  
+    
+      Framework
+      Description
+      Best For
+    
+    
+      Kubebuilder
+      
+        - Developed by Kubernetes SIG API Machinery
+        - Uses Go programming language
+        - Includes scaffolding, testing tools, and libraries
+      
+      
+        - Complex operators
+        - Large-scale projects
+        - Deep integration
+      
+    
+    
+      Operator SDK
+      
+        - Part of the Operator Framework by Red Hat
+        - Supports Go, Ansible, and Helm
+        - Includes Operator Lifecycle Manager integration
+      
+      
+        - Multi-language support
+        - Quick prototyping
+        - OLM deployment
+      
+    
+    
+      KUDO
+      
+        - CNCF sandbox project
+        - Declarative approach
+        - Operator building for non-programmers
+      
+      
+        - Simple operators
+        - Non-developers
+        - Quick adoption
+      
+    
+    
+      Kopf
+      
+        - Python-based framework
+        - Lightweight design
+        - Focus on simplicity
+      
+      
+        - Python developers
+        - Rapid prototyping
+        - Smaller projects
+      
+    
+  
+
+
+
+
+Deep Dive: Kubebuilder Framework
+
+Kubebuilder is a popular framework for building Kubernetes APIs and controllers using Go.
+
+Project Structure
+
+.
+├── Dockerfile                # Container image definition
+├── Makefile                  # Build, test, deploy commands
+├── PROJECT                   # Project metadata
+├── api/                      # CRD API definitions
+│   └── v1/
+│       ├── database_types.go # Custom resource type definition
+│       ├── groupversion_info.go
+│       └── zz_generated.deepcopy.go
+├── config/                   # Kubernetes manifests
+│   ├── crd/                  # Generated CRD YAML
+│   ├── rbac/                 # Role-based access control
+│   ├── manager/              # Controller manager deployment
+│   └── samples/              # Example custom resources
+├── controllers/              # Controller implementation
+│   ├── database_controller.go
+│   └── suite_test.go
+└── main.go                   # Entry point
+
+
+Core Components in Code
+
+1. API Type Definition:
+
+// Database is the Schema for the databases API
+type Database struct {
+    metav1.TypeMeta   `json:&quot;,inline&quot;`
+    metav1.ObjectMeta `json:&quot;metadata,omitempty&quot;`
+
+    Spec   DatabaseSpec   `json:&quot;spec,omitempty&quot;`
+    Status DatabaseStatus `json:&quot;status,omitempty&quot;`
+}
+
+// DatabaseSpec defines the desired state of Database
+type DatabaseSpec struct {
+    Engine   string `json:&quot;engine&quot;`
+    Version  string `json:&quot;version&quot;`
+    Replicas int    `json:&quot;replicas,omitempty&quot;`
+    Storage  string `json:&quot;storage,omitempty&quot;`
+}
+
+// DatabaseStatus defines the observed state of Database
+type DatabaseStatus struct {
+    Phase         string `json:&quot;phase,omitempty&quot;`
+    ReadyReplicas int    `json:&quot;readyReplicas,omitempty&quot;`
+}
+
+
+2. Controller Implementation:
+
+// DatabaseReconciler reconciles a Database object
+type DatabaseReconciler struct {
+    client.Client
+    Log    logr.Logger
+    Scheme *runtime.Scheme
+}
+
+// +kubebuilder:rbac:groups=example.com,resources=databases,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=example.com,resources=databases/status,verbs=get;update;patch
+
+func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    log := r.Log.WithValues(&quot;database&quot;, req.NamespacedName)
+
+    // Fetch the Database instance
+    var database examplecomv1.Database
+    if err := r.Get(ctx, req.NamespacedName, &amp;amp;database); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    // Your reconciliation logic here
+    // 1. Check if StatefulSet exists, create if not
+    // 2. Ensure StatefulSet matches desired state
+    // 3. Update status with current state
+
+    return ctrl.Result{}, nil
+}
+
+
+3. Main Function:
+
+func main() {
+    // Setup manager, scheme, controllers
+    mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+        Scheme:             scheme,
+        MetricsBindAddress: metricsAddr,
+        Port:               9443,
+        LeaderElection:     enableLeaderElection,
+    })
+    if err != nil {
+        setupLog.Error(err, &quot;unable to start manager&quot;)
+        os.Exit(1)
+    }
+
+    // Register controller
+    if err = (&amp;amp;controllers.DatabaseReconciler{
+        Client: mgr.GetClient(),
+        Log:    ctrl.Log.WithName(&quot;controllers&quot;).WithName(&quot;Database&quot;),
+        Scheme: mgr.GetScheme(),
+    }).SetupWithManager(mgr); err != nil {
+        setupLog.Error(err, &quot;unable to create controller&quot;, &quot;controller&quot;, &quot;Database&quot;)
+        os.Exit(1)
+    }
+
+    // Start manager
+    setupLog.Info(&quot;starting manager&quot;)
+    if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+        setupLog.Error(err, &quot;problem running manager&quot;)
+        os.Exit(1)
+    }
+}
+
+
+Common Development Commands
+
+# Initialize new project
+kubebuilder init --domain example.com
+
+# Create API (generates CRD and controller)
+kubebuilder create api --group example --version v1 --kind Database
+
+# Generate manifests
+make manifests
+
+# Install CRDs
+make install
+
+# Run controller locally (development)
+make run
+
+# Build and push container image
+make docker-build docker-push IMG=example.com/operator:v0.1.0
+
+# Deploy to cluster
+make deploy IMG=example.com/operator:v0.1.0
+
+
+
+
+Development Workflow
+
+
+  
+    graph LR
+      A[Design CRD] --&amp;gt; B[Define Types in Go]
+      B --&amp;gt; C[Implement Controller Logic]
+      C --&amp;gt; D[Test Locally]
+      D --&amp;gt;|Issues| C
+      D --&amp;gt;|Success| E[Build &amp;amp; Deploy]
+      E --&amp;gt; F[Monitor &amp;amp; Iterate]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#90caf9,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#42a5f5,stroke:#333,stroke-width:1px
+      style E fill:#2196f3,stroke:#333,stroke-width:1px,color:#fff
+      style F fill:#1976d2,stroke:#333,stroke-width:1px,color:#fff
+  
+
+
+Stages of Operator Development
+
+
+  
+    
+      Stage
+      Activities
+      Best Practices
+    
+    
+      Design
+      
+        - Define CRD specs
+        - Plan controller logic
+        - Design API schema
+      
+      
+        - Keep schema simple and focused
+        - Define clear validation rules
+        - Consider versioning strategy early
+        - Document field purposes and constraints
+      
+    
+    
+      Implementation
+      
+        - Write controller code
+        - Implement reconciliation
+        - Add validation
+      
+      
+        - Follow idempotent design patterns
+        - Use owner references for created resources
+        - Handle edge cases and error conditions
+        - Leverage finalizers for cleanup logic
+      
+    
+    
+      Testing
+      
+        - Unit tests
+        - Integration tests
+        - E2E testing
+      
+      
+        - Mock external dependencies
+        - Test scenarios for error handling
+        - Use envtest for controller tests
+        - Create test fixtures for common scenarios
+      
+    
+    
+      Deployment
+      
+        - Build container image
+        - Deploy to cluster
+        - Monitor performance
+      
+      
+        - Use minimal base images
+        - Set resource requests/limits
+        - Configure proper RBAC permissions
+        - Implement health checks and metrics
+      
+    
+  
+
+
+
+
+Best Practices
+
+
+  CRD Design:
+  
+    Follow Kubernetes conventions for naming, structure, and versioning
+    Use semantic versioning for your API versions
+    Make fields optional when possible to improve forward compatibility
+    Set defaults for optional fields to simplify usage
+    Use strong validation to catch misconfigurations early
+    Document all fields with clear descriptions
+  
+  
+  Controller Implementation:
+  
+    Design for idempotency - controllers should safely retry operations
+    Handle errors gracefully with appropriate retries and backoffs
+    Implement informative logging for debugging and auditing
+    Update status frequently to reflect the current state
+    Add finalizers for proper cleanup on deletion
+    Set owner references for automatic cleanup of dependent resources
+  
+  
+  Testing and Reliability:
+  
+    Write comprehensive tests for controller logic
+    Test edge cases and recovery scenarios
+    Implement leader election for high availability
+    Export metrics for performance monitoring
+    Add thorough documentation for users of your operator
+  
+
+
+Real-world Example: Simple Namespace Synchronization Operator
+
+This example demonstrates a basic operator that synchronizes configurations across namespaces.
+
+CRD Definition
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: namespacesynchronizations.sync.example.com
+spec:
+  group: sync.example.com
   versions:
     - name: v1
       served: true
@@ -972,152 +2166,102 @@ spec:
             spec:
               type: object
               properties:
-                myField:
+                sourceNamespace:
                   type: string
-  scope: Namespaced
+                targetNamespaces:
+                  type: array
+                  items:
+                    type: string
+                resources:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      kind:
+                        type: string
+                      name:
+                        type: string
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+  scope: Cluster
   names:
-    plural: crdtypes
-    singular: crdtype
-    kind: CrdType
+    plural: namespacesynchronizations
+    singular: namespacesynchronization
+    kind: NamespaceSynchronization
     shortNames:
-    - ct
+    - nssync
 
 
-Lifecycle and Controllers
+Custom Resource Example
 
-
-  After you define and apply CRD in the cluster, you can create and manage that instance, just like any other resource in Kubernetes.
-  The following is a basic example of a user-defined resource.
-
-
-apiVersion: mycompany.com/v1
-kind: CrdType
+apiVersion: sync.example.com/v1
+kind: NamespaceSynchronization
 metadata:
-  name: example-crdtype
+  name: config-sync
 spec:
-  myField: &quot;Hello, world!&quot;
+  sourceNamespace: base-config
+  targetNamespaces:
+  - team-a
+  - team-b
+  - team-c
+  resources:
+  - kind: ConfigMap
+    name: shared-config
+  - kind: Secret
+    name: common-credentials
 
 
-  In general, CRD is part of an operator consisting of the CRD itself and a user-defined controller. The controller monitors events related to custom resources and responds by creating, updating, deleting, or coordinating resources accordingly.
+Controller Logic Overview
+
+The controller would:
 
 
-
-
-
-
-Kubebuilder Framework
-Kubbuilder is an SDK for developing Kubernetes Operator. It is a framework that makes it easy to develop CRD and controllers using the Go language.
-
-Project Structure
-.
-├── Dockerfile
-├── Makefile                  # Build, test, deploy commands
-├── PROJECT                   # Project metadata
-├── api/                      # CRD API definitions
-│   └── v1/
-├── config/                   # Kubernetes manifests
-│   ├── crd/
-│   ├── rbac/
-│   └── manager/
-└── main.go                   # Entry point
-
-
-Common Commands
-# Initialize new project
-kubebuilder init --domain example.com
-
-# Create API
-kubebuilder create api --group sync --version v1 --kind MyResource
-
-# Build and deploy
-make install
-make run
-make docker-build
-make deploy
-
-
-
-
-Development Workflow
-
-
-  
-    Stage
-    Activities
-  
-  
-    Design
+  Watch for NamespaceSynchronization resources
+  List the specified resources in the source namespace
+  For each target namespace:
     
-      - Define CRD specs
-      - Plan controller logic
-      - Design API schema
+      Create or update the resources
+      Handle differences in metadata (e.g., namespace)
+      Apply owner references for tracking
     
   
-  
-    Implementation
-    
-      - Write controller code
-      - Implement reconciliation
-      - Add validation
-    
-  
-  
-    Testing
-    
-      - Unit tests
-      - Integration tests
-      - E2E testing
-    
-  
-  
-    Deployment
-    
-      - Build container image
-      - Deploy to cluster
-      - Monitor performance
-    
-  
-
-
-
-
-Best Practices
-
-
-
-1. API Design:
-   - Use semantic versioning
-   - Include validation rules
-   - Document fields properly
-
-2. Controller Implementation:
-   - Handle errors gracefully
-   - Implement proper logging
-   - Use status subresource
-
-3. Testing:
-   - Write comprehensive tests
-   - Use test fixtures
-   - Mock external dependencies
-
-4. Deployment:
-   - Use proper RBAC
-   - Monitor resource usage
-   - Implement graceful shutdown
+  Update the status with sync results
 
 
 
 
 
 
-Reference
+References
+
 
   CNCF Blog - Kubernetes Operators
+  Kubernetes Documentation - Custom Resources
+  Kubernetes Documentation - Operator Pattern
+  Kubebuilder Documentation
+  Operator Framework Documentation
   Kubernetes Namespace Sync Example
+  Red Hat - Operator Maturity Model
   DevOps Engineer Wiki
 
 ",
-            "wordcount": "1106",
+            "wordcount": "3253",
             "inLanguage": "en",
             "dateCreated": "2025-01-13/",
             "datePublished": "2025-01-13/",
@@ -1148,7 +2292,7 @@ Reference
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","operator","crds","kubebuilder"]
+            "keywords": ["kubernetes","operator","crds","kubebuilder","controllers","kubernetes-extensions"]
         }
         </script>
     </body>

@@ -40,7 +40,7 @@
     <title>Creating and Hosting Helm Charts for Kubernetes Operators | somaz</title>
     <meta name="description" content="A comprehensive guide to creating Helm charts for Kubernetes Operators and hosting them on GitHub Pages">
     
-        <meta name="keywords" content="kubernetes, helm, github-pages, operator">
+        <meta name="keywords" content="kubernetes, helm, github-pages, operator, chart-repository, ci-cd">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 14, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>3 min to read</span>
+                    <span>15 min to read</span>
                 </p>
                 <h1 class="post-title">Creating and Hosting Helm Charts for Kubernetes Operators</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">Build, package, and distribute your Helm charts using GitHub Pages</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737357972/github-gh-pages_lokj8q.png" alt="Featured image" class="post-cover">
@@ -241,13 +241,45 @@ January 14, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p>Learn how to create Helm charts for Kubernetes Operators and host them on GitHub Pages.</p>
+
+<p>Helm charts provide a powerful way to package, distribute, and deploy Kubernetes applications. This guide focuses on creating Helm charts specifically for Kubernetes Operators and hosting them on GitHub Pages, creating a free, reliable chart repository accessible to anyone.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>What You'll Learn</strong>
+  <p>This guide covers the complete workflow for creating and hosting Helm charts:</p>
+  <ul>
+    <li>Creating a Helm chart structure for Kubernetes Operators</li>
+    <li>Properly packaging Helm charts for distribution</li>
+    <li>Setting up GitHub Pages as a Helm chart repository</li>
+    <li>Automating chart updates with GitHub Actions</li>
+    <li>Best practices for chart maintenance and versioning</li>
+  </ul>
+</div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Create Helm Chart] --&gt; B[Package Chart]
+      B --&gt; C[Setup GitHub Pages]
+      C --&gt; D[Publish Chart]
+      D --&gt; E[Use Chart]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#90caf9,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#42a5f5,stroke:#333,stroke-width:1px,color:#fff
+      style E fill:#1976d2,stroke:#333,stroke-width:1px,color:#fff
+  </div>
+</div>
 
 <p><br /></p>
 
-<h3 id="-creating-helm-charts">🛠 Creating Helm Charts</h3>
+<h2 id="helm-chart-creation">Helm Chart Creation</h2>
 
-<h4 id="installation">Installation</h4>
+<h3 id="installation">Installation</h3>
+
+<p>Before you begin, make sure you have Helm installed:</p>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># macOS</span>
 brew <span class="nb">install </span>helm
 
@@ -255,12 +287,56 @@ brew <span class="nb">install </span>helm
 curl <span class="nt">-fsSL</span> <span class="nt">-o</span> get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 <span class="nb">chmod </span>700 get_helm.sh
 ./get_helm.sh
+
+<span class="c"># Windows (using Chocolatey)</span>
+choco <span class="nb">install </span>kubernetes-helm
+
+<span class="c"># Verify installation</span>
+helm version
 </code></pre></div></div>
 
-<h4 id="chart-structure">Chart Structure</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helios-lb <span class="o">[</span>main|✔] 
-13:16 <span class="nv">$ </span>tree helm
-helm/
+<h3 id="chart-structure-for-operators">Chart Structure for Operators</h3>
+
+<p>Creating a Helm chart for a Kubernetes Operator requires special consideration for CRDs and operator-specific resources.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Chart Root] --&gt; B[Chart.yaml]
+      A --&gt; C[values.yaml]
+      A --&gt; D[templates/]
+      A --&gt; E[crds/]
+      A --&gt; F[README.md]
+      
+      D --&gt; G[deployment.yaml]
+      D --&gt; H[rbac.yaml]
+      D --&gt; I[service.yaml]
+      D --&gt; J[serviceaccount.yaml]
+      D --&gt; K[customresource/]
+      
+      E --&gt; L[crd-definitions.yaml]
+      
+      style A fill:#e3f2fd,stroke:#333,stroke-width:1px
+      style B fill:#bbdefb,stroke:#333,stroke-width:1px
+      style C fill:#bbdefb,stroke:#333,stroke-width:1px
+      style D fill:#bbdefb,stroke:#333,stroke-width:1px
+      style E fill:#f06292,stroke:#333,stroke-width:1px
+      style F fill:#bbdefb,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<p>You can create a new chart using the <code class="language-plaintext highlighter-rouge">helm create</code> command, but for an operator, you’ll likely need to customize it:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create basic chart structure</span>
+helm create my-operator
+
+<span class="c"># Clean up default templates we don't need</span>
+<span class="nb">rm</span> <span class="nt">-rf</span> my-operator/templates/<span class="k">*</span>
+</code></pre></div></div>
+
+<p>Here’s a complete structure for a Kubernetes Operator chart, based on a real example (helios-lb):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm/
 ├── README.md                  <span class="c"># Chart usage guide and parameter documentation</span>
 └── helios-lb/                 <span class="c"># Main chart directory</span>
     ├── Chart.yaml            <span class="c"># Chart metadata (version, dependencies, etc.)</span>
@@ -269,8 +345,9 @@ helm/
     ├── templates/            <span class="c"># Kubernetes resource templates</span>
     │   ├── NOTES.txt        <span class="c"># Usage notes displayed after installation</span>
     │   ├── _helpers.tpl     <span class="c"># Common template functions</span>
-    │   ├── crd-clenaup-hook.yaml    <span class="c"># Helm hook for CRD cleanup</span>
+    │   ├── crd-cleanup-hook.yaml    <span class="c"># Helm hook for CRD cleanup</span>
     │   ├── customresource/   <span class="c"># CR templates</span>
+    │   │   └── config.yaml   <span class="c"># Example CR instance</span>
     │   ├── deployment.yaml   <span class="c"># Controller deployment</span>
     │   ├── namespace.yaml    <span class="c"># Namespace definition</span>
     │   ├── rbac.yaml        <span class="c"># Permission settings (Role, RoleBinding)</span>
@@ -282,142 +359,560 @@ helm/
     │   └── weight-values.yaml <span class="c"># Weight-based configuration</span>
     └── values.yaml          <span class="c"># Default values file</span>
 </code></pre></div></div>
-<ul>
-  <li>If Chart creation is done, I will try packaging it.</li>
-</ul>
+
+<h3 id="key-files-explained">Key Files Explained</h3>
+
+<h4 id="chartyaml">Chart.yaml</h4>
+
+<p>This file contains metadata about your chart:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v2</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s">helios-lb</span>
+<span class="na">description</span><span class="pi">:</span> <span class="s">A Helm chart for Helios Load Balancer Operator</span>
+<span class="na">type</span><span class="pi">:</span> <span class="s">application</span>
+<span class="na">version</span><span class="pi">:</span> <span class="s">0.1.0</span>  <span class="c1"># Chart version</span>
+<span class="na">appVersion</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1.0.0"</span>  <span class="c1"># Application version</span>
+<span class="na">maintainers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">somaz</span>
+    <span class="na">email</span><span class="pi">:</span> <span class="s">somaz@example.com</span>
+<span class="na">keywords</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">kubernetes</span>
+  <span class="pi">-</span> <span class="s">operator</span>
+  <span class="pi">-</span> <span class="s">loadbalancer</span>
+<span class="na">sources</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">https://github.com/somaz94/helios-lb</span>
+</code></pre></div></div>
+
+<h4 id="valuesyaml">values.yaml</h4>
+
+<p>Default configuration values for your chart:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Default values for helios-lb</span>
+<span class="c1"># This is a YAML-formatted file.</span>
+
+<span class="c1"># Operator configuration</span>
+<span class="na">operator</span><span class="pi">:</span>
+  <span class="na">image</span><span class="pi">:</span>
+    <span class="na">repository</span><span class="pi">:</span> <span class="s">somaz/helios-lb</span>
+    <span class="na">tag</span><span class="pi">:</span> <span class="s">latest</span>
+    <span class="na">pullPolicy</span><span class="pi">:</span> <span class="s">Always</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">200m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">256Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">100m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">128Mi</span>
+  <span class="na">nodeSelector</span><span class="pi">:</span> <span class="pi">{}</span>
+  <span class="na">tolerations</span><span class="pi">:</span> <span class="pi">[]</span>
+  <span class="na">affinity</span><span class="pi">:</span> <span class="pi">{}</span>
+
+<span class="c1"># CRD configuration</span>
+<span class="na">crd</span><span class="pi">:</span>
+  <span class="na">install</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">cleanup</span><span class="pi">:</span> <span class="no">false</span>
+
+<span class="c1"># Default CR configuration</span>
+<span class="na">defaultConfig</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">false</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">default-config"</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s2">"</span><span class="s">weight"</span>  <span class="c1"># weight or port</span>
+  <span class="na">services</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">service-a</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">80</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">service-b</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">20</span>
+</code></pre></div></div>
+
+<h4 id="rbac-configuration-rbacyaml">RBAC Configuration (rbac.yaml)</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">-role</span>
+<span class="na">rules</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s2">"</span><span class="s">"</span>
+  <span class="na">resources</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">services</span>
+  <span class="pi">-</span> <span class="s">endpoints</span>
+  <span class="na">verbs</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">get</span>
+  <span class="pi">-</span> <span class="s">list</span>
+  <span class="pi">-</span> <span class="s">watch</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">apps</span>
+  <span class="na">resources</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">deployments</span>
+  <span class="na">verbs</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">get</span>
+  <span class="pi">-</span> <span class="s">list</span>
+  <span class="pi">-</span> <span class="s">watch</span>
+  <span class="pi">-</span> <span class="s">create</span>
+  <span class="pi">-</span> <span class="s">update</span>
+  <span class="pi">-</span> <span class="s">patch</span>
+  <span class="pi">-</span> <span class="s">delete</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">lb.helios.com</span>
+  <span class="na">resources</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">heliosconfigs</span>
+  <span class="pi">-</span> <span class="s">heliosconfigs/status</span>
+  <span class="na">verbs</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">get</span>
+  <span class="pi">-</span> <span class="s">list</span>
+  <span class="pi">-</span> <span class="s">watch</span>
+  <span class="pi">-</span> <span class="s">create</span>
+  <span class="pi">-</span> <span class="s">update</span>
+  <span class="pi">-</span> <span class="s">patch</span>
+  <span class="pi">-</span> <span class="s">delete</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRoleBinding</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">-rolebinding</span>
+<span class="na">roleRef</span><span class="pi">:</span>
+  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
+  <span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">-role</span>
+<span class="na">subjects</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+  <span class="na">name</span><span class="pi">:</span> 
+  <span class="na">namespace</span><span class="pi">:</span> 
+</code></pre></div></div>
+
+<h4 id="crd-definition-example">CRD Definition Example</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apiextensions.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">CustomResourceDefinition</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">heliosconfigs.lb.helios.com</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">group</span><span class="pi">:</span> <span class="s">lb.helios.com</span>
+  <span class="na">names</span><span class="pi">:</span>
+    <span class="na">kind</span><span class="pi">:</span> <span class="s">HeliosConfig</span>
+    <span class="na">listKind</span><span class="pi">:</span> <span class="s">HeliosConfigList</span>
+    <span class="na">plural</span><span class="pi">:</span> <span class="s">heliosconfigs</span>
+    <span class="na">singular</span><span class="pi">:</span> <span class="s">heliosconfig</span>
+    <span class="na">shortNames</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">hlb</span>
+  <span class="na">scope</span><span class="pi">:</span> <span class="s">Namespaced</span>
+  <span class="na">versions</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">v1</span>
+    <span class="na">served</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">storage</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">schema</span><span class="pi">:</span>
+      <span class="na">openAPIV3Schema</span><span class="pi">:</span>
+        <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+        <span class="na">properties</span><span class="pi">:</span>
+          <span class="na">apiVersion</span><span class="pi">:</span>
+            <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+          <span class="na">kind</span><span class="pi">:</span>
+            <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+          <span class="na">metadata</span><span class="pi">:</span>
+            <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+          <span class="na">spec</span><span class="pi">:</span>
+            <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+            <span class="na">required</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">type"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">services"</span><span class="pi">]</span>
+            <span class="na">properties</span><span class="pi">:</span>
+              <span class="na">type</span><span class="pi">:</span>
+                <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                <span class="na">enum</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">weight"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">port"</span><span class="pi">]</span>
+              <span class="na">services</span><span class="pi">:</span>
+                <span class="na">type</span><span class="pi">:</span> <span class="s">array</span>
+                <span class="na">items</span><span class="pi">:</span>
+                  <span class="na">type</span><span class="pi">:</span> <span class="s">object</span>
+                  <span class="na">required</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">name"</span><span class="pi">]</span>
+                  <span class="na">properties</span><span class="pi">:</span>
+                    <span class="na">name</span><span class="pi">:</span>
+                      <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+                    <span class="na">weight</span><span class="pi">:</span>
+                      <span class="na">type</span><span class="pi">:</span> <span class="s">integer</span>
+                      <span class="na">minimum</span><span class="pi">:</span> <span class="m">0</span>
+                      <span class="na">maximum</span><span class="pi">:</span> <span class="m">100</span>
+                    <span class="na">port</span><span class="pi">:</span>
+                      <span class="na">type</span><span class="pi">:</span> <span class="s">integer</span>
+                      <span class="na">minimum</span><span class="pi">:</span> <span class="m">1</span>
+                      <span class="na">maximum</span><span class="pi">:</span> <span class="m">65535</span>
+</code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="packaging-and-hosting">Packaging and Hosting</h3>
+<h2 id="packaging-helm-charts">Packaging Helm Charts</h2>
 
-<p>You can use Github Pages for web hosting by packaging.</p>
+<p>Once your chart structure is complete, you can package it for distribution.</p>
 
-<p>GitHub Pages is a special feature of GitHub, a system that automatically webhosts the gh-pages branch. Here’s how it works.</p>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant Developer
+      participant Local as Local Repository
+      participant GitHub as GitHub Pages
+      participant User
+      
+      Developer-&gt;&gt;Local: helm package ./chart
+      Note over Local: Creates chart-version.tgz
+      Developer-&gt;&gt;Local: helm repo index
+      Note over Local: Creates/updates index.yaml
+      Developer-&gt;&gt;GitHub: Push to gh-pages branch
+      Note over GitHub: GitHub Pages activates
+      User-&gt;&gt;GitHub: helm repo add myrepo https://...
+      User-&gt;&gt;GitHub: helm install myrepo/chart
+  </div>
+</div>
 
-<h4 id="github-pages-setup">GitHub Pages Setup</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create gh-pages branch</span>
+<h3 id="package-your-chart">Package Your Chart</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Navigate to your chart's parent directory</span>
+<span class="nb">cd </span>path/to/helm/
+
+<span class="c"># Package the chart</span>
+helm package ./helios-lb
+
+<span class="c"># This creates a file like helios-lb-0.1.0.tgz</span>
+</code></pre></div></div>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Important:</strong>
+  <p>Make sure your Chart.yaml has the correct version information before packaging. Every time you make changes to your chart, you should update the version and repackage it.</p>
+</div>
+
+<p><br /></p>
+
+<h2 id="hosting-on-github-pages">Hosting on GitHub Pages</h2>
+
+<p>GitHub Pages provides a simple way to host your Helm chart repository.</p>
+
+<h3 id="setup-process">Setup Process</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Step</th>
+      <th style="width: 70%;">Description</th>
+    </tr>
+    <tr>
+      <td>Create Repository</td>
+      <td>Create a GitHub repository for your chart (if you haven't already)</td>
+    </tr>
+    <tr>
+      <td>Create gh-pages Branch</td>
+      <td>Create a special branch to host your chart repository</td>
+    </tr>
+    <tr>
+      <td>Add Packaged Charts</td>
+      <td>Add your .tgz chart packages to this branch</td>
+    </tr>
+    <tr>
+      <td>Create Index</td>
+      <td>Create an index.yaml file to make it a valid Helm repository</td>
+    </tr>
+    <tr>
+      <td>Push to GitHub</td>
+      <td>Push the branch to GitHub to activate GitHub Pages</td>
+    </tr>
+    <tr>
+      <td>Configure GitHub Pages</td>
+      <td>Ensure GitHub Pages is configured to use the gh-pages branch</td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="create-a-clean-gh-pages-branch">Create a Clean gh-pages Branch</h3>
+
+<p>It’s important to create a clean gh-pages branch that contains only the repository files:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create and check out a new orphan branch (no history)</span>
 git checkout <span class="nt">--orphan</span> gh-pages
 
-<span class="c"># Package helm chart</span>
-helm package ./helm/helios-lb
+<span class="c"># Remove all tracked files</span>
+git <span class="nb">rm</span> <span class="nt">-rf</span> <span class="nb">.</span>
 
-<span class="c"># Create index file</span>
-helm repo index <span class="nb">.</span> <span class="nt">--url</span> https://username.github.io/repo/helm-repo
+<span class="c"># Create a helm-repo directory for organization (optional)</span>
+<span class="nb">mkdir </span>helm-repo
+<span class="nb">cd </span>helm-repo
+
+<span class="c"># Copy your packaged chart here</span>
+<span class="nb">cp</span> ../../path/to/helm/helios-lb-0.1.0.tgz <span class="nb">.</span>
+
+<span class="c"># Create the repository index</span>
+helm repo index <span class="nb">.</span> <span class="nt">--url</span> https://username.github.io/repo-name/helm-repo
+
+<span class="c"># Go back to root</span>
+<span class="nb">cd</span> ..
+
+<span class="c"># Add all files</span>
+git add <span class="nb">.</span>
+
+<span class="c"># Commit changes</span>
+git commit <span class="nt">-m</span> <span class="s2">"Add Helm chart repository"</span>
+
+<span class="c"># Push to GitHub</span>
+git push origin gh-pages
+</code></pre></div></div>
+
+<p>After pushing, GitHub will automatically set up GitHub Pages for your repository. You can check this in your repository settings under “Pages.”</p>
+
+<div class="info-box info-box-success-not-check">
+  <strong>Best Practice</strong>
+  <p>You can organize your repository by creating subdirectories:</p>
+  <ul>
+    <li><code>/helm-repo</code> - For chart packages and index</li>
+    <li><code>/docs</code> - For additional documentation</li>
+    <li><code>/examples</code> - For usage examples</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h2 id="adding-multiple-chart-versions">Adding Multiple Chart Versions</h2>
+
+<p>When you update your chart, you’ll want to make new versions available while maintaining older versions:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update Chart.yaml with new version (e.g., 0.2.0)</span>
+<span class="c"># Package the new version</span>
+helm package ./path/to/helm/helios-lb
+
+<span class="c"># Copy to your gh-pages repo</span>
+<span class="nb">cp </span>helios-lb-0.2.0.tgz path/to/gh-pages/helm-repo/
+
+<span class="c"># Update the index to include both versions</span>
+<span class="nb">cd </span>path/to/gh-pages/helm-repo/
+helm repo index <span class="nb">.</span> <span class="nt">--url</span> https://username.github.io/repo-name/helm-repo
 
 <span class="c"># Commit and push</span>
-git add index.yaml helios-lb-<span class="k">*</span>.tgz
-git commit <span class="nt">-m</span> <span class="s2">"Add helm chart repository"</span>
+git add <span class="nb">.</span>
+git commit <span class="nt">-m</span> <span class="s2">"Add chart version 0.2.0"</span>
 git push origin gh-pages
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h4 id="automation-process">Automation Process</h4>
+<h2 id="automating-with-github-actions">Automating with GitHub Actions</h2>
 
-<ol>
-  <li>GitHub detects gh-pages branch</li>
-  <li>Automatically assign address https://[username].github.io/ [repository-name]</li>
-  <li>Provides the content of the branch to a static website</li>
-</ol>
+<p>You can automate chart publishing with GitHub Actions. Here’s a workflow example:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">Release Charts</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">main</span>
+    <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">helm/**'</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">release</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Checkout</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v2</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">fetch-depth</span><span class="pi">:</span> <span class="m">0</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Configure Git</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">git config user.name "$GITHUB_ACTOR"</span>
+          <span class="s">git config user.email "$GITHUB_ACTOR@users.noreply.github.com"</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install Helm</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">azure/setup-helm@v1</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">version</span><span class="pi">:</span> <span class="s">v3.8.1</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Package Chart</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">mkdir -p .cr-release-packages</span>
+          <span class="s">helm package helm/helios-lb -d .cr-release-packages</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Checkout gh-pages</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v2</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">ref</span><span class="pi">:</span> <span class="s">gh-pages</span>
+          <span class="na">path</span><span class="pi">:</span> <span class="s">gh-pages</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Update Repository</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">mkdir -p gh-pages/helm-repo</span>
+          <span class="s">cp .cr-release-packages/* gh-pages/helm-repo/</span>
+          <span class="s">cd gh-pages/helm-repo</span>
+          <span class="s">helm repo index . --url https://$.github.io/$/helm-repo</span>
+          
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Publish Repository</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">cd gh-pages</span>
+          <span class="s">git add .</span>
+          <span class="s">git commit -m "Release new chart version" || echo "No changes to commit"</span>
+          <span class="s">git push origin gh-pages</span>
+</code></pre></div></div>
+
+<p>This workflow automatically packages and publishes your chart when changes are made to the helm directory in the main branch.</p>
 
 <p><br /></p>
 
-<h4 id="repository-structure">Repository Structure</h4>
+<h2 id="using-your-chart-repository">Using Your Chart Repository</h2>
 
-<table class="table-modern">
-  <tr>
-    <th>File</th>
-    <th>Purpose</th>
-  </tr>
-  <tr>
-    <td>index.yaml</td>
-    <td>Chart metadata and version information</td>
-  </tr>
-  <tr>
-    <td>helios-lb-*.tgz</td>
-    <td>Packaged helm chart</td>
-  </tr>
-  <tr>
-    <td>README.md</td>
-    <td>Usage documentation</td>
-  </tr>
-</table>
+<p>Once your repository is set up, others can use it by adding it to their Helm:</p>
 
-<p><br /></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add the repository</span>
+helm repo add helios-lb https://username.github.io/repo-name/helm-repo
 
-<h3 id="best-practices">Best Practices</h3>
+<span class="c"># Update repositories</span>
+helm repo update
 
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. Clean Branch:
-   - Keep gh-pages branch clean
-   - Only include repository files
-   - Remove unnecessary files
+<span class="c"># Search for available charts</span>
+helm search repo helios-lb
 
-2. Version Control:
-   - Use semantic versioning
-   - Update Chart.yaml properly
-   - Document changes
+<span class="c"># Install the chart</span>
+helm <span class="nb">install </span>my-release helios-lb/helios-lb
 
-3. Documentation:
-   - Include clear installation instructions
-   - Document all values
-   - Provide usage examples
-
-4. Testing:
-   - Test chart installation
-   - Verify all templates
-   - Check dependencies
+<span class="c"># Install with custom values</span>
+helm <span class="nb">install </span>my-release helios-lb/helios-lb <span class="nt">--values</span> custom-values.yaml
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="usage-example">Usage Example</h3>
+<h2 id="best-practices-for-helm-charts">Best Practices for Helm Charts</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>Chart Structure and Documentation:</strong>
+  <ul>
+    <li>Keep your gh-pages branch clean, containing only repository files</li>
+    <li>Use semantic versioning (MAJOR.MINOR.PATCH) for your charts</li>
+    <li>Include comprehensive documentation in README.md</li>
+    <li>Document all values with descriptions and defaults</li>
+    <li>Add NOTES.txt with post-installation instructions</li>
+    <li>Include examples for common use cases</li>
+  </ul>
+  
+  <strong>Chart Maintenance:</strong>
+  <ul>
+    <li>Test charts thoroughly before publishing</li>
+    <li>Maintain backward compatibility when possible</li>
+    <li>Update appVersion and version in Chart.yaml appropriately</li>
+    <li>Include a CHANGELOG.md to track changes</li>
+    <li>Set appropriate dependencies and version constraints</li>
+  </ul>
+  
+  <strong>CRD Handling:</strong>
+  <ul>
+    <li>Place CRDs in the crds/ directory (not templates/)</li>
+    <li>Consider hooks for careful CRD lifecycle management</li>
+    <li>Add safeguards to prevent accidental CRD deletion</li>
+    <li>Make CRD installation optional with values</li>
+  </ul>
+</div>
+
+<h3 id="crd-handling-special-considerations">CRD Handling Special Considerations</h3>
+
+<p>CRDs require special handling in Helm charts:</p>
+
+<ol>
+  <li>
+    <p><strong>Placement:</strong> CRDs should be placed in the <code class="language-plaintext highlighter-rouge">crds/</code> directory, not in <code class="language-plaintext highlighter-rouge">templates/</code>. This ensures they are installed before any resources that depend on them.</p>
+  </li>
+  <li>
+    <p><strong>Upgrade Challenges:</strong> Helm doesn’t automatically upgrade CRDs to prevent data loss. Consider using a pre-upgrade hook.</p>
+  </li>
+  <li>
+    <p><strong>Deletion Protection:</strong> Add a cleanup hook to control CRD deletion:</p>
+  </li>
+</ol>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># templates/crd-cleanup-hook.yaml</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Job</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">-crd-cleanup</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="s2">"</span><span class="s">helm.sh/hook"</span><span class="err">:</span> <span class="s">pre-delete</span>
+    <span class="s">"helm.sh/hook-weight"</span><span class="err">:</span> <span class="s2">"</span><span class="s">0"</span>
+    <span class="s2">"</span><span class="s">helm.sh/hook-delete-policy"</span><span class="err">:</span> <span class="s">hook-succeeded</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">serviceAccountName</span><span class="pi">:</span> 
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">kubectl</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">bitnami/kubectl:latest</span>
+        <span class="na">command</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">kubectl</span>
+        <span class="pi">-</span> <span class="s">delete</span>
+        <span class="pi">-</span> <span class="s">crd</span>
+        <span class="pi">-</span> <span class="s">heliosconfigs.lb.helios.com</span>
+      <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">Never</span>
+  <span class="na">backoffLimit</span><span class="pi">:</span> <span class="m">1</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="complete-example-helios-load-balancer">Complete Example: Helios Load Balancer</h2>
+
+<p>Let’s look at a complete example for using our Helios Load Balancer operator chart:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add repository</span>
 helm repo add helios-lb https://somaz94.github.io/helios-lb/helm-repo
 
-<span class="c"># Install chart</span>
-helm <span class="nb">install </span>helios-lb helios-lb/helios-lb
+<span class="c"># Update helm repositories</span>
+helm repo update
+
+<span class="c"># Check available chart versions</span>
+helm search repo helios-lb <span class="nt">-l</span>
+
+<span class="c"># Install with default values</span>
+helm <span class="nb">install </span>my-lb helios-lb/helios-lb
+
+<span class="c"># Install with custom configuration</span>
+helm <span class="nb">install </span>my-lb helios-lb/helios-lb <span class="se">\</span>
+  <span class="nt">--set</span> operator.resources.limits.memory<span class="o">=</span>512Mi <span class="se">\</span>
+  <span class="nt">--set</span> defaultConfig.enabled<span class="o">=</span><span class="nb">true</span> <span class="se">\</span>
+  <span class="nt">--set</span> defaultConfig.type<span class="o">=</span>weight
+
+<span class="c"># Install using a specific values file</span>
+helm <span class="nb">install </span>my-lb helios-lb/helios-lb <span class="nt">-f</span> values/weight-values.yaml
+
+<span class="c"># Upgrade existing installation</span>
+helm upgrade my-lb helios-lb/helios-lb
 
 <span class="c"># Verify installation</span>
-helm list
 kubectl get pods
+kubectl get heliosconfigs
+
+<span class="c"># Uninstall</span>
+helm uninstall my-lb
+</code></pre></div></div>
+
+<h3 id="example-custom-values-file">Example Custom Values File</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># weight-config.yaml</span>
+<span class="na">operator</span><span class="pi">:</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">300m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">512Mi</span>
+
+<span class="na">defaultConfig</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">production-lb"</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s2">"</span><span class="s">weight"</span>
+  <span class="na">services</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">service-v1</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">90</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">service-v2</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">10</span>
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="-warning">🚨 Warning</h3>
-<ul>
-  <li>The gh-pages branch should not have any files other than Repo files.</li>
-  <li>Therefore, you can create a chart in the following way.</li>
-</ul>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># create helm-repo with main branch</span>
-<span class="nb">mkdir </span>helm-repo
-<span class="nb">cd </span>helm-repo
-helm package ../helm/helios-lb
-
-<span class="c"># create index.yaml</span>
-helm repo index <span class="nb">.</span> <span class="nt">--url</span> https://somaz94.github.io/helios-lb/helm-repo
-
-<span class="nb">cd</span> ../
-<span class="nb">mv </span>helm-repo ../
-
-<span class="c"># create gh-pages branch</span>
-git checkout <span class="nt">--orphan</span> gh-pages  <span class="c"># create new branch</span>
-git <span class="nb">rm</span> <span class="nt">-rf</span> <span class="nb">.</span>                    <span class="c"># remove all files</span>
-<span class="nb">mv</span> ../helm-repo <span class="nb">.</span>
-
-git add <span class="nb">.</span>
-git commit <span class="nt">-m</span> <span class="s2">"Add Helm chart repository"</span>
-git push origin gh-pages
-</code></pre></div></div>
-
 <hr />
 
-<h3 id="reference">Reference</h3>
+<h2 id="references">References</h2>
+
 <ul>
   <li><a href="https://helm.sh/docs/">Helm Documentation</a></li>
   <li><a href="https://docs.github.com/en/pages">GitHub Pages Documentation</a></li>
+  <li><a href="https://helm.sh/docs/chart_best_practices/">Helm Best Practices</a></li>
+  <li><a href="https://sdk.operatorframework.io/docs/building-operators/helm/">Kubernetes Operators with Helm</a></li>
+  <li><a href="https://github.com/helm/chart-testing">Chart Testing Tool</a></li>
   <li><a href="https://github.com/somaz94/helios-lb">Helios Load Balancer</a></li>
   <li><a href="https://somaz.tistory.com/category/Container%20Orchestration/Kubernetes">Previous Helm Posts</a></li>
 </ul>
@@ -470,7 +965,7 @@ git push origin gh-pages
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="3">
+            <div class="time-bar" data-minutes="15">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -512,7 +1007,7 @@ git push origin gh-pages
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to creating Helm charts for Kubernetes Operators and hosting them on GitHub Pages&quot;%20https://somaz.blog/category/kubernetes/k8s-helm-chart-packaging/%20via%20&#64;twitter_username&hashtags=kubernetes,helm,github-pages,operator"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to creating Helm charts for Kubernetes Operators and hosting them on GitHub Pages&quot;%20https://somaz.blog/category/kubernetes/k8s-helm-chart-packaging/%20via%20&#64;twitter_username&hashtags=kubernetes,helm,github-pages,operator,chart-repository,ci-cd"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -767,7 +1262,7 @@ git push origin gh-pages
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Creating and Hosting Helm Charts for Kubernetes Operators",
-            "headline": "",
+            "headline": "Build, package, and distribute your Helm charts using GitHub Pages",
             "description": "A comprehensive guide to creating Helm charts for Kubernetes Operators and hosting them on GitHub Pages",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737357972/github-gh-pages_lokj8q.png",
             "url": "https://somaz.blog/category/kubernetes/k8s-helm-chart-packaging/",
@@ -776,13 +1271,45 @@ git push origin gh-pages
 
 
 Overview
-Learn how to create Helm charts for Kubernetes Operators and host them on GitHub Pages.
+
+Helm charts provide a powerful way to package, distribute, and deploy Kubernetes applications. This guide focuses on creating Helm charts specifically for Kubernetes Operators and hosting them on GitHub Pages, creating a free, reliable chart repository accessible to anyone.
+
+
+  What You&apos;ll Learn
+  This guide covers the complete workflow for creating and hosting Helm charts:
+  
+    Creating a Helm chart structure for Kubernetes Operators
+    Properly packaging Helm charts for distribution
+    Setting up GitHub Pages as a Helm chart repository
+    Automating chart updates with GitHub Actions
+    Best practices for chart maintenance and versioning
+  
 
 
 
-🛠 Creating Helm Charts
+  
+    graph LR
+      A[Create Helm Chart] --&amp;gt; B[Package Chart]
+      B --&amp;gt; C[Setup GitHub Pages]
+      C --&amp;gt; D[Publish Chart]
+      D --&amp;gt; E[Use Chart]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#90caf9,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#42a5f5,stroke:#333,stroke-width:1px,color:#fff
+      style E fill:#1976d2,stroke:#333,stroke-width:1px,color:#fff
+  
+
+
+
+
+Helm Chart Creation
 
 Installation
+
+Before you begin, make sure you have Helm installed:
+
 # macOS
 brew install helm
 
@@ -791,10 +1318,54 @@ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scrip
 chmod 700 get_helm.sh
 ./get_helm.sh
 
+# Windows (using Chocolatey)
+choco install kubernetes-helm
 
-Chart Structure
-helios-lb [main|✔] 
-13:16 $ tree helm
+# Verify installation
+helm version
+
+
+Chart Structure for Operators
+
+Creating a Helm chart for a Kubernetes Operator requires special consideration for CRDs and operator-specific resources.
+
+
+  
+    graph TD
+      A[Chart Root] --&amp;gt; B[Chart.yaml]
+      A --&amp;gt; C[values.yaml]
+      A --&amp;gt; D[templates/]
+      A --&amp;gt; E[crds/]
+      A --&amp;gt; F[README.md]
+      
+      D --&amp;gt; G[deployment.yaml]
+      D --&amp;gt; H[rbac.yaml]
+      D --&amp;gt; I[service.yaml]
+      D --&amp;gt; J[serviceaccount.yaml]
+      D --&amp;gt; K[customresource/]
+      
+      E --&amp;gt; L[crd-definitions.yaml]
+      
+      style A fill:#e3f2fd,stroke:#333,stroke-width:1px
+      style B fill:#bbdefb,stroke:#333,stroke-width:1px
+      style C fill:#bbdefb,stroke:#333,stroke-width:1px
+      style D fill:#bbdefb,stroke:#333,stroke-width:1px
+      style E fill:#f06292,stroke:#333,stroke-width:1px
+      style F fill:#bbdefb,stroke:#333,stroke-width:1px
+  
+
+
+You can create a new chart using the helm create command, but for an operator, you’ll likely need to customize it:
+
+# Create basic chart structure
+helm create my-operator
+
+# Clean up default templates we don&apos;t need
+rm -rf my-operator/templates/*
+
+
+Here’s a complete structure for a Kubernetes Operator chart, based on a real example (helios-lb):
+
 helm/
 ├── README.md                  # Chart usage guide and parameter documentation
 └── helios-lb/                 # Main chart directory
@@ -804,8 +1375,9 @@ helm/
     ├── templates/            # Kubernetes resource templates
     │   ├── NOTES.txt        # Usage notes displayed after installation
     │   ├── _helpers.tpl     # Common template functions
-    │   ├── crd-clenaup-hook.yaml    # Helm hook for CRD cleanup
+    │   ├── crd-cleanup-hook.yaml    # Helm hook for CRD cleanup
     │   ├── customresource/   # CR templates
+    │   │   └── config.yaml   # Example CR instance
     │   ├── deployment.yaml   # Controller deployment
     │   ├── namespace.yaml    # Namespace definition
     │   ├── rbac.yaml        # Permission settings (Role, RoleBinding)
@@ -818,146 +1390,564 @@ helm/
     └── values.yaml          # Default values file
 
 
-  If Chart creation is done, I will try packaging it.
+Key Files Explained
+
+Chart.yaml
+
+This file contains metadata about your chart:
+
+apiVersion: v2
+name: helios-lb
+description: A Helm chart for Helios Load Balancer Operator
+type: application
+version: 0.1.0  # Chart version
+appVersion: &quot;1.0.0&quot;  # Application version
+maintainers:
+  - name: somaz
+    email: somaz@example.com
+keywords:
+  - kubernetes
+  - operator
+  - loadbalancer
+sources:
+  - https://github.com/somaz94/helios-lb
+
+
+values.yaml
+
+Default configuration values for your chart:
+
+# Default values for helios-lb
+# This is a YAML-formatted file.
+
+# Operator configuration
+operator:
+  image:
+    repository: somaz/helios-lb
+    tag: latest
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# CRD configuration
+crd:
+  install: true
+  cleanup: false
+
+# Default CR configuration
+defaultConfig:
+  enabled: false
+  name: &quot;default-config&quot;
+  type: &quot;weight&quot;  # weight or port
+  services:
+    - name: service-a
+      weight: 80
+    - name: service-b
+      weight: 20
+
+
+RBAC Configuration (rbac.yaml)
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: -role
+rules:
+- apiGroups:
+  - &quot;&quot;
+  resources:
+  - services
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - lb.helios.com
+  resources:
+  - heliosconfigs
+  - heliosconfigs/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: -rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: -role
+subjects:
+- kind: ServiceAccount
+  name: 
+  namespace: 
+
+
+CRD Definition Example
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: heliosconfigs.lb.helios.com
+spec:
+  group: lb.helios.com
+  names:
+    kind: HeliosConfig
+    listKind: HeliosConfigList
+    plural: heliosconfigs
+    singular: heliosconfig
+    shortNames:
+      - hlb
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            required: [&quot;type&quot;, &quot;services&quot;]
+            properties:
+              type:
+                type: string
+                enum: [&quot;weight&quot;, &quot;port&quot;]
+              services:
+                type: array
+                items:
+                  type: object
+                  required: [&quot;name&quot;]
+                  properties:
+                    name:
+                      type: string
+                    weight:
+                      type: integer
+                      minimum: 0
+                      maximum: 100
+                    port:
+                      type: integer
+                      minimum: 1
+                      maximum: 65535
 
 
 
 
-Packaging and Hosting
+Packaging Helm Charts
 
-You can use Github Pages for web hosting by packaging.
+Once your chart structure is complete, you can package it for distribution.
 
-GitHub Pages is a special feature of GitHub, a system that automatically webhosts the gh-pages branch. Here’s how it works.
 
-GitHub Pages Setup
-# Create gh-pages branch
+  
+    sequenceDiagram
+      participant Developer
+      participant Local as Local Repository
+      participant GitHub as GitHub Pages
+      participant User
+      
+      Developer-&amp;gt;&amp;gt;Local: helm package ./chart
+      Note over Local: Creates chart-version.tgz
+      Developer-&amp;gt;&amp;gt;Local: helm repo index
+      Note over Local: Creates/updates index.yaml
+      Developer-&amp;gt;&amp;gt;GitHub: Push to gh-pages branch
+      Note over GitHub: GitHub Pages activates
+      User-&amp;gt;&amp;gt;GitHub: helm repo add myrepo https://...
+      User-&amp;gt;&amp;gt;GitHub: helm install myrepo/chart
+  
+
+
+Package Your Chart
+
+# Navigate to your chart&apos;s parent directory
+cd path/to/helm/
+
+# Package the chart
+helm package ./helios-lb
+
+# This creates a file like helios-lb-0.1.0.tgz
+
+
+
+  Important:
+  Make sure your Chart.yaml has the correct version information before packaging. Every time you make changes to your chart, you should update the version and repackage it.
+
+
+
+
+Hosting on GitHub Pages
+
+GitHub Pages provides a simple way to host your Helm chart repository.
+
+Setup Process
+
+
+  
+    
+      Step
+      Description
+    
+    
+      Create Repository
+      Create a GitHub repository for your chart (if you haven&apos;t already)
+    
+    
+      Create gh-pages Branch
+      Create a special branch to host your chart repository
+    
+    
+      Add Packaged Charts
+      Add your .tgz chart packages to this branch
+    
+    
+      Create Index
+      Create an index.yaml file to make it a valid Helm repository
+    
+    
+      Push to GitHub
+      Push the branch to GitHub to activate GitHub Pages
+    
+    
+      Configure GitHub Pages
+      Ensure GitHub Pages is configured to use the gh-pages branch
+    
+  
+
+
+Create a Clean gh-pages Branch
+
+It’s important to create a clean gh-pages branch that contains only the repository files:
+
+# Create and check out a new orphan branch (no history)
 git checkout --orphan gh-pages
 
-# Package helm chart
-helm package ./helm/helios-lb
+# Remove all tracked files
+git rm -rf .
 
-# Create index file
-helm repo index . --url https://username.github.io/repo/helm-repo
+# Create a helm-repo directory for organization (optional)
+mkdir helm-repo
+cd helm-repo
+
+# Copy your packaged chart here
+cp ../../path/to/helm/helios-lb-0.1.0.tgz .
+
+# Create the repository index
+helm repo index . --url https://username.github.io/repo-name/helm-repo
+
+# Go back to root
+cd ..
+
+# Add all files
+git add .
+
+# Commit changes
+git commit -m &quot;Add Helm chart repository&quot;
+
+# Push to GitHub
+git push origin gh-pages
+
+
+After pushing, GitHub will automatically set up GitHub Pages for your repository. You can check this in your repository settings under “Pages.”
+
+
+  Best Practice
+  You can organize your repository by creating subdirectories:
+  
+    /helm-repo - For chart packages and index
+    /docs - For additional documentation
+    /examples - For usage examples
+  
+
+
+
+
+Adding Multiple Chart Versions
+
+When you update your chart, you’ll want to make new versions available while maintaining older versions:
+
+# Update Chart.yaml with new version (e.g., 0.2.0)
+# Package the new version
+helm package ./path/to/helm/helios-lb
+
+# Copy to your gh-pages repo
+cp helios-lb-0.2.0.tgz path/to/gh-pages/helm-repo/
+
+# Update the index to include both versions
+cd path/to/gh-pages/helm-repo/
+helm repo index . --url https://username.github.io/repo-name/helm-repo
 
 # Commit and push
-git add index.yaml helios-lb-*.tgz
-git commit -m &quot;Add helm chart repository&quot;
+git add .
+git commit -m &quot;Add chart version 0.2.0&quot;
 git push origin gh-pages
 
 
 
 
-Automation Process
+Automating with GitHub Actions
+
+You can automate chart publishing with GitHub Actions. Here’s a workflow example:
+
+name: Release Charts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - &apos;helm/**&apos;
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name &quot;$GITHUB_ACTOR&quot;
+          git config user.email &quot;$GITHUB_ACTOR@users.noreply.github.com&quot;
+
+      - name: Install Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.8.1
+
+      - name: Package Chart
+        run: |
+          mkdir -p .cr-release-packages
+          helm package helm/helios-lb -d .cr-release-packages
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Update Repository
+        run: |
+          mkdir -p gh-pages/helm-repo
+          cp .cr-release-packages/* gh-pages/helm-repo/
+          cd gh-pages/helm-repo
+          helm repo index . --url https://$.github.io/$/helm-repo
+          
+      - name: Publish Repository
+        run: |
+          cd gh-pages
+          git add .
+          git commit -m &quot;Release new chart version&quot; || echo &quot;No changes to commit&quot;
+          git push origin gh-pages
 
 
-  GitHub detects gh-pages branch
-  Automatically assign address https://[username].github.io/ [repository-name]
-  Provides the content of the branch to a static website
+This workflow automatically packages and publishes your chart when changes are made to the helm directory in the main branch.
+
+
+
+Using Your Chart Repository
+
+Once your repository is set up, others can use it by adding it to their Helm:
+
+# Add the repository
+helm repo add helios-lb https://username.github.io/repo-name/helm-repo
+
+# Update repositories
+helm repo update
+
+# Search for available charts
+helm search repo helios-lb
+
+# Install the chart
+helm install my-release helios-lb/helios-lb
+
+# Install with custom values
+helm install my-release helios-lb/helios-lb --values custom-values.yaml
 
 
 
 
-Repository Structure
+Best Practices for Helm Charts
+
+
+  Chart Structure and Documentation:
+  
+    Keep your gh-pages branch clean, containing only repository files
+    Use semantic versioning (MAJOR.MINOR.PATCH) for your charts
+    Include comprehensive documentation in README.md
+    Document all values with descriptions and defaults
+    Add NOTES.txt with post-installation instructions
+    Include examples for common use cases
+  
+  
+  Chart Maintenance:
+  
+    Test charts thoroughly before publishing
+    Maintain backward compatibility when possible
+    Update appVersion and version in Chart.yaml appropriately
+    Include a CHANGELOG.md to track changes
+    Set appropriate dependencies and version constraints
+  
+  
+  CRD Handling:
+  
+    Place CRDs in the crds/ directory (not templates/)
+    Consider hooks for careful CRD lifecycle management
+    Add safeguards to prevent accidental CRD deletion
+    Make CRD installation optional with values
+  
+
+
+CRD Handling Special Considerations
+
+CRDs require special handling in Helm charts:
 
 
   
-    File
-    Purpose
+    Placement: CRDs should be placed in the crds/ directory, not in templates/. This ensures they are installed before any resources that depend on them.
   
   
-    index.yaml
-    Chart metadata and version information
+    Upgrade Challenges: Helm doesn’t automatically upgrade CRDs to prevent data loss. Consider using a pre-upgrade hook.
   
   
-    helios-lb-*.tgz
-    Packaged helm chart
-  
-  
-    README.md
-    Usage documentation
+    Deletion Protection: Add a cleanup hook to control CRD deletion:
   
 
 
+# templates/crd-cleanup-hook.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: -crd-cleanup
+  annotations:
+    &quot;helm.sh/hook&quot;: pre-delete
+    &quot;helm.sh/hook-weight&quot;: &quot;0&quot;
+    &quot;helm.sh/hook-delete-policy&quot;: hook-succeeded
+spec:
+  template:
+    spec:
+      serviceAccountName: 
+      containers:
+      - name: kubectl
+        image: bitnami/kubectl:latest
+        command:
+        - kubectl
+        - delete
+        - crd
+        - heliosconfigs.lb.helios.com
+      restartPolicy: Never
+  backoffLimit: 1
 
 
-Best Practices
-
-1. Clean Branch:
-   - Keep gh-pages branch clean
-   - Only include repository files
-   - Remove unnecessary files
-
-2. Version Control:
-   - Use semantic versioning
-   - Update Chart.yaml properly
-   - Document changes
-
-3. Documentation:
-   - Include clear installation instructions
-   - Document all values
-   - Provide usage examples
-
-4. Testing:
-   - Test chart installation
-   - Verify all templates
-   - Check dependencies
 
 
+Complete Example: Helios Load Balancer
 
-
-Usage Example
+Let’s look at a complete example for using our Helios Load Balancer operator chart:
 
 # Add repository
 helm repo add helios-lb https://somaz94.github.io/helios-lb/helm-repo
 
-# Install chart
-helm install helios-lb helios-lb/helios-lb
+# Update helm repositories
+helm repo update
+
+# Check available chart versions
+helm search repo helios-lb -l
+
+# Install with default values
+helm install my-lb helios-lb/helios-lb
+
+# Install with custom configuration
+helm install my-lb helios-lb/helios-lb \
+  --set operator.resources.limits.memory=512Mi \
+  --set defaultConfig.enabled=true \
+  --set defaultConfig.type=weight
+
+# Install using a specific values file
+helm install my-lb helios-lb/helios-lb -f values/weight-values.yaml
+
+# Upgrade existing installation
+helm upgrade my-lb helios-lb/helios-lb
 
 # Verify installation
-helm list
 kubectl get pods
+kubectl get heliosconfigs
+
+# Uninstall
+helm uninstall my-lb
+
+
+Example Custom Values File
+
+# weight-config.yaml
+operator:
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+defaultConfig:
+  enabled: true
+  name: &quot;production-lb&quot;
+  type: &quot;weight&quot;
+  services:
+    - name: service-v1
+      weight: 90
+    - name: service-v2
+      weight: 10
 
 
 
 
-🚨 Warning
-
-  The gh-pages branch should not have any files other than Repo files.
-  Therefore, you can create a chart in the following way.
 
 
-# create helm-repo with main branch
-mkdir helm-repo
-cd helm-repo
-helm package ../helm/helios-lb
+References
 
-# create index.yaml
-helm repo index . --url https://somaz94.github.io/helios-lb/helm-repo
-
-cd ../
-mv helm-repo ../
-
-# create gh-pages branch
-git checkout --orphan gh-pages  # create new branch
-git rm -rf .                    # remove all files
-mv ../helm-repo .
-
-git add .
-git commit -m &quot;Add Helm chart repository&quot;
-git push origin gh-pages
-
-
-
-
-Reference
 
   Helm Documentation
   GitHub Pages Documentation
+  Helm Best Practices
+  Kubernetes Operators with Helm
+  Chart Testing Tool
   Helios Load Balancer
   Previous Helm Posts
 
 ",
-            "wordcount": "645",
+            "wordcount": "2723",
             "inLanguage": "en",
             "dateCreated": "2025-01-14/",
             "datePublished": "2025-01-14/",
@@ -988,7 +1978,7 @@ Reference
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","helm","github-pages","operator"]
+            "keywords": ["kubernetes","helm","github-pages","operator","chart-repository","ci-cd"]
         }
         </script>
     </body>

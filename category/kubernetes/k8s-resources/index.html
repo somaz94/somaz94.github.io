@@ -40,7 +40,7 @@
     <title>Kubernetes Resources - A Comprehensive Guide | somaz</title>
     <meta name="description" content="Detailed explanation of Kubernetes resources including Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, and CronJobs">
     
-        <meta name="keywords" content="kubernetes, deployment, statefulset, daemonset, job, cronjob">
+        <meta name="keywords" content="kubernetes, deployment, statefulset, daemonset, job, cronjob, container orchestration, cloud native">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 10, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>9 min to read</span>
+                    <span>14 min to read</span>
                 </p>
                 <h1 class="post-title">Kubernetes Resources - A Comprehensive Guide</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">Understanding when and how to use Deployments, StatefulSets, DaemonSets, Jobs, and CronJobs</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737099204/kuberentes-240_ci9ktu.png" alt="Featured image" class="post-cover">
@@ -241,53 +241,92 @@ January 10, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p>Kubernetes offers various resource types to manage different aspects of container orchestration. Let’s explore each type in detail.</p>
+
+<div class="info-box info-box-default-not-check">
+  <p>Kubernetes offers various resource types to manage different aspects of container orchestration. Each resource type serves a specific purpose in the Kubernetes ecosystem, handling different application requirements and operational patterns.</p>
+  <p>This guide explores the core workload resources that define how applications run in a Kubernetes cluster, highlighting their key characteristics, use cases, and configuration approaches.</p>
+</div>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph TD
+      A[Kubernetes Workload Resources] --&gt; B[Deployment]
+      A --&gt; C[StatefulSet]
+      A --&gt; D[DaemonSet]
+      A --&gt; E[Job/CronJob]
+      B --&gt; F[ReplicaSet]
+      F --&gt; G[Pods]
+      C --&gt; G
+      D --&gt; G
+      E --&gt; G
+  </div>
+</div>
 
 <p><br /></p>
 
-<h2 id="kubernetes-resources">Kubernetes Resources</h2>
+<h2 id="kubernetes-core-workload-resources">Kubernetes Core Workload Resources</h2>
+
+<p>The primary resource types we’ll examine in detail:</p>
+
 <ul>
-  <li>Deployments</li>
-  <li>ReplicaSet</li>
+  <li>Deployments &amp; ReplicaSets</li>
   <li>StatefulSets</li>
-  <li>DaemonSet</li>
-  <li>Jobs</li>
-  <li>Automatic Cleanup for Finished Jobs</li>
-  <li>CronJob</li>
-  <li>ReplicationController</li>
+  <li>DaemonSets</li>
+  <li>Jobs &amp; CronJobs</li>
 </ul>
 
-<h3 id="deployment--replicaset--pod">Deployment &amp; ReplicaSet &amp; Pod</h3>
+<p><br /></p>
+
+<hr />
+
+<h2 id="deployments-replicasets-and-pods">Deployments, ReplicaSets, and Pods</h2>
+
+<div class="info-box info-box-info-not-check">
+  <h3>Deployment Hierarchy</h3>
+  <p>A Deployment manages ReplicaSets, which in turn manage Pods. This hierarchy provides layers of abstraction that enable powerful features like rolling updates, scaling, and self-healing.</p>
+</div>
 
 <p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737096918/deploy-replica-pod_ry8t2h.png" alt="deploy-replica-pod" /></p>
 
-<h4 id="1-replicaset">1. ReplicaSet</h4>
-<blockquote>
-  <p>ReplicaSet is a resource that allows the desired number of replicas (instances) of a Pod to run at a specified time.</p>
-</blockquote>
+<h3 id="1-pods">1. Pods</h3>
 
-<p>If the number of running pods is less than the desired number, ReplicaSet creates a new pod to maintain the desired number.</p>
+<p>Pods are the smallest deployable units in Kubernetes, serving as the basic building blocks.</p>
 
-<p>Similarly, if there are too many Pods running, ReplicaSet will terminate the additional Pods.</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-pod</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">nginx</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s">nginx:1.14.2</span>
+    <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">80</span>
+</code></pre></div></div>
 
-<p>ReplicaSet operates based on the Pod template that defines the desired state of the Pod managed by ReplicaSet.</p>
+<p><strong>Key characteristics:</strong></p>
+<ul>
+  <li>Encapsulate one or more containers that share network namespace, storage, and lifecycle</li>
+  <li>Have a unique IP address within the cluster</li>
+  <li>Can communicate with each other using <code class="language-plaintext highlighter-rouge">localhost</code></li>
+  <li>Don’t self-heal if they fail or are terminated</li>
+  <li>Generally not created directly, but managed by higher-level controllers</li>
+</ul>
 
 <p><br /></p>
 
-<h4 id="2-deployment">2. Deployment</h4>
-<blockquote>
-  <p>Deployment is a resource that manages the desired state of an application.</p>
-</blockquote>
+<h3 id="2-replicasets">2. ReplicaSets</h3>
 
-<p>This allows you to define the number of copies of containerized applications you want to run at a given time and manages updates for applications such as Rolling Update or Rollback.</p>
+<div class="info-box info-box-success-not-check">
+  <p>ReplicaSets ensure that a specified number of pod replicas are running at any given time.</p>
+</div>
 
-<p>Deployment uses ReplicaSet to manage the basic pods that configure applications.</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example Deployment</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ReplicaSet</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-deployment</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-replicaset</span>
 <span class="na">spec</span><span class="pi">:</span>
   <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>
   <span class="na">selector</span><span class="pi">:</span>
@@ -302,91 +341,153 @@ January 10, 2025
       <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
         <span class="na">image</span><span class="pi">:</span> <span class="s">nginx:1.14.2</span>
 </code></pre></div></div>
+
+<p><strong>Key characteristics:</strong></p>
 <ul>
-  <li>Replicaset occurs automatically when you apply Deployment yaml as above.</li>
-  <li>In other words, it can be seen that replicaset is included in the deployment.</li>
+  <li>Maintain a stable set of replica Pods running at any given time</li>
+  <li>Create new Pods if existing ones fail, are deleted, or are terminated</li>
+  <li>Use label selectors to identify which Pods to manage</li>
+  <li>Rarely created directly - Deployments are preferred</li>
+  <li>Ensure Pod availability but don’t handle updates or rollbacks</li>
 </ul>
 
-<h4 id="rolling-updates">Rolling Updates</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update image</span>
-kubectl <span class="nb">set </span>image deployment/nginx-deployment <span class="nv">nginx</span><span class="o">=</span>nginx:1.16.1
+<p><br /></p>
 
-<span class="c"># Check status</span>
+<h3 id="3-deployments">3. Deployments</h3>
+
+<div class="info-box info-box-default-not-check">
+  <p>Deployments are the recommended way to manage the creation and scaling of Pods. They provide declarative updates for Pods and ReplicaSets.</p>
+</div>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-deployment</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">nginx</span>
+  <span class="na">strategy</span><span class="pi">:</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">RollingUpdate</span>
+    <span class="na">rollingUpdate</span><span class="pi">:</span>
+      <span class="na">maxSurge</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">maxUnavailable</span><span class="pi">:</span> <span class="m">0</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">nginx</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">nginx:1.14.2</span>
+        <span class="na">resources</span><span class="pi">:</span>
+          <span class="na">requests</span><span class="pi">:</span>
+            <span class="na">cpu</span><span class="pi">:</span> <span class="s">100m</span>
+            <span class="na">memory</span><span class="pi">:</span> <span class="s">128Mi</span>
+          <span class="na">limits</span><span class="pi">:</span>
+            <span class="na">cpu</span><span class="pi">:</span> <span class="s">250m</span>
+            <span class="na">memory</span><span class="pi">:</span> <span class="s">256Mi</span>
+        <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">80</span>
+        <span class="na">livenessProbe</span><span class="pi">:</span>
+          <span class="na">httpGet</span><span class="pi">:</span>
+            <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+            <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+          <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="m">3</span>
+          <span class="na">periodSeconds</span><span class="pi">:</span> <span class="m">3</span>
+</code></pre></div></div>
+
+<p><strong>Key characteristics:</strong></p>
+<ul>
+  <li>Automatically create a ReplicaSet, which then creates Pods</li>
+  <li>Support rolling updates and rollbacks</li>
+  <li>Maintain deployment history</li>
+  <li>Self-heal at multiple levels (Pod, ReplicaSet)</li>
+  <li>Ideal for stateless applications</li>
+</ul>
+
+<p><br /></p>
+
+<h4 id="rolling-updates-with-deployments">Rolling Updates with Deployments</h4>
+
+<p>Rolling updates allow you to update your application with zero downtime by incrementally replacing instances:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update the image</span>
+kubectl <span class="nb">set </span>image deployment/nginx-deployment <span class="nv">nginx</span><span class="o">=</span>nginx:1.16.1 <span class="nt">--record</span>
+
+<span class="c"># Check the status of the rolling update</span>
 kubectl rollout status deployment/nginx-deployment
+</code></pre></div></div>
 
-<span class="c"># View history</span>
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant U as User
+      participant A as API Server
+      participant D as Deployment Controller
+      participant RS as ReplicaSet Controller
+      participant S as Scheduler
+      participant N as Nodes
+      
+      U-&gt;&gt;A: kubectl set image deployment/nginx
+      A-&gt;&gt;D: Update Deployment
+      D-&gt;&gt;A: Create new ReplicaSet
+      D-&gt;&gt;A: Scale up new ReplicaSet
+      A-&gt;&gt;RS: ReplicaSet Changes
+      RS-&gt;&gt;A: Create new Pods
+      A-&gt;&gt;S: Schedule Pods
+      S-&gt;&gt;N: Run Pods
+      D-&gt;&gt;A: Scale down old ReplicaSet
+      A-&gt;&gt;RS: ReplicaSet Changes
+      RS-&gt;&gt;A: Terminate old Pods
+  </div>
+</div>
+
+<h4 id="rollbacks-and-history-management">Rollbacks and History Management</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># View rollout history</span>
 kubectl rollout <span class="nb">history </span>deployment/nginx-deployment
 
-<span class="c"># Rollback</span>
-kubectl rollout undo deployment/nginx-deployment
-</code></pre></div></div>
-
-<h4 id="checking-rollout-history-of-a-deployment">Checking Rollout History of a Deployment</h4>
-<p>The Rollout method is the same as the method of Rolling Update above.</p>
-
-<p>Rollout is a way to update multiple pods sequentially without killing them all!</p>
-
-<p>–Revision occurs in the case of deployments that are applied with the <code class="language-plaintext highlighter-rouge">--record</code> option.</p>
-
-<p>Alternatively, you can change the image using the <code class="language-plaintext highlighter-rouge">set image</code> command, and the revision occurs.</p>
-
-<p>Therefore, I would like to find out how to check the Rollout History and how to return it.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl rollout <span class="nb">history </span>deployment/nginx-deployment
-deployments <span class="s2">"nginx-deployment"</span>
-REVISION    CHANGE-CAUSE
-1           kubectl apply <span class="nt">--filename</span><span class="o">=</span>https://k8s.io/examples/controllers/nginx-deployment.yaml
-2           kubectl <span class="nb">set </span>image deployment/nginx-deployment <span class="nv">nginx</span><span class="o">=</span>nginx:1.16.1
-3           kubectl <span class="nb">set </span>image deployment/nginx-deployment <span class="nv">nginx</span><span class="o">=</span>nginx:1.161
-
-<span class="c"># Rollback to desired version</span>
+<span class="c"># Get details about a specific revision</span>
 kubectl rollout <span class="nb">history </span>deployment/nginx-deployment <span class="nt">--revision</span><span class="o">=</span>2
 
-<span class="c"># Rollback to previous version</span>
-kubectl rollout undo deployment/nginx-deployment
+<span class="c"># Roll back to a previous revision</span>
+kubectl rollout undo deployment/nginx-deployment <span class="nt">--to-revision</span><span class="o">=</span>2
+
+<span class="c"># Pause a rollout (for testing partial deployment)</span>
+kubectl rollout pause deployment/nginx-deployment
+
+<span class="c"># Resume a rollout</span>
+kubectl rollout resume deployment/nginx-deployment
 </code></pre></div></div>
-
-<h4 id="3-pod">3. Pod</h4>
-<blockquote>
-  <p>Pod is the smallest and most basic unit in the Kubernetes object model.</p>
-</blockquote>
-
-<p>It represents a single instance of an application running in the cluster and consists of one or more containers closely coupled to each other. Containers within the Pod share the same network namespace and can communicate with each other using</p>
-
-<p>‘localhost’. Even if the Pod fails, it is not automatically re-booked on another node. ReplicaSet operates to maintain the desired number of Pods.</p>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="daemonset--statefulset">DaemonSet &amp; StatefulSet</h3>
+<h2 id="statefulsets-and-daemonsets">StatefulSets and DaemonSets</h2>
+
+<p>These resource types address specific workload requirements that can’t be satisfied by Deployments alone.</p>
 
 <p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737097239/statefulset-daemonset_rf7btj.png" alt="statefulset-daemonset" /></p>
 
-<h4 id="1-daemonset">1. DaemonSet</h4>
+<p><br /></p>
+
+<h3 id="1-daemonsets">1. DaemonSets</h3>
+
+<div class="info-box info-box-info-not-check">
+  <p>DaemonSets ensure that all (or some) nodes run a copy of a Pod, making them ideal for node-level operations, monitoring, or services.</p>
+</div>
+
 <p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737097314/Daemonset_jogiho.png" alt="daemonset" />
-<a href="https://devopscube.com/kubernetes-daemonset/">image reference link</a></p>
-
-<blockquote>
-  <p>DaemonSet is a Kubernetes resource that allows certain Pod to run on all (or subset) nodes in the cluster.</p>
-</blockquote>
-
-<p>Designed to run a single pod on each worker node, i.e. the daemonset pod cannot be extended on the node.</p>
-
-<p>And for some reason, if the daemonset pod is deleted from the node, the daemonset controller generates it again.</p>
-
-<p>It is useful for deploying system-level services such as log collectors, monitoring agents, or networking components that must be run on each node for proper functionality.</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">k get daemonset -n kube-system</span>
-<span class="s">NAME           DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE</span>
-<span class="s">calico-node    6         6         6       6            6           kubernetes.io/os=linux   364d</span>
-<span class="s">kube-proxy     6         6         6       6            6           kubernetes.io/os=linux   364d</span>
-<span class="s">nodelocaldns   6         6         6       6            6           kubernetes.io/os=linux   364d</span>
-</code></pre></div></div>
+<a href="https://devopscube.com/kubernetes-daemonset/">Image reference link</a></p>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">DaemonSet</span>
 <span class="na">metadata</span><span class="pi">:</span>
   <span class="na">name</span><span class="pi">:</span> <span class="s">fluentd-elasticsearch</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">kube-system</span>
 <span class="na">spec</span><span class="pi">:</span>
   <span class="na">selector</span><span class="pi">:</span>
     <span class="na">matchLabels</span><span class="pi">:</span>
@@ -396,222 +497,461 @@ kubectl rollout undo deployment/nginx-deployment
       <span class="na">labels</span><span class="pi">:</span>
         <span class="na">name</span><span class="pi">:</span> <span class="s">fluentd-elasticsearch</span>
     <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">tolerations</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">key</span><span class="pi">:</span> <span class="s">node-role.kubernetes.io/master</span>
+        <span class="na">effect</span><span class="pi">:</span> <span class="s">NoSchedule</span>
       <span class="na">containers</span><span class="pi">:</span>
       <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">fluentd-elasticsearch</span>
         <span class="na">image</span><span class="pi">:</span> <span class="s">quay.io/fluentd_elasticsearch/fluentd:v2.5.2</span>
+        <span class="na">resources</span><span class="pi">:</span>
+          <span class="na">limits</span><span class="pi">:</span>
+            <span class="na">memory</span><span class="pi">:</span> <span class="s">200Mi</span>
+          <span class="na">requests</span><span class="pi">:</span>
+            <span class="na">cpu</span><span class="pi">:</span> <span class="s">100m</span>
+            <span class="na">memory</span><span class="pi">:</span> <span class="s">200Mi</span>
+        <span class="na">volumeMounts</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">varlog</span>
+          <span class="na">mountPath</span><span class="pi">:</span> <span class="s">/var/log</span>
+      <span class="na">volumes</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">varlog</span>
+        <span class="na">hostPath</span><span class="pi">:</span>
+          <span class="na">path</span><span class="pi">:</span> <span class="s">/var/log</span>
 </code></pre></div></div>
 
-<p><strong>How Daemon Pods are scheduled?</strong></p>
-<blockquote>
-  <p>So how will Daemonset pod be scheduled?<br />
-As shown in the figure above, it is scheduled in consideration of NodeSelector, NodeAffinity, Priority Class, Taints &amp; Tolerations.</p>
-</blockquote>
+<p><strong>Key characteristics:</strong></p>
+<ul>
+  <li>Run exactly one Pod instance per node</li>
+  <li>New Pods are automatically created when nodes are added to the cluster</li>
+  <li>Pods are garbage-collected when nodes are removed</li>
+  <li>Ideal for cluster-wide services like:
+    <ul>
+      <li>Node monitoring agents</li>
+      <li>Log collectors</li>
+      <li>Network plugins</li>
+      <li>Storage plugins</li>
+    </ul>
+  </li>
+</ul>
+
+<p><strong>Example Use Cases:</strong></p>
+<ul>
+  <li>Prometheus Node Exporter</li>
+  <li>Fluentd/Fluent Bit log collectors</li>
+  <li>CNI network plugins (Calico, Cilium)</li>
+  <li>Storage drivers</li>
+  <li>Node-level security agents</li>
+</ul>
+
+<h4 id="daemonset-scheduling">DaemonSet Scheduling</h4>
+
+<p>DaemonSet Pods are scheduled using:</p>
+<ul>
+  <li>NodeSelector</li>
+  <li>NodeAffinity</li>
+  <li>Tolerations to run on nodes with specific taints</li>
+  <li>Priority classes to ensure critical system services run first</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># View DaemonSets running on the cluster</span>
+kubectl get daemonset <span class="nt">-n</span> kube-system
+
+<span class="c"># Examine a specific DaemonSet</span>
+kubectl describe daemonset calico-node <span class="nt">-n</span> kube-system
+</code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="2-statefulset">2. StatefulSet</h3>
+<h3 id="2-statefulsets">2. StatefulSets</h3>
+
+<div class="info-box info-box-warning-not-check">
+  <p>StatefulSets are specialized workload resources designed for stateful applications requiring stable network identities and persistent storage.</p>
+</div>
 
 <p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737097502/statefulset_jcayef.png" alt="statefulset" />
-<a href="https://jayendrapatil.com/tag/statefulsets/">image reference link</a></p>
-
-<blockquote>
-  <p>StatefulSet is a Kubernetes resource that manages a set of Pods that are based on a specific template and have a stable network identity and persistent storage.</p>
-</blockquote>
-
-<p>StatefulSet is a Kubernetes resource that manages the deployment and expansion of state-stored applications, i.e., applications that require stable network IDs and persistent storage.</p>
-
-<p>Ensure that each Pod generated obtains a unique and stable hostname such as web-0 and web-1 based on the index.</p>
-
-<p>This makes it easier to manage applications that require stable network IDs or rely on deployment and expansion sequences.</p>
-
-<p>StatefulSet also provides guarantees of the order and uniqueness of pods that are essential for state-stored applications such as databases or distributed systems.</p>
-
-<p>It can be used with persistent storage, so that data associated with a particular Pod remains in that Pod even if it is rescheduled to another node.</p>
-
-<p>It is used to distribute state-stored applications such as Redis, databases such as PostgreSQL, MySQL, or MongoDB, and message queues such as RabbitMQ.</p>
+<a href="https://jayendrapatil.com/tag/statefulsets/">Image reference link</a></p>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">StatefulSet</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">web</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">postgres</span>
 <span class="na">spec</span><span class="pi">:</span>
-  <span class="na">serviceName</span><span class="pi">:</span> <span class="s2">"</span><span class="s">nginx"</span>
+  <span class="na">serviceName</span><span class="pi">:</span> <span class="s2">"</span><span class="s">postgres"</span>
   <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>
   <span class="na">selector</span><span class="pi">:</span>
     <span class="na">matchLabels</span><span class="pi">:</span>
-      <span class="na">app</span><span class="pi">:</span> <span class="s">nginx</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">postgres</span>
   <span class="na">template</span><span class="pi">:</span>
     <span class="na">metadata</span><span class="pi">:</span>
       <span class="na">labels</span><span class="pi">:</span>
-        <span class="na">app</span><span class="pi">:</span> <span class="s">nginx</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">postgres</span>
     <span class="na">spec</span><span class="pi">:</span>
       <span class="na">containers</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
-        <span class="na">image</span><span class="pi">:</span> <span class="s">nginx</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">postgres</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">postgres:13</span>
+        <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">5432</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">postgredb</span>
+        <span class="na">env</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">POSTGRES_PASSWORD</span>
+          <span class="na">valueFrom</span><span class="pi">:</span>
+            <span class="na">secretKeyRef</span><span class="pi">:</span>
+              <span class="na">name</span><span class="pi">:</span> <span class="s">postgres-secret</span>
+              <span class="na">key</span><span class="pi">:</span> <span class="s">password</span>
         <span class="na">volumeMounts</span><span class="pi">:</span>
-        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">www</span>
-          <span class="na">mountPath</span><span class="pi">:</span> <span class="s">/usr/share/nginx/html</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">postgres-data</span>
+          <span class="na">mountPath</span><span class="pi">:</span> <span class="s">/var/lib/postgresql/data</span>
+  <span class="na">volumeClaimTemplates</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">name</span><span class="pi">:</span> <span class="s">postgres-data</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">accessModes</span><span class="pi">:</span> <span class="pi">[</span> <span class="s2">"</span><span class="s">ReadWriteOnce"</span> <span class="pi">]</span>
+      <span class="na">storageClassName</span><span class="pi">:</span> <span class="s2">"</span><span class="s">standard"</span>
+      <span class="na">resources</span><span class="pi">:</span>
+        <span class="na">requests</span><span class="pi">:</span>
+          <span class="na">storage</span><span class="pi">:</span> <span class="s">10Gi</span>
+</code></pre></div></div>
+
+<p><strong>Key characteristics:</strong></p>
+<ul>
+  <li>Provide stable, unique network identities (e.g., postgres-0, postgres-1, postgres-2)</li>
+  <li>Create PersistentVolumes for each Pod using volumeClaimTemplates</li>
+  <li>Ordered, graceful deployment and scaling</li>
+  <li>Ordered, graceful deletion and termination</li>
+  <li>Maintain sticky identity even after rescheduling</li>
+  <li>Guarantee startup/shutdown order</li>
+  <li>Support headless services for direct Pod access</li>
+</ul>
+
+<p><strong>Example Use Cases:</strong></p>
+<ul>
+  <li>Databases (MySQL, PostgreSQL, MongoDB)</li>
+  <li>Distributed systems (Elasticsearch, Kafka, RabbitMQ)</li>
+  <li>Any application requiring persistent identity/storage</li>
+  <li>Applications where ordering matters (leader-follower patterns)</li>
+</ul>
+
+<div class="info-box info-box-default-not-check">
+  <h3>StatefulSet Update Strategies</h3>
+  <ul>
+    <li><strong>RollingUpdate:</strong> Update Pods in reverse ordinal order</li>
+    <li><strong>OnDelete:</strong> Update only when Pods are manually deleted</li>
+    <li><strong>Partition:</strong> Only update Pods with an ordinal greater than or equal to the partition value</li>
+  </ul>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Scale a StatefulSet</span>
+kubectl scale statefulset postgres <span class="nt">--replicas</span><span class="o">=</span>5
+
+<span class="c"># Get Persistent Volume Claims created by a StatefulSet</span>
+kubectl get pvc <span class="nt">-l</span> <span class="nv">app</span><span class="o">=</span>postgres
 </code></pre></div></div>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="jobs--cronjobs">⏱Jobs &amp; CronJobs</h3>
+<h2 id="jobs-and-cronjobs">Jobs and CronJobs</h2>
+
+<p>These resource types manage task execution and scheduling within the cluster.</p>
 
 <p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737097663/job-cronjob_es1hnp.png" alt="job-cronjob" /></p>
 
-<h4 id="1-job">1. Job</h4>
-<blockquote>
-  <p>Job is a Kubernetes resource that manages a one-time or recurring task.</p>
-</blockquote>
+<p><br /></p>
 
-<p>It is used to run tasks that are not intended to run indefinitely, such as data processing, batch jobs, or one-time tasks.</p>
+<h3 id="1-jobs">1. Jobs</h3>
 
-<p>One or more pods are created to perform the specified task and the pod ends when the job is complete.</p>
+<div class="info-box info-box-info-not-check">
+  <p>Jobs create one or more Pods and ensure that a specified number of them successfully terminate.</p>
+</div>
 
-<p>You can use a job for tasks such as data processing, batch processing, or one-time script or command execution.</p>
-
-<p>Job tracks the overall progress and status of the task to ensure that a specified number of completions have been achieved.</p>
-
-<p>If the Pod fails or is removed due to resource constraints, Job creates a new Pod to replace the Pod and tries the task again until it is successfully completed or Job reaches the backoff limit.</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example Job</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Job</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">hello-job</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">data-processor</span>
 <span class="na">spec</span><span class="pi">:</span>
+  <span class="na">parallelism</span><span class="pi">:</span> <span class="m">3</span>
+  <span class="na">completions</span><span class="pi">:</span> <span class="m">5</span>
+  <span class="na">backoffLimit</span><span class="pi">:</span> <span class="m">2</span>
+  <span class="na">activeDeadlineSeconds</span><span class="pi">:</span> <span class="m">300</span>
   <span class="na">template</span><span class="pi">:</span>
     <span class="na">spec</span><span class="pi">:</span>
       <span class="na">containers</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">hello</span>
-        <span class="na">image</span><span class="pi">:</span> <span class="s">busybox</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">data-processor</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-data-processor:v1</span>
+        <span class="na">command</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">python"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">process_data.py"</span><span class="pi">]</span>
+        <span class="na">resources</span><span class="pi">:</span>
+          <span class="na">requests</span><span class="pi">:</span>
+            <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">128Mi"</span>
+            <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">100m"</span>
+          <span class="na">limits</span><span class="pi">:</span>
+            <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">256Mi"</span>
+            <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">200m"</span>
+      <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">OnFailure</span>
 </code></pre></div></div>
 
-<h4 id="2-cronjob">2. CronJob</h4>
-<blockquote>
-  <p>CronJob is a Kubernetes resource that allows you to schedule recurring tasks.</p>
-</blockquote>
+<p><strong>Key characteristics:</strong></p>
+<ul>
+  <li>Run to completion rather than running indefinitely</li>
+  <li>Track successful completions</li>
+  <li>Can run multiple Pods in parallel</li>
+  <li>Can specify how many successful completions are needed</li>
+  <li>Handle backoff for failures (automatic retries)</li>
+  <li>Can set timeouts for job execution</li>
+</ul>
 
-<p>For example, you can easily prepare a backup creation strategy or get old resources. It is generally useful for applications that require periodic execution of certain tasks.</p>
+<p><strong>Job Execution Patterns:</strong></p>
+<ul>
+  <li><strong>Single Job (Non-parallel)</strong>: One Pod running to completion</li>
+  <li><strong>Fixed Completion Count</strong>: Multiple Pods running sequentially until reaching a completion count</li>
+  <li><strong>Parallel Jobs with Fixed Completion Count</strong>: Multiple Pods running in parallel until reaching a completion count</li>
+  <li><strong>Parallel Jobs with Work Queue</strong>: Multiple Pods processing items from a shared work queue</li>
+</ul>
 
-<p>The main difference between Kubernetes CronJob and Linux is the use of containers.</p>
+<p><strong>Example Use Cases:</strong></p>
+<ul>
+  <li>Database migrations</li>
+  <li>Batch data processing</li>
+  <li>File conversion tasks</li>
+  <li>Periodic calculations</li>
+  <li>Backup operations</li>
+  <li>ETL workflows</li>
+</ul>
 
-<p>Linux CronJob runs as part of the base system (OS), gaining access to all important services, sharing resources and file systems, and using Kubernetes, all operations occur within the pod. That means that not only are the jobs isolated and have dedicated resources, but also inherit all the functions of other Kubernetes pods, so you can run multiple containers within a single pod if you want.</p>
+<p><br /></p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example CronJob</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
+<h3 id="2-cronjobs">2. CronJobs</h3>
+
+<div class="info-box info-box-success-not-check">
+  <p>CronJobs create Jobs on a time-based schedule, executing recurring tasks at specified intervals.</p>
+</div>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">CronJob</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">hello-cronjob</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">database-backup</span>
 <span class="na">spec</span><span class="pi">:</span>
-  <span class="na">schedule</span><span class="pi">:</span> <span class="s2">"</span><span class="s">*/10</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>
+  <span class="na">schedule</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0</span><span class="nv"> </span><span class="s">2</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>
+  <span class="na">concurrencyPolicy</span><span class="pi">:</span> <span class="s">Forbid</span>
+  <span class="na">successfulJobsHistoryLimit</span><span class="pi">:</span> <span class="m">3</span>
+  <span class="na">failedJobsHistoryLimit</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">startingDeadlineSeconds</span><span class="pi">:</span> <span class="m">120</span>
   <span class="na">jobTemplate</span><span class="pi">:</span>
     <span class="na">spec</span><span class="pi">:</span>
       <span class="na">template</span><span class="pi">:</span>
         <span class="na">spec</span><span class="pi">:</span>
           <span class="na">containers</span><span class="pi">:</span>
-          <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">hello</span>
-            <span class="na">image</span><span class="pi">:</span> <span class="s">busybox</span>
-            <span class="na">command</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">/bin/sh"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">-c"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">date"</span><span class="pi">]</span>
+          <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">backup</span>
+            <span class="na">image</span><span class="pi">:</span> <span class="s">my-db-backup:v1</span>
+            <span class="na">command</span><span class="pi">:</span>
+            <span class="pi">-</span> <span class="s">/bin/sh</span>
+            <span class="pi">-</span> <span class="s">-c</span>
+            <span class="pi">-</span> <span class="s">echo "Starting backup"; sleep 5; echo "Backup completed"</span>
+            <span class="na">env</span><span class="pi">:</span>
+            <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">DB_PASSWORD</span>
+              <span class="na">valueFrom</span><span class="pi">:</span>
+                <span class="na">secretKeyRef</span><span class="pi">:</span>
+                  <span class="na">name</span><span class="pi">:</span> <span class="s">db-creds</span>
+                  <span class="na">key</span><span class="pi">:</span> <span class="s">password</span>
           <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">OnFailure</span>
 </code></pre></div></div>
 
-<h3 id="kubernetes-workload-resources-comparison">Kubernetes Workload Resources Comparison</h3>
+<p><strong>Key characteristics:</strong></p>
+<ul>
+  <li>Schedule using standard cron format (<code class="language-plaintext highlighter-rouge">* * * * *</code>)</li>
+  <li>Create Jobs automatically according to schedule</li>
+  <li>Manage concurrency with policies</li>
+  <li>Handle job execution deadlines</li>
+  <li>Maintain job history</li>
+  <li>Support time zones</li>
+</ul>
 
-<table class="table-beauty">
-  <tr>
-    <th style="width: 20%;">🔧 Feature</th>
-    <th style="width: 20%;">🚀 Deployment</th>
-    <th style="width: 20%;">📦 StatefulSet</th>
-    <th style="width: 20%;">🛠️ DaemonSet</th>
-    <th style="width: 20%;">⏳ Job/CronJob</th>
-  </tr>
-  <tr>
-    <td>Purpose</td>
-    <td>Stateless apps</td>
-    <td>Stateful apps</td>
-    <td>Node-level operations</td>
-    <td>Batch tasks</td>
-  </tr>
-  <tr>
-    <td>Scaling</td>
-    <td>Dynamic</td>
-    <td>Ordered</td>
-    <td>Node-based</td>
-    <td>Task-based</td>
-  </tr>
-  <tr>
-    <td>Storage</td>
-    <td>Optional</td>
-    <td>Persistent</td>
-    <td>Optional</td>
-    <td>Temporary</td>
-  </tr>
-  <tr>
-    <td>Naming</td>
-    <td>Random</td>
-    <td>Predictable</td>
-    <td>Node-based</td>
-    <td>Random</td>
-  </tr>
-  <tr>
-    <td>Updates</td>
-    <td>Rolling</td>
-    <td>Ordered</td>
-    <td>Rolling</td>
-    <td>N/A</td>
-  </tr></table>
+<p><strong>CronJob Schedule Format:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># ┌───────────── minute (0 - 59)
+# │ ┌───────────── hour (0 - 23)
+# │ │ ┌───────────── day of the month (1 - 31)
+# │ │ │ ┌───────────── month (1 - 12)
+# │ │ │ │ ┌───────────── day of the week (0 - 6) (Sunday to Saturday)
+# │ │ │ │ │
+# * * * * *
+</code></pre></div></div>
 
-<h3 id="-key-points">💡 Key Points</h3>
+<p><strong>Concurrency Policies:</strong></p>
+<ul>
+  <li><strong>Allow</strong>: Allow concurrently running jobs (default)</li>
+  <li><strong>Forbid</strong>: Skip the next run if previous hasn’t finished</li>
+  <li><strong>Replace</strong>: Cancel the currently running job and start a new one</li>
+</ul>
 
-<blockquote>
-  <p><strong>1. Deployment</strong></p>
-  <ul>
-    <li>Manages ReplicaSets</li>
-    <li>Supports rolling updates</li>
-    <li>Best for stateless applications</li>
-  </ul>
-</blockquote>
+<p><strong>Example Use Cases:</strong></p>
+<ul>
+  <li>Scheduled backups</li>
+  <li>Report generation</li>
+  <li>Cleanup tasks</li>
+  <li>Data synchronization</li>
+  <li>Health checks</li>
+  <li>Periodic data processing</li>
+</ul>
 
-<blockquote>
-  <p><strong>2. StatefulSet</strong></p>
-  <ul>
-    <li>Stable network identities</li>
-    <li>Ordered deployment</li>
-    <li>Persistent storage</li>
-  </ul>
-</blockquote>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check CronJob status</span>
+kubectl get cronjobs
 
-<blockquote>
-  <p><strong>3. DaemonSet</strong></p>
-  <ul>
-    <li>One pod per node</li>
-    <li>System-level operations</li>
-    <li>Node monitoring</li>
-  </ul>
-</blockquote>
+<span class="c"># View the next scheduled run time</span>
+kubectl get cronjob database-backup <span class="nt">-o</span> json | jq <span class="s1">'.status.lastScheduleTime'</span>
 
-<blockquote>
-  <p><strong>4. Jobs/CronJobs</strong></p>
-  <ul>
-    <li>Batch processing</li>
-    <li>Scheduled tasks</li>
-    <li>One-time operations</li>
-  </ul>
-</blockquote>
+<span class="c"># Manually trigger a CronJob</span>
+kubectl create job <span class="nt">--from</span><span class="o">=</span>cronjob/database-backup backup-manual-trigger
+</code></pre></div></div>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="reference">Reference</h3>
+<h2 id="resource-comparison-and-selection-guide">Resource Comparison and Selection Guide</h2>
+
+<div class="info-box info-box-warning-not-check">
+  <h3>Choosing the Right Resource Type</h3>
+  <p>Selecting the appropriate Kubernetes resource is crucial for your application's reliability, scalability, and maintainability. Consider your application's state requirements, scaling patterns, update strategies, and operational needs.</p>
+</div>
+
+<div style="width: 100%; overflow-x: auto; white-space: nowrap;">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 15%;">🔧 Feature</th>
+      <th style="width: 20%;">🚀 Deployment</th>
+      <th style="width: 20%;">📦 StatefulSet</th>
+      <th style="width: 20%;">🛠️ DaemonSet</th>
+      <th style="width: 20%;">⏳ Job/CronJob</th>
+    </tr>
+    <tr>
+      <td>Primary Use Case</td>
+      <td>Stateless applications</td>
+      <td>Stateful applications</td>
+      <td>Node-level operations</td>
+      <td>Batch/scheduled tasks</td>
+    </tr>
+    <tr>
+      <td>Scaling</td>
+      <td>Dynamic/Horizontal</td>
+      <td>Ordered, sequential</td>
+      <td>One per node</td>
+      <td>Parallelism control</td>
+    </tr>
+    <tr>
+      <td>Pod Identity</td>
+      <td>Ephemeral, random</td>
+      <td>Stable, predictable</td>
+      <td>Node-based</td>
+      <td>Ephemeral, random</td>
+    </tr>
+    <tr>
+      <td>Storage</td>
+      <td>Usually ephemeral</td>
+      <td>Persistent per Pod</td>
+      <td>Optional</td>
+      <td>Usually ephemeral</td>
+    </tr>
+    <tr>
+      <td>Update Strategy</td>
+      <td>Rolling update</td>
+      <td>Ordered, controlled</td>
+      <td>Rolling update</td>
+      <td>Recreate</td>
+    </tr>
+    <tr>
+      <td>Pod Termination</td>
+      <td>Any order</td>
+      <td>Ordered (high to low index)</td>
+      <td>Based on node removal</td>
+      <td>After completion</td>
+    </tr>
+    <tr>
+      <td>Network Identity</td>
+      <td>Service (load-balanced)</td>
+      <td>Headless service with DNS</td>
+      <td>Host network or standard</td>
+      <td>Optional</td>
+    </tr>
+    <tr>
+      <td>Example Workloads</td>
+      <td>Web servers, API services</td>
+      <td>Databases, message queues</td>
+      <td>Monitoring, logging agents</td>
+      <td>Batch processing, backups</td>
+    </tr>
+    <tr>
+      <td>Self-healing</td>
+      <td>Yes</td>
+      <td>Yes (maintains identity)</td>
+      <td>Yes (maintains node coverage)</td>
+      <td>Optional (with restartPolicy)</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="decision-flowchart">Decision Flowchart</h3>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph TD
+      A[Start] --&gt; B{Application Type?}
+      B --&gt;|Stateless| C[Deployment]
+      B --&gt;|Stateful| D[StatefulSet]
+      B --&gt;|System Service| E[DaemonSet]
+      B --&gt;|Batch/Task| F{Recurring?}
+      F --&gt;|Yes| G[CronJob]
+      F --&gt;|No| H[Job]
+      
+      C --&gt;|"Examples: Web Servers, APIs"| I[Deployment + Service]
+      D --&gt;|"Examples: Databases, Message Queues"| J[StatefulSet + Headless Service]
+      E --&gt;|"Examples: Logging, Monitoring"| K[DaemonSet]
+      G --&gt;|"Examples: Scheduled Backups, Reports"| L[CronJob]
+      H --&gt;|"Examples: Migrations, Data Processing"| M[Job]
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="-best-practices">💡 Best Practices</h3>
+
+<div class="info-box info-box-default">
+  <h3>General Resource Management</h3>
+  <ul>
+    <li><strong>Define resource requests and limits</strong> to ensure proper scheduling and prevent resource contention</li>
+    <li><strong>Use labels and annotations</strong> for better organization and integration with other tools</li>
+    <li><strong>Set appropriate liveness and readiness probes</strong> to enhance reliability</li>
+    <li><strong>Configure Pod Disruption Budgets (PDBs)</strong> for critical workloads</li>
+    <li><strong>Use namespaces</strong> to organize and isolate resources</li>
+  </ul>
+</div>
+
+<div class="info-box info-box-info-not-check">
+  <h3>Resource-Specific Recommendations</h3>
+  <ul>
+    <li><strong>Deployments:</strong> Use the RollingUpdate strategy with appropriate maxSurge and maxUnavailable values</li>
+    <li><strong>StatefulSets:</strong> Always use a headless service and configure proper volumeClaimTemplates</li>
+    <li><strong>DaemonSets:</strong> Use tolerations to run on tainted nodes when necessary</li>
+    <li><strong>Jobs:</strong> Set appropriate backoffLimit and activeDeadlineSeconds to handle failures</li>
+    <li><strong>CronJobs:</strong> Choose the right concurrencyPolicy and set history limits to manage resource consumption</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
 <ul>
-  <li><a href="https://kubernetes.io/docs/concepts/workloads/">Kubernetes Official Documentation</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/">Kubernetes Official Documentation - Workloads</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/">Kubernetes Official Documentation - Deployments</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/">Kubernetes Official Documentation - StatefulSets</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/">Kubernetes Official Documentation - DaemonSets</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/job/">Kubernetes Official Documentation - Jobs</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/">Kubernetes Official Documentation - CronJobs</a></li>
   <li><a href="https://jayendrapatil.com/tag/statefulsets/">StatefulSets Guide</a></li>
   <li><a href="https://devopscube.com/kubernetes-daemonset/">DaemonSet Tutorial</a></li>
-  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/">CronJob Documentation</a></li>
 </ul>
 
 
@@ -662,7 +1002,7 @@ As shown in the figure above, it is scheduled in consideration of NodeSelector, 
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="9">
+            <div class="time-bar" data-minutes="14">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -704,7 +1044,7 @@ As shown in the figure above, it is scheduled in consideration of NodeSelector, 
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Detailed explanation of Kubernetes resources including Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, and CronJobs&quot;%20https://somaz.blog/category/kubernetes/k8s-resources/%20via%20&#64;twitter_username&hashtags=kubernetes,deployment,statefulset,daemonset,job,cronjob"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Detailed explanation of Kubernetes resources including Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, and CronJobs&quot;%20https://somaz.blog/category/kubernetes/k8s-resources/%20via%20&#64;twitter_username&hashtags=kubernetes,deployment,statefulset,daemonset,job,cronjob,container orchestration,cloud native"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -959,7 +1299,7 @@ As shown in the figure above, it is scheduled in consideration of NodeSelector, 
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Kubernetes Resources - A Comprehensive Guide",
-            "headline": "",
+            "headline": "Understanding when and how to use Deployments, StatefulSets, DaemonSets, Jobs, and CronJobs",
             "description": "Detailed explanation of Kubernetes resources including Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, and CronJobs",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737099204/kuberentes-240_ci9ktu.png",
             "url": "https://somaz.blog/category/kubernetes/k8s-resources/",
@@ -968,53 +1308,92 @@ As shown in the figure above, it is scheduled in consideration of NodeSelector, 
 
 
 Overview
-Kubernetes offers various resource types to manage different aspects of container orchestration. Let’s explore each type in detail.
+
+
+  Kubernetes offers various resource types to manage different aspects of container orchestration. Each resource type serves a specific purpose in the Kubernetes ecosystem, handling different application requirements and operational patterns.
+  This guide explores the core workload resources that define how applications run in a Kubernetes cluster, highlighting their key characteristics, use cases, and configuration approaches.
 
 
 
-Kubernetes Resources
+  
+    graph TD
+      A[Kubernetes Workload Resources] --&amp;gt; B[Deployment]
+      A --&amp;gt; C[StatefulSet]
+      A --&amp;gt; D[DaemonSet]
+      A --&amp;gt; E[Job/CronJob]
+      B --&amp;gt; F[ReplicaSet]
+      F --&amp;gt; G[Pods]
+      C --&amp;gt; G
+      D --&amp;gt; G
+      E --&amp;gt; G
+  
 
-  Deployments
-  ReplicaSet
+
+
+
+Kubernetes Core Workload Resources
+
+The primary resource types we’ll examine in detail:
+
+
+  Deployments &amp;amp; ReplicaSets
   StatefulSets
-  DaemonSet
-  Jobs
-  Automatic Cleanup for Finished Jobs
-  CronJob
-  ReplicationController
-
-
-Deployment &amp;amp; ReplicaSet &amp;amp; Pod
+  DaemonSets
+  Jobs &amp;amp; CronJobs
 
 
 
-1. ReplicaSet
-
-  ReplicaSet is a resource that allows the desired number of replicas (instances) of a Pod to run at a specified time.
-
-
-If the number of running pods is less than the desired number, ReplicaSet creates a new pod to maintain the desired number.
-
-Similarly, if there are too many Pods running, ReplicaSet will terminate the additional Pods.
-
-ReplicaSet operates based on the Pod template that defines the desired state of the Pod managed by ReplicaSet.
 
 
 
-2. Deployment
-
-  Deployment is a resource that manages the desired state of an application.
+Deployments, ReplicaSets, and Pods
 
 
-This allows you to define the number of copies of containerized applications you want to run at a given time and manages updates for applications such as Rolling Update or Rollback.
+  Deployment Hierarchy
+  A Deployment manages ReplicaSets, which in turn manage Pods. This hierarchy provides layers of abstraction that enable powerful features like rolling updates, scaling, and self-healing.
 
-Deployment uses ReplicaSet to manage the basic pods that configure applications.
 
-# Example Deployment
-apiVersion: apps/v1
-kind: Deployment
+
+
+1. Pods
+
+Pods are the smallest deployable units in Kubernetes, serving as the basic building blocks.
+
+apiVersion: v1
+kind: Pod
 metadata:
-  name: nginx-deployment
+  name: nginx-pod
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+
+
+Key characteristics:
+
+  Encapsulate one or more containers that share network namespace, storage, and lifecycle
+  Have a unique IP address within the cluster
+  Can communicate with each other using localhost
+  Don’t self-heal if they fail or are terminated
+  Generally not created directly, but managed by higher-level controllers
+
+
+
+
+2. ReplicaSets
+
+
+  ReplicaSets ensure that a specified number of pod replicas are running at any given time.
+
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-replicaset
 spec:
   replicas: 3
   selector:
@@ -1030,90 +1409,152 @@ spec:
         image: nginx:1.14.2
 
 
-  Replicaset occurs automatically when you apply Deployment yaml as above.
-  In other words, it can be seen that replicaset is included in the deployment.
+Key characteristics:
+
+  Maintain a stable set of replica Pods running at any given time
+  Create new Pods if existing ones fail, are deleted, or are terminated
+  Use label selectors to identify which Pods to manage
+  Rarely created directly - Deployments are preferred
+  Ensure Pod availability but don’t handle updates or rollbacks
 
 
-Rolling Updates
-# Update image
-kubectl set image deployment/nginx-deployment nginx=nginx:1.16.1
 
-# Check status
+
+3. Deployments
+
+
+  Deployments are the recommended way to manage the creation and scaling of Pods. They provide declarative updates for Pods and ReplicaSets.
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 3
+
+
+Key characteristics:
+
+  Automatically create a ReplicaSet, which then creates Pods
+  Support rolling updates and rollbacks
+  Maintain deployment history
+  Self-heal at multiple levels (Pod, ReplicaSet)
+  Ideal for stateless applications
+
+
+
+
+Rolling Updates with Deployments
+
+Rolling updates allow you to update your application with zero downtime by incrementally replacing instances:
+
+# Update the image
+kubectl set image deployment/nginx-deployment nginx=nginx:1.16.1 --record
+
+# Check the status of the rolling update
 kubectl rollout status deployment/nginx-deployment
 
-# View history
+
+
+  
+    sequenceDiagram
+      participant U as User
+      participant A as API Server
+      participant D as Deployment Controller
+      participant RS as ReplicaSet Controller
+      participant S as Scheduler
+      participant N as Nodes
+      
+      U-&amp;gt;&amp;gt;A: kubectl set image deployment/nginx
+      A-&amp;gt;&amp;gt;D: Update Deployment
+      D-&amp;gt;&amp;gt;A: Create new ReplicaSet
+      D-&amp;gt;&amp;gt;A: Scale up new ReplicaSet
+      A-&amp;gt;&amp;gt;RS: ReplicaSet Changes
+      RS-&amp;gt;&amp;gt;A: Create new Pods
+      A-&amp;gt;&amp;gt;S: Schedule Pods
+      S-&amp;gt;&amp;gt;N: Run Pods
+      D-&amp;gt;&amp;gt;A: Scale down old ReplicaSet
+      A-&amp;gt;&amp;gt;RS: ReplicaSet Changes
+      RS-&amp;gt;&amp;gt;A: Terminate old Pods
+  
+
+
+Rollbacks and History Management
+
+# View rollout history
 kubectl rollout history deployment/nginx-deployment
 
-# Rollback
-kubectl rollout undo deployment/nginx-deployment
-
-
-Checking Rollout History of a Deployment
-The Rollout method is the same as the method of Rolling Update above.
-
-Rollout is a way to update multiple pods sequentially without killing them all!
-
-–Revision occurs in the case of deployments that are applied with the --record option.
-
-Alternatively, you can change the image using the set image command, and the revision occurs.
-
-Therefore, I would like to find out how to check the Rollout History and how to return it.
-kubectl rollout history deployment/nginx-deployment
-deployments &quot;nginx-deployment&quot;
-REVISION    CHANGE-CAUSE
-1           kubectl apply --filename=https://k8s.io/examples/controllers/nginx-deployment.yaml
-2           kubectl set image deployment/nginx-deployment nginx=nginx:1.16.1
-3           kubectl set image deployment/nginx-deployment nginx=nginx:1.161
-
-# Rollback to desired version
+# Get details about a specific revision
 kubectl rollout history deployment/nginx-deployment --revision=2
 
-# Rollback to previous version
-kubectl rollout undo deployment/nginx-deployment
+# Roll back to a previous revision
+kubectl rollout undo deployment/nginx-deployment --to-revision=2
 
+# Pause a rollout (for testing partial deployment)
+kubectl rollout pause deployment/nginx-deployment
 
-3. Pod
-
-  Pod is the smallest and most basic unit in the Kubernetes object model.
-
-
-It represents a single instance of an application running in the cluster and consists of one or more containers closely coupled to each other. Containers within the Pod share the same network namespace and can communicate with each other using
-
-‘localhost’. Even if the Pod fails, it is not automatically re-booked on another node. ReplicaSet operates to maintain the desired number of Pods.
+# Resume a rollout
+kubectl rollout resume deployment/nginx-deployment
 
 
 
 
 
-DaemonSet &amp;amp; StatefulSet
+
+StatefulSets and DaemonSets
+
+These resource types address specific workload requirements that can’t be satisfied by Deployments alone.
 
 
 
-1. DaemonSet
-
-image reference link
 
 
-  DaemonSet is a Kubernetes resource that allows certain Pod to run on all (or subset) nodes in the cluster.
+1. DaemonSets
 
 
-Designed to run a single pod on each worker node, i.e. the daemonset pod cannot be extended on the node.
+  DaemonSets ensure that all (or some) nodes run a copy of a Pod, making them ideal for node-level operations, monitoring, or services.
 
-And for some reason, if the daemonset pod is deleted from the node, the daemonset controller generates it again.
 
-It is useful for deploying system-level services such as log collectors, monitoring agents, or networking components that must be run on each node for proper functionality.
 
-k get daemonset -n kube-system
-NAME           DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE
-calico-node    6         6         6       6            6           kubernetes.io/os=linux   364d
-kube-proxy     6         6         6       6            6           kubernetes.io/os=linux   364d
-nodelocaldns   6         6         6       6            6           kubernetes.io/os=linux   364d
-
+Image reference link
 
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: fluentd-elasticsearch
+  namespace: kube-system
 spec:
   selector:
     matchLabels:
@@ -1123,225 +1564,464 @@ spec:
       labels:
         name: fluentd-elasticsearch
     spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
       containers:
       - name: fluentd-elasticsearch
         image: quay.io/fluentd_elasticsearch/fluentd:v2.5.2
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
 
 
-How Daemon Pods are scheduled?
+Key characteristics:
 
-  So how will Daemonset pod be scheduled?
-As shown in the figure above, it is scheduled in consideration of NodeSelector, NodeAffinity, Priority Class, Taints &amp;amp; Tolerations.
-
-
-
-
-2. StatefulSet
-
-
-image reference link
-
-
-  StatefulSet is a Kubernetes resource that manages a set of Pods that are based on a specific template and have a stable network identity and persistent storage.
+  Run exactly one Pod instance per node
+  New Pods are automatically created when nodes are added to the cluster
+  Pods are garbage-collected when nodes are removed
+  Ideal for cluster-wide services like:
+    
+      Node monitoring agents
+      Log collectors
+      Network plugins
+      Storage plugins
+    
+  
 
 
-StatefulSet is a Kubernetes resource that manages the deployment and expansion of state-stored applications, i.e., applications that require stable network IDs and persistent storage.
+Example Use Cases:
 
-Ensure that each Pod generated obtains a unique and stable hostname such as web-0 and web-1 based on the index.
+  Prometheus Node Exporter
+  Fluentd/Fluent Bit log collectors
+  CNI network plugins (Calico, Cilium)
+  Storage drivers
+  Node-level security agents
 
-This makes it easier to manage applications that require stable network IDs or rely on deployment and expansion sequences.
 
-StatefulSet also provides guarantees of the order and uniqueness of pods that are essential for state-stored applications such as databases or distributed systems.
+DaemonSet Scheduling
 
-It can be used with persistent storage, so that data associated with a particular Pod remains in that Pod even if it is rescheduled to another node.
+DaemonSet Pods are scheduled using:
 
-It is used to distribute state-stored applications such as Redis, databases such as PostgreSQL, MySQL, or MongoDB, and message queues such as RabbitMQ.
+  NodeSelector
+  NodeAffinity
+  Tolerations to run on nodes with specific taints
+  Priority classes to ensure critical system services run first
+
+
+# View DaemonSets running on the cluster
+kubectl get daemonset -n kube-system
+
+# Examine a specific DaemonSet
+kubectl describe daemonset calico-node -n kube-system
+
+
+
+
+2. StatefulSets
+
+
+  StatefulSets are specialized workload resources designed for stateful applications requiring stable network identities and persistent storage.
+
+
+
+Image reference link
 
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: web
+  name: postgres
 spec:
-  serviceName: &quot;nginx&quot;
+  serviceName: &quot;postgres&quot;
   replicas: 3
   selector:
     matchLabels:
-      app: nginx
+      app: postgres
   template:
     metadata:
       labels:
-        app: nginx
+        app: postgres
     spec:
       containers:
-      - name: nginx
-        image: nginx
+      - name: postgres
+        image: postgres:13
+        ports:
+        - containerPort: 5432
+          name: postgredb
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
         volumeMounts:
-        - name: www
-          mountPath: /usr/share/nginx/html
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ &quot;ReadWriteOnce&quot; ]
+      storageClassName: &quot;standard&quot;
+      resources:
+        requests:
+          storage: 10Gi
+
+
+Key characteristics:
+
+  Provide stable, unique network identities (e.g., postgres-0, postgres-1, postgres-2)
+  Create PersistentVolumes for each Pod using volumeClaimTemplates
+  Ordered, graceful deployment and scaling
+  Ordered, graceful deletion and termination
+  Maintain sticky identity even after rescheduling
+  Guarantee startup/shutdown order
+  Support headless services for direct Pod access
+
+
+Example Use Cases:
+
+  Databases (MySQL, PostgreSQL, MongoDB)
+  Distributed systems (Elasticsearch, Kafka, RabbitMQ)
+  Any application requiring persistent identity/storage
+  Applications where ordering matters (leader-follower patterns)
+
+
+
+  StatefulSet Update Strategies
+  
+    RollingUpdate: Update Pods in reverse ordinal order
+    OnDelete: Update only when Pods are manually deleted
+    Partition: Only update Pods with an ordinal greater than or equal to the partition value
+  
+
+
+# Scale a StatefulSet
+kubectl scale statefulset postgres --replicas=5
+
+# Get Persistent Volume Claims created by a StatefulSet
+kubectl get pvc -l app=postgres
 
 
 
 
 
 
-⏱Jobs &amp;amp; CronJobs
+Jobs and CronJobs
+
+These resource types manage task execution and scheduling within the cluster.
 
 
 
-1. Job
-
-  Job is a Kubernetes resource that manages a one-time or recurring task.
 
 
-It is used to run tasks that are not intended to run indefinitely, such as data processing, batch jobs, or one-time tasks.
+1. Jobs
 
-One or more pods are created to perform the specified task and the pod ends when the job is complete.
 
-You can use a job for tasks such as data processing, batch processing, or one-time script or command execution.
+  Jobs create one or more Pods and ensure that a specified number of them successfully terminate.
 
-Job tracks the overall progress and status of the task to ensure that a specified number of completions have been achieved.
 
-If the Pod fails or is removed due to resource constraints, Job creates a new Pod to replace the Pod and tries the task again until it is successfully completed or Job reaches the backoff limit.
-
-# Example Job
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: hello-job
+  name: data-processor
 spec:
+  parallelism: 3
+  completions: 5
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
   template:
     spec:
       containers:
-      - name: hello
-        image: busybox
+      - name: data-processor
+        image: my-data-processor:v1
+        command: [&quot;python&quot;, &quot;process_data.py&quot;]
+        resources:
+          requests:
+            memory: &quot;128Mi&quot;
+            cpu: &quot;100m&quot;
+          limits:
+            memory: &quot;256Mi&quot;
+            cpu: &quot;200m&quot;
+      restartPolicy: OnFailure
 
 
-2. CronJob
+Key characteristics:
 
-  CronJob is a Kubernetes resource that allows you to schedule recurring tasks.
+  Run to completion rather than running indefinitely
+  Track successful completions
+  Can run multiple Pods in parallel
+  Can specify how many successful completions are needed
+  Handle backoff for failures (automatic retries)
+  Can set timeouts for job execution
 
 
-For example, you can easily prepare a backup creation strategy or get old resources. It is generally useful for applications that require periodic execution of certain tasks.
+Job Execution Patterns:
 
-The main difference between Kubernetes CronJob and Linux is the use of containers.
+  Single Job (Non-parallel): One Pod running to completion
+  Fixed Completion Count: Multiple Pods running sequentially until reaching a completion count
+  Parallel Jobs with Fixed Completion Count: Multiple Pods running in parallel until reaching a completion count
+  Parallel Jobs with Work Queue: Multiple Pods processing items from a shared work queue
 
-Linux CronJob runs as part of the base system (OS), gaining access to all important services, sharing resources and file systems, and using Kubernetes, all operations occur within the pod. That means that not only are the jobs isolated and have dedicated resources, but also inherit all the functions of other Kubernetes pods, so you can run multiple containers within a single pod if you want.
 
-# Example CronJob
+Example Use Cases:
+
+  Database migrations
+  Batch data processing
+  File conversion tasks
+  Periodic calculations
+  Backup operations
+  ETL workflows
+
+
+
+
+2. CronJobs
+
+
+  CronJobs create Jobs on a time-based schedule, executing recurring tasks at specified intervals.
+
+
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: hello-cronjob
+  name: database-backup
 spec:
-  schedule: &quot;*/10 * * * *&quot;
+  schedule: &quot;0 2 * * *&quot;
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  startingDeadlineSeconds: 120
   jobTemplate:
     spec:
       template:
         spec:
           containers:
-          - name: hello
-            image: busybox
-            command: [&quot;/bin/sh&quot;, &quot;-c&quot;, &quot;date&quot;]
+          - name: backup
+            image: my-db-backup:v1
+            command:
+            - /bin/sh
+            - -c
+            - echo &quot;Starting backup&quot;; sleep 5; echo &quot;Backup completed&quot;
+            env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-creds
+                  key: password
           restartPolicy: OnFailure
 
 
-Kubernetes Workload Resources Comparison
+Key characteristics:
+
+  Schedule using standard cron format (* * * * *)
+  Create Jobs automatically according to schedule
+  Manage concurrency with policies
+  Handle job execution deadlines
+  Maintain job history
+  Support time zones
+
+
+CronJob Schedule Format:
+# ┌───────────── minute (0 - 59)
+# │ ┌───────────── hour (0 - 23)
+# │ │ ┌───────────── day of the month (1 - 31)
+# │ │ │ ┌───────────── month (1 - 12)
+# │ │ │ │ ┌───────────── day of the week (0 - 6) (Sunday to Saturday)
+# │ │ │ │ │
+# * * * * *
+
+
+Concurrency Policies:
+
+  Allow: Allow concurrently running jobs (default)
+  Forbid: Skip the next run if previous hasn’t finished
+  Replace: Cancel the currently running job and start a new one
+
+
+Example Use Cases:
+
+  Scheduled backups
+  Report generation
+  Cleanup tasks
+  Data synchronization
+  Health checks
+  Periodic data processing
+
+
+# Check CronJob status
+kubectl get cronjobs
+
+# View the next scheduled run time
+kubectl get cronjob database-backup -o json | jq &apos;.status.lastScheduleTime&apos;
+
+# Manually trigger a CronJob
+kubectl create job --from=cronjob/database-backup backup-manual-trigger
+
+
+
+
+
+
+Resource Comparison and Selection Guide
+
+
+  Choosing the Right Resource Type
+  Selecting the appropriate Kubernetes resource is crucial for your application&apos;s reliability, scalability, and maintainability. Consider your application&apos;s state requirements, scaling patterns, update strategies, and operational needs.
+
 
 
   
-    🔧 Feature
-    🚀 Deployment
-    📦 StatefulSet
-    🛠️ DaemonSet
-    ⏳ Job/CronJob
-  
-  
-    Purpose
-    Stateless apps
-    Stateful apps
-    Node-level operations
-    Batch tasks
-  
-  
-    Scaling
-    Dynamic
-    Ordered
-    Node-based
-    Task-based
-  
-  
-    Storage
-    Optional
-    Persistent
-    Optional
-    Temporary
-  
-  
-    Naming
-    Random
-    Predictable
-    Node-based
-    Random
-  
-  
-    Updates
-    Rolling
-    Ordered
-    Rolling
-    N/A
-  
-
-💡 Key Points
-
-
-  1. Deployment
-  
-    Manages ReplicaSets
-    Supports rolling updates
-    Best for stateless applications
-  
-
-
-
-  2. StatefulSet
-  
-    Stable network identities
-    Ordered deployment
-    Persistent storage
-  
-
-
-
-  3. DaemonSet
-  
-    One pod per node
-    System-level operations
-    Node monitoring
-  
-
-
-
-  4. Jobs/CronJobs
-  
-    Batch processing
-    Scheduled tasks
-    One-time operations
+    
+      🔧 Feature
+      🚀 Deployment
+      📦 StatefulSet
+      🛠️ DaemonSet
+      ⏳ Job/CronJob
+    
+    
+      Primary Use Case
+      Stateless applications
+      Stateful applications
+      Node-level operations
+      Batch/scheduled tasks
+    
+    
+      Scaling
+      Dynamic/Horizontal
+      Ordered, sequential
+      One per node
+      Parallelism control
+    
+    
+      Pod Identity
+      Ephemeral, random
+      Stable, predictable
+      Node-based
+      Ephemeral, random
+    
+    
+      Storage
+      Usually ephemeral
+      Persistent per Pod
+      Optional
+      Usually ephemeral
+    
+    
+      Update Strategy
+      Rolling update
+      Ordered, controlled
+      Rolling update
+      Recreate
+    
+    
+      Pod Termination
+      Any order
+      Ordered (high to low index)
+      Based on node removal
+      After completion
+    
+    
+      Network Identity
+      Service (load-balanced)
+      Headless service with DNS
+      Host network or standard
+      Optional
+    
+    
+      Example Workloads
+      Web servers, API services
+      Databases, message queues
+      Monitoring, logging agents
+      Batch processing, backups
+    
+    
+      Self-healing
+      Yes
+      Yes (maintains identity)
+      Yes (maintains node coverage)
+      Optional (with restartPolicy)
+    
   
 
 
 
 
+Decision Flowchart
 
 
-Reference
+  
+    graph TD
+      A[Start] --&amp;gt; B{Application Type?}
+      B --&amp;gt;|Stateless| C[Deployment]
+      B --&amp;gt;|Stateful| D[StatefulSet]
+      B --&amp;gt;|System Service| E[DaemonSet]
+      B --&amp;gt;|Batch/Task| F{Recurring?}
+      F --&amp;gt;|Yes| G[CronJob]
+      F --&amp;gt;|No| H[Job]
+      
+      C --&amp;gt;|&quot;Examples: Web Servers, APIs&quot;| I[Deployment + Service]
+      D --&amp;gt;|&quot;Examples: Databases, Message Queues&quot;| J[StatefulSet + Headless Service]
+      E --&amp;gt;|&quot;Examples: Logging, Monitoring&quot;| K[DaemonSet]
+      G --&amp;gt;|&quot;Examples: Scheduled Backups, Reports&quot;| L[CronJob]
+      H --&amp;gt;|&quot;Examples: Migrations, Data Processing&quot;| M[Job]
+  
 
-  Kubernetes Official Documentation
+
+
+
+💡 Best Practices
+
+
+  General Resource Management
+  
+    Define resource requests and limits to ensure proper scheduling and prevent resource contention
+    Use labels and annotations for better organization and integration with other tools
+    Set appropriate liveness and readiness probes to enhance reliability
+    Configure Pod Disruption Budgets (PDBs) for critical workloads
+    Use namespaces to organize and isolate resources
+  
+
+
+
+  Resource-Specific Recommendations
+  
+    Deployments: Use the RollingUpdate strategy with appropriate maxSurge and maxUnavailable values
+    StatefulSets: Always use a headless service and configure proper volumeClaimTemplates
+    DaemonSets: Use tolerations to run on tainted nodes when necessary
+    Jobs: Set appropriate backoffLimit and activeDeadlineSeconds to handle failures
+    CronJobs: Choose the right concurrencyPolicy and set history limits to manage resource consumption
+  
+
+
+
+
+
+
+References
+
+
+  Kubernetes Official Documentation - Workloads
+  Kubernetes Official Documentation - Deployments
+  Kubernetes Official Documentation - StatefulSets
+  Kubernetes Official Documentation - DaemonSets
+  Kubernetes Official Documentation - Jobs
+  Kubernetes Official Documentation - CronJobs
   StatefulSets Guide
   DaemonSet Tutorial
-  CronJob Documentation
 
 ",
-            "wordcount": "1667",
+            "wordcount": "2671",
             "inLanguage": "en",
             "dateCreated": "2025-01-10/",
             "datePublished": "2025-01-10/",
@@ -1372,7 +2052,7 @@ Reference
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","deployment","statefulset","daemonset","job","cronjob"]
+            "keywords": ["kubernetes","deployment","statefulset","daemonset","job","cronjob","container orchestration","cloud native"]
         }
         </script>
     </body>

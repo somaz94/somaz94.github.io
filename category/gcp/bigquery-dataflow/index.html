@@ -220,7 +220,7 @@ February 11, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>3 min to read</span>
+                    <span>19 min to read</span>
                 </p>
                 <h1 class="post-title">Building ETL Pipeline with BigQuery and Dataflow</h1>
                 <p class="post-subtitle">A comprehensive guide to data ETL process using GCP services</p>
@@ -244,89 +244,349 @@ February 11, 2025
 
 <h2 id="overview">Overview</h2>
 
-<p>Following our previous post about <a href="https://somaz94.github.io/category/gcp/bigquery/">BigQuery</a>, let’s explore how to build an ETL (Extract, Transform, Load) pipeline using BigQuery and Dataflow. Our workflow will follow this path:</p>
+<p>Modern data pipelines are essential for organizations to transform raw data into actionable insights. Following our previous post about <a href="https://somaz94.github.io/category/gcp/bigquery/">BigQuery</a>, this guide explores how to build a robust ETL (Extract, Transform, Load) pipeline using Google Cloud Platform’s managed services, focusing on moving data from MongoDB to BigQuery and finally to Google Sheets for analysis and visualization.</p>
+
+<p>This comprehensive tutorial will guide you through building a fully automated data pipeline with the following flow:</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>MongoDB → BigQuery → Google Sheets
 </code></pre></div></div>
 
+<div class="info-box info-box-default-not-check">
+  <strong>Understanding ETL</strong>
+  <p>ETL (Extract, Transform, Load) is a three-phase process for integrating data from multiple sources into a single data repository:</p>
+  <ul>
+    <li><strong>Extract</strong>: Retrieving data from source systems (databases, APIs, files)</li>
+    <li><strong>Transform</strong>: Converting data to appropriate format with operations like filtering, sorting, aggregating, joining, cleaning, and validation</li>
+    <li><strong>Load</strong>: Writing the transformed data to a target destination (data warehouse, database, file)</li>
+  </ul>
+  <p>Cloud-based ETL solutions like the one we're building offer advantages including scalability, reduced maintenance, cost-effectiveness, and integration with other cloud services.</p>
+</div>
+
 <p><br /></p>
 
-<h3 id="gcp-resources-used">GCP Resources Used</h3>
+<hr />
 
-<ul>
-  <li>Dataflow</li>
-  <li>BigQuery</li>
-  <li>Cloud Scheduler</li>
-  <li>Cloud Functions</li>
-  <li>Cloud Storage</li>
-</ul>
+<h2 id="gcp-services-overview">GCP Services Overview</h2>
+
+<p>Our ETL pipeline leverages several key Google Cloud Platform services:</p>
+
+<table class="table-modern">
+  <tr>
+    <th>Service</th>
+    <th>Role in Pipeline</th>
+    <th>Key Capabilities</th>
+  </tr>
+  <tr>
+    <td>Cloud Dataflow</td>
+    <td>Data processing engine</td>
+    <td>Batch/stream processing, auto-scaling, managed infrastructure</td>
+  </tr>
+  <tr>
+    <td>BigQuery</td>
+    <td>Data warehouse</td>
+    <td>Serverless storage and analytics, SQL interface, high-performance</td>
+  </tr>
+  <tr>
+    <td>Cloud Functions</td>
+    <td>Serverless code execution</td>
+    <td>Event-driven processing, automatic scaling, pay-per-use</td>
+  </tr>
+  <tr>
+    <td>Cloud Scheduler</td>
+    <td>Job scheduling</td>
+    <td>Managed cron jobs, reliable triggering, timezone support</td>
+  </tr>
+  <tr>
+    <td>Cloud Storage</td>
+    <td>Function code storage</td>
+    <td>Highly durable object storage, global access, integration with other services</td>
+  </tr>
+</table>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph LR
+      A[MongoDB] --&gt;|Extract| B[Cloud Functions]
+      B --&gt;|Transform| C[BigQuery]
+      C --&gt;|Extract| D[Cloud Functions]
+      D --&gt;|Transform &amp; Load| E[Google Sheets]
+      F[Cloud Scheduler] --&gt;|Trigger| B
+      F --&gt;|Trigger| D
+      G[Cloud Storage] --&gt;|Store Code| B
+      G --&gt;|Store Code| D
+  </div>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="cloud-dataflow-deep-dive">Cloud Dataflow Deep Dive</h2>
 
 <h3 id="what-is-google-cloud-dataflow">What is Google Cloud Dataflow?</h3>
 
-<blockquote>
-  <p>Google Cloud Dataflow is a fully managed streaming and batch data processing service provided by GCP. <br /><br />It’s built on Apache Beam and provides methods for building, deploying, and running data processing pipelines for both real-time and batch processing use cases.</p>
-</blockquote>
+<p>Google Cloud Dataflow is a fully managed service for executing Apache Beam pipelines within the Google Cloud Platform ecosystem. It handles both batch and streaming data processing scenarios with automatic resource management and dynamic work rebalancing.</p>
+
+<div class="info-box info-box-info-not-check">
+  <h3>Dataflow Architecture</h3>
+  <p>When a Dataflow job is launched, the service:</p>
+  <ol>
+    <li>Takes your pipeline code (Apache Beam)</li>
+    <li>Optimizes it into an execution graph</li>
+    <li>Splits the workload into multiple steps</li>
+    <li>Distributes these steps across Compute Engine instances</li>
+    <li>Manages scaling, fault tolerance, and worker communication</li>
+  </ol>
+  <p>This abstraction allows developers to focus on pipeline logic rather than infrastructure management.</p>
+</div>
+
+<h3 id="key-features-and-benefits">Key Features and Benefits</h3>
+
+<ol>
+  <li><strong>Unified Programming Model</strong>
+    <ul>
+      <li>Apache Beam SDK provides a single programming model for both batch and streaming</li>
+      <li>Same code can run on multiple execution engines</li>
+      <li>Supported languages include Java, Python, Go, and more</li>
+    </ul>
+  </li>
+  <li><strong>No-Ops Data Processing</strong>
+    <ul>
+      <li>Fully managed service with automatic provisioning and scaling</li>
+      <li>Hands-off infrastructure management</li>
+      <li>Dynamic work rebalancing for optimal throughput</li>
+      <li>Built-in monitoring and logging</li>
+    </ul>
+  </li>
+  <li><strong>Advanced Processing Capabilities</strong>
+    <ul>
+      <li>Native handling of late and out-of-order data</li>
+      <li>Exactly-once processing guarantees</li>
+      <li>Windowing for time-based aggregations</li>
+      <li>Watermarking for tracking event time progress</li>
+    </ul>
+  </li>
+  <li><strong>Performance and Scalability</strong>
+    <ul>
+      <li>Horizontal scaling to handle varying workloads</li>
+      <li>Fusion optimization to minimize overhead</li>
+      <li>Auto-tuning of worker resources</li>
+      <li>Support for persistent disks and SSDs for performance-sensitive operations</li>
+    </ul>
+  </li>
+</ol>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph TD
+      A[Beam SDK Code] --&gt; B[Dataflow Service]
+      B --&gt; C{Job Execution}
+      C --&gt; D[Worker Pool]
+      D --&gt; E[Worker 1]
+      D --&gt; F[Worker 2]
+      D --&gt; G[Worker N]
+      B &lt;--&gt;|Metrics/Logs| H[Monitoring &amp; Logging]
+      B &lt;--&gt;|Status/Control| I[Job Management]
+  </div>
+</div>
+
+<h3 id="sample-dataflow-pipeline-code">Sample Dataflow Pipeline Code</h3>
+
+<p>Here’s a simplified example of a Python Dataflow pipeline that reads from MongoDB, performs transformations, and writes to BigQuery:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">apache_beam</span> <span class="k">as</span> <span class="n">beam</span>
+<span class="kn">from</span> <span class="nn">apache_beam.options.pipeline_options</span> <span class="kn">import</span> <span class="n">PipelineOptions</span>
+<span class="kn">from</span> <span class="nn">apache_beam.io.mongodbio</span> <span class="kn">import</span> <span class="n">ReadFromMongoDB</span>
+<span class="kn">from</span> <span class="nn">apache_beam.io.gcp.bigquery</span> <span class="kn">import</span> <span class="n">WriteToBigQuery</span>
+
+<span class="c1"># Define pipeline options including GCP project and Dataflow runner
+</span><span class="n">options</span> <span class="o">=</span> <span class="n">PipelineOptions</span><span class="p">([</span>
+    <span class="s">'--project=your-gcp-project'</span><span class="p">,</span>
+    <span class="s">'--region=us-central1'</span><span class="p">,</span>
+    <span class="s">'--runner=DataflowRunner'</span><span class="p">,</span>
+    <span class="s">'--temp_location=gs://your-bucket/temp'</span><span class="p">,</span>
+    <span class="s">'--staging_location=gs://your-bucket/staging'</span>
+<span class="p">])</span>
+
+<span class="c1"># Schema for BigQuery table
+</span><span class="n">schema</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">'fields'</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s">'name'</span><span class="p">:</span> <span class="s">'id'</span><span class="p">,</span> <span class="s">'type'</span><span class="p">:</span> <span class="s">'STRING'</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">'name'</span><span class="p">:</span> <span class="s">'name'</span><span class="p">,</span> <span class="s">'type'</span><span class="p">:</span> <span class="s">'STRING'</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">'name'</span><span class="p">:</span> <span class="s">'value'</span><span class="p">,</span> <span class="s">'type'</span><span class="p">:</span> <span class="s">'FLOAT'</span><span class="p">},</span>
+        <span class="p">{</span><span class="s">'name'</span><span class="p">:</span> <span class="s">'timestamp'</span><span class="p">,</span> <span class="s">'type'</span><span class="p">:</span> <span class="s">'TIMESTAMP'</span><span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+
+<span class="c1"># MongoDB connection URI
+</span><span class="n">uri</span> <span class="o">=</span> <span class="s">"mongodb+srv://username:password@cluster.mongodb.net"</span>
+
+<span class="c1"># Create and run the pipeline
+</span><span class="k">with</span> <span class="n">beam</span><span class="p">.</span><span class="n">Pipeline</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+    <span class="p">(</span><span class="n">p</span> 
+     <span class="o">|</span> <span class="s">'ReadFromMongoDB'</span> <span class="o">&gt;&gt;</span> <span class="n">ReadFromMongoDB</span><span class="p">(</span>
+         <span class="n">uri</span><span class="o">=</span><span class="n">uri</span><span class="p">,</span>
+         <span class="n">db</span><span class="o">=</span><span class="s">'your_database'</span><span class="p">,</span>
+         <span class="n">coll</span><span class="o">=</span><span class="s">'your_collection'</span><span class="p">)</span>
+     <span class="o">|</span> <span class="s">'TransformData'</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="p">.</span><span class="n">Map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">doc</span><span class="p">:</span> <span class="p">{</span>
+         <span class="s">'id'</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s">'_id'</span><span class="p">]),</span>
+         <span class="s">'name'</span><span class="p">:</span> <span class="n">doc</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'name'</span><span class="p">,</span> <span class="s">''</span><span class="p">),</span>
+         <span class="s">'value'</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">doc</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'value'</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+         <span class="s">'timestamp'</span><span class="p">:</span> <span class="n">doc</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'created_at'</span><span class="p">).</span><span class="n">timestamp</span><span class="p">()</span>
+     <span class="p">})</span>
+     <span class="o">|</span> <span class="s">'WriteToBigQuery'</span> <span class="o">&gt;&gt;</span> <span class="n">WriteToBigQuery</span><span class="p">(</span>
+         <span class="n">table</span><span class="o">=</span><span class="s">'your-project:your_dataset.your_table'</span><span class="p">,</span>
+         <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span>
+         <span class="n">create_disposition</span><span class="o">=</span><span class="n">beam</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="n">BigQueryDisposition</span><span class="p">.</span><span class="n">CREATE_IF_NEEDED</span><span class="p">,</span>
+         <span class="n">write_disposition</span><span class="o">=</span><span class="n">beam</span><span class="p">.</span><span class="n">io</span><span class="p">.</span><span class="n">BigQueryDisposition</span><span class="p">.</span><span class="n">WRITE_TRUNCATE</span><span class="p">)</span>
+    <span class="p">)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="cloud-functions-and-scheduler">Cloud Functions and Scheduler</h2>
+
+<h3 id="cloud-functions">Cloud Functions</h3>
+
+<p>Google Cloud Functions is a lightweight, event-driven, serverless compute platform that allows you to create single-purpose, stand-alone functions that respond to cloud events without managing the underlying infrastructure.</p>
+
+<div class="info-box info-box-success-not-check">
+  <h3>When to Use Cloud Functions vs. Dataflow</h3>
+  <p>In our ETL pipeline, we're using Cloud Functions for orchestration and simpler data movement tasks, while Dataflow would be better suited for:</p>
+  <ul>
+    <li>Processing very large datasets (TB+)</li>
+    <li>Complex data transformations requiring parallel processing</li>
+    <li>Streaming data scenarios with windowing requirements</li>
+    <li>Pipelines that need sophisticated fault tolerance</li>
+  </ul>
+  <p>Cloud Functions is ideal for event-triggered actions, lightweight processing, and gluing together different GCP services, as we're using it in this workflow.</p>
+</div>
 
 <h4 id="key-features">Key Features</h4>
+
 <ul>
-  <li>Fully Managed Services</li>
-  <li>Apache Beam SDK based</li>
-  <li>Auto Scaling</li>
-  <li>Integration capabilities</li>
-  <li>Real-Time and Batch Processing</li>
-  <li>Code Portability</li>
-  <li>Debugging and Monitoring</li>
+  <li><strong>Event-Driven</strong>: Triggers include HTTP requests, Cloud Storage events, Pub/Sub messages, and Firestore events</li>
+  <li><strong>Stateless</strong>: Each invocation is independent, with no persistent state between executions</li>
+  <li><strong>Automatic Scaling</strong>: Scales from zero to many instances based on load</li>
+  <li><strong>Runtime Support</strong>: Node.js, Python, Go, Java, .NET, Ruby, and PHP</li>
+  <li><strong>Pay-per-use</strong>: Billed by compute time in 100ms increments</li>
 </ul>
 
-<p><br /></p>
+<h3 id="cloud-scheduler">Cloud Scheduler</h3>
 
-<h3 id="what-is-google-cloud-functions">What is Google Cloud Functions?</h3>
-
-<blockquote>
-  <p>Google Cloud Functions (GCF) is a serverless computing service that allows developers to run code triggered by cloud events without managing servers.</p>
-</blockquote>
+<p>Google Cloud Scheduler is a fully managed enterprise-grade cron job scheduler that allows you to schedule virtually any job, including batch jobs, big data jobs, cloud infrastructure operations, and more.</p>
 
 <h4 id="key-features-1">Key Features</h4>
+
 <ul>
-  <li>Serverless architecture</li>
-  <li>Event-driven</li>
-  <li>Scalability</li>
-  <li>Multiple language support (Node.js, Python, Go, Java, .NET, Ruby, PHP)</li>
-  <li>GCP Services Integration</li>
-  <li>Stateless execution</li>
-  <li>Pay-as-you-go pricing</li>
-  <li>Security features</li>
-  <li>Local Development &amp; Testing capabilities</li>
+  <li><strong>Reliability</strong>: Google-grade reliability with SLA</li>
+  <li><strong>Cron Syntax</strong>: Familiar unix-cron format for job definitions</li>
+  <li><strong>Flexible Targets</strong>: HTTP/S endpoints, Pub/Sub topics, App Engine applications</li>
+  <li><strong>Authentication</strong>: Support for OIDC tokens, basic auth, and OAuth</li>
+  <li><strong>Monitoring</strong>: Integrated with Cloud Monitoring for observability</li>
+  <li><strong>Retry Logic</strong>: Configurable retry on failed jobs</li>
 </ul>
+
+<h3 id="example-code-mongodb-to-bigquery-function">Example Code: MongoDB to BigQuery Function</h3>
+
+<p>Here’s a sample Cloud Function that extracts data from MongoDB and loads it into BigQuery:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pymongo</span>
+<span class="kn">from</span> <span class="nn">google.cloud</span> <span class="kn">import</span> <span class="n">bigquery</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="k">def</span> <span class="nf">mongodb_to_bigquery</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="c1"># MongoDB connection
+</span>    <span class="n">client</span> <span class="o">=</span> <span class="n">pymongo</span><span class="p">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'MONGODB_URI'</span><span class="p">))</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="n">client</span><span class="p">[</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'MONGODB_DB'</span><span class="p">)]</span>
+    <span class="n">collection</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'MONGODB_COLLECTION'</span><span class="p">)]</span>
+    
+    <span class="c1"># Get data from MongoDB
+</span>    <span class="n">cursor</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">find</span><span class="p">({})</span>
+    
+    <span class="c1"># Transform data for BigQuery
+</span>    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">document</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+        <span class="c1"># Convert MongoDB ObjectId to string
+</span>        <span class="n">document</span><span class="p">[</span><span class="s">'_id'</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">document</span><span class="p">[</span><span class="s">'_id'</span><span class="p">])</span>
+        
+        <span class="c1"># Convert any datetime objects to string
+</span>        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">document</span><span class="p">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="p">):</span>
+                <span class="n">document</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">.</span><span class="n">isoformat</span><span class="p">()</span>
+        
+        <span class="n">rows</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">document</span><span class="p">)</span>
+    
+    <span class="c1"># BigQuery client
+</span>    <span class="n">client</span> <span class="o">=</span> <span class="n">bigquery</span><span class="p">.</span><span class="n">Client</span><span class="p">()</span>
+    <span class="n">table_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s">"</span><span class="si">{</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'BIGQUERY_PROJECT'</span><span class="p">)</span><span class="si">}</span><span class="s">.</span><span class="si">{</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'BIGQUERY_DATASET'</span><span class="p">)</span><span class="si">}</span><span class="s">.</span><span class="si">{</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'BIGQUERY_TABLE'</span><span class="p">)</span><span class="si">}</span><span class="s">"</span>
+    
+    <span class="c1"># Load data into BigQuery
+</span>    <span class="n">errors</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="n">insert_rows_json</span><span class="p">(</span><span class="n">table_id</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"Encountered errors: </span><span class="si">{</span><span class="n">errors</span><span class="si">}</span><span class="s">"</span><span class="p">,</span> <span class="mi">500</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s">"Successfully loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="si">}</span><span class="s"> rows to </span><span class="si">{</span><span class="n">table_id</span><span class="si">}</span><span class="s">"</span><span class="p">,</span> <span class="mi">200</span>
+</code></pre></div></div>
+
+<h3 id="example-code-bigquery-to-google-sheets-function">Example Code: BigQuery to Google Sheets Function</h3>
+
+<p>Here’s a sample Cloud Function that extracts data from BigQuery and loads it into Google Sheets:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">gspread</span>
+<span class="kn">from</span> <span class="nn">google.cloud</span> <span class="kn">import</span> <span class="n">bigquery</span>
+<span class="kn">from</span> <span class="nn">google.oauth2</span> <span class="kn">import</span> <span class="n">service_account</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="k">def</span> <span class="nf">bigquery_to_sheets</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="c1"># BigQuery setup
+</span>    <span class="n">bq_client</span> <span class="o">=</span> <span class="n">bigquery</span><span class="p">.</span><span class="n">Client</span><span class="p">()</span>
+    
+    <span class="c1"># Query data from BigQuery
+</span>    <span class="n">query</span> <span class="o">=</span> <span class="sa">f</span><span class="s">"""
+    SELECT *
+    FROM `</span><span class="si">{</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'BIGQUERY_PROJECT'</span><span class="p">)</span><span class="si">}</span><span class="s">.</span><span class="si">{</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'BIGQUERY_DATASET'</span><span class="p">)</span><span class="si">}</span><span class="s">.</span><span class="si">{</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'BIGQUERY_TABLE'</span><span class="p">)</span><span class="si">}</span><span class="s">`
+    LIMIT 1000
+    """</span>
+    
+    <span class="n">query_job</span> <span class="o">=</span> <span class="n">bq_client</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">query_job</span><span class="p">.</span><span class="n">result</span><span class="p">()</span>
+    
+    <span class="c1"># Transform data for Google Sheets
+</span>    <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="n">field</span><span class="p">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">query_job</span><span class="p">.</span><span class="n">schema</span><span class="p">]</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">headers</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="n">data</span><span class="p">.</span><span class="n">append</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">field</span><span class="p">])</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">])</span>
+    
+    <span class="c1"># Google Sheets setup
+</span>    <span class="n">credentials</span> <span class="o">=</span> <span class="n">service_account</span><span class="p">.</span><span class="n">Credentials</span><span class="p">.</span><span class="n">from_service_account_file</span><span class="p">(</span>
+        <span class="s">'bigquery.json'</span><span class="p">,</span>
+        <span class="n">scopes</span><span class="o">=</span><span class="p">[</span><span class="s">'https://www.googleapis.com/auth/spreadsheets'</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">gc</span> <span class="o">=</span> <span class="n">gspread</span><span class="p">.</span><span class="n">authorize</span><span class="p">(</span><span class="n">credentials</span><span class="p">)</span>
+    
+    <span class="c1"># Open the spreadsheet and write data
+</span>    <span class="n">sheet</span> <span class="o">=</span> <span class="n">gc</span><span class="p">.</span><span class="n">open_by_key</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'SHEET_ID'</span><span class="p">)).</span><span class="n">worksheet</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'SHEET_NAME'</span><span class="p">))</span>
+    <span class="n">sheet</span><span class="p">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="n">sheet</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="s">'A1'</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="sa">f</span><span class="s">"Successfully updated Google Sheet with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="si">}</span><span class="s"> rows of data"</span><span class="p">,</span> <span class="mi">200</span>
+</code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="what-is-google-cloud-scheduler">What is Google Cloud Scheduler?</h3>
+<hr />
 
-<blockquote>
-  <p>Cloud Scheduler is a fully managed cron job scheduling service that’s similar to Linux cron but with added cloud capabilities.</p>
-</blockquote>
+<h2 id="complete-etl-workflow-implementation">Complete ETL Workflow Implementation</h2>
 
-<h4 id="key-features-2">Key Features</h4>
-<ul>
-  <li>Fully Managed Service</li>
-  <li>Supports HTTP, Pub/Sub, App Engine calls</li>
-  <li>CRON Grammar</li>
-  <li>Retry on Failure</li>
-  <li>Time Zone Support</li>
-  <li>Monitoring and Logging</li>
-  <li>Security</li>
-  <li>Integration with other GCP services</li>
-</ul>
+<p>Our complete ETL workflow follows this sequence:</p>
 
-<p><br /></p>
-
-<h3 id="etl-workflow-implementation">ETL Workflow Implementation</h3>
-
-<p>The implementation follows this sequence:</p>
-
-<div style="width: 100%; margin: auto; margin-top: 40px;">  
-  <!-- ✅ Kubernetes Pod Creation Lifecycle -->
+<div style="width: 100%; margin: auto; margin-top: 20px;">
   <div class="mermaid">
     flowchart TD
         Z["Enable API Service"] --&gt; A["Create BigQuery Service Account and Grant Permission"]
@@ -346,63 +606,215 @@ February 11, 2025
   </div>
 </div>
 
+<h3 id="step-by-step-implementation">Step-by-Step Implementation</h3>
+
+<h4 id="1-enable-required-api-services">1. Enable Required API Services</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Enable required APIs</span>
+gcloud services <span class="nb">enable </span>dataflow.googleapis.com
+gcloud services <span class="nb">enable </span>bigquery.googleapis.com
+gcloud services <span class="nb">enable </span>cloudfunctions.googleapis.com
+gcloud services <span class="nb">enable </span>cloudscheduler.googleapis.com
+gcloud services <span class="nb">enable </span>storage.googleapis.com
+gcloud services <span class="nb">enable </span>sheets.googleapis.com
+</code></pre></div></div>
+
+<h4 id="2-set-up-service-accounts-and-permissions">2. Set Up Service Accounts and Permissions</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create service account for BigQuery operations</span>
+gcloud iam service-accounts create bigquery-sa <span class="se">\</span>
+    <span class="nt">--display-name</span><span class="o">=</span><span class="s2">"BigQuery Service Account"</span>
+
+<span class="c"># Grant necessary permissions</span>
+gcloud projects add-iam-policy-binding <span class="nv">$PROJECT_ID</span> <span class="se">\</span>
+    <span class="nt">--member</span><span class="o">=</span><span class="s2">"serviceAccount:bigquery-sa@</span><span class="nv">$PROJECT_ID</span><span class="s2">.iam.gserviceaccount.com"</span> <span class="se">\</span>
+    <span class="nt">--role</span><span class="o">=</span><span class="s2">"roles/bigquery.dataEditor"</span>
+
+gcloud projects add-iam-policy-binding <span class="nv">$PROJECT_ID</span> <span class="se">\</span>
+    <span class="nt">--member</span><span class="o">=</span><span class="s2">"serviceAccount:bigquery-sa@</span><span class="nv">$PROJECT_ID</span><span class="s2">.iam.gserviceaccount.com"</span> <span class="se">\</span>
+    <span class="nt">--role</span><span class="o">=</span><span class="s2">"roles/bigquery.jobUser"</span>
+
+<span class="c"># Create and download key for the service account</span>
+gcloud iam service-accounts keys create bigquery.json <span class="se">\</span>
+    <span class="nt">--iam-account</span><span class="o">=</span>bigquery-sa@<span class="nv">$PROJECT_ID</span>.iam.gserviceaccount.com
+</code></pre></div></div>
+
+<h4 id="3-create-bigquery-dataset-and-tables">3. Create BigQuery Dataset and Tables</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create dataset</span>
+bq mk <span class="nt">--dataset</span> <span class="nv">$PROJECT_ID</span>:analytics_data
+
+<span class="c"># Create table with schema</span>
+bq mk <span class="nt">--table</span> <span class="se">\</span>
+    <span class="nv">$PROJECT_ID</span>:analytics_data.mongodb_data <span class="se">\</span>
+    _id:STRING,name:STRING,value:FLOAT,timestamp:TIMESTAMP
+</code></pre></div></div>
+
+<h4 id="4-set-up-cloud-storage-for-function-code">4. Set Up Cloud Storage for Function Code</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create buckets for function code</span>
+gsutil mb <span class="nt">-l</span> us-central1 gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>
+</code></pre></div></div>
+
+<h4 id="5-prepare-and-deploy-mongodb-to-bigquery-function">5. Prepare and Deploy MongoDB to BigQuery Function</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create function directory and files</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> mongodb-to-bigquery
+<span class="nb">cd </span>mongodb-to-bigquery
+
+<span class="c"># Create requirements.txt</span>
+<span class="nb">cat</span> <span class="o">&gt;</span> requirements.txt <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+pymongo==4.3.3
+google-cloud-bigquery==3.9.0
+</span><span class="no">EOF
+
+</span><span class="c"># Create main.py with the function code</span>
+<span class="c"># (Use the MongoDB to BigQuery function code from above)</span>
+
+<span class="c"># Zip the function code</span>
+zip <span class="nt">-r</span> mongodb-to-bigquery.zip main.py requirements.txt
+
+<span class="c"># Upload to Cloud Storage</span>
+gsutil <span class="nb">cp </span>mongodb-to-bigquery.zip gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>/
+
+<span class="c"># Deploy the function</span>
+gcloud functions deploy mongodb-to-bigquery <span class="se">\</span>
+    <span class="nt">--runtime</span> python39 <span class="se">\</span>
+    <span class="nt">--trigger-http</span> <span class="se">\</span>
+    <span class="nt">--allow-unauthenticated</span> <span class="se">\</span>
+    <span class="nt">--entry-point</span><span class="o">=</span>mongodb_to_bigquery <span class="se">\</span>
+    <span class="nt">--source</span><span class="o">=</span>gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>/mongodb-to-bigquery.zip <span class="se">\</span>
+    <span class="nt">--set-env-vars</span><span class="o">=</span><span class="nv">MONGODB_URI</span><span class="o">=</span>mongodb+srv://username:password@cluster.mongodb.net,MONGODB_DB<span class="o">=</span>your_database,MONGODB_COLLECTION<span class="o">=</span>your_collection,BIGQUERY_PROJECT<span class="o">=</span><span class="nv">$PROJECT_ID</span>,BIGQUERY_DATASET<span class="o">=</span>analytics_data,BIGQUERY_TABLE<span class="o">=</span>mongodb_data
+</code></pre></div></div>
+
+<h4 id="6-prepare-and-deploy-bigquery-to-google-sheets-function">6. Prepare and Deploy BigQuery to Google Sheets Function</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create function directory and files</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> bigquery-to-sheets
+<span class="nb">cd </span>bigquery-to-sheets
+
+<span class="c"># Create requirements.txt</span>
+<span class="nb">cat</span> <span class="o">&gt;</span> requirements.txt <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+google-cloud-bigquery==3.9.0
+gspread==5.7.2
+google-auth==2.16.2
+</span><span class="no">EOF
+
+</span><span class="c"># Copy the service account key</span>
+<span class="nb">cp</span> ../bigquery.json <span class="nb">.</span>
+
+<span class="c"># Create main.py with the function code</span>
+<span class="c"># (Use the BigQuery to Google Sheets function code from above)</span>
+
+<span class="c"># Zip the function code</span>
+zip <span class="nt">-r</span> bigquery-to-sheets.zip main.py requirements.txt bigquery.json
+
+<span class="c"># Upload to Cloud Storage</span>
+gsutil <span class="nb">cp </span>bigquery-to-sheets.zip gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>/
+
+<span class="c"># Deploy the function</span>
+gcloud functions deploy bigquery-to-sheets <span class="se">\</span>
+    <span class="nt">--runtime</span> python39 <span class="se">\</span>
+    <span class="nt">--trigger-http</span> <span class="se">\</span>
+    <span class="nt">--allow-unauthenticated</span> <span class="se">\</span>
+    <span class="nt">--entry-point</span><span class="o">=</span>bigquery_to_sheets <span class="se">\</span>
+    <span class="nt">--source</span><span class="o">=</span>gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>/bigquery-to-sheets.zip <span class="se">\</span>
+    <span class="nt">--set-env-vars</span><span class="o">=</span><span class="nv">BIGQUERY_PROJECT</span><span class="o">=</span><span class="nv">$PROJECT_ID</span>,BIGQUERY_DATASET<span class="o">=</span>analytics_data,BIGQUERY_TABLE<span class="o">=</span>mongodb_data,SHEET_ID<span class="o">=</span>your-sheet-id,SHEET_NAME<span class="o">=</span>Sheet1
+</code></pre></div></div>
+
+<h4 id="7-set-up-cloud-scheduler-jobs">7. Set Up Cloud Scheduler Jobs</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create scheduler for MongoDB to BigQuery (runs daily at 1 AM)</span>
+gcloud scheduler <span class="nb">jobs </span>create http mongodb-to-bigquery-job <span class="se">\</span>
+    <span class="nt">--schedule</span><span class="o">=</span><span class="s2">"0 1 * * *"</span> <span class="se">\</span>
+    <span class="nt">--uri</span><span class="o">=</span><span class="s2">"https://us-central1-</span><span class="nv">$PROJECT_ID</span><span class="s2">.cloudfunctions.net/mongodb-to-bigquery"</span> <span class="se">\</span>
+    <span class="nt">--http-method</span><span class="o">=</span>GET <span class="se">\</span>
+    <span class="nt">--time-zone</span><span class="o">=</span><span class="s2">"America/New_York"</span>
+
+<span class="c"># Create scheduler for BigQuery to Google Sheets (runs daily at 2 AM)</span>
+gcloud scheduler <span class="nb">jobs </span>create http bigquery-to-sheets-job <span class="se">\</span>
+    <span class="nt">--schedule</span><span class="o">=</span><span class="s2">"0 2 * * *"</span> <span class="se">\</span>
+    <span class="nt">--uri</span><span class="o">=</span><span class="s2">"https://us-central1-</span><span class="nv">$PROJECT_ID</span><span class="s2">.cloudfunctions.net/bigquery-to-sheets"</span> <span class="se">\</span>
+    <span class="nt">--http-method</span><span class="o">=</span>GET <span class="se">\</span>
+    <span class="nt">--time-zone</span><span class="o">=</span><span class="s2">"America/New_York"</span>
+</code></pre></div></div>
+
 <p><br /></p>
 
-<h3 id="infrastructure-as-code-iac-implementation">Infrastructure as Code (IaC) Implementation</h3>
+<hr />
 
-<p>The pipeline can be built using two IaC tools:</p>
+<h2 id="infrastructure-as-code-iac-implementation">Infrastructure as Code (IaC) Implementation</h2>
 
-<h4 id="terraform-implementation">Terraform Implementation</h4>
-<p>Source code available at: <a href="https://github.com/somaz94/terraform-infra-gcp/tree/main/project/somaz-bigquery-project">terraform-infra-gcp</a></p>
+<p>For production environments, it’s recommended to use Infrastructure as Code tools to automate and version your ETL pipeline setup. Below are two approaches using popular IaC tools.</p>
 
-<div class="info-box info-box-success">
-Directory structure and implementation details are available in the repository's README.
+<h3 id="terraform-implementation">Terraform Implementation</h3>
+
+<div class="info-box info-box-default">
+  <h3>Terraform Benefits for ETL Pipelines</h3>
+  <ul>
+    <li><strong>Version Control:</strong> Track changes to your infrastructure over time</li>
+    <li><strong>Repeatability:</strong> Consistently deploy the same environment across stages</li>
+    <li><strong>Modularity:</strong> Reuse components across different pipelines</li>
+    <li><strong>Dependency Management:</strong> Automatically handle resource dependencies</li>
+    <li><strong>State Management:</strong> Track the actual state of resources vs. desired state</li>
+  </ul>
 </div>
+
+<p>The complete implementation is available at: <a href="https://github.com/somaz94/terraform-infra-gcp/tree/main/project/somaz-bigquery-project">terraform-infra-gcp</a></p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>somaz-bigquery-project/
 ├── README.md
 ├── bigquery-to-google-sheet
-│   ├── bigquery.json
-│   ├── main.py
-│   ├── main.py.all_data
-│   ├── main.py.date
-│   ├── main.py.single_db
-│   ├── main.py.time_UTC
-│   └── requirements.txt
+│   ├── bigquery.json
+│   ├── main.py
+│   ├── main.py.all_data
+│   ├── main.py.date
+│   ├── main.py.single_db
+│   ├── main.py.time_UTC
+│   └── requirements.txt
 ├── bigquery.tfvars
 ├── cloud-storage.tf
 ├── locals.tf
 ├── mongodb-bigquery-googlesheet-workflow.tf
 ├── mongodb-to-bigquery
-│   ├── MongoDB_to_BigQuery
-│   ├── main.py
-│   ├── main.py.local
-│   ├── main.py.single_db
-│   └── requirement.txt
+│   ├── MongoDB_to_BigQuery
+│   ├── main.py
+│   ├── main.py.local
+│   ├── main.py.single_db
+│   └── requirement.txt
 ├── provider.tf
 ├── terraform-backend.tf
 └── variables.tf
 </code></pre></div></div>
 
-<h4 id="pulumi-implementation">Pulumi Implementation</h4>
-<p>Source code available at: <a href="https://github.com/somaz94/pulumi-study/tree/main/gcp/python/bigdata-flow-functions">pulumi-study</a></p>
+<p>Key Terraform resource types used:</p>
 
-<div class="info-box info-box-success">
-Both implementations follow the same resource creation order and can be customized using different versions of main.py for different use cases.
-</div>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">google_storage_bucket</code>: For function code storage</li>
+  <li><code class="language-plaintext highlighter-rouge">google_cloudfunctions_function</code>: For serverless ETL functions</li>
+  <li><code class="language-plaintext highlighter-rouge">google_cloud_scheduler_job</code>: For scheduling ETL tasks</li>
+  <li><code class="language-plaintext highlighter-rouge">google_bigquery_dataset</code>: For data storage</li>
+  <li><code class="language-plaintext highlighter-rouge">google_bigquery_table</code>: For structured data tables</li>
+</ul>
+
+<h3 id="pulumi-implementation">Pulumi Implementation</h3>
+
+<p>Pulumi offers a more programmatic approach to infrastructure as code, allowing you to use familiar languages like Python:</p>
+
+<p>The complete implementation is available at: <a href="https://github.com/somaz94/pulumi-study/tree/main/gcp/python/bigdata-flow-functions">pulumi-study</a></p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bigdata-flow-functions/
 ├── Pulumi.yaml
 ├── README.md
 ├── __main__.py
 ├── bigquery-to-google-sheet
-│   ├── bigquery.json
-│   ├── main.py
-│   ├── main.py.all_data
-│   ├── main.py.date
-│   ├── main.py.single_db
-│   ├── main.py.time_UTC
-│   └── requirements.txt
+│   ├── bigquery.json
+│   ├── main.py
+│   ├── main.py.all_data
+│   ├── main.py.date
+│   ├── main.py.single_db
+│   ├── main.py.time_UTC
+│   └── requirements.txt
 ├── bq_dataset.py
 ├── bq_sheet_archive.py
 ├── bq_sheet_function.py
@@ -410,10 +822,10 @@ Both implementations follow the same resource creation order and can be customiz
 ├── mdb_bq_archive.py
 ├── mdb_bq_function.py
 ├── mongodb-to-bigquery
-│   ├── main.py
-│   ├── main.py.local
-│   ├── main.py.single_db
-│   └── requirements.txt
+│   ├── main.py
+│   ├── main.py.local
+│   ├── main.py.single_db
+│   └── requirements.txt
 ├── requirements.txt
 ├── scheduler_manager.py
 ├── storage.py
@@ -424,9 +836,134 @@ Both implementations follow the same resource creation order and can be customiz
 
 <hr />
 
-<h3 id="references">References</h3>
+<h2 id="advanced-customization-and-optimizations">Advanced Customization and Optimizations</h2>
+
+<h3 id="handling-different-data-types">Handling Different Data Types</h3>
+
+<p>The provided code examples can be customized for different MongoDB collections and data structures:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">main.py.all_data</code>: Processes complete collections</li>
+  <li><code class="language-plaintext highlighter-rouge">main.py.date</code>: Filters data by date ranges</li>
+  <li><code class="language-plaintext highlighter-rouge">main.py.single_db</code>: Works with single MongoDB databases</li>
+  <li><code class="language-plaintext highlighter-rouge">main.py.time_UTC</code>: Handles timezone conversions</li>
+</ul>
+
+<h3 id="scaling-considerations">Scaling Considerations</h3>
+
+<p>As your data volumes grow, consider these optimizations:</p>
+
+<ol>
+  <li><strong>BigQuery Partitioning</strong>: Partition tables by date for improved query performance and cost
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">analytics_data</span><span class="p">.</span><span class="n">mongodb_data</span>
+   <span class="k">PARTITION</span> <span class="k">BY</span> <span class="nb">DATE</span><span class="p">(</span><span class="nb">timestamp</span><span class="p">)</span>
+   <span class="k">AS</span> <span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">analytics_data</span><span class="p">.</span><span class="n">mongodb_data_temp</span>
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Batch Processing</strong>: Process data in manageable chunks
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="c1"># Process in batches of 1000 documents
+</span>   <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">1000</span>
+   <span class="n">total_docs</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">count_documents</span><span class="p">({})</span>
+   <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_docs</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
+       <span class="n">cursor</span> <span class="o">=</span> <span class="n">collection</span><span class="p">.</span><span class="n">find</span><span class="p">({}).</span><span class="n">skip</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">limit</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+       <span class="c1"># Process batch
+</span></code></pre></div>    </div>
+  </li>
+  <li><strong>Error Handling</strong>: Implement robust error handling and retries
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="kn">from</span> <span class="nn">google.api_core.retry</span> <span class="kn">import</span> <span class="n">Retry</span>
+      
+   <span class="o">@</span><span class="n">Retry</span><span class="p">(</span><span class="n">predicate</span><span class="o">=</span><span class="nb">Exception</span><span class="p">,</span> <span class="n">deadline</span><span class="o">=</span><span class="mf">60.0</span><span class="p">)</span>
+   <span class="k">def</span> <span class="nf">insert_with_retry</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">table_id</span><span class="p">,</span> <span class="n">rows</span><span class="p">):</span>
+       <span class="n">errors</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="n">insert_rows_json</span><span class="p">(</span><span class="n">table_id</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+       <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+           <span class="k">raise</span> <span class="nb">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s">"Error inserting rows: </span><span class="si">{</span><span class="n">errors</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+       <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Monitoring</strong>: Set up alerts for pipeline failures
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="kn">from</span> <span class="nn">google.cloud</span> <span class="kn">import</span> <span class="n">monitoring_v3</span>
+      
+   <span class="k">def</span> <span class="nf">create_failure_alert</span><span class="p">(</span><span class="n">project_id</span><span class="p">):</span>
+       <span class="n">client</span> <span class="o">=</span> <span class="n">monitoring_v3</span><span class="p">.</span><span class="n">AlertPolicyServiceClient</span><span class="p">()</span>
+       <span class="c1"># Create alert policy configuration
+</span>       <span class="c1"># ...
+</span></code></pre></div>    </div>
+  </li>
+</ol>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="best-practices-and-lessons-learned">Best Practices and Lessons Learned</h2>
+
+<h3 id="security-best-practices">Security Best Practices</h3>
+
+<ol>
+  <li><strong>Principle of Least Privilege</strong>: Grant only required permissions to service accounts</li>
+  <li><strong>Secret Management</strong>: Store sensitive credentials securely using Secret Manager</li>
+  <li><strong>VPC Service Controls</strong>: Implement network security boundaries for sensitive data</li>
+  <li><strong>Audit Logging</strong>: Enable comprehensive logging for all data access</li>
+</ol>
+
+<h3 id="performance-optimization">Performance Optimization</h3>
+
+<ol>
+  <li><strong>BigQuery Best Practices</strong>:
+    <ul>
+      <li>Use partitioning and clustering</li>
+      <li>Filter on partitioned columns</li>
+      <li>Select only needed columns</li>
+      <li>Use approximate aggregation functions when possible</li>
+    </ul>
+  </li>
+  <li><strong>Cloud Functions Performance</strong>:
+    <ul>
+      <li>Increase memory allocation for CPU-intensive tasks</li>
+      <li>Keep functions stateless and idempotent</li>
+      <li>Reuse connections to external services</li>
+    </ul>
+  </li>
+  <li><strong>Cost Optimization</strong>:
+    <ul>
+      <li>Set up budget alerts</li>
+      <li>Use BigQuery flat-rate pricing for predictable workloads</li>
+      <li>Schedule less frequent updates for non-critical data</li>
+    </ul>
+  </li>
+</ol>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="next-steps-and-future-improvements">Next Steps and Future Improvements</h2>
+
+<p>This ETL pipeline can be extended in several ways:</p>
+
+<ol>
+  <li><strong>Real-time Processing</strong>: Implement streaming data ingestion using Pub/Sub and Dataflow</li>
+  <li><strong>Data Quality Checks</strong>: Add validation steps to ensure data integrity</li>
+  <li><strong>Advanced Analytics</strong>: Implement BigQuery ML for predictive analytics</li>
+  <li><strong>Visualization</strong>: Connect to Data Studio or Looker for rich dashboards</li>
+  <li><strong>CI/CD Pipeline</strong>: Set up automated testing and deployment</li>
+</ol>
+
+<p>In future articles, we’ll explore these advanced topics in greater detail.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
 <ul>
   <li><a href="https://medium.com/analytics-vidhya/etl-with-dataflow-bigquery-bfaf22fbd0d0">ETL with Dataflow BigQuery</a></li>
+  <li><a href="https://beam.apache.org/documentation/programming-guide/">Apache Beam Programming Guide</a></li>
+  <li><a href="https://cloud.google.com/dataflow/docs">Google Cloud Dataflow Documentation</a></li>
+  <li><a href="https://cloud.google.com/bigquery/docs/best-practices-performance-overview">BigQuery Best Practices</a></li>
+  <li><a href="https://cloud.google.com/functions/docs">Cloud Functions Documentation</a></li>
+  <li><a href="https://cloud.google.com/scheduler/docs">Cloud Scheduler Documentation</a></li>
   <li><a href="https://console.cloud.google.com/storage/browser/dataflow-templates/latest">Dataflow Templates</a></li>
   <li><a href="https://github.com/somaz94/terraform-infra-gcp/tree/main/project/somaz-bigquery-project">Terraform Implementation</a></li>
   <li><a href="https://github.com/somaz94/pulumi-study/tree/main/gcp/python/bigdata-flow-functions">Pulumi Implementation</a></li>
@@ -480,7 +1017,7 @@ Both implementations follow the same resource creation order and can be customiz
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="3">
+            <div class="time-bar" data-minutes="19">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -789,89 +1326,349 @@ Both implementations follow the same resource creation order and can be customiz
 
 Overview
 
-Following our previous post about BigQuery, let’s explore how to build an ETL (Extract, Transform, Load) pipeline using BigQuery and Dataflow. Our workflow will follow this path:
+Modern data pipelines are essential for organizations to transform raw data into actionable insights. Following our previous post about BigQuery, this guide explores how to build a robust ETL (Extract, Transform, Load) pipeline using Google Cloud Platform’s managed services, focusing on moving data from MongoDB to BigQuery and finally to Google Sheets for analysis and visualization.
+
+This comprehensive tutorial will guide you through building a fully automated data pipeline with the following flow:
 
 MongoDB → BigQuery → Google Sheets
 
 
 
+  Understanding ETL
+  ETL (Extract, Transform, Load) is a three-phase process for integrating data from multiple sources into a single data repository:
+  
+    Extract: Retrieving data from source systems (databases, APIs, files)
+    Transform: Converting data to appropriate format with operations like filtering, sorting, aggregating, joining, cleaning, and validation
+    Load: Writing the transformed data to a target destination (data warehouse, database, file)
+  
+  Cloud-based ETL solutions like the one we&apos;re building offer advantages including scalability, reduced maintenance, cost-effectiveness, and integration with other cloud services.
 
-GCP Resources Used
 
 
-  Dataflow
-  BigQuery
-  Cloud Scheduler
-  Cloud Functions
-  Cloud Storage
 
+
+
+GCP Services Overview
+
+Our ETL pipeline leverages several key Google Cloud Platform services:
+
+
+  
+    Service
+    Role in Pipeline
+    Key Capabilities
+  
+  
+    Cloud Dataflow
+    Data processing engine
+    Batch/stream processing, auto-scaling, managed infrastructure
+  
+  
+    BigQuery
+    Data warehouse
+    Serverless storage and analytics, SQL interface, high-performance
+  
+  
+    Cloud Functions
+    Serverless code execution
+    Event-driven processing, automatic scaling, pay-per-use
+  
+  
+    Cloud Scheduler
+    Job scheduling
+    Managed cron jobs, reliable triggering, timezone support
+  
+  
+    Cloud Storage
+    Function code storage
+    Highly durable object storage, global access, integration with other services
+  
+
+
+
+  
+    graph LR
+      A[MongoDB] --&amp;gt;|Extract| B[Cloud Functions]
+      B --&amp;gt;|Transform| C[BigQuery]
+      C --&amp;gt;|Extract| D[Cloud Functions]
+      D --&amp;gt;|Transform &amp;amp; Load| E[Google Sheets]
+      F[Cloud Scheduler] --&amp;gt;|Trigger| B
+      F --&amp;gt;|Trigger| D
+      G[Cloud Storage] --&amp;gt;|Store Code| B
+      G --&amp;gt;|Store Code| D
+  
+
+
+
+
+
+
+Cloud Dataflow Deep Dive
 
 What is Google Cloud Dataflow?
 
-
-  Google Cloud Dataflow is a fully managed streaming and batch data processing service provided by GCP. It’s built on Apache Beam and provides methods for building, deploying, and running data processing pipelines for both real-time and batch processing use cases.
-
-
-Key Features
-
-  Fully Managed Services
-  Apache Beam SDK based
-  Auto Scaling
-  Integration capabilities
-  Real-Time and Batch Processing
-  Code Portability
-  Debugging and Monitoring
+Google Cloud Dataflow is a fully managed service for executing Apache Beam pipelines within the Google Cloud Platform ecosystem. It handles both batch and streaming data processing scenarios with automatic resource management and dynamic work rebalancing.
 
 
+  Dataflow Architecture
+  When a Dataflow job is launched, the service:
+  
+    Takes your pipeline code (Apache Beam)
+    Optimizes it into an execution graph
+    Splits the workload into multiple steps
+    Distributes these steps across Compute Engine instances
+    Manages scaling, fault tolerance, and worker communication
+  
+  This abstraction allows developers to focus on pipeline logic rather than infrastructure management.
 
 
-What is Google Cloud Functions?
+Key Features and Benefits
 
 
-  Google Cloud Functions (GCF) is a serverless computing service that allows developers to run code triggered by cloud events without managing servers.
+  Unified Programming Model
+    
+      Apache Beam SDK provides a single programming model for both batch and streaming
+      Same code can run on multiple execution engines
+      Supported languages include Java, Python, Go, and more
+    
+  
+  No-Ops Data Processing
+    
+      Fully managed service with automatic provisioning and scaling
+      Hands-off infrastructure management
+      Dynamic work rebalancing for optimal throughput
+      Built-in monitoring and logging
+    
+  
+  Advanced Processing Capabilities
+    
+      Native handling of late and out-of-order data
+      Exactly-once processing guarantees
+      Windowing for time-based aggregations
+      Watermarking for tracking event time progress
+    
+  
+  Performance and Scalability
+    
+      Horizontal scaling to handle varying workloads
+      Fusion optimization to minimize overhead
+      Auto-tuning of worker resources
+      Support for persistent disks and SSDs for performance-sensitive operations
+    
+  
 
 
-Key Features
-
-  Serverless architecture
-  Event-driven
-  Scalability
-  Multiple language support (Node.js, Python, Go, Java, .NET, Ruby, PHP)
-  GCP Services Integration
-  Stateless execution
-  Pay-as-you-go pricing
-  Security features
-  Local Development &amp;amp; Testing capabilities
-
-
-
-
-What is Google Cloud Scheduler?
-
-
-  Cloud Scheduler is a fully managed cron job scheduling service that’s similar to Linux cron but with added cloud capabilities.
-
-
-Key Features
-
-  Fully Managed Service
-  Supports HTTP, Pub/Sub, App Engine calls
-  CRON Grammar
-  Retry on Failure
-  Time Zone Support
-  Monitoring and Logging
-  Security
-  Integration with other GCP services
-
-
-
-
-ETL Workflow Implementation
-
-The implementation follows this sequence:
 
   
+    graph TD
+      A[Beam SDK Code] --&amp;gt; B[Dataflow Service]
+      B --&amp;gt; C{Job Execution}
+      C --&amp;gt; D[Worker Pool]
+      D --&amp;gt; E[Worker 1]
+      D --&amp;gt; F[Worker 2]
+      D --&amp;gt; G[Worker N]
+      B &amp;lt;--&amp;gt;|Metrics/Logs| H[Monitoring &amp;amp; Logging]
+      B &amp;lt;--&amp;gt;|Status/Control| I[Job Management]
   
+
+
+Sample Dataflow Pipeline Code
+
+Here’s a simplified example of a Python Dataflow pipeline that reads from MongoDB, performs transformations, and writes to BigQuery:
+
+import apache_beam as beam
+from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.io.mongodbio import ReadFromMongoDB
+from apache_beam.io.gcp.bigquery import WriteToBigQuery
+
+# Define pipeline options including GCP project and Dataflow runner
+options = PipelineOptions([
+    &apos;--project=your-gcp-project&apos;,
+    &apos;--region=us-central1&apos;,
+    &apos;--runner=DataflowRunner&apos;,
+    &apos;--temp_location=gs://your-bucket/temp&apos;,
+    &apos;--staging_location=gs://your-bucket/staging&apos;
+])
+
+# Schema for BigQuery table
+schema = {
+    &apos;fields&apos;: [
+        {&apos;name&apos;: &apos;id&apos;, &apos;type&apos;: &apos;STRING&apos;},
+        {&apos;name&apos;: &apos;name&apos;, &apos;type&apos;: &apos;STRING&apos;},
+        {&apos;name&apos;: &apos;value&apos;, &apos;type&apos;: &apos;FLOAT&apos;},
+        {&apos;name&apos;: &apos;timestamp&apos;, &apos;type&apos;: &apos;TIMESTAMP&apos;}
+    ]
+}
+
+# MongoDB connection URI
+uri = &quot;mongodb+srv://username:password@cluster.mongodb.net&quot;
+
+# Create and run the pipeline
+with beam.Pipeline(options=options) as p:
+    (p 
+     | &apos;ReadFromMongoDB&apos; &amp;gt;&amp;gt; ReadFromMongoDB(
+         uri=uri,
+         db=&apos;your_database&apos;,
+         coll=&apos;your_collection&apos;)
+     | &apos;TransformData&apos; &amp;gt;&amp;gt; beam.Map(lambda doc: {
+         &apos;id&apos;: str(doc[&apos;_id&apos;]),
+         &apos;name&apos;: doc.get(&apos;name&apos;, &apos;&apos;),
+         &apos;value&apos;: float(doc.get(&apos;value&apos;, 0)),
+         &apos;timestamp&apos;: doc.get(&apos;created_at&apos;).timestamp()
+     })
+     | &apos;WriteToBigQuery&apos; &amp;gt;&amp;gt; WriteToBigQuery(
+         table=&apos;your-project:your_dataset.your_table&apos;,
+         schema=schema,
+         create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
+         write_disposition=beam.io.BigQueryDisposition.WRITE_TRUNCATE)
+    )
+
+
+
+
+
+
+Cloud Functions and Scheduler
+
+Cloud Functions
+
+Google Cloud Functions is a lightweight, event-driven, serverless compute platform that allows you to create single-purpose, stand-alone functions that respond to cloud events without managing the underlying infrastructure.
+
+
+  When to Use Cloud Functions vs. Dataflow
+  In our ETL pipeline, we&apos;re using Cloud Functions for orchestration and simpler data movement tasks, while Dataflow would be better suited for:
+  
+    Processing very large datasets (TB+)
+    Complex data transformations requiring parallel processing
+    Streaming data scenarios with windowing requirements
+    Pipelines that need sophisticated fault tolerance
+  
+  Cloud Functions is ideal for event-triggered actions, lightweight processing, and gluing together different GCP services, as we&apos;re using it in this workflow.
+
+
+Key Features
+
+
+  Event-Driven: Triggers include HTTP requests, Cloud Storage events, Pub/Sub messages, and Firestore events
+  Stateless: Each invocation is independent, with no persistent state between executions
+  Automatic Scaling: Scales from zero to many instances based on load
+  Runtime Support: Node.js, Python, Go, Java, .NET, Ruby, and PHP
+  Pay-per-use: Billed by compute time in 100ms increments
+
+
+Cloud Scheduler
+
+Google Cloud Scheduler is a fully managed enterprise-grade cron job scheduler that allows you to schedule virtually any job, including batch jobs, big data jobs, cloud infrastructure operations, and more.
+
+Key Features
+
+
+  Reliability: Google-grade reliability with SLA
+  Cron Syntax: Familiar unix-cron format for job definitions
+  Flexible Targets: HTTP/S endpoints, Pub/Sub topics, App Engine applications
+  Authentication: Support for OIDC tokens, basic auth, and OAuth
+  Monitoring: Integrated with Cloud Monitoring for observability
+  Retry Logic: Configurable retry on failed jobs
+
+
+Example Code: MongoDB to BigQuery Function
+
+Here’s a sample Cloud Function that extracts data from MongoDB and loads it into BigQuery:
+
+import os
+import pymongo
+from google.cloud import bigquery
+from datetime import datetime
+
+def mongodb_to_bigquery(request):
+    # MongoDB connection
+    client = pymongo.MongoClient(os.environ.get(&apos;MONGODB_URI&apos;))
+    db = client[os.environ.get(&apos;MONGODB_DB&apos;)]
+    collection = db[os.environ.get(&apos;MONGODB_COLLECTION&apos;)]
+    
+    # Get data from MongoDB
+    cursor = collection.find({})
+    
+    # Transform data for BigQuery
+    rows = []
+    for document in cursor:
+        # Convert MongoDB ObjectId to string
+        document[&apos;_id&apos;] = str(document[&apos;_id&apos;])
+        
+        # Convert any datetime objects to string
+        for key, value in document.items():
+            if isinstance(value, datetime):
+                document[key] = value.isoformat()
+        
+        rows.append(document)
+    
+    # BigQuery client
+    client = bigquery.Client()
+    table_id = f&quot;{os.environ.get(&apos;BIGQUERY_PROJECT&apos;)}.{os.environ.get(&apos;BIGQUERY_DATASET&apos;)}.{os.environ.get(&apos;BIGQUERY_TABLE&apos;)}&quot;
+    
+    # Load data into BigQuery
+    errors = client.insert_rows_json(table_id, rows)
+    
+    if errors:
+        return f&quot;Encountered errors: {errors}&quot;, 500
+    else:
+        return f&quot;Successfully loaded {len(rows)} rows to {table_id}&quot;, 200
+
+
+Example Code: BigQuery to Google Sheets Function
+
+Here’s a sample Cloud Function that extracts data from BigQuery and loads it into Google Sheets:
+
+import os
+import gspread
+from google.cloud import bigquery
+from google.oauth2 import service_account
+from datetime import datetime
+
+def bigquery_to_sheets(request):
+    # BigQuery setup
+    bq_client = bigquery.Client()
+    
+    # Query data from BigQuery
+    query = f&quot;&quot;&quot;
+    SELECT *
+    FROM `{os.environ.get(&apos;BIGQUERY_PROJECT&apos;)}.{os.environ.get(&apos;BIGQUERY_DATASET&apos;)}.{os.environ.get(&apos;BIGQUERY_TABLE&apos;)}`
+    LIMIT 1000
+    &quot;&quot;&quot;
+    
+    query_job = bq_client.query(query)
+    rows = query_job.result()
+    
+    # Transform data for Google Sheets
+    headers = [field.name for field in query_job.schema]
+    data = [headers]
+    for row in rows:
+        data.append([str(row[field]) for field in headers])
+    
+    # Google Sheets setup
+    credentials = service_account.Credentials.from_service_account_file(
+        &apos;bigquery.json&apos;,
+        scopes=[&apos;https://www.googleapis.com/auth/spreadsheets&apos;]
+    )
+    gc = gspread.authorize(credentials)
+    
+    # Open the spreadsheet and write data
+    sheet = gc.open_by_key(os.environ.get(&apos;SHEET_ID&apos;)).worksheet(os.environ.get(&apos;SHEET_NAME&apos;))
+    sheet.clear()
+    sheet.update(&apos;A1&apos;, data)
+    
+    return f&quot;Successfully updated Google Sheet with {len(data)-1} rows of data&quot;, 200
+
+
+
+
+
+
+Complete ETL Workflow Implementation
+
+Our complete ETL workflow follows this sequence:
+
+
   
     flowchart TD
         Z[&quot;Enable API Service&quot;] --&amp;gt; A[&quot;Create BigQuery Service Account and Grant Permission&quot;]
@@ -891,63 +1688,215 @@ The implementation follows this sequence:
   
 
 
+Step-by-Step Implementation
+
+1. Enable Required API Services
+
+# Enable required APIs
+gcloud services enable dataflow.googleapis.com
+gcloud services enable bigquery.googleapis.com
+gcloud services enable cloudfunctions.googleapis.com
+gcloud services enable cloudscheduler.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable sheets.googleapis.com
+
+
+2. Set Up Service Accounts and Permissions
+
+# Create service account for BigQuery operations
+gcloud iam service-accounts create bigquery-sa \
+    --display-name=&quot;BigQuery Service Account&quot;
+
+# Grant necessary permissions
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member=&quot;serviceAccount:bigquery-sa@$PROJECT_ID.iam.gserviceaccount.com&quot; \
+    --role=&quot;roles/bigquery.dataEditor&quot;
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member=&quot;serviceAccount:bigquery-sa@$PROJECT_ID.iam.gserviceaccount.com&quot; \
+    --role=&quot;roles/bigquery.jobUser&quot;
+
+# Create and download key for the service account
+gcloud iam service-accounts keys create bigquery.json \
+    --iam-account=bigquery-sa@$PROJECT_ID.iam.gserviceaccount.com
+
+
+3. Create BigQuery Dataset and Tables
+
+# Create dataset
+bq mk --dataset $PROJECT_ID:analytics_data
+
+# Create table with schema
+bq mk --table \
+    $PROJECT_ID:analytics_data.mongodb_data \
+    _id:STRING,name:STRING,value:FLOAT,timestamp:TIMESTAMP
+
+
+4. Set Up Cloud Storage for Function Code
+
+# Create buckets for function code
+gsutil mb -l us-central1 gs://$PROJECT_ID-functions
+
+
+5. Prepare and Deploy MongoDB to BigQuery Function
+
+# Create function directory and files
+mkdir -p mongodb-to-bigquery
+cd mongodb-to-bigquery
+
+# Create requirements.txt
+cat &amp;gt; requirements.txt &amp;lt;&amp;lt; &apos;EOF&apos;
+pymongo==4.3.3
+google-cloud-bigquery==3.9.0
+EOF
+
+# Create main.py with the function code
+# (Use the MongoDB to BigQuery function code from above)
+
+# Zip the function code
+zip -r mongodb-to-bigquery.zip main.py requirements.txt
+
+# Upload to Cloud Storage
+gsutil cp mongodb-to-bigquery.zip gs://$PROJECT_ID-functions/
+
+# Deploy the function
+gcloud functions deploy mongodb-to-bigquery \
+    --runtime python39 \
+    --trigger-http \
+    --allow-unauthenticated \
+    --entry-point=mongodb_to_bigquery \
+    --source=gs://$PROJECT_ID-functions/mongodb-to-bigquery.zip \
+    --set-env-vars=MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net,MONGODB_DB=your_database,MONGODB_COLLECTION=your_collection,BIGQUERY_PROJECT=$PROJECT_ID,BIGQUERY_DATASET=analytics_data,BIGQUERY_TABLE=mongodb_data
+
+
+6. Prepare and Deploy BigQuery to Google Sheets Function
+
+# Create function directory and files
+mkdir -p bigquery-to-sheets
+cd bigquery-to-sheets
+
+# Create requirements.txt
+cat &amp;gt; requirements.txt &amp;lt;&amp;lt; &apos;EOF&apos;
+google-cloud-bigquery==3.9.0
+gspread==5.7.2
+google-auth==2.16.2
+EOF
+
+# Copy the service account key
+cp ../bigquery.json .
+
+# Create main.py with the function code
+# (Use the BigQuery to Google Sheets function code from above)
+
+# Zip the function code
+zip -r bigquery-to-sheets.zip main.py requirements.txt bigquery.json
+
+# Upload to Cloud Storage
+gsutil cp bigquery-to-sheets.zip gs://$PROJECT_ID-functions/
+
+# Deploy the function
+gcloud functions deploy bigquery-to-sheets \
+    --runtime python39 \
+    --trigger-http \
+    --allow-unauthenticated \
+    --entry-point=bigquery_to_sheets \
+    --source=gs://$PROJECT_ID-functions/bigquery-to-sheets.zip \
+    --set-env-vars=BIGQUERY_PROJECT=$PROJECT_ID,BIGQUERY_DATASET=analytics_data,BIGQUERY_TABLE=mongodb_data,SHEET_ID=your-sheet-id,SHEET_NAME=Sheet1
+
+
+7. Set Up Cloud Scheduler Jobs
+
+# Create scheduler for MongoDB to BigQuery (runs daily at 1 AM)
+gcloud scheduler jobs create http mongodb-to-bigquery-job \
+    --schedule=&quot;0 1 * * *&quot; \
+    --uri=&quot;https://us-central1-$PROJECT_ID.cloudfunctions.net/mongodb-to-bigquery&quot; \
+    --http-method=GET \
+    --time-zone=&quot;America/New_York&quot;
+
+# Create scheduler for BigQuery to Google Sheets (runs daily at 2 AM)
+gcloud scheduler jobs create http bigquery-to-sheets-job \
+    --schedule=&quot;0 2 * * *&quot; \
+    --uri=&quot;https://us-central1-$PROJECT_ID.cloudfunctions.net/bigquery-to-sheets&quot; \
+    --http-method=GET \
+    --time-zone=&quot;America/New_York&quot;
+
+
+
+
 
 
 Infrastructure as Code (IaC) Implementation
 
-The pipeline can be built using two IaC tools:
+For production environments, it’s recommended to use Infrastructure as Code tools to automate and version your ETL pipeline setup. Below are two approaches using popular IaC tools.
 
 Terraform Implementation
-Source code available at: terraform-infra-gcp
 
 
-Directory structure and implementation details are available in the repository&apos;s README.
+  Terraform Benefits for ETL Pipelines
+  
+    Version Control: Track changes to your infrastructure over time
+    Repeatability: Consistently deploy the same environment across stages
+    Modularity: Reuse components across different pipelines
+    Dependency Management: Automatically handle resource dependencies
+    State Management: Track the actual state of resources vs. desired state
+  
 
+
+The complete implementation is available at: terraform-infra-gcp
 
 somaz-bigquery-project/
 ├── README.md
 ├── bigquery-to-google-sheet
-│   ├── bigquery.json
-│   ├── main.py
-│   ├── main.py.all_data
-│   ├── main.py.date
-│   ├── main.py.single_db
-│   ├── main.py.time_UTC
-│   └── requirements.txt
+│   ├── bigquery.json
+│   ├── main.py
+│   ├── main.py.all_data
+│   ├── main.py.date
+│   ├── main.py.single_db
+│   ├── main.py.time_UTC
+│   └── requirements.txt
 ├── bigquery.tfvars
 ├── cloud-storage.tf
 ├── locals.tf
 ├── mongodb-bigquery-googlesheet-workflow.tf
 ├── mongodb-to-bigquery
-│   ├── MongoDB_to_BigQuery
-│   ├── main.py
-│   ├── main.py.local
-│   ├── main.py.single_db
-│   └── requirement.txt
+│   ├── MongoDB_to_BigQuery
+│   ├── main.py
+│   ├── main.py.local
+│   ├── main.py.single_db
+│   └── requirement.txt
 ├── provider.tf
 ├── terraform-backend.tf
 └── variables.tf
 
 
+Key Terraform resource types used:
+
+
+  google_storage_bucket: For function code storage
+  google_cloudfunctions_function: For serverless ETL functions
+  google_cloud_scheduler_job: For scheduling ETL tasks
+  google_bigquery_dataset: For data storage
+  google_bigquery_table: For structured data tables
+
+
 Pulumi Implementation
-Source code available at: pulumi-study
 
+Pulumi offers a more programmatic approach to infrastructure as code, allowing you to use familiar languages like Python:
 
-Both implementations follow the same resource creation order and can be customized using different versions of main.py for different use cases.
-
+The complete implementation is available at: pulumi-study
 
 bigdata-flow-functions/
 ├── Pulumi.yaml
 ├── README.md
 ├── __main__.py
 ├── bigquery-to-google-sheet
-│   ├── bigquery.json
-│   ├── main.py
-│   ├── main.py.all_data
-│   ├── main.py.date
-│   ├── main.py.single_db
-│   ├── main.py.time_UTC
-│   └── requirements.txt
+│   ├── bigquery.json
+│   ├── main.py
+│   ├── main.py.all_data
+│   ├── main.py.date
+│   ├── main.py.single_db
+│   ├── main.py.time_UTC
+│   └── requirements.txt
 ├── bq_dataset.py
 ├── bq_sheet_archive.py
 ├── bq_sheet_function.py
@@ -955,10 +1904,10 @@ bigdata-flow-functions/
 ├── mdb_bq_archive.py
 ├── mdb_bq_function.py
 ├── mongodb-to-bigquery
-│   ├── main.py
-│   ├── main.py.local
-│   ├── main.py.single_db
-│   └── requirements.txt
+│   ├── main.py
+│   ├── main.py.local
+│   ├── main.py.single_db
+│   └── requirements.txt
 ├── requirements.txt
 ├── scheduler_manager.py
 ├── storage.py
@@ -969,15 +1918,140 @@ bigdata-flow-functions/
 
 
 
+Advanced Customization and Optimizations
+
+Handling Different Data Types
+
+The provided code examples can be customized for different MongoDB collections and data structures:
+
+
+  main.py.all_data: Processes complete collections
+  main.py.date: Filters data by date ranges
+  main.py.single_db: Works with single MongoDB databases
+  main.py.time_UTC: Handles timezone conversions
+
+
+Scaling Considerations
+
+As your data volumes grow, consider these optimizations:
+
+
+  BigQuery Partitioning: Partition tables by date for improved query performance and cost
+       CREATE TABLE analytics_data.mongodb_data
+   PARTITION BY DATE(timestamp)
+   AS SELECT * FROM analytics_data.mongodb_data_temp
+    
+  
+  Batch Processing: Process data in manageable chunks
+       # Process in batches of 1000 documents
+   batch_size = 1000
+   total_docs = collection.count_documents({})
+   for i in range(0, total_docs, batch_size):
+       cursor = collection.find({}).skip(i).limit(batch_size)
+       # Process batch
+    
+  
+  Error Handling: Implement robust error handling and retries
+       from google.api_core.retry import Retry
+      
+   @Retry(predicate=Exception, deadline=60.0)
+   def insert_with_retry(client, table_id, rows):
+       errors = client.insert_rows_json(table_id, rows)
+       if errors:
+           raise Exception(f&quot;Error inserting rows: {errors}&quot;)
+       return len(rows)
+    
+  
+  Monitoring: Set up alerts for pipeline failures
+       from google.cloud import monitoring_v3
+      
+   def create_failure_alert(project_id):
+       client = monitoring_v3.AlertPolicyServiceClient()
+       # Create alert policy configuration
+       # ...
+    
+  
+
+
+
+
+
+
+Best Practices and Lessons Learned
+
+Security Best Practices
+
+
+  Principle of Least Privilege: Grant only required permissions to service accounts
+  Secret Management: Store sensitive credentials securely using Secret Manager
+  VPC Service Controls: Implement network security boundaries for sensitive data
+  Audit Logging: Enable comprehensive logging for all data access
+
+
+Performance Optimization
+
+
+  BigQuery Best Practices:
+    
+      Use partitioning and clustering
+      Filter on partitioned columns
+      Select only needed columns
+      Use approximate aggregation functions when possible
+    
+  
+  Cloud Functions Performance:
+    
+      Increase memory allocation for CPU-intensive tasks
+      Keep functions stateless and idempotent
+      Reuse connections to external services
+    
+  
+  Cost Optimization:
+    
+      Set up budget alerts
+      Use BigQuery flat-rate pricing for predictable workloads
+      Schedule less frequent updates for non-critical data
+    
+  
+
+
+
+
+
+
+Next Steps and Future Improvements
+
+This ETL pipeline can be extended in several ways:
+
+
+  Real-time Processing: Implement streaming data ingestion using Pub/Sub and Dataflow
+  Data Quality Checks: Add validation steps to ensure data integrity
+  Advanced Analytics: Implement BigQuery ML for predictive analytics
+  Visualization: Connect to Data Studio or Looker for rich dashboards
+  CI/CD Pipeline: Set up automated testing and deployment
+
+
+In future articles, we’ll explore these advanced topics in greater detail.
+
+
+
+
+
 References
 
+
   ETL with Dataflow BigQuery
+  Apache Beam Programming Guide
+  Google Cloud Dataflow Documentation
+  BigQuery Best Practices
+  Cloud Functions Documentation
+  Cloud Scheduler Documentation
   Dataflow Templates
   Terraform Implementation
   Pulumi Implementation
 
 ",
-            "wordcount": "620",
+            "wordcount": "3520",
             "inLanguage": "en",
             "dateCreated": "2025-02-11/",
             "datePublished": "2025-02-11/",

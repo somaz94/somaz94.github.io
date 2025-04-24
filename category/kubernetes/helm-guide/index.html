@@ -40,7 +40,7 @@
     <title>Understanding Helm - The Kubernetes Package Manager | somaz</title>
     <meta name="description" content="A comprehensive guide to Helm, including installation, usage, and chart management">
     
-        <meta name="keywords" content="kubernetes, helm, package-manager, charts">
+        <meta name="keywords" content="kubernetes, helm, package-manager, charts, devops, cloud-native">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 11, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>3 min to read</span>
+                    <span>13 min to read</span>
                 </p>
                 <h1 class="post-title">Understanding Helm - The Kubernetes Package Manager</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">Simplify and streamline your Kubernetes application deployments</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737104403/helm_wofgle.png" alt="Featured image" class="post-cover">
@@ -241,193 +241,718 @@ January 11, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p>Helm is the package manager for Kubernetes, providing functionality to package, share, and use software built for Kubernetes.</p>
+
+<p>Helm is the package manager for Kubernetes, providing functionality to package, share, and use software built for Kubernetes. Think of it as apt/yum/homebrew for Kubernetes - a tool that simplifies the installation and management of applications and services.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Helm Client] --&gt; B[Kubernetes API]
+      B --&gt; C[Kubernetes Cluster]
+      D[Chart Repository] --&gt; A
+      A --&gt; E[Chart]
+      E --&gt; F[Release]
+      F --&gt; C
+      style A fill:#1E88E5,stroke:#0D47A1,color:#FFF
+      style D fill:#43A047,stroke:#2E7D32,color:#FFF
+      style E fill:#FB8C00,stroke:#EF6C00,color:#FFF
+      style F fill:#8E24AA,stroke:#6A1B9A,color:#FFF
+  </div>
+</div>
+
+<p><br /></p>
 
 <h3 id="what-is-helm">What is Helm?</h3>
 
-<p>Helm uses a package format called chart, where chart is a collection of files describing the Kubernetes resource set.</p>
+<p>Helm uses a package format called a <strong>chart</strong>, which is a collection of files describing a related set of Kubernetes resources. A single chart might be used to deploy something simple, like a memcached pod, or something complex, like a full web app stack with HTTP servers, databases, caches, and more.</p>
 
-<p>Using a single chart, you can deploy simple ones such as memcached pods to complex ones such as entire web app stacks with HTTP servers, databases, caches, etc.</p>
+<p>Charts are easy to create, version, share, and publish — making them valuable for streamlining deployments in a Kubernetes environment.</p>
 
-<p>Charts consist of a collection of files inside the directory. The directory name is the name of the chart (excluding version information).</p>
+<div class="info-box info-box-default">
+  <strong>Helm Evolution</strong>
+  <p>Helm was initially created by Deis (later acquired by Microsoft) and was donated to the Cloud Native Computing Foundation (CNCF) in 2018. Helm v3, released in November 2019, represented a significant architectural change from Helm v2, removing the server-side Tiller component and improving security.</p>
+</div>
 
-<blockquote>
-  <p><strong>Key Components</strong></p>
-  <ol>
-    <li>Chart - Package format for Kubernetes resources</li>
-    <li>Repository - Location to share and collect charts</li>
-    <li>Release - Instance of a chart running in a cluster</li>
-  </ol>
-</blockquote>
+<p><br /></p>
 
-<p>Helm supports chart repositories that can be used to store and share Helm charts.</p>
+<h4 id="key-components">Key Components</h4>
 
-<p>The distributed community helm chart repository is located at Artifact Hub.</p>
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Component</th>
+      <th style="width: 30%;">Description</th>
+      <th style="width: 50%;">Notes</th>
+    </tr>
+    <tr>
+      <td>Chart</td>
+      <td>Package format for Kubernetes resources</td>
+      <td>Contains YAML templates, values files, and metadata for Kubernetes applications</td>
+    </tr>
+    <tr>
+      <td>Repository</td>
+      <td>Location to share and collect charts</td>
+      <td>Public repositories like Artifact Hub or private repositories can be used</td>
+    </tr>
+    <tr>
+      <td>Release</td>
+      <td>Instance of a chart running in a cluster</td>
+      <td>Each installation of a chart creates a new release, allowing multiple instances of the same chart</td>
+    </tr>
+    <tr>
+      <td>Values</td>
+      <td>Configuration for chart templates</td>
+      <td>Can be provided in values.yaml or via command line</td>
+    </tr>
+    <tr>
+      <td>Template</td>
+      <td>YAML files with Go templating</td>
+      <td>Generates Kubernetes manifests when combined with values</td>
+    </tr>
+  </table>
+</div>
 
-<p>Artifact Hub is a web-based application that can find, install, and publish packages and configurations for Cloud Native Computing Foundation (CNCF) projects, including publicly available decentralized Helm charts.</p>
+<p>Helm supports chart repositories that can be used to store and share Helm charts. The distributed community helm chart repository is located at <a href="https://artifacthub.io/">Artifact Hub</a>.</p>
+
+<p>Artifact Hub is a web-based application that enables you to find, install, and publish packages and configurations for CNCF projects, including publicly available decentralized Helm charts.</p>
 
 <p><br /></p>
 
 <hr />
+
+<h2 id="getting-started-with-helm">Getting Started with Helm</h2>
+
+<p><br /></p>
 
 <h3 id="installation">Installation</h3>
 
-<p><strong>Prerequisites for Installation</strong></p>
-
-<p>The following prerequisites are required before installing helm.</p>
+<p>Before installing Helm, ensure you have the following prerequisites:</p>
 <ul>
-  <li>Kubernetes Cluster</li>
-  <li>Determining the security configuration to apply to the installation, if any</li>
-  <li>Installing and Configuring Helm</li>
+  <li>A Kubernetes cluster (local like Minikube or remote)</li>
+  <li>kubectl configured to communicate with your cluster</li>
+  <li>Appropriate permissions to install applications in your cluster</li>
 </ul>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Method 1: Binary Release</span>
-wget https://get.helm.sh/helm-v3.0.0-linux-amd64.tar.gz
-<span class="nb">tar</span> <span class="nt">-zxvf</span> helm-v3.0.0-linux-amd64.tar.gz
-<span class="nb">mv </span>linux-amd64/helm /usr/local/bin/helm
+<p><br /></p>
 
-<span class="c"># Method 2: Script</span>
-curl <span class="nt">-fsSL</span> <span class="nt">-o</span> get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-<span class="nb">chmod </span>700 get_helm.sh
-./get_helm.sh
+<h4 id="installation-methods">Installation Methods</h4>
 
-<span class="c"># Method 3: Source Make</span>
-git clone https://github.com/helm/helm.git
-<span class="nb">cd </span>helm
-make
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Method</th>
+      <th style="width: 75%;">Commands</th>
+    </tr>
+    <tr>
+      <td>Binary Release</td>
+      <td>
+        <pre><code>wget https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz
+tar -zxvf helm-v3.12.0-linux-amd64.tar.gz
+sudo mv linux-amd64/helm /usr/local/bin/helm</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>Script Install</td>
+      <td>
+        <pre><code>curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>Package Managers</td>
+      <td>
+        <pre><code># macOS with Homebrew
+brew install helm
+
+# Windows with Chocolatey
+choco install kubernetes-helm
+
+# With Snap
+sudo snap install helm --classic</code></pre>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p>You can check the installation method according to your OS in the <a href="https://helm.sh/docs/intro/install/">official installation guide</a>.</p>
+
+<h4 id="verify-installation">Verify Installation</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm version
 </code></pre></div></div>
-<ul>
-  <li>You can check the installation method according to the <a href="https://helm.sh/docs/intro/install/">OS</a> here.</li>
-</ul>
+
+<h3 id="configuring-helm">Configuring Helm</h3>
+
+<p>After installation, you may want to add repositories to find and use existing charts:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add the official Stable charts repository</span>
+helm repo add stable https://charts.helm.sh/stable
+
+<span class="c"># Add Bitnami repository (popular maintained charts)</span>
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+<span class="c"># Update repo information</span>
+helm repo update
+
+<span class="c"># List configured repositories</span>
+helm repo list
+</code></pre></div></div>
 
 <p><br /></p>
 
 <hr />
 
+<h2 id="understanding-helm-charts">Understanding Helm Charts</h2>
+
 <h3 id="chart-structure">Chart Structure</h3>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">wordpress/</span>
-  <span class="s">Chart.yaml</span>          <span class="c1"># Chart metadata</span>
-  <span class="s">values.yaml</span>         <span class="c1"># Default configuration</span>
-  <span class="s">templates/</span>          <span class="c1"># Kubernetes manifest templates</span>
-  <span class="s">charts/</span>             <span class="c1"># Dependencies</span>
-  <span class="s">crds/</span>               <span class="c1"># Custom Resource Definitions</span>
-</code></pre></div></div>
+<p>A chart is organized as a collection of files inside a directory. The directory name is the name of the chart.</p>
+
+<div class="info-box info-box-default">
+  <strong>Standard Chart Directory Structure</strong>
+<pre>
+    mychart/
+      ├── Chart.yaml            # Metadata about the chart
+      ├── values.yaml           # Default configuration values
+      ├── values.schema.json    # Optional JSON Schema for validating values
+      ├── charts/               # Directory containing dependency charts
+      ├── crds/                 # Custom Resource Definitions
+      ├── templates/            # Kubernetes manifest templates
+      │   ├── NOTES.txt         # Usage notes displayed after installation
+      │   ├── deployment.yaml   # Kubernetes deployment manifest template
+      │   ├── service.yaml      # Kubernetes service manifest template
+      │   ├── _helpers.tpl      # Template helpers and named templates
+      │   └── ...               # Other resource templates
+      └── README.md             # Optional readme file
+</pre>
+</div>
 
 <h3 id="basic-chart-files">Basic Chart Files</h3>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Chart.yaml example</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v2</span>
-<span class="na">name</span><span class="pi">:</span> <span class="s">my-awesome-app</span>
-<span class="na">description</span><span class="pi">:</span> <span class="s">A Helm chart for Kubernetes</span>
-<span class="na">version</span><span class="pi">:</span> <span class="s">1.0.0</span>
-<span class="na">appVersion</span><span class="pi">:</span> <span class="s">1.16.0</span>
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">File</th>
+      <th style="width: 70%;">Example</th>
+    </tr>
+    <tr>
+      <td>Chart.yaml</td>
+      <td>
+<pre><code>apiVersion: v2
+name: my-application
+description: A Helm chart for a Kubernetes application
+type: application
+version: 1.0.0         # Chart version
+appVersion: "2.3.4"    # Application version
+dependencies:
+  - name: mongodb
+    version: 13.6.4
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled
+maintainers:
+  - name: Your Name
+    email: your.email@example.com</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>values.yaml</td>
+      <td>
+<pre><code>replicaCount: 2
 
-<span class="c1"># values.yaml example</span>
-<span class="na">replicaCount</span><span class="pi">:</span> <span class="m">1</span>
-<span class="na">image</span><span class="pi">:</span>
-  <span class="na">repository</span><span class="pi">:</span> <span class="s">nginx</span>
-  <span class="na">pullPolicy</span><span class="pi">:</span> <span class="s">IfNotPresent</span>
-  <span class="na">tag</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: "1.21.6"
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+mongodb:
+  enabled: true
+  auth:
+    rootPassword: "password"</code></pre>
+      </td>
+    </tr>
+    <tr>
+      <td>templates/deployment.yaml</td>
+      <td>
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 
+  labels:
+spec:
+  replicas: 
+  selector:
+    matchLabels:
+  template:
+    metadata:
+      labels:
+    spec:
+      containers:
+        - name: 
+          image: ":"
+          imagePullPolicy: 
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP</code></pre>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="chart-templating">Chart Templating</h3>
+
+<p>Helm uses Go templates to enable dynamic manifest generation. Some key templating features include:</p>
+
+<ol>
+  <li><strong>Values References</strong>: Access configuration with <code class="language-plaintext highlighter-rouge">.Values.key.subkey</code></li>
+  <li><strong>Built-in Objects</strong>: Use <code class="language-plaintext highlighter-rouge">.Chart</code>, <code class="language-plaintext highlighter-rouge">.Release</code>, <code class="language-plaintext highlighter-rouge">.Capabilities</code>, etc.</li>
+  <li><strong>Functions and Pipelines</strong>: <code class="language-plaintext highlighter-rouge">quote</code>, <code class="language-plaintext highlighter-rouge">indent</code>, <code class="language-plaintext highlighter-rouge">toYaml</code>, etc.</li>
+  <li><strong>Control Structures</strong>: <code class="language-plaintext highlighter-rouge">if</code>/<code class="language-plaintext highlighter-rouge">else</code>, <code class="language-plaintext highlighter-rouge">with</code>, <code class="language-plaintext highlighter-rouge">range</code></li>
+  <li><strong>Named Templates</strong>: Create reusable components with <code class="language-plaintext highlighter-rouge">define</code> and <code class="language-plaintext highlighter-rouge">template</code></li>
+</ol>
+
+<p>Example template with control flow:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">-configmap</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">log-level</span><span class="pi">:</span> <span class="s2">"</span><span class="s">error"</span>
+  <span class="na">log-level</span><span class="pi">:</span> <span class="s2">"</span><span class="s">debug"</span>
+  <span class="na">database-url</span><span class="pi">:</span> 
+  <span class="na">timeout</span><span class="pi">:</span> 
+  
+  <span class="na">settings</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">: </span>
 </code></pre></div></div>
-
-<h3 id="common-helm-commands">Common Helm Commands</h3>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Search for charts</span>
-helm search hub
-helm search repo
-
-<span class="c"># Install a chart</span>
-helm <span class="nb">install</span> <span class="o">[</span>RELEASE_NAME] <span class="o">[</span>CHART]
-
-<span class="c"># Check status</span>
-helm status <span class="o">[</span>RELEASE_NAME]
-
-<span class="c"># List releases</span>
-helm list
-
-<span class="c"># Upgrade release</span>
-helm upgrade <span class="o">[</span>RELEASE_NAME] <span class="o">[</span>CHART]
-
-<span class="c"># Rollback</span>
-helm rollback <span class="o">[</span>RELEASE] <span class="o">[</span>REVISION]
-
-<span class="c"># Delete release</span>
-helm delete <span class="o">[</span>RELEASE_NAME]
-
-<span class="c"># Lint chart</span>
-helm lint <span class="o">[</span>PATH]
-</code></pre></div></div>
-
-<h3 id="helm-command-reference-table">Helm Command Reference Table</h3>
-
-<table class="table-beauty">
-  <tr>
-    <th style="width: 22%;">🔧 Command</th>
-    <th style="width: 25%;">📄 Purpose</th>
-    <th style="width: 53%;">💻 Example</th>
-  </tr>
-  <tr>
-    <td><code>search</code></td>
-    <td>Find charts</td>
-    <td><code>helm search hub wordpress</code></td>
-  </tr>
-  <tr>
-    <td><code>install</code></td>
-    <td>Install a chart</td>
-    <td><code>helm install my-release ./chart</code></td>
-  </tr>
-  <tr>
-    <td>📊 <code>status</code></td>
-    <td>Check release status</td>
-    <td><code>helm status my-release</code></td>
-  </tr>
-  <tr>
-    <td>⬆<code>upgrade</code></td>
-    <td>Upgrade a release</td>
-    <td><code>helm upgrade my-release ./chart</code></td>
-  </tr>
-  <tr>
-    <td>↩<code>rollback</code></td>
-    <td>Rollback to previous version</td>
-    <td><code>helm rollback my-release 1</code></td>
-  </tr>
-  <tr>
-    <td><code>delete</code></td>
-    <td>Remove a release</td>
-    <td><code>helm delete my-release</code></td>
-  </tr>
-  <tr>
-    <td><code>list</code></td>
-    <td>Show all releases</td>
-    <td><code>helm list --all-namespaces</code></td>
-  </tr>
-  <tr>
-    <td><code>lint</code></td>
-    <td>Validate chart</td>
-    <td><code>helm lint ./chart</code></td>
-  </tr>
-</table>
 
 <p><br /></p>
 
-<div class="info-box info-box-success">
-  <strong>Best Practices</strong><br /><br />
-  1. Version Control → Always version your charts <br /><br /> 
-  2. Values Management → Keep default values.yaml minimal <br /><br /> 
-  3. Template Organization → Use _helpers.tpl for common functions <br /><br /> 
-  4. Testing → Use helm lint regularly <br /><br /> 
+<hr />
+
+<h2 id="helm-commands-and-workflow">Helm Commands and Workflow</h2>
+
+<h3 id="common-helm-commands">Common Helm Commands</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">🔧 Command</th>
+      <th style="width: 25%;">📄 Purpose</th>
+      <th style="width: 55%;">💻 Example</th>
+    </tr>
+    <tr>
+      <td><code>search</code></td>
+      <td>Find charts</td>
+      <td><code>helm search hub wordpress</code><br /><code>helm search repo stable</code></td>
+    </tr>
+    <tr>
+      <td><code>install</code></td>
+      <td>Install a chart</td>
+      <td><code>helm install my-release bitnami/wordpress</code><br /><code>helm install -f values.yaml my-app ./mychart</code></td>
+    </tr>
+    <tr>
+      <td>📊 <code>status</code></td>
+      <td>Check release status</td>
+      <td><code>helm status my-release</code></td>
+    </tr>
+    <tr>
+      <td>⬆ <code>upgrade</code></td>
+      <td>Upgrade a release</td>
+      <td><code>helm upgrade --set image.tag=v2 my-release ./chart</code></td>
+    </tr>
+    <tr>
+      <td>↩ <code>rollback</code></td>
+      <td>Rollback to previous version</td>
+      <td><code>helm rollback my-release 1</code></td>
+    </tr>
+    <tr>
+      <td><code>delete</code></td>
+      <td>Remove a release</td>
+      <td><code>helm delete my-release</code></td>
+    </tr>
+    <tr>
+      <td><code>list</code></td>
+      <td>Show all releases</td>
+      <td><code>helm list --all-namespaces</code><br /><code>helm list --pending</code></td>
+    </tr>
+    <tr>
+      <td><code>lint</code></td>
+      <td>Validate chart</td>
+      <td><code>helm lint ./chart</code></td>
+    </tr>
+    <tr>
+      <td><code>template</code></td>
+      <td>Render templates locally</td>
+      <td><code>helm template ./mychart</code><br /><code>helm template --debug ./mychart</code></td>
+    </tr>
+    <tr>
+      <td><code>package</code></td>
+      <td>Package a chart</td>
+      <td><code>helm package ./mychart</code></td>
+    </tr>
+    <tr>
+      <td><code>dependency</code></td>
+      <td>Manage chart dependencies</td>
+      <td><code>helm dependency update ./mychart</code></td>
+    </tr>
+    <tr>
+      <td><code>create</code></td>
+      <td>Create a new chart</td>
+      <td><code>helm create mychart</code></td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="typical-helm-workflow">Typical Helm Workflow</h3>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant D as Developer
+      participant H as Helm Client
+      participant R as Repository
+      participant K as Kubernetes
+      
+      D-&gt;&gt;H: helm create mychart
+      D-&gt;&gt;H: helm lint mychart
+      D-&gt;&gt;H: helm template mychart
+      D-&gt;&gt;H: helm install mychart
+      H-&gt;&gt;K: Apply manifests
+      K--&gt;&gt;H: Confirm resources created
+      H--&gt;&gt;D: Report release status
+      
+      D-&gt;&gt;H: helm upgrade mychart
+      H-&gt;&gt;K: Apply changes
+      
+      D-&gt;&gt;H: helm rollback mychart
+      H-&gt;&gt;K: Revert to previous state
+      
+      D-&gt;&gt;H: helm package mychart
+      D-&gt;&gt;R: Push chart to repository
+      
+      Note over D,K: Future installations
+      D-&gt;&gt;H: helm search repo mychart
+      H-&gt;&gt;R: Query repository
+      R--&gt;&gt;H: Return search results
+      D-&gt;&gt;H: helm install from repo
+  </div>
+</div>
+
+<h3 id="values-management">Values Management</h3>
+
+<p>Helm allows you to specify values in multiple ways, with the following precedence (highest to lowest):</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">--set</code> flag values (command line)</li>
+  <li><code class="language-plaintext highlighter-rouge">--values</code> / <code class="language-plaintext highlighter-rouge">-f</code> flag values (values files specified on command line)</li>
+  <li>Default values in dependent charts</li>
+  <li>Default values in the chart’s <code class="language-plaintext highlighter-rouge">values.yaml</code></li>
+</ol>
+
+<p>Example of layered values:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install with custom values file and override specific values</span>
+helm <span class="nb">install</span> <span class="nt">-f</span> prod-values.yaml <span class="nt">--set</span> <span class="nv">replicaCount</span><span class="o">=</span>3,image.tag<span class="o">=</span>v1.2.3 my-release ./mychart
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="creating-and-managing-helm-charts">Creating and Managing Helm Charts</h2>
+
+<h3 id="creating-a-new-chart">Creating a New Chart</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create a chart scaffold</span>
+helm create mychart
+
+<span class="c"># The directory structure will be created with default templates</span>
+</code></pre></div></div>
+
+<h3 id="developing-and-testing">Developing and Testing</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Lint your chart to check for issues</span>
+helm lint ./mychart
+
+<span class="c"># Render templates locally without installing</span>
+helm template ./mychart
+
+<span class="c"># Install your chart with debug info</span>
+helm <span class="nb">install</span> <span class="nt">--debug</span> <span class="nt">--dry-run</span> my-release ./mychart
+</code></pre></div></div>
+
+<h3 id="packaging-and-distributing">Packaging and Distributing</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Package chart into .tgz archive</span>
+helm package ./mychart
+
+<span class="c"># Create a local chart repository</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> ./my-helm-repo
+<span class="nb">mv </span>mychart-0.1.0.tgz ./my-helm-repo
+helm repo index ./my-helm-repo <span class="nt">--url</span> https://example.com/charts
+
+<span class="c"># Add your repository</span>
+helm repo add myrepo https://example.com/charts
+</code></pre></div></div>
+
+<div class="info-box info-box-success-not-check">
+  <strong>Best Practices for Chart Development</strong>
+  <ul>
+    <li><strong>Version Control</strong> - Always version your charts and use semantic versioning</li>
+    <li><strong>Values Management</strong> - Keep default values.yaml minimal but functional</li>
+    <li><strong>Template Organization</strong> - Use _helpers.tpl for common functions and maintain consistent naming</li>
+    <li><strong>Documentation</strong> - Include comprehensive README.md and NOTES.txt for users</li>
+    <li><strong>Testing</strong> - Use helm lint regularly and implement chart tests</li>
+    <li><strong>Dependencies</strong> - Clearly define chart dependencies and version constraints</li>
+    <li><strong>Security</strong> - Follow security best practices for container images and RBAC</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h3 id="chart-hooks">Chart Hooks</h3>
+
+<p>Helm provides hooks that allow chart developers to intervene at certain points in a release’s lifecycle:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">pre-install</code>: Execute before any resources are installed</li>
+  <li><code class="language-plaintext highlighter-rouge">post-install</code>: Execute after all resources are installed</li>
+  <li><code class="language-plaintext highlighter-rouge">pre-delete</code>: Execute before any resources are deleted</li>
+  <li><code class="language-plaintext highlighter-rouge">post-delete</code>: Execute after all resources are deleted</li>
+  <li><code class="language-plaintext highlighter-rouge">pre-upgrade</code>: Execute before any resources are upgraded</li>
+  <li><code class="language-plaintext highlighter-rouge">post-upgrade</code>: Execute after all resources are upgraded</li>
+  <li><code class="language-plaintext highlighter-rouge">pre-rollback</code>: Execute before any resources are rolled back</li>
+  <li><code class="language-plaintext highlighter-rouge">post-rollback</code>: Execute after all resources are rolled back</li>
+  <li><code class="language-plaintext highlighter-rouge">test</code>: Execute when the Helm test command is invoked</li>
+</ul>
+
+<p>Example hook:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Job</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">-database-init</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="s2">"</span><span class="s">helm.sh/hook"</span><span class="err">:</span> <span class="s">post-install</span>
+    <span class="s">"helm.sh/hook-weight"</span><span class="err">:</span> <span class="s2">"</span><span class="s">5"</span>
+    <span class="s2">"</span><span class="s">helm.sh/hook-delete-policy"</span><span class="err">:</span> <span class="s">hook-succeeded</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">db-init-job</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s2">"</span><span class="s">:"</span>
+        <span class="na">command</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">./init-db.sh"</span><span class="pi">]</span>
+      <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">Never</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="advanced-helm-concepts">Advanced Helm Concepts</h2>
+
+<h3 id="chart-dependencies">Chart Dependencies</h3>
+
+<p>Helm charts can depend on other charts, which is useful for creating complex applications:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Chart.yaml</span>
+<span class="na">dependencies</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">postgresql</span>
+    <span class="na">version</span><span class="pi">:</span> <span class="s">11.6.12</span>
+    <span class="na">repository</span><span class="pi">:</span> <span class="s">https://charts.bitnami.com/bitnami</span>
+    <span class="na">condition</span><span class="pi">:</span> <span class="s">postgresql.enabled</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">redis</span>
+    <span class="na">version</span><span class="pi">:</span> <span class="s">17.0.10</span>
+    <span class="na">repository</span><span class="pi">:</span> <span class="s">https://charts.bitnami.com/bitnami</span>
+    <span class="na">alias</span><span class="pi">:</span> <span class="s">cache</span>
+</code></pre></div></div>
+
+<p>Managing dependencies:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update dependencies</span>
+helm dependency update ./mychart
+
+<span class="c"># Build dependencies (download and unpack)</span>
+helm dependency build ./mychart
+</code></pre></div></div>
+
+<h3 id="library-charts">Library Charts</h3>
+
+<p>Library charts are special charts that do not create Kubernetes objects directly but provide reusable templates and helpers:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Chart.yaml for a library chart</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v2</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s">my-library</span>
+<span class="na">type</span><span class="pi">:</span> <span class="s">library</span>
+<span class="na">version</span><span class="pi">:</span> <span class="s">1.0.0</span>
+</code></pre></div></div>
+
+<h3 id="helm-plugins">Helm Plugins</h3>
+
+<p>Extend Helm’s functionality with plugins:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install a plugin</span>
+helm plugin <span class="nb">install </span>https://github.com/databus23/helm-diff
+
+<span class="c"># Use the plugin</span>
+helm diff upgrade my-release bitnami/wordpress
+</code></pre></div></div>
+
+<h3 id="helm-in-cicd-pipelines">Helm in CI/CD Pipelines</h3>
+
+<div class="info-box info-box-default">
+  <strong>Integrating Helm with CI/CD</strong>
+  <p>Helm works well in CI/CD pipelines. Here's a simplified GitLab CI example:</p>
+<pre>
+    stages:
+      - lint
+      - package
+      - deploy
+
+    lint-chart:
+      stage: lint
+      script:
+        - helm lint ./charts/my-app
+
+    package-chart:
+      stage: package
+      script:
+        - helm package ./charts/my-app
+        - helm repo index .
+      artifacts:
+        paths:
+          - ./*.tgz
+
+    deploy-staging:
+      stage: deploy
+      script:
+        - helm upgrade --install my-app-staging ./charts/my-app 
+          --set environment=staging
+      environment:
+        name: staging
+</pre>
 </div>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="reference">Reference</h3>
+<h2 id="comparing-helm-with-other-kubernetes-deployment-tools">Comparing Helm with Other Kubernetes Deployment Tools</h2>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Tool</th>
+      <th style="width: 40%;">Key Features</th>
+      <th style="width: 40%;">Best For</th>
+    </tr>
+    <tr>
+      <td>Helm</td>
+      <td>
+        - Package manager approach<br />
+        - Templating system<br />
+        - Rollback capability<br />
+        - Large ecosystem of charts
+      </td>
+      <td>
+        - Teams familiar with package managers<br />
+        - Applications needing versioning<br />
+        - Reusable component distribution
+      </td>
+    </tr>
+    <tr>
+      <td>Kustomize</td>
+      <td>
+        - Configuration layering<br />
+        - No templating language<br />
+        - Patches for modifications<br />
+        - Native kubectl integration
+      </td>
+      <td>
+        - Environment-specific overlays<br />
+        - GitOps workflows<br />
+        - Teams wanting to avoid templating
+      </td>
+    </tr>
+    <tr>
+      <td>Argo CD</td>
+      <td>
+        - GitOps controller<br />
+        - Continuous deployment<br />
+        - Works with Helm and Kustomize<br />
+        - UI for visualization
+      </td>
+      <td>
+        - GitOps-oriented teams<br />
+        - Multi-cluster management<br />
+        - Continuous deployment needs
+      </td>
+    </tr>
+    <tr>
+      <td>Flux</td>
+      <td>
+        - GitOps toolkit<br />
+        - Automated git → cluster sync<br />
+        - Works with Helm<br />
+        - Notification system
+      </td>
+      <td>
+        - GitOps workflows<br />
+        - Kubernetes-native approach<br />
+        - Teams wanting extensibility
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references-and-resources">References and Resources</h2>
+
+<h3 id="official-documentation">Official Documentation</h3>
 <ul>
   <li><a href="https://helm.sh/docs/">Helm Official Documentation</a></li>
+  <li><a href="https://artifacthub.io/">Helm Hub / Artifact Hub</a></li>
+  <li><a href="https://helm.sh/docs/chart_template_guide/">Helm Chart Template Guide</a></li>
+</ul>
+
+<h3 id="community-resources">Community Resources</h3>
+<ul>
+  <li><a href="https://github.com/helm/community">Helm Community on GitHub</a></li>
+  <li><a href="https://www.cncf.io/projects/helm/">Helm CNCF Project Page</a></li>
   <li><a href="https://kubebyexample.com/learning-paths/argo-cd/argo-cd-working-helm">Argo CD with Helm</a></li>
-  <li><a href="https://helm.sh/docs/chart_template_guide/">Helm Chart Writing Guide</a></li>
+</ul>
+
+<h3 id="books-and-in-depth-learning">Books and In-depth Learning</h3>
+<ul>
+  <li>“Helm: The Kubernetes Package Manager” by Charles Lowell</li>
+  <li>“Cloud Native DevOps with Kubernetes” - Chapter on Helm</li>
+  <li>“Kubernetes Patterns” - Application packaging section</li>
+</ul>
+
+<h3 id="related-tools">Related Tools</h3>
+<ul>
+  <li><a href="https://github.com/helmfile/helmfile">Helmfile</a> - Declarative spec for deploying Helm charts</li>
+  <li><a href="https://github.com/Praqma/helmsman">Helmsman</a> - Helm charts as code</li>
+  <li><a href="https://github.com/komodorio/helm-dashboard">Helm Dashboard</a> - Web UI for Helm</li>
 </ul>
 
 
@@ -478,7 +1003,7 @@ helm lint <span class="o">[</span>PATH]
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="3">
+            <div class="time-bar" data-minutes="13">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -520,7 +1045,7 @@ helm lint <span class="o">[</span>PATH]
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Helm, including installation, usage, and chart management&quot;%20https://somaz.blog/category/kubernetes/helm-guide/%20via%20&#64;twitter_username&hashtags=kubernetes,helm,package-manager,charts"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Helm, including installation, usage, and chart management&quot;%20https://somaz.blog/category/kubernetes/helm-guide/%20via%20&#64;twitter_username&hashtags=kubernetes,helm,package-manager,charts,devops,cloud-native"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -775,7 +1300,7 @@ helm lint <span class="o">[</span>PATH]
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Understanding Helm - The Kubernetes Package Manager",
-            "headline": "",
+            "headline": "Simplify and streamline your Kubernetes application deployments",
             "description": "A comprehensive guide to Helm, including installation, usage, and chart management",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737104403/helm_wofgle.png",
             "url": "https://somaz.blog/category/kubernetes/helm-guide/",
@@ -784,196 +1309,721 @@ helm lint <span class="o">[</span>PATH]
 
 
 Overview
-Helm is the package manager for Kubernetes, providing functionality to package, share, and use software built for Kubernetes.
+
+Helm is the package manager for Kubernetes, providing functionality to package, share, and use software built for Kubernetes. Think of it as apt/yum/homebrew for Kubernetes - a tool that simplifies the installation and management of applications and services.
+
+
+  
+    graph TD
+      A[Helm Client] --&amp;gt; B[Kubernetes API]
+      B --&amp;gt; C[Kubernetes Cluster]
+      D[Chart Repository] --&amp;gt; A
+      A --&amp;gt; E[Chart]
+      E --&amp;gt; F[Release]
+      F --&amp;gt; C
+      style A fill:#1E88E5,stroke:#0D47A1,color:#FFF
+      style D fill:#43A047,stroke:#2E7D32,color:#FFF
+      style E fill:#FB8C00,stroke:#EF6C00,color:#FFF
+      style F fill:#8E24AA,stroke:#6A1B9A,color:#FFF
+  
+
+
+
 
 What is Helm?
 
-Helm uses a package format called chart, where chart is a collection of files describing the Kubernetes resource set.
+Helm uses a package format called a chart, which is a collection of files describing a related set of Kubernetes resources. A single chart might be used to deploy something simple, like a memcached pod, or something complex, like a full web app stack with HTTP servers, databases, caches, and more.
 
-Using a single chart, you can deploy simple ones such as memcached pods to complex ones such as entire web app stacks with HTTP servers, databases, caches, etc.
-
-Charts consist of a collection of files inside the directory. The directory name is the name of the chart (excluding version information).
+Charts are easy to create, version, share, and publish — making them valuable for streamlining deployments in a Kubernetes environment.
 
 
-  Key Components
+  Helm Evolution
+  Helm was initially created by Deis (later acquired by Microsoft) and was donated to the Cloud Native Computing Foundation (CNCF) in 2018. Helm v3, released in November 2019, represented a significant architectural change from Helm v2, removing the server-side Tiller component and improving security.
+
+
+
+
+Key Components
+
+
   
-    Chart - Package format for Kubernetes resources
-    Repository - Location to share and collect charts
-    Release - Instance of a chart running in a cluster
+    
+      Component
+      Description
+      Notes
+    
+    
+      Chart
+      Package format for Kubernetes resources
+      Contains YAML templates, values files, and metadata for Kubernetes applications
+    
+    
+      Repository
+      Location to share and collect charts
+      Public repositories like Artifact Hub or private repositories can be used
+    
+    
+      Release
+      Instance of a chart running in a cluster
+      Each installation of a chart creates a new release, allowing multiple instances of the same chart
+    
+    
+      Values
+      Configuration for chart templates
+      Can be provided in values.yaml or via command line
+    
+    
+      Template
+      YAML files with Go templating
+      Generates Kubernetes manifests when combined with values
+    
   
 
 
-Helm supports chart repositories that can be used to store and share Helm charts.
+Helm supports chart repositories that can be used to store and share Helm charts. The distributed community helm chart repository is located at Artifact Hub.
 
-The distributed community helm chart repository is located at Artifact Hub.
-
-Artifact Hub is a web-based application that can find, install, and publish packages and configurations for Cloud Native Computing Foundation (CNCF) projects, including publicly available decentralized Helm charts.
+Artifact Hub is a web-based application that enables you to find, install, and publish packages and configurations for CNCF projects, including publicly available decentralized Helm charts.
 
 
+
+
+
+Getting Started with Helm
 
 
 
 Installation
 
-Prerequisites for Installation
+Before installing Helm, ensure you have the following prerequisites:
 
-The following prerequisites are required before installing helm.
-
-  Kubernetes Cluster
-  Determining the security configuration to apply to the installation, if any
-  Installing and Configuring Helm
+  A Kubernetes cluster (local like Minikube or remote)
+  kubectl configured to communicate with your cluster
+  Appropriate permissions to install applications in your cluster
 
 
-# Method 1: Binary Release
-wget https://get.helm.sh/helm-v3.0.0-linux-amd64.tar.gz
-tar -zxvf helm-v3.0.0-linux-amd64.tar.gz
-mv linux-amd64/helm /usr/local/bin/helm
 
-# Method 2: Script
-curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+
+Installation Methods
+
+
+  
+    
+      Method
+      Commands
+    
+    
+      Binary Release
+      
+        wget https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz
+tar -zxvf helm-v3.12.0-linux-amd64.tar.gz
+sudo mv linux-amd64/helm /usr/local/bin/helm
+      
+    
+    
+      Script Install
+      
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 chmod 700 get_helm.sh
 ./get_helm.sh
+      
+    
+    
+      Package Managers
+      
+        # macOS with Homebrew
+brew install helm
 
-# Method 3: Source Make
-git clone https://github.com/helm/helm.git
-cd helm
-make
+# Windows with Chocolatey
+choco install kubernetes-helm
+
+# With Snap
+sudo snap install helm --classic
+      
+    
+  
 
 
-  You can check the installation method according to the OS here.
+You can check the installation method according to your OS in the official installation guide.
+
+Verify Installation
+
+helm version
+
+
+Configuring Helm
+
+After installation, you may want to add repositories to find and use existing charts:
+
+# Add the official Stable charts repository
+helm repo add stable https://charts.helm.sh/stable
+
+# Add Bitnami repository (popular maintained charts)
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# Update repo information
+helm repo update
+
+# List configured repositories
+helm repo list
 
 
 
 
 
+
+Understanding Helm Charts
 
 Chart Structure
 
-wordpress/
-  Chart.yaml          # Chart metadata
-  values.yaml         # Default configuration
-  templates/          # Kubernetes manifest templates
-  charts/             # Dependencies
-  crds/               # Custom Resource Definitions
+A chart is organized as a collection of files inside a directory. The directory name is the name of the chart.
+
+
+  Standard Chart Directory Structure
+
+    mychart/
+      ├── Chart.yaml            # Metadata about the chart
+      ├── values.yaml           # Default configuration values
+      ├── values.schema.json    # Optional JSON Schema for validating values
+      ├── charts/               # Directory containing dependency charts
+      ├── crds/                 # Custom Resource Definitions
+      ├── templates/            # Kubernetes manifest templates
+      │   ├── NOTES.txt         # Usage notes displayed after installation
+      │   ├── deployment.yaml   # Kubernetes deployment manifest template
+      │   ├── service.yaml      # Kubernetes service manifest template
+      │   ├── _helpers.tpl      # Template helpers and named templates
+      │   └── ...               # Other resource templates
+      └── README.md             # Optional readme file
+
 
 
 Basic Chart Files
 
-# Chart.yaml example
-apiVersion: v2
-name: my-awesome-app
-description: A Helm chart for Kubernetes
-version: 1.0.0
-appVersion: 1.16.0
 
-# values.yaml example
-replicaCount: 1
+  
+    
+      File
+      Example
+    
+    
+      Chart.yaml
+      
+apiVersion: v2
+name: my-application
+description: A Helm chart for a Kubernetes application
+type: application
+version: 1.0.0         # Chart version
+appVersion: &quot;2.3.4&quot;    # Application version
+dependencies:
+  - name: mongodb
+    version: 13.6.4
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled
+maintainers:
+  - name: Your Name
+    email: your.email@example.com
+      
+    
+    
+      values.yaml
+      
+replicaCount: 2
+
 image:
   repository: nginx
   pullPolicy: IfNotPresent
-  tag: &quot;&quot;
+  tag: &quot;1.21.6&quot;
 
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+mongodb:
+  enabled: true
+  auth:
+    rootPassword: &quot;password&quot;
+      
+    
+    
+      templates/deployment.yaml
+      
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 
+  labels:
+spec:
+  replicas: 
+  selector:
+    matchLabels:
+  template:
+    metadata:
+      labels:
+    spec:
+      containers:
+        - name: 
+          image: &quot;:&quot;
+          imagePullPolicy: 
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+      
+    
+  
+
+
+Chart Templating
+
+Helm uses Go templates to enable dynamic manifest generation. Some key templating features include:
+
+
+  Values References: Access configuration with .Values.key.subkey
+  Built-in Objects: Use .Chart, .Release, .Capabilities, etc.
+  Functions and Pipelines: quote, indent, toYaml, etc.
+  Control Structures: if/else, with, range
+  Named Templates: Create reusable components with define and template
+
+
+Example template with control flow:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: -configmap
+data:
+  log-level: &quot;error&quot;
+  log-level: &quot;debug&quot;
+  database-url: 
+  timeout: 
+  
+  settings: |
+    : 
+
+
+
+
+
+
+Helm Commands and Workflow
 
 Common Helm Commands
 
-# Search for charts
-helm search hub
-helm search repo
-
-# Install a chart
-helm install [RELEASE_NAME] [CHART]
-
-# Check status
-helm status [RELEASE_NAME]
-
-# List releases
-helm list
-
-# Upgrade release
-helm upgrade [RELEASE_NAME] [CHART]
-
-# Rollback
-helm rollback [RELEASE] [REVISION]
-
-# Delete release
-helm delete [RELEASE_NAME]
-
-# Lint chart
-helm lint [PATH]
-
-
-Helm Command Reference Table
-
 
   
-    🔧 Command
-    📄 Purpose
-    💻 Example
-  
-  
-    search
-    Find charts
-    helm search hub wordpress
-  
-  
-    install
-    Install a chart
-    helm install my-release ./chart
-  
-  
-    📊 status
-    Check release status
-    helm status my-release
-  
-  
-    ⬆upgrade
-    Upgrade a release
-    helm upgrade my-release ./chart
-  
-  
-    ↩rollback
-    Rollback to previous version
-    helm rollback my-release 1
-  
-  
-    delete
-    Remove a release
-    helm delete my-release
-  
-  
-    list
-    Show all releases
-    helm list --all-namespaces
-  
-  
-    lint
-    Validate chart
-    helm lint ./chart
+    
+      🔧 Command
+      📄 Purpose
+      💻 Example
+    
+    
+      search
+      Find charts
+      helm search hub wordpresshelm search repo stable
+    
+    
+      install
+      Install a chart
+      helm install my-release bitnami/wordpresshelm install -f values.yaml my-app ./mychart
+    
+    
+      📊 status
+      Check release status
+      helm status my-release
+    
+    
+      ⬆ upgrade
+      Upgrade a release
+      helm upgrade --set image.tag=v2 my-release ./chart
+    
+    
+      ↩ rollback
+      Rollback to previous version
+      helm rollback my-release 1
+    
+    
+      delete
+      Remove a release
+      helm delete my-release
+    
+    
+      list
+      Show all releases
+      helm list --all-namespaceshelm list --pending
+    
+    
+      lint
+      Validate chart
+      helm lint ./chart
+    
+    
+      template
+      Render templates locally
+      helm template ./mycharthelm template --debug ./mychart
+    
+    
+      package
+      Package a chart
+      helm package ./mychart
+    
+    
+      dependency
+      Manage chart dependencies
+      helm dependency update ./mychart
+    
+    
+      create
+      Create a new chart
+      helm create mychart
+    
   
 
 
+Typical Helm Workflow
+
+
+  
+    sequenceDiagram
+      participant D as Developer
+      participant H as Helm Client
+      participant R as Repository
+      participant K as Kubernetes
+      
+      D-&amp;gt;&amp;gt;H: helm create mychart
+      D-&amp;gt;&amp;gt;H: helm lint mychart
+      D-&amp;gt;&amp;gt;H: helm template mychart
+      D-&amp;gt;&amp;gt;H: helm install mychart
+      H-&amp;gt;&amp;gt;K: Apply manifests
+      K--&amp;gt;&amp;gt;H: Confirm resources created
+      H--&amp;gt;&amp;gt;D: Report release status
+      
+      D-&amp;gt;&amp;gt;H: helm upgrade mychart
+      H-&amp;gt;&amp;gt;K: Apply changes
+      
+      D-&amp;gt;&amp;gt;H: helm rollback mychart
+      H-&amp;gt;&amp;gt;K: Revert to previous state
+      
+      D-&amp;gt;&amp;gt;H: helm package mychart
+      D-&amp;gt;&amp;gt;R: Push chart to repository
+      
+      Note over D,K: Future installations
+      D-&amp;gt;&amp;gt;H: helm search repo mychart
+      H-&amp;gt;&amp;gt;R: Query repository
+      R--&amp;gt;&amp;gt;H: Return search results
+      D-&amp;gt;&amp;gt;H: helm install from repo
+  
+
+
+Values Management
+
+Helm allows you to specify values in multiple ways, with the following precedence (highest to lowest):
+
+
+  --set flag values (command line)
+  --values / -f flag values (values files specified on command line)
+  Default values in dependent charts
+  Default values in the chart’s values.yaml
+
+
+Example of layered values:
+
+# Install with custom values file and override specific values
+helm install -f prod-values.yaml --set replicaCount=3,image.tag=v1.2.3 my-release ./mychart
 
 
 
-  Best Practices
-  1. Version Control → Always version your charts  
-  2. Values Management → Keep default values.yaml minimal  
-  3. Template Organization → Use _helpers.tpl for common functions  
-  4. Testing → Use helm lint regularly  
+
+
+
+Creating and Managing Helm Charts
+
+Creating a New Chart
+
+# Create a chart scaffold
+helm create mychart
+
+# The directory structure will be created with default templates
+
+
+Developing and Testing
+
+# Lint your chart to check for issues
+helm lint ./mychart
+
+# Render templates locally without installing
+helm template ./mychart
+
+# Install your chart with debug info
+helm install --debug --dry-run my-release ./mychart
+
+
+Packaging and Distributing
+
+# Package chart into .tgz archive
+helm package ./mychart
+
+# Create a local chart repository
+mkdir -p ./my-helm-repo
+mv mychart-0.1.0.tgz ./my-helm-repo
+helm repo index ./my-helm-repo --url https://example.com/charts
+
+# Add your repository
+helm repo add myrepo https://example.com/charts
+
+
+
+  Best Practices for Chart Development
+  
+    Version Control - Always version your charts and use semantic versioning
+    Values Management - Keep default values.yaml minimal but functional
+    Template Organization - Use _helpers.tpl for common functions and maintain consistent naming
+    Documentation - Include comprehensive README.md and NOTES.txt for users
+    Testing - Use helm lint regularly and implement chart tests
+    Dependencies - Clearly define chart dependencies and version constraints
+    Security - Follow security best practices for container images and RBAC
+  
+
+
+
+
+Chart Hooks
+
+Helm provides hooks that allow chart developers to intervene at certain points in a release’s lifecycle:
+
+
+  pre-install: Execute before any resources are installed
+  post-install: Execute after all resources are installed
+  pre-delete: Execute before any resources are deleted
+  post-delete: Execute after all resources are deleted
+  pre-upgrade: Execute before any resources are upgraded
+  post-upgrade: Execute after all resources are upgraded
+  pre-rollback: Execute before any resources are rolled back
+  post-rollback: Execute after all resources are rolled back
+  test: Execute when the Helm test command is invoked
+
+
+Example hook:
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: -database-init
+  annotations:
+    &quot;helm.sh/hook&quot;: post-install
+    &quot;helm.sh/hook-weight&quot;: &quot;5&quot;
+    &quot;helm.sh/hook-delete-policy&quot;: hook-succeeded
+spec:
+  template:
+    spec:
+      containers:
+      - name: db-init-job
+        image: &quot;:&quot;
+        command: [&quot;./init-db.sh&quot;]
+      restartPolicy: Never
 
 
 
 
 
 
-Reference
+Advanced Helm Concepts
+
+Chart Dependencies
+
+Helm charts can depend on other charts, which is useful for creating complex applications:
+
+# Chart.yaml
+dependencies:
+  - name: postgresql
+    version: 11.6.12
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 17.0.10
+    repository: https://charts.bitnami.com/bitnami
+    alias: cache
+
+
+Managing dependencies:
+
+# Update dependencies
+helm dependency update ./mychart
+
+# Build dependencies (download and unpack)
+helm dependency build ./mychart
+
+
+Library Charts
+
+Library charts are special charts that do not create Kubernetes objects directly but provide reusable templates and helpers:
+
+# Chart.yaml for a library chart
+apiVersion: v2
+name: my-library
+type: library
+version: 1.0.0
+
+
+Helm Plugins
+
+Extend Helm’s functionality with plugins:
+
+# Install a plugin
+helm plugin install https://github.com/databus23/helm-diff
+
+# Use the plugin
+helm diff upgrade my-release bitnami/wordpress
+
+
+Helm in CI/CD Pipelines
+
+
+  Integrating Helm with CI/CD
+  Helm works well in CI/CD pipelines. Here&apos;s a simplified GitLab CI example:
+
+    stages:
+      - lint
+      - package
+      - deploy
+
+    lint-chart:
+      stage: lint
+      script:
+        - helm lint ./charts/my-app
+
+    package-chart:
+      stage: package
+      script:
+        - helm package ./charts/my-app
+        - helm repo index .
+      artifacts:
+        paths:
+          - ./*.tgz
+
+    deploy-staging:
+      stage: deploy
+      script:
+        - helm upgrade --install my-app-staging ./charts/my-app 
+          --set environment=staging
+      environment:
+        name: staging
+
+
+
+
+
+
+
+Comparing Helm with Other Kubernetes Deployment Tools
+
+
+  
+    
+      Tool
+      Key Features
+      Best For
+    
+    
+      Helm
+      
+        - Package manager approach
+        - Templating system
+        - Rollback capability
+        - Large ecosystem of charts
+      
+      
+        - Teams familiar with package managers
+        - Applications needing versioning
+        - Reusable component distribution
+      
+    
+    
+      Kustomize
+      
+        - Configuration layering
+        - No templating language
+        - Patches for modifications
+        - Native kubectl integration
+      
+      
+        - Environment-specific overlays
+        - GitOps workflows
+        - Teams wanting to avoid templating
+      
+    
+    
+      Argo CD
+      
+        - GitOps controller
+        - Continuous deployment
+        - Works with Helm and Kustomize
+        - UI for visualization
+      
+      
+        - GitOps-oriented teams
+        - Multi-cluster management
+        - Continuous deployment needs
+      
+    
+    
+      Flux
+      
+        - GitOps toolkit
+        - Automated git → cluster sync
+        - Works with Helm
+        - Notification system
+      
+      
+        - GitOps workflows
+        - Kubernetes-native approach
+        - Teams wanting extensibility
+      
+    
+  
+
+
+
+
+
+
+References and Resources
+
+Official Documentation
 
   Helm Official Documentation
+  Helm Hub / Artifact Hub
+  Helm Chart Template Guide
+
+
+Community Resources
+
+  Helm Community on GitHub
+  Helm CNCF Project Page
   Argo CD with Helm
-  Helm Chart Writing Guide
+
+
+Books and In-depth Learning
+
+  “Helm: The Kubernetes Package Manager” by Charles Lowell
+  “Cloud Native DevOps with Kubernetes” - Chapter on Helm
+  “Kubernetes Patterns” - Application packaging section
+
+
+Related Tools
+
+  Helmfile - Declarative spec for deploying Helm charts
+  Helmsman - Helm charts as code
+  Helm Dashboard - Web UI for Helm
 
 ",
-            "wordcount": "653",
+            "wordcount": "2341",
             "inLanguage": "en",
             "dateCreated": "2025-01-11/",
             "datePublished": "2025-01-11/",
@@ -1004,7 +2054,7 @@ Reference
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","helm","package-manager","charts"]
+            "keywords": ["kubernetes","helm","package-manager","charts","devops","cloud-native"]
         }
         </script>
     </body>

@@ -40,7 +40,7 @@
     <title>Creating Kubernetes Operators with Kubebuilder | somaz</title>
     <meta name="description" content="A practical guide to building Kubernetes Operators using Kubebuilder framework">
     
-        <meta name="keywords" content="kubernetes, operator, kubebuilder, development">
+        <meta name="keywords" content="kubernetes, operator, kubebuilder, development, go, custom-resources">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 14, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>9 min to read</span>
+                    <span>20 min to read</span>
                 </p>
                 <h1 class="post-title">Creating Kubernetes Operators with Kubebuilder</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">A step-by-step guide to building custom controllers for Kubernetes</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737356533/kubernetes-operator-kubebuilder_r8hvo4.png" alt="Featured image" class="post-cover">
@@ -245,186 +245,239 @@ January 14, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p>Learn how to create Kubernetes Operators using Kubebuilder, a powerful framework for building custom controllers and APIs.</p>
+
+<p>Kubernetes Operators extend the platform’s functionality by adding domain-specific logic to manage complex applications. This guide demonstrates how to build Kubernetes Operators using Kubebuilder, a powerful framework that simplifies the development of custom controllers and APIs.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>What is a Kubernetes Operator?</strong>
+  <p>A Kubernetes Operator is a method of packaging, deploying, and managing applications using custom resources and controllers. Operators follow Kubernetes principles to automate operational tasks that would otherwise require manual intervention.</p>
+</div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Kubernetes API Server] --&gt; B[API Extension]
+      B --&gt; C[Custom Resource Definition]
+      B --&gt; D[Custom Controller/Operator]
+      D --&gt; E[Reconciliation Loop]
+      E --&gt; F[Monitor State]
+      F --&gt; G[Compare with Desired State]
+      G --&gt; H[Take Action]
+      H --&gt; F
+      
+      style A fill:#326ce5,stroke:#fff,color:#fff
+      style D fill:#ffa726,stroke:#fff,color:#000
+      style E fill:#ffa726,stroke:#fff,color:#000
+  </div>
+</div>
 
 <p><br /></p>
 
-<h3 id="what-is-kubebuilder">what is kubebuilder?</h3>
+<h2 id="understanding-kubebuilder">Understanding Kubebuilder</h2>
 
-<p>Kubebuilder is an SDK for developing Kubernetes Operator. It is a framework that makes it easy to develop CRD and controllers using the Go language.</p>
+<h3 id="what-is-kubebuilder">What is Kubebuilder?</h3>
 
-<p>It simplifies the development of custom controllers and APIs by providing scaffolding, code generation, and integration with Kubernetes tools.</p>
+<p>Kubebuilder is an SDK for building Kubernetes APIs and controllers using Go. It provides scaffolding, code generation, and other tools to simplify operator development.</p>
 
-<p>Kubernetes Operator is a custom controller that manages custom resources (CRD) and automates application deployment, expansion, and management.</p>
+<div class="info-box info-box-default-not-check">
+  <strong>Key Benefits of Kubebuilder</strong>
+  <ul>
+    <li><strong>Code Generation:</strong> Automatically generates boilerplate code for CRDs and controllers</li>
+    <li><strong>Standards-Based:</strong> Built on controller-runtime library, adhering to Kubernetes API patterns</li>
+    <li><strong>Scaffolding:</strong> Provides project structure including configuration files, Dockerfile, and Makefile</li>
+    <li><strong>Testing:</strong> Integrates with tools like 'envtest' for Kubernetes testing</li>
+    <li><strong>Extensibility:</strong> Easily customizable to fit specific requirements</li>
+  </ul>
+</div>
 
-<h4 id="why-do-i-use-kubbuilder">Why do I use Kubbuilder?</h4>
+<p><br /></p>
+
+<h3 id="kubebuilder-development-workflow">Kubebuilder Development Workflow</h3>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Initialize Project] --&gt; B[Create API/CRD]
+      B --&gt; C[Implement Controller Logic]
+      C --&gt; D[Generate Manifests]
+      D --&gt; E[Test Locally]
+      E --&gt; F[Build &amp; Deploy]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#90caf9,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#42a5f5,stroke:#333,stroke-width:1px
+      style E fill:#2196f3,stroke:#333,stroke-width:1px,color:#fff
+      style F fill:#1976d2,stroke:#333,stroke-width:1px,color:#fff
+  </div>
+</div>
+
+<p><br /></p>
+
+<h2 id="getting-started-with-kubebuilder">Getting Started with Kubebuilder</h2>
+
+<h3 id="prerequisites">Prerequisites</h3>
+
+<p>Before starting, ensure you have the following tools installed:</p>
 
 <ul>
-  <li>Code generation: Automatically generates commercial sphere code for CRD and controller.</li>
-  <li>Standards-based: built on a controller-runtime library that complies with Kubernetes API patterns.</li>
-  <li>Scaffolding: Provides the structure of the project, including configuration files, Dockerfile, and Makefile.</li>
-  <li>Testing: supports integration with test tools such as ‘envtest’ for Kubernetes.</li>
-  <li>Scalability: You can easily expand and customize the controller to suit your specific needs.</li>
+  <li>Go (version 1.19+)</li>
+  <li>Docker</li>
+  <li>kubectl</li>
+  <li>kustomize</li>
+  <li>Kubernetes cluster for testing</li>
 </ul>
 
-<p><br /></p>
+<h3 id="installation">Installation</h3>
 
-<h3 id="getting-started-with-kubebuilder">Getting Started with Kubebuilder</h3>
-
-<h4 id="installation">Installation</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install Kubebuilder</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># macOS</span>
 brew <span class="nb">install </span>kubebuilder
 
-<span class="c"># Initialize project</span>
-kubebuilder init <span class="nt">--domain</span> example.com <span class="nt">--repo</span> github.com/username/project
-
-<span class="c"># Create API</span>
-kubebuilder create api <span class="nt">--group</span> apps <span class="nt">--version</span> v1 <span class="nt">--kind</span> MyApp
-</code></pre></div></div>
-<ul>
-  <li>-domain: Specify API domain (for example, example.com)</li>
-  <li>–repo: Set the Go module path for the project</li>
-  <li>-group: API group (for example, apps).</li>
-  <li>–version: API version (e.g., v1).</li>
-  <li>–kind: The name of the user-defined resource, for example, MyApp.</li>
-  <li>Define CRD in config/crd/</li>
-  <li>API and controller files for api/ and controllers/</li>
-</ul>
-
-<h4 id="project-structure">Project Structure</h4>
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.
-├── api
-│   └── v1
-├── bin
-├── cmd
-├── config
-│   ├── crd
-│   ├── default
-│   ├── manager
-│   ├── network-policy
-│   ├── prometheus
-│   ├── rbac
-│   └── samples
-├── hack
-├── internal
-│   └── controller
-└── test
-    ├── e2e
-    └── utils
+<span class="c"># Linux</span>
+curl <span class="nt">-L</span> <span class="nt">-o</span> kubebuilder https://go.kubebuilder.io/dl/latest/<span class="si">$(</span>go <span class="nb">env </span>GOOS<span class="si">)</span>/<span class="si">$(</span>go <span class="nb">env </span>GOARCH<span class="si">)</span>
+<span class="nb">chmod</span> +x kubebuilder
+<span class="nb">sudo mv </span>kubebuilder /usr/local/bin/
 </code></pre></div></div>
 
-<p><br /></p>
+<h3 id="project-initialization">Project Initialization</h3>
 
-<h3 id="development-workflow">Development Workflow</h3>
+<p>Create a new project with Kubebuilder:</p>
 
-<table class="table-modern">
-  <tr>
-    <th>Step</th>
-    <th>Commands</th>
-    <th>Description</th>
-  </tr>
-  <tr>
-    <td>Generate</td>
-    <td><code>make generate</code></td>
-    <td>Generate code for custom resources</td>
-  </tr>
-  <tr>
-    <td>Manifests</td>
-    <td><code>make manifests</code></td>
-    <td>Generate CRD manifests</td>
-  </tr>
-  <tr>
-    <td>Test</td>
-    <td><code>make test</code></td>
-    <td>Run unit tests</td>
-  </tr>
-  <tr>
-    <td>Build</td>
-    <td><code>make docker-buildx</code></td>
-    <td>Build multi-platform images</td>
-  </tr>
-  <tr>
-    <td>Deploy</td>
-    <td><code>make deploy</code></td>
-    <td>Deploy to cluster</td>
-  </tr>
-</table>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create a directory for your project</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> ~/projects/namespace-sync
+<span class="nb">cd</span> ~/projects/namespace-sync
 
-<p><br /></p>
-
-<hr />
-
-<h3 id="create-operator-with-kubbuilder">Create Operator with Kubbuilder</h3>
-
-<p>It’s the Kubernetes Operator I created.</p>
-<ul>
-  <li>https://github.com/somaz94/k8s-namespace-sync</li>
-  <li>https://github.com/somaz94/helios-lb</li>
-</ul>
-
-<h4 id="prerequisites">Prerequisites</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install kubebuilder</span>
-brew <span class="nb">install </span>kubebuilder
-
-<span class="c"># Create git repo and clone</span>
-git clone git@github.com-somaz94:somaz94/k8s-namespace-sync.git
-
-<span class="c"># Initialize kube builder project</span>
+<span class="c"># Initialize the project</span>
 kubebuilder init <span class="nt">--domain</span> nsync.dev <span class="nt">--repo</span> github.com/somaz94/k8s-namespace-sync
 
-<span class="c"># Create api</span>
+<span class="c"># Create an API</span>
 kubebuilder create api <span class="nt">--group</span> <span class="nb">sync</span> <span class="nt">--version</span> v1 <span class="nt">--kind</span> NamespaceSync
 </code></pre></div></div>
 
-<h4 id="file-structure-explanation">File Structure Explanation</h4>
-
-<p>The crd schema definition is done in the file below.</p>
+<p>When prompted:</p>
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">api/v1/namespacesync_types.go</code></li>
+  <li>Create Resource [y/n]: <code class="language-plaintext highlighter-rouge">y</code></li>
+  <li>Create Controller [y/n]: <code class="language-plaintext highlighter-rouge">y</code></li>
 </ul>
 
-<p>The main.go is defined in the path below.</p>
+<p>This generates a skeleton project structure with:</p>
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">cmd/main.go</code></li>
-</ul>
-
-<p>The controller defines it in that file. In addition to this file, I have organized files for various functions.</p>
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">internal/controller/namespacesync_controller.go</code></li>
-</ul>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls
-</span>backup					filters.go				namespacesync_controller.go		namespacesync_controller_target_test.go	resources.go				sync.go
-events.go				metrics.go				namespacesync_controller_filter_test.go	namespacesync_controller_test.go	suite_test.go				utils.go
-</code></pre></div></div>
-
-<p>You can also define the test code on the same path and test it using the make test command.
-If you are curious about the details, please check the make file.</p>
-
-<p>If you’re done implementing all the features, create a dockerhub account to upload after the image is built.</p>
-<ul>
-  <li>Create an Access Token on the Docker Hub website</li>
-  <li>https://hub.docker.com/settings/security access</li>
-  <li>“New Access Token” click</li>
-  <li>Enter token name (e.g. “k8s-namespace-sync”)</li>
-  <li>Copy once token is created (save this token well because it only shows once)</li>
-</ul>
-
-<p>Log in from the terminal.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker login <span class="nt">-u</span> somaz940
-<span class="c"># Enter token</span>
-</code></pre></div></div>
-<ul>
-  <li>Before proceeding with the make test, there is still something to explain.</li>
+  <li>API definitions</li>
+  <li>Controller scaffolding</li>
+  <li>Configuration files</li>
+  <li>Testing infrastructure</li>
 </ul>
 
 <p><br /></p>
 
-<h3 id="kubebuilder-markers">Kubebuilder Markers</h3>
+<h3 id="understanding-the-project-structure">Understanding the Project Structure</h3>
 
-<p>It is a kubbuilder marker that defines the schema and presentation method of the Kubernetes Custom Resource Definition (CRD).</p>
+<div class="info-box info-box-default-not-check">
+  <strong>Key Directories and Files</strong>
+  <div style="display: flex; margin-top: 10px;">
+    <div style="flex: 1;">
+      <ul>
+        <li><code>api/</code> - CRD API definitions</li>
+        <li><code>controllers/</code> - Reconciliation logic</li>
+        <li><code>config/</code> - Kubernetes resource manifests</li>
+        <li><code>Makefile</code> - Build and deployment commands</li>
+        <li><code>main.go</code> - Operator entry point</li>
+      </ul>
+    </div>
+    <div style="flex: 1;">
+      <ul>
+        <li><code>Dockerfile</code> - Container image definition</li>
+        <li><code>go.mod</code> - Go module dependencies</li>
+        <li><code>hack/</code> - Scripts and tools</li>
+        <li><code>PROJECT</code> - Kubebuilder project metadata</li>
+      </ul>
+    </div>
+  </div>
+</div>
 
-<p>If you check the <code class="language-plaintext highlighter-rouge">namespacesync_types.go</code> file, the marker is defined as below.</p>
+<p>Here’s a more detailed view of the generated project structure:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.
+├── api                     # API definitions
+│   └── v1
+│       ├── groupversion_info.go
+│       ├── namespacesync_types.go  # CRD definition
+│       └── zz_generated.deepcopy.go
+├── bin                     # Binaries
+├── cmd                     # Command-line interfaces
+│   └── main.go             # Main entry point
+├── config                  # Kubernetes configuration
+│   ├── crd                 # Custom Resource Definitions
+│   ├── default             # Default configurations
+│   ├── manager             # Controller manager
+│   ├── rbac                # Role-based access control
+│   └── samples             # Sample custom resources
+├── controllers             # Controller logic
+│   ├── namespacesync_controller.go  # Main controller logic
+│   └── suite_test.go                # Test setup
+├── Dockerfile              # Container build instructions
+├── go.mod                  # Go module definition
+├── go.sum                  # Go dependencies checksum
+├── hack                    # Scripts and tools
+│   └── boilerplate.go.txt
+├── Makefile                # Build, test, and deploy commands
+└── PROJECT                 # Project metadata
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="defining-custom-resources">Defining Custom Resources</h2>
+
+<p>The core of your operator is the Custom Resource Definition (CRD). This defines the API that users will interact with.</p>
+
+<h3 id="understanding-the-api-definition">Understanding the API Definition</h3>
+
+<p>Let’s examine the API definition in <code class="language-plaintext highlighter-rouge">api/v1/namespacesync_types.go</code>:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// NamespaceSyncSpec defines the desired state of NamespaceSync</span>
+<span class="k">type</span> <span class="n">NamespaceSyncSpec</span> <span class="k">struct</span> <span class="p">{</span>
+	<span class="c">// SourceNamespace is the namespace to sync resources from</span>
+	<span class="c">// +kubebuilder:validation:Required</span>
+	<span class="n">SourceNamespace</span> <span class="kt">string</span> <span class="s">`json:"sourceNamespace"`</span>
+
+	<span class="c">// TargetNamespaces is a list of namespaces to sync resources to</span>
+	<span class="c">// +optional</span>
+	<span class="n">TargetNamespaces</span> <span class="p">[]</span><span class="kt">string</span> <span class="s">`json:"targetNamespaces,omitempty"`</span>
+
+	<span class="c">// NamespaceSelector selects namespaces to sync resources to</span>
+	<span class="c">// +optional</span>
+	<span class="n">NamespaceSelector</span> <span class="o">*</span><span class="n">metav1</span><span class="o">.</span><span class="n">LabelSelector</span> <span class="s">`json:"namespaceSelector,omitempty"`</span>
+
+	<span class="c">// Resources is a list of resources to sync</span>
+	<span class="c">// +kubebuilder:validation:Required</span>
+	<span class="c">// +kubebuilder:validation:MinItems=1</span>
+	<span class="n">Resources</span> <span class="p">[]</span><span class="n">ResourceSelector</span> <span class="s">`json:"resources"`</span>
+<span class="p">}</span>
+
+<span class="c">// ResourceSelector defines which resources to sync</span>
+<span class="k">type</span> <span class="n">ResourceSelector</span> <span class="k">struct</span> <span class="p">{</span>
+	<span class="c">// Kind of the resource (e.g. ConfigMap, Secret)</span>
+	<span class="c">// +kubebuilder:validation:Required</span>
+	<span class="c">// +kubebuilder:validation:Enum=ConfigMap;Secret</span>
+	<span class="n">Kind</span> <span class="kt">string</span> <span class="s">`json:"kind"`</span>
+
+	<span class="c">// Name of the resource</span>
+	<span class="c">// +kubebuilder:validation:Required</span>
+	<span class="n">Name</span> <span class="kt">string</span> <span class="s">`json:"name"`</span>
+<span class="p">}</span>
+
+<span class="c">// NamespaceSyncStatus defines the observed state of NamespaceSync</span>
+<span class="k">type</span> <span class="n">NamespaceSyncStatus</span> <span class="k">struct</span> <span class="p">{</span>
+	<span class="c">// Conditions represent the latest available observations of the NamespaceSync</span>
+	<span class="c">// +optional</span>
+	<span class="n">Conditions</span> <span class="p">[]</span><span class="n">metav1</span><span class="o">.</span><span class="n">Condition</span> <span class="s">`json:"conditions,omitempty"`</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="adding-kubebuilder-markers">Adding Kubebuilder Markers</h3>
+
+<p>Kubebuilder uses special comment markers to generate additional code and metadata:</p>
+
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// +kubebuilder:object:root=true</span>
 <span class="c">// +kubebuilder:subresource:status</span>
 <span class="c">// +kubebuilder:printcolumn:name="Source",type="string",JSONPath=".spec.sourceNamespace"</span>
@@ -432,183 +485,526 @@ If you are curious about the details, please check the make file.</p>
 <span class="c">// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"</span>
 <span class="c">// +kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].message"</span>
 </code></pre></div></div>
+
+<p>These markers:</p>
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">+kubebuilder:object:root=true</code>
-    <ul>
-      <li>This marker indicates that the resource is a root resource.</li>
-    </ul>
-  </li>
-  <li><code class="language-plaintext highlighter-rouge">+kubebuilder:subresource:status</code>
-    <ul>
-      <li>This marker indicates that the resource has a status subresource.</li>
-      <li>It provides a separate endpoint for status updates.</li>
-    </ul>
-  </li>
-  <li><code class="language-plaintext highlighter-rouge">+kubebuilder:printcolumn:...</code>
-    <ul>
-      <li>This marker indicates that the resource has a print column.</li>
-      <li>Defined columns
-        <ul>
-          <li>Source: Displaying <code class="language-plaintext highlighter-rouge">spec.sourceNamespace</code> value</li>
-          <li>Age: Show creation time</li>
-          <li>Status: Displaying Ready Condition Status</li>
-          <li>Message: Displaying message in Ready condition</li>
-        </ul>
-      </li>
-    </ul>
-  </li>
+  <li>Define the resource as a root object</li>
+  <li>Add a status subresource</li>
+  <li>Configure columns for <code class="language-plaintext highlighter-rouge">kubectl get</code> output</li>
+  <li>Define validation rules for fields</li>
 </ul>
 
-<p>When using makemanifests</p>
-<ul>
-  <li>Controller-gen reads the markers in the Go code to create a CRD YAML file</li>
-  <li>Create RBAC Permissions Configuration File</li>
-  <li>Create deliverables in the config/crd/bases directory</li>
-</ul>
-
-<p>When using make generator</p>
-<ul>
-  <li>Create DeepCopy Method for Go Type</li>
-  <li>Generating the type conversion code required for Kubernetes client code</li>
-</ul>
-
-<p><br /></p>
-
-<p>If you check the makefile, it is defined as follows. After performing all necessary tasks, proceed to the test.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>.PHONY: <span class="nb">test
-test</span>: manifests generate <span class="nb">fmt </span>vet envtest <span class="c">## Run tests.</span>
-	<span class="nv">KUBEBUILDER_ASSETS</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span>shell <span class="si">$(</span>ENVTEST<span class="si">)</span> use <span class="si">$(</span>ENVTEST_K8S_VERSION<span class="si">)</span> <span class="nt">--bin-dir</span> <span class="si">$(</span>LOCALBIN<span class="si">)</span> <span class="nt">-p</span> path<span class="si">)</span><span class="s2">"</span> go <span class="nb">test</span> <span class="nv">$$</span><span class="o">(</span>go list ./... | <span class="nb">grep</span> <span class="nt">-v</span> /e2e<span class="o">)</span> <span class="nt">-coverprofile</span> cover.out
-</code></pre></div></div>
-
-<p><br /></p>
-
-<p>And you can specify IMG upload path and K8S test version in makefile.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Image URL to use all building/pushing image targets</span>
-IMG ?<span class="o">=</span> somaz940/k8s-namespace-sync:v0.1.6
-<span class="c"># ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.</span>
-ENVTEST_K8S_VERSION <span class="o">=</span> 1.31.0
-</code></pre></div></div>
-
-<p><br /></p>
-
-<p>If the test is successful, make docker-buildx is used to build various platforms at the same time.</p>
-
-<p>I modified the makefile so that it could be built into the late, versiontag, and late+ versiontag environments.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PLATFORMS ?<span class="o">=</span> linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
-.PHONY: docker-buildx-tag
-docker-buildx-tag: <span class="c">## Build and push docker image for the manager for cross-platform support with specific version</span>
-	<span class="c"># copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross</span>
-	<span class="nb">sed</span> <span class="nt">-e</span> <span class="s1">'1 s/\\(^FROM\\)/FROM --platform=\\$$\\{BUILDPLATFORM\\}/; t'</span> <span class="nt">-e</span> <span class="s1">' 1,// s//FROM --platform=\\$$\\{BUILDPLATFORM\\}/'</span> Dockerfile <span class="o">&gt;</span> Dockerfile.cross
-	- <span class="si">$(</span>CONTAINER_TOOL<span class="si">)</span> buildx create <span class="nt">--name</span> k8s-namespace-sync-builder
-	<span class="si">$(</span>CONTAINER_TOOL<span class="si">)</span> buildx use k8s-namespace-sync-builder
-	<span class="c"># Build and push version-specific tag</span>
-	- <span class="si">$(</span>CONTAINER_TOOL<span class="si">)</span> buildx build <span class="nt">--push</span> <span class="nt">--platform</span><span class="o">=</span><span class="si">$(</span>PLATFORMS<span class="si">)</span> <span class="se">\\</span>
-		<span class="nt">--tag</span> <span class="k">${</span><span class="nv">IMG</span><span class="k">}</span> <span class="se">\\</span>
-		<span class="nt">-f</span> Dockerfile.cross <span class="nb">.</span>
-	- <span class="si">$(</span>CONTAINER_TOOL<span class="si">)</span> buildx <span class="nb">rm </span>k8s-namespace-sync-builder
-	<span class="nb">rm </span>Dockerfile.cross
-
-.PHONY: docker-buildx-latest
-docker-buildx-latest: <span class="c">## Build and push docker image for the manager for cross-platform support with latest tag</span>
-	<span class="c"># copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross</span>
-	<span class="nb">sed</span> <span class="nt">-e</span> <span class="s1">'1 s/\\(^FROM\\)/FROM --platform=\\$$\\{BUILDPLATFORM\\}/; t'</span> <span class="nt">-e</span> <span class="s1">' 1,// s//FROM --platform=\\$$\\{BUILDPLATFORM\\}/'</span> Dockerfile <span class="o">&gt;</span> Dockerfile.cross
-	- <span class="si">$(</span>CONTAINER_TOOL<span class="si">)</span> buildx create <span class="nt">--name</span> k8s-namespace-sync-builder
-	<span class="si">$(</span>CONTAINER_TOOL<span class="si">)</span> buildx use k8s-namespace-sync-builder
-	<span class="c"># Build and push latest tag</span>
-	- <span class="si">$(</span>CONTAINER_TOOL<span class="si">)</span> buildx build <span class="nt">--push</span> <span class="nt">--platform</span><span class="o">=</span><span class="si">$(</span>PLATFORMS<span class="si">)</span> <span class="se">\\</span>
-		<span class="nt">--tag</span> <span class="si">$(</span>shell <span class="nb">echo</span> <span class="k">${</span><span class="nv">IMG</span><span class="k">}</span> | <span class="nb">cut</span> <span class="nt">-f1</span> <span class="nt">-d</span>:<span class="si">)</span>:latest <span class="se">\\</span>
-		<span class="nt">-f</span> Dockerfile.cross <span class="nb">.</span>
-	- <span class="si">$(</span>CONTAINER_TOOL<span class="si">)</span> buildx <span class="nb">rm </span>k8s-namespace-sync-builder
-	<span class="nb">rm </span>Dockerfile.cross
-
-.PHONY: docker-buildx
-docker-buildx: <span class="c">## Build and push both version-specific and latest tags</span>
-docker-buildx: docker-buildx-tag docker-buildx-latest
-</code></pre></div></div>
-
-<p><br /></p>
-
-<p>If you want to deploy to the cluster, you can use the make deploy command.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>make deploy <span class="nv">IMG</span><span class="o">=</span>somaz940/k8s-namespace-sync:v0.1.6
-</code></pre></div></div>
-
-<p><br /></p>
-
-<p>Check api and crd.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k get apiservices.apiregistration.k8s.io |grep nsync
-v1.sync.nsync.dev                      Local                        True        25s
-
-k get crd |grep nsync
-namespacesyncs.sync.nsync.dev                2024-12-16T09:41:00Z
-</code></pre></div></div>
-
-<p><br /></p>
-
-<p>I created various sample crd.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls </span>config/samples/
-kustomization.yaml			sync_v1_namespacesync_exclude.yaml	sync_v1_namespacesync_target.yaml	test-configmap2.yaml			test-secret2.yaml
-sync_v1_namespacesync.yaml		sync_v1_namespacesync_filter.yaml	test-configmap.yaml			test-secret.yaml
-</code></pre></div></div>
-
-<p><br /></p>
-
-<p>The start log of the app is as follows.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2024-12-16T09:41:01.541Z        ESC[34minfoESC[0m       setup   creating controller     <span class="o">{</span><span class="s2">"controller"</span>: <span class="s2">"NamespaceSync"</span>, <span class="s2">"scheme"</span>: <span class="s2">"pkg/runtime/scheme.go:100"</span><span class="o">}</span>
-2024-12-16T09:41:01.541Z        ESC[34minfoESC[0m       namespacesync-controller        Setting up controller manager
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       setup   controller created successfully <span class="o">{</span><span class="s2">"controller"</span>: <span class="s2">"NamespaceSync"</span><span class="o">}</span>
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       setup   starting manager
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       controller-runtime.metrics      Starting metrics server
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       setup   disabling http/2
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       starting server <span class="o">{</span><span class="s2">"name"</span>: <span class="s2">"health probe"</span>, <span class="s2">"addr"</span>: <span class="s2">"[::]:8081"</span><span class="o">}</span>
-I1216 09:41:01.645802       1 leaderelection.go:254] attempting to acquire leader lease k8s-namespace-sync-system/47c2149c.nsync.dev...
-I1216 09:41:01.659829       1 leaderelection.go:268] successfully acquired lease k8s-namespace-sync-system/47c2149c.nsync.dev
-2024-12-16T09:41:01.659Z        ESC[35mdebugESC[0m      manager.events  k8s-namespace-sync-controller-manager-5874b756c8-h9ng6_2a3d0c37-b1f0-46c3-bcff-e28ccc2750e9 became leader       <span class="o">{</span><span class="s2">"type"</span>: <span class="s2">"Normal"</span>, <span class="s2">"object"</span>: <span class="o">{</span><span class="s2">"kind"</span>:<span class="s2">"Lease"</span>,<span class="s2">"namespace"</span>:<span class="s2">"k8s-namespace-sync-system"</span>,<span class="s2">"name"</span>:<span class="s2">"47c21
-49c.nsync.dev"</span>,<span class="s2">"uid"</span>:<span class="s2">"385be981-f090-4b4e-a341-7888c2858e4b"</span>,<span class="s2">"apiVersion"</span>:<span class="s2">"coordination.k8s.io/v1"</span>,<span class="s2">"resourceVersion"</span>:<span class="s2">"12611207"</span><span class="o">}</span>, <span class="s2">"reason"</span>: <span class="s2">"LeaderElection"</span><span class="o">}</span>
-2024-12-16T09:41:01.660Z        ESC[34minfoESC[0m       manager Starting EventSource    <span class="o">{</span><span class="s2">"controller"</span>: <span class="s2">"namespacesync"</span>, <span class="s2">"controllerGroup"</span>: <span class="s2">"sync.nsync.dev"</span>, <span class="s2">"controllerKind"</span>: <span class="s2">"NamespaceSync"</span>, <span class="s2">"source"</span>: <span class="s2">"kind source: *v1.NamespaceSync"</span><span class="o">}</span>
-2024-12-16T09:41:01.660Z        ESC[34minfoESC[0m       manager Starting EventSource    <span class="o">{</span><span class="s2">"controller"</span>: <span class="s2">"namespacesync"</span>, <span class="s2">"controllerGroup"</span>: <span class="s2">"sync.nsync.dev"</span>, <span class="s2">"controllerKind"</span>: <span class="s2">"NamespaceSync"</span>, <span class="s2">"source"</span>: <span class="s2">"kind source: *v1.Namespace"</span><span class="o">}</span>
-2024-12-16T09:41:01.660Z        ESC[34minfoESC[0m       manager Starting EventSource    <span class="o">{</span><span class="s2">"controller"</span>: <span class="s2">"namespacesync"</span>, <span class="s2">"controllerGroup"</span>: <span class="s2">"sync.nsync.dev"</span>, <span class="s2">"controllerKind"</span>: <span class="s2">"NamespaceSync"</span>, <span class="s2">"source"</span>: <span class="s2">"kind source: *v1.Secret"</span><span class="o">}</span>
-2024-12-16T09:41:01.660Z        ESC[34minfoESC[0m       manager Starting EventSource    <span class="o">{</span><span class="s2">"controller"</span>: <span class="s2">"namespacesync"</span>, <span class="s2">"controllerGroup"</span>: <span class="s2">"sync.nsync.dev"</span>, <span class="s2">"controllerKind"</span>: <span class="s2">"NamespaceSync"</span>, <span class="s2">"source"</span>: <span class="s2">"kind source: *v1.ConfigMap"</span><span class="o">}</span>
-</code></pre></div></div>
-
-<p><br /></p>
-
-<hr />
-
-<h3 id="best-practices">Best Practices</h3>
-
-<div class="info-box info-box-success">
-<br />
-<strong>1. Project Structure:</strong>
-   - Organize code logically<br />
-   - Separate concerns<br />
-   - Use consistent naming<br /><br />
-
-<strong>2. Testing:</strong>
-   - Write comprehensive tests<br />
-   - Use test fixtures<br />
-   - Test edge cases<br /><br />
-
-<strong>3. Deployment:</strong>
-   - Use multi-platform builds<br />
-   - Implement proper RBAC<br />
-   - Monitor performance<br /><br />
-
-<strong>4. Documentation:</strong>
-   - Document APIs clearly<br />
-   - Include usage examples<br />
-   - Maintain changelog<br /><br />
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Marker Type</th>
+      <th style="width: 70%;">Purpose</th>
+    </tr>
+    <tr>
+      <td>object</td>
+      <td>Defines object characteristics (e.g., root=true for top-level resources)</td>
+    </tr>
+    <tr>
+      <td>subresource</td>
+      <td>Adds subresources like status or scale</td>
+    </tr>
+    <tr>
+      <td>printcolumn</td>
+      <td>Configures columns in kubectl output</td>
+    </tr>
+    <tr>
+      <td>validation</td>
+      <td>Adds schema validation (e.g., required fields, enums)</td>
+    </tr>
+    <tr>
+      <td>rbac</td>
+      <td>Defines permissions needed for the controller</td>
+    </tr>
+  </table>
 </div>
 
 <p><br /></p>
 
+<h2 id="implementing-the-controller">Implementing the Controller</h2>
+
+<p>The controller contains the reconciliation logic for your custom resource.</p>
+
+<h3 id="understanding-the-reconciliation-loop">Understanding the Reconciliation Loop</h3>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant K as Kubernetes API
+      participant C as Controller
+      participant R as Reconcile Function
+      
+      K-&gt;&gt;C: Resource Change Event
+      C-&gt;&gt;C: Add to Work Queue
+      C-&gt;&gt;R: Call Reconcile()
+      R-&gt;&gt;K: Get Current State
+      R-&gt;&gt;R: Compare with Desired State
+      R-&gt;&gt;K: Apply Changes
+      R-&gt;&gt;C: Return Result
+      Note over C: If Error or Requeue
+      C-&gt;&gt;C: Add Back to Queue
+  </div>
+</div>
+
+<p>The controller watches for changes to your custom resource and other related resources, then triggers the reconciliation loop to ensure the actual state matches the desired state.</p>
+
+<h3 id="controller-implementation">Controller Implementation</h3>
+
+<p>Let’s look at a simplified version of a controller from our NamespaceSync example:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// NamespaceSyncReconciler reconciles a NamespaceSync object</span>
+<span class="k">type</span> <span class="n">NamespaceSyncReconciler</span> <span class="k">struct</span> <span class="p">{</span>
+	<span class="n">client</span><span class="o">.</span><span class="n">Client</span>
+	<span class="n">Scheme</span> <span class="o">*</span><span class="n">runtime</span><span class="o">.</span><span class="n">Scheme</span>
+	<span class="n">Recorder</span> <span class="n">record</span><span class="o">.</span><span class="n">EventRecorder</span>
+<span class="p">}</span>
+
+<span class="c">// +kubebuilder:rbac:groups=sync.nsync.dev,resources=namespacesyncs,verbs=get;list;watch;create;update;patch;delete</span>
+<span class="c">// +kubebuilder:rbac:groups=sync.nsync.dev,resources=namespacesyncs/status,verbs=get;update;patch</span>
+<span class="c">// +kubebuilder:rbac:groups=sync.nsync.dev,resources=namespacesyncs/finalizers,verbs=update</span>
+<span class="c">// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch</span>
+<span class="c">// +kubebuilder:rbac:groups="",resources=configmaps;secrets,verbs=get;list;watch;create;update;patch;delete</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">r</span> <span class="o">*</span><span class="n">NamespaceSyncReconciler</span><span class="p">)</span> <span class="n">Reconcile</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">req</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Request</span><span class="p">)</span> <span class="p">(</span><span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+	<span class="n">log</span> <span class="o">:=</span> <span class="n">log</span><span class="o">.</span><span class="n">FromContext</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+	
+	<span class="c">// Fetch the NamespaceSync instance</span>
+	<span class="k">var</span> <span class="n">namespacesync</span> <span class="n">syncv1</span><span class="o">.</span><span class="n">NamespaceSync</span>
+	<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">Get</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">NamespacedName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="c">// Handle not-found error</span>
+		<span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{},</span> <span class="n">client</span><span class="o">.</span><span class="n">IgnoreNotFound</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+	<span class="p">}</span>
+	
+	<span class="c">// Add finalizer if needed</span>
+	<span class="k">if</span> <span class="o">!</span><span class="n">controllerutil</span><span class="o">.</span><span class="n">ContainsFinalizer</span><span class="p">(</span><span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">,</span> <span class="n">finalizerName</span><span class="p">)</span> <span class="p">{</span>
+		<span class="n">controllerutil</span><span class="o">.</span><span class="n">AddFinalizer</span><span class="p">(</span><span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">,</span> <span class="n">finalizerName</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="n">log</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">"Failed to add finalizer"</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{},</span> <span class="n">err</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+	
+	<span class="c">// Check if being deleted</span>
+	<span class="k">if</span> <span class="o">!</span><span class="n">namespacesync</span><span class="o">.</span><span class="n">ObjectMeta</span><span class="o">.</span><span class="n">DeletionTimestamp</span><span class="o">.</span><span class="n">IsZero</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">handleDeletion</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">)</span>
+	<span class="p">}</span>
+	
+	<span class="c">// Get target namespaces</span>
+	<span class="n">targetNamespaces</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">getTargetNamespaces</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{},</span> <span class="n">err</span>
+	<span class="p">}</span>
+	
+	<span class="c">// Synchronize resources to target namespaces</span>
+	<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">syncResources</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">,</span> <span class="n">targetNamespaces</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="c">// Update status to reflect error</span>
+		<span class="n">r</span><span class="o">.</span><span class="n">updateStatusCondition</span><span class="p">(</span><span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">,</span> <span class="n">metav1</span><span class="o">.</span><span class="n">ConditionFalse</span><span class="p">,</span> <span class="s">"SyncFailed"</span><span class="p">,</span> <span class="n">err</span><span class="o">.</span><span class="n">Error</span><span class="p">())</span>
+		<span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{},</span> <span class="n">err</span>
+	<span class="p">}</span>
+	
+	<span class="c">// Update status to reflect success</span>
+	<span class="n">r</span><span class="o">.</span><span class="n">updateStatusCondition</span><span class="p">(</span><span class="o">&amp;</span><span class="n">namespacesync</span><span class="p">,</span> <span class="n">metav1</span><span class="o">.</span><span class="n">ConditionTrue</span><span class="p">,</span> <span class="s">"Synced"</span><span class="p">,</span> <span class="s">"Resources synchronized successfully"</span><span class="p">)</span>
+	
+	<span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{</span><span class="n">RequeueAfter</span><span class="o">:</span> <span class="m">5</span> <span class="o">*</span> <span class="n">time</span><span class="o">.</span><span class="n">Minute</span><span class="p">},</span> <span class="no">nil</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="key-controller-components">Key Controller Components</h3>
+
+<ol>
+  <li><strong>RBAC Markers</strong>: Define the permissions needed by the controller</li>
+  <li><strong>Reconcile Function</strong>: Main logic that handles the resource</li>
+  <li><strong>Finalizers</strong>: Ensure cleanup when resources are deleted</li>
+  <li><strong>Status Updates</strong>: Report the current state back to the user</li>
+</ol>
+
+<p><br /></p>
+
+<h2 id="building-and-testing-your-operator">Building and Testing Your Operator</h2>
+
+<h3 id="key-makefile-commands">Key Makefile Commands</h3>
+
+<p>Kubebuilder creates a comprehensive Makefile with all necessary commands:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Command</th>
+      <th style="width: 75%;">Description</th>
+    </tr>
+    <tr>
+      <td><code>make generate</code></td>
+      <td>Generate code (DeepCopy methods, etc.) for custom resources</td>
+    </tr>
+    <tr>
+      <td><code>make manifests</code></td>
+      <td>Generate CRD manifests and RBAC configuration</td>
+    </tr>
+    <tr>
+      <td><code>make test</code></td>
+      <td>Run unit tests with a simulated Kubernetes API server</td>
+    </tr>
+    <tr>
+      <td><code>make run</code></td>
+      <td>Run the controller locally against your configured Kubernetes cluster</td>
+    </tr>
+    <tr>
+      <td><code>make docker-build</code></td>
+      <td>Build the Docker image</td>
+    </tr>
+    <tr>
+      <td><code>make docker-push</code></td>
+      <td>Push the Docker image to a registry</td>
+    </tr>
+    <tr>
+      <td><code>make deploy</code></td>
+      <td>Deploy the controller to the Kubernetes cluster</td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="running-tests">Running Tests</h3>
+
+<p>Kubebuilder integrates with the Kubernetes <code class="language-plaintext highlighter-rouge">envtest</code> package to simulate the API server for testing:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// controllers/suite_test.go</span>
+<span class="k">func</span> <span class="n">TestAPIs</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
+	<span class="n">RegisterFailHandler</span><span class="p">(</span><span class="n">Fail</span><span class="p">)</span>
+	<span class="n">RunSpecs</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="s">"Controller Suite"</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="k">var</span> <span class="n">_</span> <span class="o">=</span> <span class="n">BeforeSuite</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="p">{</span>
+	<span class="n">logf</span><span class="o">.</span><span class="n">SetLogger</span><span class="p">(</span><span class="n">zap</span><span class="o">.</span><span class="n">New</span><span class="p">(</span><span class="n">zap</span><span class="o">.</span><span class="n">WriteTo</span><span class="p">(</span><span class="n">GinkgoWriter</span><span class="p">),</span> <span class="n">zap</span><span class="o">.</span><span class="n">UseDevMode</span><span class="p">(</span><span class="no">true</span><span class="p">)))</span>
+
+	<span class="n">By</span><span class="p">(</span><span class="s">"bootstrapping test environment"</span><span class="p">)</span>
+	<span class="n">testEnv</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">envtest</span><span class="o">.</span><span class="n">Environment</span><span class="p">{</span>
+		<span class="n">CRDDirectoryPaths</span><span class="o">:</span>     <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="n">filepath</span><span class="o">.</span><span class="n">Join</span><span class="p">(</span><span class="s">".."</span><span class="p">,</span> <span class="s">"config"</span><span class="p">,</span> <span class="s">"crd"</span><span class="p">,</span> <span class="s">"bases"</span><span class="p">)},</span>
+		<span class="n">ErrorIfCRDPathMissing</span><span class="o">:</span> <span class="no">true</span><span class="p">,</span>
+	<span class="p">}</span>
+
+	<span class="n">cfg</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">testEnv</span><span class="o">.</span><span class="n">Start</span><span class="p">()</span>
+	<span class="n">Expect</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">NotTo</span><span class="p">(</span><span class="n">HaveOccurred</span><span class="p">())</span>
+	<span class="n">Expect</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">NotTo</span><span class="p">(</span><span class="n">BeNil</span><span class="p">())</span>
+
+	<span class="n">err</span> <span class="o">=</span> <span class="n">syncv1</span><span class="o">.</span><span class="n">AddToScheme</span><span class="p">(</span><span class="n">scheme</span><span class="o">.</span><span class="n">Scheme</span><span class="p">)</span>
+	<span class="n">Expect</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">NotTo</span><span class="p">(</span><span class="n">HaveOccurred</span><span class="p">())</span>
+
+	<span class="n">k8sClient</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">New</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">client</span><span class="o">.</span><span class="n">Options</span><span class="p">{</span><span class="n">Scheme</span><span class="o">:</span> <span class="n">scheme</span><span class="o">.</span><span class="n">Scheme</span><span class="p">})</span>
+	<span class="n">Expect</span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="o">.</span><span class="n">NotTo</span><span class="p">(</span><span class="n">HaveOccurred</span><span class="p">())</span>
+	<span class="n">Expect</span><span class="p">(</span><span class="n">k8sClient</span><span class="p">)</span><span class="o">.</span><span class="n">NotTo</span><span class="p">(</span><span class="n">BeNil</span><span class="p">())</span>
+<span class="p">})</span>
+</code></pre></div></div>
+
+<p>To run tests:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>make <span class="nb">test</span>
+</code></pre></div></div>
+
+<h3 id="building-for-multiple-platforms">Building for Multiple Platforms</h3>
+
+<p>For cross-platform support, add a multi-platform build rule to your Makefile:</p>
+
+<div class="language-makefile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">PLATFORMS</span> <span class="o">?=</span> linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+<span class="nl">.PHONY</span><span class="o">:</span> <span class="nf">docker-buildx</span>
+<span class="nl">docker-buildx</span><span class="o">:</span> <span class="c">##</span><span class="nf"> Build and push docker image for cross-platform support</span>
+	<span class="c"># copy existing Dockerfile and insert --platform=</span><span class="nv">${BUILDPLATFORM}</span> into Dockerfile.cross
+	<span class="nb">sed</span> <span class="nt">-e</span> <span class="s1">'1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t'</span> <span class="nt">-e</span> <span class="s1">' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/'</span> Dockerfile <span class="o">&gt;</span> Dockerfile.cross
+	<span class="p">-</span> <span class="nv">$(CONTAINER_TOOL)</span> buildx create <span class="nt">--name</span> project-v3-builder
+	<span class="nv">$(CONTAINER_TOOL)</span> buildx use project-v3-builder
+	<span class="p">-</span> <span class="nv">$(CONTAINER_TOOL)</span> buildx build <span class="nt">--push</span> <span class="nt">--platform</span><span class="o">=</span><span class="nv">$(PLATFORMS)</span> <span class="nt">--tag</span> <span class="nv">${IMG}</span> <span class="nt">-f</span> Dockerfile.cross .
+	<span class="p">-</span> <span class="nv">$(CONTAINER_TOOL)</span> buildx <span class="nb">rm </span>project-v3-builder
+	<span class="nb">rm </span>Dockerfile.cross
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="real-world-example-namespace-sync-operator">Real-World Example: Namespace Sync Operator</h2>
+
+<p>Let’s explore a real-world example of a Kubernetes Operator built with Kubebuilder: a Namespace Synchronization Operator that copies resources from one namespace to others.</p>
+
+<h3 id="use-case">Use Case</h3>
+
+<ul>
+  <li>Synchronize ConfigMaps and Secrets from a source namespace to multiple target namespaces</li>
+  <li>Target namespaces can be explicitly listed or selected via labels</li>
+  <li>Resources stay in sync automatically when the source changes</li>
+</ul>
+
+<h3 id="crd-example">CRD Example</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sync.nsync.dev/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">NamespaceSync</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">config-sync</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">sourceNamespace</span><span class="pi">:</span> <span class="s">source-namespace</span>
+  <span class="na">targetNamespaces</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">target-namespace-1</span>
+    <span class="pi">-</span> <span class="s">target-namespace-2</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+      <span class="na">name</span><span class="pi">:</span> <span class="s">shared-config</span>
+    <span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+      <span class="na">name</span><span class="pi">:</span> <span class="s">shared-credentials</span>
+</code></pre></div></div>
+
+<p>Or using a namespace selector:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">sync.nsync.dev/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">NamespaceSync</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">config-sync-all</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">sourceNamespace</span><span class="pi">:</span> <span class="s">source-namespace</span>
+  <span class="na">namespaceSelector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">sync-enabled</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+      <span class="na">name</span><span class="pi">:</span> <span class="s">shared-config</span>
+</code></pre></div></div>
+
+<h3 id="building-the-feature-step-by-step">Building the Feature Step by Step</h3>
+
+<ol>
+  <li><strong>Resource Synchronization Logic</strong>:</li>
+</ol>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span> <span class="p">(</span><span class="n">r</span> <span class="o">*</span><span class="n">NamespaceSyncReconciler</span><span class="p">)</span> <span class="n">syncResources</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">namespacesync</span> <span class="o">*</span><span class="n">syncv1</span><span class="o">.</span><span class="n">NamespaceSync</span><span class="p">,</span> <span class="n">targetNamespaces</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+	<span class="n">log</span> <span class="o">:=</span> <span class="n">log</span><span class="o">.</span><span class="n">FromContext</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+	<span class="n">sourceNamespace</span> <span class="o">:=</span> <span class="n">namespacesync</span><span class="o">.</span><span class="n">Spec</span><span class="o">.</span><span class="n">SourceNamespace</span>
+	
+	<span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">res</span> <span class="o">:=</span> <span class="k">range</span> <span class="n">namespacesync</span><span class="o">.</span><span class="n">Spec</span><span class="o">.</span><span class="n">Resources</span> <span class="p">{</span>
+		<span class="c">// Get source resource</span>
+		<span class="n">sourceObj</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">getSourceResource</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">sourceNamespace</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="k">return</span> <span class="n">err</span>
+		<span class="p">}</span>
+		
+		<span class="c">// Apply to target namespaces</span>
+		<span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">targetNs</span> <span class="o">:=</span> <span class="k">range</span> <span class="n">targetNamespaces</span> <span class="p">{</span>
+			<span class="k">if</span> <span class="n">targetNs</span> <span class="o">==</span> <span class="n">sourceNamespace</span> <span class="p">{</span>
+				<span class="c">// Skip source namespace</span>
+				<span class="k">continue</span>
+			<span class="p">}</span>
+			
+			<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">applyToTarget</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">sourceObj</span><span class="p">,</span> <span class="n">targetNs</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+				<span class="n">log</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="s">"Failed to apply resource to target"</span><span class="p">,</span> 
+					<span class="s">"kind"</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">Kind</span><span class="p">,</span> <span class="s">"name"</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> <span class="s">"target"</span><span class="p">,</span> <span class="n">targetNs</span><span class="p">)</span>
+				<span class="k">continue</span>
+			<span class="p">}</span>
+			
+			<span class="n">log</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"Synchronized resource"</span><span class="p">,</span> 
+				<span class="s">"kind"</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">Kind</span><span class="p">,</span> <span class="s">"name"</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">Name</span><span class="p">,</span> 
+				<span class="s">"from"</span><span class="p">,</span> <span class="n">sourceNamespace</span><span class="p">,</span> <span class="s">"to"</span><span class="p">,</span> <span class="n">targetNs</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+	
+	<span class="k">return</span> <span class="no">nil</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<ol>
+  <li><strong>Target Namespace Resolution</strong>:</li>
+</ol>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span> <span class="p">(</span><span class="n">r</span> <span class="o">*</span><span class="n">NamespaceSyncReconciler</span><span class="p">)</span> <span class="n">getTargetNamespaces</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">namespacesync</span> <span class="o">*</span><span class="n">syncv1</span><span class="o">.</span><span class="n">NamespaceSync</span><span class="p">)</span> <span class="p">([]</span><span class="kt">string</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+	<span class="c">// If explicit targets provided, use those</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">namespacesync</span><span class="o">.</span><span class="n">Spec</span><span class="o">.</span><span class="n">TargetNamespaces</span><span class="p">)</span> <span class="o">&gt;</span> <span class="m">0</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">namespacesync</span><span class="o">.</span><span class="n">Spec</span><span class="o">.</span><span class="n">TargetNamespaces</span><span class="p">,</span> <span class="no">nil</span>
+	<span class="p">}</span>
+	
+	<span class="c">// If selector provided, query matching namespaces</span>
+	<span class="k">if</span> <span class="n">namespacesync</span><span class="o">.</span><span class="n">Spec</span><span class="o">.</span><span class="n">NamespaceSelector</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="n">selector</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">metav1</span><span class="o">.</span><span class="n">LabelSelectorAsSelector</span><span class="p">(</span><span class="n">namespacesync</span><span class="o">.</span><span class="n">Spec</span><span class="o">.</span><span class="n">NamespaceSelector</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="k">return</span> <span class="no">nil</span><span class="p">,</span> <span class="n">err</span>
+		<span class="p">}</span>
+		
+		<span class="k">var</span> <span class="n">namespaceList</span> <span class="n">corev1</span><span class="o">.</span><span class="n">NamespaceList</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">List</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">namespaceList</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">client</span><span class="o">.</span><span class="n">ListOptions</span><span class="p">{</span>
+			<span class="n">LabelSelector</span><span class="o">:</span> <span class="n">selector</span><span class="p">,</span>
+		<span class="p">});</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="k">return</span> <span class="no">nil</span><span class="p">,</span> <span class="n">err</span>
+		<span class="p">}</span>
+		
+		<span class="n">result</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">string</span><span class="p">,</span> <span class="m">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">namespaceList</span><span class="o">.</span><span class="n">Items</span><span class="p">))</span>
+		<span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">ns</span> <span class="o">:=</span> <span class="k">range</span> <span class="n">namespaceList</span><span class="o">.</span><span class="n">Items</span> <span class="p">{</span>
+			<span class="n">result</span> <span class="o">=</span> <span class="nb">append</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">Name</span><span class="p">)</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="no">nil</span>
+	<span class="p">}</span>
+	
+	<span class="c">// No targets specified</span>
+	<span class="k">return</span> <span class="no">nil</span><span class="p">,</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"no target namespaces specified"</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="testing-the-operator">Testing the Operator</h3>
+
+<p>To test the operator locally:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Run the controller against your configured Kubernetes cluster</span>
+make run
+
+<span class="c"># In another terminal, apply a sample CR</span>
+kubectl apply <span class="nt">-f</span> config/samples/sync_v1_namespacesync.yaml
+
+<span class="c"># Check the status</span>
+kubectl get namespacesync
+
+<span class="c"># Verify resources were synced</span>
+kubectl get configmap <span class="nt">-n</span> target-namespace-1
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="deploying-your-operator">Deploying Your Operator</h2>
+
+<h3 id="building-and-pushing-the-container-image">Building and Pushing the Container Image</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Set the image name</span>
+<span class="nb">export </span><span class="nv">IMG</span><span class="o">=</span>yourdockerhub/namespace-sync:v0.1.0
+
+<span class="c"># Build and push</span>
+make docker-build docker-push <span class="nv">IMG</span><span class="o">=</span><span class="nv">$IMG</span>
+</code></pre></div></div>
+
+<h3 id="deploying-to-a-kubernetes-cluster">Deploying to a Kubernetes Cluster</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install the CRDs</span>
+make <span class="nb">install</span>
+
+<span class="c"># Deploy the controller</span>
+make deploy <span class="nv">IMG</span><span class="o">=</span><span class="nv">$IMG</span>
+</code></pre></div></div>
+
+<h3 id="verifying-the-deployment">Verifying the Deployment</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check the operator deployment</span>
+kubectl get pods <span class="nt">-n</span> namespace-sync-system
+
+<span class="c"># Check the CRD</span>
+kubectl get crd | <span class="nb">grep </span>namespacesync
+
+<span class="c"># Check if any CRs exist</span>
+kubectl get namespacesync <span class="nt">--all-namespaces</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="advanced-topics">Advanced Topics</h2>
+
+<h3 id="finalizers">Finalizers</h3>
+
+<p>Finalizers ensure proper cleanup when resources are deleted:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">const</span> <span class="n">finalizerName</span> <span class="o">=</span> <span class="s">"namespacesync.sync.nsync.dev/finalizer"</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">r</span> <span class="o">*</span><span class="n">NamespaceSyncReconciler</span><span class="p">)</span> <span class="n">handleDeletion</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">namespacesync</span> <span class="o">*</span><span class="n">syncv1</span><span class="o">.</span><span class="n">NamespaceSync</span><span class="p">)</span> <span class="p">(</span><span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+	<span class="n">log</span> <span class="o">:=</span> <span class="n">log</span><span class="o">.</span><span class="n">FromContext</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+	
+	<span class="c">// Perform cleanup here...</span>
+	<span class="n">log</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"Cleaning up resources"</span><span class="p">)</span>
+	
+	<span class="c">// When finished, remove the finalizer</span>
+	<span class="n">controllerutil</span><span class="o">.</span><span class="n">RemoveFinalizer</span><span class="p">(</span><span class="n">namespacesync</span><span class="p">,</span> <span class="n">finalizerName</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">r</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">namespacesync</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{},</span> <span class="n">err</span>
+	<span class="p">}</span>
+	
+	<span class="n">log</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"Finalizer removed"</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">ctrl</span><span class="o">.</span><span class="n">Result</span><span class="p">{},</span> <span class="no">nil</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="webhooks">Webhooks</h3>
+
+<p>Kubebuilder supports generating admission webhooks for validation and defaulting:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add webhook support to your API</span>
+kubebuilder create webhook <span class="nt">--group</span> <span class="nb">sync</span> <span class="nt">--version</span> v1 <span class="nt">--kind</span> NamespaceSync <span class="nt">--defaulting</span> <span class="nt">--programmatic-validation</span>
+</code></pre></div></div>
+
+<h3 id="metrics-and-monitoring">Metrics and Monitoring</h3>
+
+<p>The controller-runtime library automatically exposes Prometheus metrics. Add custom metrics:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">var</span> <span class="p">(</span>
+	<span class="n">syncCount</span> <span class="o">=</span> <span class="n">promauto</span><span class="o">.</span><span class="n">NewCounterVec</span><span class="p">(</span>
+		<span class="n">prometheus</span><span class="o">.</span><span class="n">CounterOpts</span><span class="p">{</span>
+			<span class="n">Name</span><span class="o">:</span> <span class="s">"namespacesync_resources_synced_total"</span><span class="p">,</span>
+			<span class="n">Help</span><span class="o">:</span> <span class="s">"Number of resources synced by the operator"</span><span class="p">,</span>
+		<span class="p">},</span>
+		<span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">"kind"</span><span class="p">,</span> <span class="s">"source_namespace"</span><span class="p">,</span> <span class="s">"target_namespace"</span><span class="p">},</span>
+	<span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c">// Use in your reconciler</span>
+<span class="n">syncCount</span><span class="o">.</span><span class="n">WithLabelValues</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">Kind</span><span class="p">,</span> <span class="n">sourceNamespace</span><span class="p">,</span> <span class="n">targetNs</span><span class="p">)</span><span class="o">.</span><span class="n">Inc</span><span class="p">()</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="best-practices-for-operator-development">Best Practices for Operator Development</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>Design Principles</strong>
+  <ul>
+    <li>Follow the single responsibility principle - one operator for one application type</li>
+    <li>Make operations idempotent - reconcile function should be safe to call multiple times</li>
+    <li>Design for eventual consistency - handle delays and unavailability gracefully</li>
+    <li>Add proper status reporting so users can understand the current state</li>
+    <li>Structure your reconciliation to achieve maximum convergence</li>
+    <li>Use owner references to manage related resources</li>
+  </ul>
+  
+  <strong>Implementation Best Practices</strong>
+  <ul>
+    <li>Add clear documentation with examples in your CRDs</li>
+    <li>Include meaningful validation to catch errors early</li>
+    <li>Use shared informers for watching resources</li>
+    <li>Implement proper error handling with appropriate backoff</li>
+    <li>Add thorough unit and integration tests</li>
+    <li>Minimize container image size for faster deployments</li>
+  </ul>
+  
+  <strong>Operational Best Practices</strong>
+  <ul>
+    <li>Implement proper logging with structured contextual information</li>
+    <li>Add Prometheus metrics for monitoring</li>
+    <li>Set resource requests and limits on controller pods</li>
+    <li>Implement leader election for high availability</li>
+    <li>Version your APIs properly using semantic versioning</li>
+    <li>Document upgrade procedures for your operator</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Building Kubernetes Operators with Kubebuilder streamlines the development process for extending Kubernetes with custom resources and controllers. This guide demonstrated the key steps in creating an operator, from project initialization to deployment, using a real-world Namespace Synchronization example.</p>
+
+<p>As your operators grow more complex, leveraging the full power of Kubebuilder’s scaffolding, code generation, and testing tools will help you create robust, production-ready extensions to Kubernetes.</p>
+
+<p><br /></p>
+
 <hr />
 
-<h3 id="reference">Reference</h3>
+<h2 id="references">References</h2>
+
 <ul>
-  <li><a href="https://github.com/kubernetes-sigs/kubebuilder">Kubebuilder Documentation</a></li>
+  <li><a href="https://book.kubebuilder.io/">Kubebuilder Documentation</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/operator/">Kubernetes Operator Pattern</a></li>
   <li><a href="https://github.com/somaz94/k8s-namespace-sync">Namespace Sync Example</a></li>
   <li><a href="https://github.com/somaz94/helios-lb">Helios Load Balancer</a></li>
-  <li><a href="https://medium.com/@SabujJanaCodes/building-a-kubernetes-operator-in-go-reconciling-our-pdfdoc-crd-for-converting-text-to-pdf-files-d0c0c7da98be">Building Kubernetes Operators</a></li>
+  <li><a href="https://pkg.go.dev/sigs.k8s.io/controller-runtime">Controller-Runtime Library</a></li>
+  <li><a href="https://cloud.google.com/blog/products/containers-kubernetes/best-practices-for-building-kubernetes-operators-and-stateful-apps">Operator Best Practices</a></li>
 </ul>
 
 
@@ -659,7 +1055,7 @@ I1216 09:41:01.659829       1 leaderelection.go:268] successfully acquired lease
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="9">
+            <div class="time-bar" data-minutes="20">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -701,7 +1097,7 @@ I1216 09:41:01.659829       1 leaderelection.go:268] successfully acquired lease
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A practical guide to building Kubernetes Operators using Kubebuilder framework&quot;%20https://somaz.blog/category/kubernetes/k8s-operator-kubebuilder/%20via%20&#64;twitter_username&hashtags=kubernetes,operator,kubebuilder,development"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A practical guide to building Kubernetes Operators using Kubebuilder framework&quot;%20https://somaz.blog/category/kubernetes/k8s-operator-kubebuilder/%20via%20&#64;twitter_username&hashtags=kubernetes,operator,kubebuilder,development,go,custom-resources"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -956,7 +1352,7 @@ I1216 09:41:01.659829       1 leaderelection.go:268] successfully acquired lease
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Creating Kubernetes Operators with Kubebuilder",
-            "headline": "",
+            "headline": "A step-by-step guide to building custom controllers for Kubernetes",
             "description": "A practical guide to building Kubernetes Operators using Kubebuilder framework",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737356533/kubernetes-operator-kubebuilder_r8hvo4.png",
             "url": "https://somaz.blog/category/kubernetes/k8s-operator-kubebuilder/",
@@ -969,186 +1365,239 @@ I1216 09:41:01.659829       1 leaderelection.go:268] successfully acquired lease
 
 
 Overview
-Learn how to create Kubernetes Operators using Kubebuilder, a powerful framework for building custom controllers and APIs.
+
+Kubernetes Operators extend the platform’s functionality by adding domain-specific logic to manage complex applications. This guide demonstrates how to build Kubernetes Operators using Kubebuilder, a powerful framework that simplifies the development of custom controllers and APIs.
+
+
+  What is a Kubernetes Operator?
+  A Kubernetes Operator is a method of packaging, deploying, and managing applications using custom resources and controllers. Operators follow Kubernetes principles to automate operational tasks that would otherwise require manual intervention.
 
 
 
-what is kubebuilder?
+  
+    graph TD
+      A[Kubernetes API Server] --&amp;gt; B[API Extension]
+      B --&amp;gt; C[Custom Resource Definition]
+      B --&amp;gt; D[Custom Controller/Operator]
+      D --&amp;gt; E[Reconciliation Loop]
+      E --&amp;gt; F[Monitor State]
+      F --&amp;gt; G[Compare with Desired State]
+      G --&amp;gt; H[Take Action]
+      H --&amp;gt; F
+      
+      style A fill:#326ce5,stroke:#fff,color:#fff
+      style D fill:#ffa726,stroke:#fff,color:#000
+      style E fill:#ffa726,stroke:#fff,color:#000
+  
 
-Kubebuilder is an SDK for developing Kubernetes Operator. It is a framework that makes it easy to develop CRD and controllers using the Go language.
-
-It simplifies the development of custom controllers and APIs by providing scaffolding, code generation, and integration with Kubernetes tools.
-
-Kubernetes Operator is a custom controller that manages custom resources (CRD) and automates application deployment, expansion, and management.
-
-Why do I use Kubbuilder?
 
 
-  Code generation: Automatically generates commercial sphere code for CRD and controller.
-  Standards-based: built on a controller-runtime library that complies with Kubernetes API patterns.
-  Scaffolding: Provides the structure of the project, including configuration files, Dockerfile, and Makefile.
-  Testing: supports integration with test tools such as ‘envtest’ for Kubernetes.
-  Scalability: You can easily expand and customize the controller to suit your specific needs.
+
+Understanding Kubebuilder
+
+What is Kubebuilder?
+
+Kubebuilder is an SDK for building Kubernetes APIs and controllers using Go. It provides scaffolding, code generation, and other tools to simplify operator development.
+
+
+  Key Benefits of Kubebuilder
+  
+    Code Generation: Automatically generates boilerplate code for CRDs and controllers
+    Standards-Based: Built on controller-runtime library, adhering to Kubernetes API patterns
+    Scaffolding: Provides project structure including configuration files, Dockerfile, and Makefile
+    Testing: Integrates with tools like &apos;envtest&apos; for Kubernetes testing
+    Extensibility: Easily customizable to fit specific requirements
+  
+
+
+
+
+Kubebuilder Development Workflow
+
+
+  
+    graph LR
+      A[Initialize Project] --&amp;gt; B[Create API/CRD]
+      B --&amp;gt; C[Implement Controller Logic]
+      C --&amp;gt; D[Generate Manifests]
+      D --&amp;gt; E[Test Locally]
+      E --&amp;gt; F[Build &amp;amp; Deploy]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#90caf9,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#42a5f5,stroke:#333,stroke-width:1px
+      style E fill:#2196f3,stroke:#333,stroke-width:1px,color:#fff
+      style F fill:#1976d2,stroke:#333,stroke-width:1px,color:#fff
+  
 
 
 
 
 Getting Started with Kubebuilder
 
-Installation
-# Install Kubebuilder
-brew install kubebuilder
-
-# Initialize project
-kubebuilder init --domain example.com --repo github.com/username/project
-
-# Create API
-kubebuilder create api --group apps --version v1 --kind MyApp
-
-
-  -domain: Specify API domain (for example, example.com)
-  –repo: Set the Go module path for the project
-  -group: API group (for example, apps).
-  –version: API version (e.g., v1).
-  –kind: The name of the user-defined resource, for example, MyApp.
-  Define CRD in config/crd/
-  API and controller files for api/ and controllers/
-
-
-Project Structure
-.
-├── api
-│   └── v1
-├── bin
-├── cmd
-├── config
-│   ├── crd
-│   ├── default
-│   ├── manager
-│   ├── network-policy
-│   ├── prometheus
-│   ├── rbac
-│   └── samples
-├── hack
-├── internal
-│   └── controller
-└── test
-    ├── e2e
-    └── utils
-
-
-
-
-Development Workflow
-
-
-  
-    Step
-    Commands
-    Description
-  
-  
-    Generate
-    make generate
-    Generate code for custom resources
-  
-  
-    Manifests
-    make manifests
-    Generate CRD manifests
-  
-  
-    Test
-    make test
-    Run unit tests
-  
-  
-    Build
-    make docker-buildx
-    Build multi-platform images
-  
-  
-    Deploy
-    make deploy
-    Deploy to cluster
-  
-
-
-
-
-
-
-Create Operator with Kubbuilder
-
-It’s the Kubernetes Operator I created.
-
-  https://github.com/somaz94/k8s-namespace-sync
-  https://github.com/somaz94/helios-lb
-
-
 Prerequisites
-# Install kubebuilder
+
+Before starting, ensure you have the following tools installed:
+
+
+  Go (version 1.19+)
+  Docker
+  kubectl
+  kustomize
+  Kubernetes cluster for testing
+
+
+Installation
+
+# macOS
 brew install kubebuilder
 
-# Create git repo and clone
-git clone git@github.com-somaz94:somaz94/k8s-namespace-sync.git
+# Linux
+curl -L -o kubebuilder https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)
+chmod +x kubebuilder
+sudo mv kubebuilder /usr/local/bin/
 
-# Initialize kube builder project
+
+Project Initialization
+
+Create a new project with Kubebuilder:
+
+# Create a directory for your project
+mkdir -p ~/projects/namespace-sync
+cd ~/projects/namespace-sync
+
+# Initialize the project
 kubebuilder init --domain nsync.dev --repo github.com/somaz94/k8s-namespace-sync
 
-# Create api
+# Create an API
 kubebuilder create api --group sync --version v1 --kind NamespaceSync
 
 
-File Structure Explanation
+When prompted:
 
-The crd schema definition is done in the file below.
-
-  api/v1/namespacesync_types.go
-
-
-The main.go is defined in the path below.
-
-  cmd/main.go
+  Create Resource [y/n]: y
+  Create Controller [y/n]: y
 
 
-The controller defines it in that file. In addition to this file, I have organized files for various functions.
+This generates a skeleton project structure with:
 
-  internal/controller/namespacesync_controller.go
-
-
-ls
-backup					filters.go				namespacesync_controller.go		namespacesync_controller_target_test.go	resources.go				sync.go
-events.go				metrics.go				namespacesync_controller_filter_test.go	namespacesync_controller_test.go	suite_test.go				utils.go
-
-
-You can also define the test code on the same path and test it using the make test command.
-If you are curious about the details, please check the make file.
-
-If you’re done implementing all the features, create a dockerhub account to upload after the image is built.
-
-  Create an Access Token on the Docker Hub website
-  https://hub.docker.com/settings/security access
-  “New Access Token” click
-  Enter token name (e.g. “k8s-namespace-sync”)
-  Copy once token is created (save this token well because it only shows once)
-
-
-Log in from the terminal.
-docker login -u somaz940
-# Enter token
-
-
-  Before proceeding with the make test, there is still something to explain.
+  API definitions
+  Controller scaffolding
+  Configuration files
+  Testing infrastructure
 
 
 
 
-Kubebuilder Markers
+Understanding the Project Structure
 
-It is a kubbuilder marker that defines the schema and presentation method of the Kubernetes Custom Resource Definition (CRD).
 
-If you check the namespacesync_types.go file, the marker is defined as below.
+  Key Directories and Files
+  
+    
+      
+        api/ - CRD API definitions
+        controllers/ - Reconciliation logic
+        config/ - Kubernetes resource manifests
+        Makefile - Build and deployment commands
+        main.go - Operator entry point
+      
+    
+    
+      
+        Dockerfile - Container image definition
+        go.mod - Go module dependencies
+        hack/ - Scripts and tools
+        PROJECT - Kubebuilder project metadata
+      
+    
+  
+
+
+Here’s a more detailed view of the generated project structure:
+
+.
+├── api                     # API definitions
+│   └── v1
+│       ├── groupversion_info.go
+│       ├── namespacesync_types.go  # CRD definition
+│       └── zz_generated.deepcopy.go
+├── bin                     # Binaries
+├── cmd                     # Command-line interfaces
+│   └── main.go             # Main entry point
+├── config                  # Kubernetes configuration
+│   ├── crd                 # Custom Resource Definitions
+│   ├── default             # Default configurations
+│   ├── manager             # Controller manager
+│   ├── rbac                # Role-based access control
+│   └── samples             # Sample custom resources
+├── controllers             # Controller logic
+│   ├── namespacesync_controller.go  # Main controller logic
+│   └── suite_test.go                # Test setup
+├── Dockerfile              # Container build instructions
+├── go.mod                  # Go module definition
+├── go.sum                  # Go dependencies checksum
+├── hack                    # Scripts and tools
+│   └── boilerplate.go.txt
+├── Makefile                # Build, test, and deploy commands
+└── PROJECT                 # Project metadata
+
+
+
+
+Defining Custom Resources
+
+The core of your operator is the Custom Resource Definition (CRD). This defines the API that users will interact with.
+
+Understanding the API Definition
+
+Let’s examine the API definition in api/v1/namespacesync_types.go:
+
+// NamespaceSyncSpec defines the desired state of NamespaceSync
+type NamespaceSyncSpec struct {
+	// SourceNamespace is the namespace to sync resources from
+	// +kubebuilder:validation:Required
+	SourceNamespace string `json:&quot;sourceNamespace&quot;`
+
+	// TargetNamespaces is a list of namespaces to sync resources to
+	// +optional
+	TargetNamespaces []string `json:&quot;targetNamespaces,omitempty&quot;`
+
+	// NamespaceSelector selects namespaces to sync resources to
+	// +optional
+	NamespaceSelector *metav1.LabelSelector `json:&quot;namespaceSelector,omitempty&quot;`
+
+	// Resources is a list of resources to sync
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
+	Resources []ResourceSelector `json:&quot;resources&quot;`
+}
+
+// ResourceSelector defines which resources to sync
+type ResourceSelector struct {
+	// Kind of the resource (e.g. ConfigMap, Secret)
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=ConfigMap;Secret
+	Kind string `json:&quot;kind&quot;`
+
+	// Name of the resource
+	// +kubebuilder:validation:Required
+	Name string `json:&quot;name&quot;`
+}
+
+// NamespaceSyncStatus defines the observed state of NamespaceSync
+type NamespaceSyncStatus struct {
+	// Conditions represent the latest available observations of the NamespaceSync
+	// +optional
+	Conditions []metav1.Condition `json:&quot;conditions,omitempty&quot;`
+}
+
+
+Adding Kubebuilder Markers
+
+Kubebuilder uses special comment markers to generate additional code and metadata:
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name=&quot;Source&quot;,type=&quot;string&quot;,JSONPath=&quot;.spec.sourceNamespace&quot;
@@ -1157,185 +1606,528 @@ If you check the namespacesync_types.go file, the marker is defined as below.
 // +kubebuilder:printcolumn:name=&quot;Message&quot;,type=&quot;string&quot;,JSONPath=&quot;.status.conditions[?(@.type==&apos;Ready&apos;)].message&quot;
 
 
-  +kubebuilder:object:root=true
+These markers:
+
+  Define the resource as a root object
+  Add a status subresource
+  Configure columns for kubectl get output
+  Define validation rules for fields
+
+
+
+  
     
-      This marker indicates that the resource is a root resource.
+      Marker Type
+      Purpose
+    
+    
+      object
+      Defines object characteristics (e.g., root=true for top-level resources)
+    
+    
+      subresource
+      Adds subresources like status or scale
+    
+    
+      printcolumn
+      Configures columns in kubectl output
+    
+    
+      validation
+      Adds schema validation (e.g., required fields, enums)
+    
+    
+      rbac
+      Defines permissions needed for the controller
     
   
-  +kubebuilder:subresource:status
-    
-      This marker indicates that the resource has a status subresource.
-      It provides a separate endpoint for status updates.
-    
+
+
+
+
+Implementing the Controller
+
+The controller contains the reconciliation logic for your custom resource.
+
+Understanding the Reconciliation Loop
+
+
   
-  +kubebuilder:printcolumn:...
-    
-      This marker indicates that the resource has a print column.
-      Defined columns
-        
-          Source: Displaying spec.sourceNamespace value
-          Age: Show creation time
-          Status: Displaying Ready Condition Status
-          Message: Displaying message in Ready condition
-        
+    sequenceDiagram
+      participant K as Kubernetes API
+      participant C as Controller
+      participant R as Reconcile Function
       
+      K-&amp;gt;&amp;gt;C: Resource Change Event
+      C-&amp;gt;&amp;gt;C: Add to Work Queue
+      C-&amp;gt;&amp;gt;R: Call Reconcile()
+      R-&amp;gt;&amp;gt;K: Get Current State
+      R-&amp;gt;&amp;gt;R: Compare with Desired State
+      R-&amp;gt;&amp;gt;K: Apply Changes
+      R-&amp;gt;&amp;gt;C: Return Result
+      Note over C: If Error or Requeue
+      C-&amp;gt;&amp;gt;C: Add Back to Queue
+  
+
+
+The controller watches for changes to your custom resource and other related resources, then triggers the reconciliation loop to ensure the actual state matches the desired state.
+
+Controller Implementation
+
+Let’s look at a simplified version of a controller from our NamespaceSync example:
+
+// NamespaceSyncReconciler reconciles a NamespaceSync object
+type NamespaceSyncReconciler struct {
+	client.Client
+	Scheme *runtime.Scheme
+	Recorder record.EventRecorder
+}
+
+// +kubebuilder:rbac:groups=sync.nsync.dev,resources=namespacesyncs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sync.nsync.dev,resources=namespacesyncs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sync.nsync.dev,resources=namespacesyncs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=&quot;&quot;,resources=namespaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups=&quot;&quot;,resources=configmaps;secrets,verbs=get;list;watch;create;update;patch;delete
+
+func (r *NamespaceSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+	
+	// Fetch the NamespaceSync instance
+	var namespacesync syncv1.NamespaceSync
+	if err := r.Get(ctx, req.NamespacedName, &amp;amp;namespacesync); err != nil {
+		// Handle not-found error
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	
+	// Add finalizer if needed
+	if !controllerutil.ContainsFinalizer(&amp;amp;namespacesync, finalizerName) {
+		controllerutil.AddFinalizer(&amp;amp;namespacesync, finalizerName)
+		if err := r.Update(ctx, &amp;amp;namespacesync); err != nil {
+			log.Error(err, &quot;Failed to add finalizer&quot;)
+			return ctrl.Result{}, err
+		}
+	}
+	
+	// Check if being deleted
+	if !namespacesync.ObjectMeta.DeletionTimestamp.IsZero() {
+		return r.handleDeletion(ctx, &amp;amp;namespacesync)
+	}
+	
+	// Get target namespaces
+	targetNamespaces, err := r.getTargetNamespaces(ctx, &amp;amp;namespacesync)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	
+	// Synchronize resources to target namespaces
+	if err := r.syncResources(ctx, &amp;amp;namespacesync, targetNamespaces); err != nil {
+		// Update status to reflect error
+		r.updateStatusCondition(&amp;amp;namespacesync, metav1.ConditionFalse, &quot;SyncFailed&quot;, err.Error())
+		return ctrl.Result{}, err
+	}
+	
+	// Update status to reflect success
+	r.updateStatusCondition(&amp;amp;namespacesync, metav1.ConditionTrue, &quot;Synced&quot;, &quot;Resources synchronized successfully&quot;)
+	
+	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+}
+
+
+Key Controller Components
+
+
+  RBAC Markers: Define the permissions needed by the controller
+  Reconcile Function: Main logic that handles the resource
+  Finalizers: Ensure cleanup when resources are deleted
+  Status Updates: Report the current state back to the user
+
+
+
+
+Building and Testing Your Operator
+
+Key Makefile Commands
+
+Kubebuilder creates a comprehensive Makefile with all necessary commands:
+
+
+  
+    
+      Command
+      Description
+    
+    
+      make generate
+      Generate code (DeepCopy methods, etc.) for custom resources
+    
+    
+      make manifests
+      Generate CRD manifests and RBAC configuration
+    
+    
+      make test
+      Run unit tests with a simulated Kubernetes API server
+    
+    
+      make run
+      Run the controller locally against your configured Kubernetes cluster
+    
+    
+      make docker-build
+      Build the Docker image
+    
+    
+      make docker-push
+      Push the Docker image to a registry
+    
+    
+      make deploy
+      Deploy the controller to the Kubernetes cluster
     
   
 
 
-When using makemanifests
+Running Tests
 
-  Controller-gen reads the markers in the Go code to create a CRD YAML file
-  Create RBAC Permissions Configuration File
-  Create deliverables in the config/crd/bases directory
+Kubebuilder integrates with the Kubernetes envtest package to simulate the API server for testing:
+
+// controllers/suite_test.go
+func TestAPIs(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, &quot;Controller Suite&quot;)
+}
+
+var _ = BeforeSuite(func() {
+	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+
+	By(&quot;bootstrapping test environment&quot;)
+	testEnv = &amp;amp;envtest.Environment{
+		CRDDirectoryPaths:     []string{filepath.Join(&quot;..&quot;, &quot;config&quot;, &quot;crd&quot;, &quot;bases&quot;)},
+		ErrorIfCRDPathMissing: true,
+	}
+
+	cfg, err := testEnv.Start()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(cfg).NotTo(BeNil())
+
+	err = syncv1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	Expect(err).NotTo(HaveOccurred())
+	Expect(k8sClient).NotTo(BeNil())
+})
 
 
-When using make generator
+To run tests:
 
-  Create DeepCopy Method for Go Type
-  Generating the type conversion code required for Kubernetes client code
-
+make test
 
 
+Building for Multiple Platforms
 
-If you check the makefile, it is defined as follows. After performing all necessary tasks, proceed to the test.
-.PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS=&quot;$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)&quot; go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+For cross-platform support, add a multi-platform build rule to your Makefile:
 
-
-
-
-And you can specify IMG upload path and K8S test version in makefile.
-# Image URL to use all building/pushing image targets
-IMG ?= somaz940/k8s-namespace-sync:v0.1.6
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.31.0
-
-
-
-
-If the test is successful, make docker-buildx is used to build various platforms at the same time.
-
-I modified the makefile so that it could be built into the late, versiontag, and late+ versiontag environments.
 PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
-.PHONY: docker-buildx-tag
-docker-buildx-tag: ## Build and push docker image for the manager for cross-platform support with specific version
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross
-	sed -e &apos;1 s/\\(^FROM\\)/FROM --platform=\\$$\\{BUILDPLATFORM\\}/; t&apos; -e &apos; 1,// s//FROM --platform=\\$$\\{BUILDPLATFORM\\}/&apos; Dockerfile &amp;gt; Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name k8s-namespace-sync-builder
-	$(CONTAINER_TOOL) buildx use k8s-namespace-sync-builder
-	# Build and push version-specific tag
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) \\
-		--tag ${IMG} \\
-		-f Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm k8s-namespace-sync-builder
-	rm Dockerfile.cross
-
-.PHONY: docker-buildx-latest
-docker-buildx-latest: ## Build and push docker image for the manager for cross-platform support with latest tag
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross
-	sed -e &apos;1 s/\\(^FROM\\)/FROM --platform=\\$$\\{BUILDPLATFORM\\}/; t&apos; -e &apos; 1,// s//FROM --platform=\\$$\\{BUILDPLATFORM\\}/&apos; Dockerfile &amp;gt; Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name k8s-namespace-sync-builder
-	$(CONTAINER_TOOL) buildx use k8s-namespace-sync-builder
-	# Build and push latest tag
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) \\
-		--tag $(shell echo ${IMG} | cut -f1 -d:):latest \\
-		-f Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm k8s-namespace-sync-builder
-	rm Dockerfile.cross
-
 .PHONY: docker-buildx
-docker-buildx: ## Build and push both version-specific and latest tags
-docker-buildx: docker-buildx-tag docker-buildx-latest
+docker-buildx: ## Build and push docker image for cross-platform support
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross
+	sed -e &apos;1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t&apos; -e &apos; 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/&apos; Dockerfile &amp;gt; Dockerfile.cross
+	- $(CONTAINER_TOOL) buildx create --name project-v3-builder
+	$(CONTAINER_TOOL) buildx use project-v3-builder
+	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
+	- $(CONTAINER_TOOL) buildx rm project-v3-builder
+	rm Dockerfile.cross
 
 
 
 
-If you want to deploy to the cluster, you can use the make deploy command.
-make deploy IMG=somaz940/k8s-namespace-sync:v0.1.6
+Real-World Example: Namespace Sync Operator
+
+Let’s explore a real-world example of a Kubernetes Operator built with Kubebuilder: a Namespace Synchronization Operator that copies resources from one namespace to others.
+
+Use Case
+
+
+  Synchronize ConfigMaps and Secrets from a source namespace to multiple target namespaces
+  Target namespaces can be explicitly listed or selected via labels
+  Resources stay in sync automatically when the source changes
+
+
+CRD Example
+
+apiVersion: sync.nsync.dev/v1
+kind: NamespaceSync
+metadata:
+  name: config-sync
+spec:
+  sourceNamespace: source-namespace
+  targetNamespaces:
+    - target-namespace-1
+    - target-namespace-2
+  resources:
+    - kind: ConfigMap
+      name: shared-config
+    - kind: Secret
+      name: shared-credentials
+
+
+Or using a namespace selector:
+
+apiVersion: sync.nsync.dev/v1
+kind: NamespaceSync
+metadata:
+  name: config-sync-all
+spec:
+  sourceNamespace: source-namespace
+  namespaceSelector:
+    matchLabels:
+      sync-enabled: &quot;true&quot;
+  resources:
+    - kind: ConfigMap
+      name: shared-config
+
+
+Building the Feature Step by Step
+
+
+  Resource Synchronization Logic:
+
+
+func (r *NamespaceSyncReconciler) syncResources(ctx context.Context, namespacesync *syncv1.NamespaceSync, targetNamespaces []string) error {
+	log := log.FromContext(ctx)
+	sourceNamespace := namespacesync.Spec.SourceNamespace
+	
+	for _, res := range namespacesync.Spec.Resources {
+		// Get source resource
+		sourceObj, err := r.getSourceResource(ctx, sourceNamespace, res)
+		if err != nil {
+			return err
+		}
+		
+		// Apply to target namespaces
+		for _, targetNs := range targetNamespaces {
+			if targetNs == sourceNamespace {
+				// Skip source namespace
+				continue
+			}
+			
+			if err := r.applyToTarget(ctx, sourceObj, targetNs); err != nil {
+				log.Error(err, &quot;Failed to apply resource to target&quot;, 
+					&quot;kind&quot;, res.Kind, &quot;name&quot;, res.Name, &quot;target&quot;, targetNs)
+				continue
+			}
+			
+			log.Info(&quot;Synchronized resource&quot;, 
+				&quot;kind&quot;, res.Kind, &quot;name&quot;, res.Name, 
+				&quot;from&quot;, sourceNamespace, &quot;to&quot;, targetNs)
+		}
+	}
+	
+	return nil
+}
+
+
+
+  Target Namespace Resolution:
+
+
+func (r *NamespaceSyncReconciler) getTargetNamespaces(ctx context.Context, namespacesync *syncv1.NamespaceSync) ([]string, error) {
+	// If explicit targets provided, use those
+	if len(namespacesync.Spec.TargetNamespaces) &amp;gt; 0 {
+		return namespacesync.Spec.TargetNamespaces, nil
+	}
+	
+	// If selector provided, query matching namespaces
+	if namespacesync.Spec.NamespaceSelector != nil {
+		selector, err := metav1.LabelSelectorAsSelector(namespacesync.Spec.NamespaceSelector)
+		if err != nil {
+			return nil, err
+		}
+		
+		var namespaceList corev1.NamespaceList
+		if err := r.List(ctx, &amp;amp;namespaceList, &amp;amp;client.ListOptions{
+			LabelSelector: selector,
+		}); err != nil {
+			return nil, err
+		}
+		
+		result := make([]string, 0, len(namespaceList.Items))
+		for _, ns := range namespaceList.Items {
+			result = append(result, ns.Name)
+		}
+		return result, nil
+	}
+	
+	// No targets specified
+	return nil, fmt.Errorf(&quot;no target namespaces specified&quot;)
+}
+
+
+Testing the Operator
+
+To test the operator locally:
+
+# Run the controller against your configured Kubernetes cluster
+make run
+
+# In another terminal, apply a sample CR
+kubectl apply -f config/samples/sync_v1_namespacesync.yaml
+
+# Check the status
+kubectl get namespacesync
+
+# Verify resources were synced
+kubectl get configmap -n target-namespace-1
 
 
 
 
-Check api and crd.
-k get apiservices.apiregistration.k8s.io |grep nsync
-v1.sync.nsync.dev                      Local                        True        25s
+Deploying Your Operator
 
-k get crd |grep nsync
-namespacesyncs.sync.nsync.dev                2024-12-16T09:41:00Z
+Building and Pushing the Container Image
 
+# Set the image name
+export IMG=yourdockerhub/namespace-sync:v0.1.0
 
-
-
-I created various sample crd.
-ls config/samples/
-kustomization.yaml			sync_v1_namespacesync_exclude.yaml	sync_v1_namespacesync_target.yaml	test-configmap2.yaml			test-secret2.yaml
-sync_v1_namespacesync.yaml		sync_v1_namespacesync_filter.yaml	test-configmap.yaml			test-secret.yaml
+# Build and push
+make docker-build docker-push IMG=$IMG
 
 
+Deploying to a Kubernetes Cluster
+
+# Install the CRDs
+make install
+
+# Deploy the controller
+make deploy IMG=$IMG
 
 
-The start log of the app is as follows.
-2024-12-16T09:41:01.541Z        ESC[34minfoESC[0m       setup   creating controller     {&quot;controller&quot;: &quot;NamespaceSync&quot;, &quot;scheme&quot;: &quot;pkg/runtime/scheme.go:100&quot;}
-2024-12-16T09:41:01.541Z        ESC[34minfoESC[0m       namespacesync-controller        Setting up controller manager
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       setup   controller created successfully {&quot;controller&quot;: &quot;NamespaceSync&quot;}
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       setup   starting manager
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       controller-runtime.metrics      Starting metrics server
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       setup   disabling http/2
-2024-12-16T09:41:01.545Z        ESC[34minfoESC[0m       starting server {&quot;name&quot;: &quot;health probe&quot;, &quot;addr&quot;: &quot;[::]:8081&quot;}
-I1216 09:41:01.645802       1 leaderelection.go:254] attempting to acquire leader lease k8s-namespace-sync-system/47c2149c.nsync.dev...
-I1216 09:41:01.659829       1 leaderelection.go:268] successfully acquired lease k8s-namespace-sync-system/47c2149c.nsync.dev
-2024-12-16T09:41:01.659Z        ESC[35mdebugESC[0m      manager.events  k8s-namespace-sync-controller-manager-5874b756c8-h9ng6_2a3d0c37-b1f0-46c3-bcff-e28ccc2750e9 became leader       {&quot;type&quot;: &quot;Normal&quot;, &quot;object&quot;: {&quot;kind&quot;:&quot;Lease&quot;,&quot;namespace&quot;:&quot;k8s-namespace-sync-system&quot;,&quot;name&quot;:&quot;47c21
-49c.nsync.dev&quot;,&quot;uid&quot;:&quot;385be981-f090-4b4e-a341-7888c2858e4b&quot;,&quot;apiVersion&quot;:&quot;coordination.k8s.io/v1&quot;,&quot;resourceVersion&quot;:&quot;12611207&quot;}, &quot;reason&quot;: &quot;LeaderElection&quot;}
-2024-12-16T09:41:01.660Z        ESC[34minfoESC[0m       manager Starting EventSource    {&quot;controller&quot;: &quot;namespacesync&quot;, &quot;controllerGroup&quot;: &quot;sync.nsync.dev&quot;, &quot;controllerKind&quot;: &quot;NamespaceSync&quot;, &quot;source&quot;: &quot;kind source: *v1.NamespaceSync&quot;}
-2024-12-16T09:41:01.660Z        ESC[34minfoESC[0m       manager Starting EventSource    {&quot;controller&quot;: &quot;namespacesync&quot;, &quot;controllerGroup&quot;: &quot;sync.nsync.dev&quot;, &quot;controllerKind&quot;: &quot;NamespaceSync&quot;, &quot;source&quot;: &quot;kind source: *v1.Namespace&quot;}
-2024-12-16T09:41:01.660Z        ESC[34minfoESC[0m       manager Starting EventSource    {&quot;controller&quot;: &quot;namespacesync&quot;, &quot;controllerGroup&quot;: &quot;sync.nsync.dev&quot;, &quot;controllerKind&quot;: &quot;NamespaceSync&quot;, &quot;source&quot;: &quot;kind source: *v1.Secret&quot;}
-2024-12-16T09:41:01.660Z        ESC[34minfoESC[0m       manager Starting EventSource    {&quot;controller&quot;: &quot;namespacesync&quot;, &quot;controllerGroup&quot;: &quot;sync.nsync.dev&quot;, &quot;controllerKind&quot;: &quot;NamespaceSync&quot;, &quot;source&quot;: &quot;kind source: *v1.ConfigMap&quot;}
+Verifying the Deployment
+
+# Check the operator deployment
+kubectl get pods -n namespace-sync-system
+
+# Check the CRD
+kubectl get crd | grep namespacesync
+
+# Check if any CRs exist
+kubectl get namespacesync --all-namespaces
 
 
 
 
+Advanced Topics
+
+Finalizers
+
+Finalizers ensure proper cleanup when resources are deleted:
+
+const finalizerName = &quot;namespacesync.sync.nsync.dev/finalizer&quot;
+
+func (r *NamespaceSyncReconciler) handleDeletion(ctx context.Context, namespacesync *syncv1.NamespaceSync) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+	
+	// Perform cleanup here...
+	log.Info(&quot;Cleaning up resources&quot;)
+	
+	// When finished, remove the finalizer
+	controllerutil.RemoveFinalizer(namespacesync, finalizerName)
+	if err := r.Update(ctx, namespacesync); err != nil {
+		return ctrl.Result{}, err
+	}
+	
+	log.Info(&quot;Finalizer removed&quot;)
+	return ctrl.Result{}, nil
+}
 
 
-Best Practices
+Webhooks
+
+Kubebuilder supports generating admission webhooks for validation and defaulting:
+
+# Add webhook support to your API
+kubebuilder create webhook --group sync --version v1 --kind NamespaceSync --defaulting --programmatic-validation
+
+
+Metrics and Monitoring
+
+The controller-runtime library automatically exposes Prometheus metrics. Add custom metrics:
+
+var (
+	syncCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: &quot;namespacesync_resources_synced_total&quot;,
+			Help: &quot;Number of resources synced by the operator&quot;,
+		},
+		[]string{&quot;kind&quot;, &quot;source_namespace&quot;, &quot;target_namespace&quot;},
+	)
+)
+
+// Use in your reconciler
+syncCount.WithLabelValues(res.Kind, sourceNamespace, targetNs).Inc()
 
 
 
-1. Project Structure:
-   - Organize code logically
-   - Separate concerns
-   - Use consistent naming
 
-2. Testing:
-   - Write comprehensive tests
-   - Use test fixtures
-   - Test edge cases
-
-3. Deployment:
-   - Use multi-platform builds
-   - Implement proper RBAC
-   - Monitor performance
-
-4. Documentation:
-   - Document APIs clearly
-   - Include usage examples
-   - Maintain changelog
+Best Practices for Operator Development
 
 
+  Design Principles
+  
+    Follow the single responsibility principle - one operator for one application type
+    Make operations idempotent - reconcile function should be safe to call multiple times
+    Design for eventual consistency - handle delays and unavailability gracefully
+    Add proper status reporting so users can understand the current state
+    Structure your reconciliation to achieve maximum convergence
+    Use owner references to manage related resources
+  
+  
+  Implementation Best Practices
+  
+    Add clear documentation with examples in your CRDs
+    Include meaningful validation to catch errors early
+    Use shared informers for watching resources
+    Implement proper error handling with appropriate backoff
+    Add thorough unit and integration tests
+    Minimize container image size for faster deployments
+  
+  
+  Operational Best Practices
+  
+    Implement proper logging with structured contextual information
+    Add Prometheus metrics for monitoring
+    Set resource requests and limits on controller pods
+    Implement leader election for high availability
+    Version your APIs properly using semantic versioning
+    Document upgrade procedures for your operator
+  
 
 
 
 
-Reference
+Conclusion
+
+Building Kubernetes Operators with Kubebuilder streamlines the development process for extending Kubernetes with custom resources and controllers. This guide demonstrated the key steps in creating an operator, from project initialization to deployment, using a real-world Namespace Synchronization example.
+
+As your operators grow more complex, leveraging the full power of Kubebuilder’s scaffolding, code generation, and testing tools will help you create robust, production-ready extensions to Kubernetes.
+
+
+
+
+
+References
+
 
   Kubebuilder Documentation
+  Kubernetes Operator Pattern
   Namespace Sync Example
   Helios Load Balancer
-  Building Kubernetes Operators
+  Controller-Runtime Library
+  Operator Best Practices
 
 ",
-            "wordcount": "1686",
+            "wordcount": "3679",
             "inLanguage": "en",
             "dateCreated": "2025-01-14/",
             "datePublished": "2025-01-14/",
@@ -1366,7 +2158,7 @@ Reference
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","operator","kubebuilder","development"]
+            "keywords": ["kubernetes","operator","kubebuilder","development","go","custom-resources"]
         }
         </script>
     </body>

@@ -40,7 +40,7 @@
     <title>Kubernetes Deployment Strategies | somaz</title>
     <meta name="description" content="A comprehensive guide to different deployment strategies in Kubernetes including RollingUpdate, Recreate, Blue/Green, and Canary">
     
-        <meta name="keywords" content="kubernetes, deployment, strategies, rolling-update">
+        <meta name="keywords" content="kubernetes, deployment, strategies, rolling-update, canary, blue-green">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 13, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>5 min to read</span>
+                    <span>17 min to read</span>
                 </p>
                 <h1 class="post-title">Kubernetes Deployment Strategies</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">Choose the right approach for updating your applications with zero to minimal downtime</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737351308/kubernetes-deployment-strategy_wcb9yy.png" alt="Featured image" class="post-cover">
@@ -245,101 +245,320 @@ January 13, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p><strong>Kubernetes deployment strategies</strong> define how to update Pods or sets of Pods when deploying new application versions or container images.</p>
-<ul>
-  <li>RollingUpdate is the default strategy.</li>
-  <li>Recreate is the strategy that terminates all existing pods before creating new ones.</li>
-</ul>
+
+<p><strong>Kubernetes deployment strategies</strong> define how to update Pods or sets of Pods when deploying new application versions or container images. The right deployment strategy helps maintain system stability, minimize downtime, and ensure a smooth transition between versions.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Deployment Strategy Considerations</strong>
+  <p>When choosing a deployment strategy, consider these factors:</p>
+  <ul>
+    <li>Acceptable downtime window</li>
+    <li>Application architecture compatibility</li>
+    <li>Available resources</li>
+    <li>Risk tolerance</li>
+    <li>User impact</li>
+    <li>Rollback requirements</li>
+  </ul>
+</div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Application Update Needed] --&gt; B{Downtime Acceptable?}
+      B --&gt;|Yes| C[Recreate Strategy]
+      B --&gt;|No| D{Testing with Real Users?}
+      D --&gt;|Yes| E[Canary Deployment]
+      D --&gt;|No| F{Need Instant Rollback?}
+      F --&gt;|Yes| G[Blue/Green Deployment]
+      F --&gt;|No| H[Rolling Update Deployment]
+      
+      style C fill:#f9f,stroke:#333,stroke-width:2px
+      style E fill:#bbf,stroke:#333,stroke-width:2px
+      style G fill:#ffa,stroke:#333,stroke-width:2px
+      style H fill:#bfb,stroke:#333,stroke-width:2px
+  </div>
+</div>
 
 <p><br /></p>
 
-<h3 id="-basic-deployment-strategies">🔄 Basic Deployment Strategies</h3>
+<h2 id="basic-deployment-strategies">Basic Deployment Strategies</h2>
 
-<h4 id="1-rollingupdate-default">1. RollingUpdate (Default)</h4>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">spec</span><span class="pi">:</span>
+<h3 id="1-rollingupdate-default">1. RollingUpdate (Default)</h3>
+
+<p>The RollingUpdate strategy gradually replaces instances of the previous version with instances of the new version, one by one.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant User
+      participant Svc as Service
+      participant Old as Old Pods
+      participant New as New Pods
+      
+      Note over Old: 3 pods running v1
+      User-&gt;&gt;Svc: Traffic routed to old pods
+      
+      Note over Old,New: Deployment update triggered
+      Svc-&gt;&gt;Old: Traffic continues
+      
+      Note over New: 1 new pod created
+      Note over Old: 1 old pod terminated
+      Svc-&gt;&gt;Old: Traffic to remaining v1 pods
+      Svc-&gt;&gt;New: Traffic to new v2 pod
+      
+      Note over New: Another new pod created
+      Note over Old: Another old pod terminated
+      Svc-&gt;&gt;Old: Traffic to remaining v1 pod
+      Svc-&gt;&gt;New: Traffic to v2 pods
+      
+      Note over New: Final new pod created
+      Note over Old: Final old pod terminated
+      Svc-&gt;&gt;New: All traffic to v2 pods
+  </div>
+</div>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>
   <span class="na">strategy</span><span class="pi">:</span>
     <span class="na">type</span><span class="pi">:</span> <span class="s">RollingUpdate</span>
     <span class="na">rollingUpdate</span><span class="pi">:</span>
       <span class="na">maxUnavailable</span><span class="pi">:</span> <span class="m">1</span>  <span class="c1"># Maximum number of pods that can be unavailable during update</span>
-      <span class="na">maxSurge</span><span class="pi">:</span> <span class="m">1</span>       <span class="c1"># Maximum number of pods that can be created above desired number</span>
+      <span class="na">maxSurge</span><span class="pi">:</span> <span class="m">1</span>        <span class="c1"># Maximum number of pods that can be created above desired number</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:v2</span>
+        <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">8080</span>
 </code></pre></div></div>
 
+<h4 id="key-parameters">Key Parameters:</h4>
+
 <ul>
-  <li>Gradually updates pods in small batches</li>
-  <li>Minimizes downtime during updates</li>
-  <li>Ideal for maintaining high availability</li>
-  <li>Controls update pace with maxUnavailable and maxSurge parameters</li>
+  <li><strong>maxUnavailable</strong>: Maximum number or percentage of pods that can be unavailable during the update</li>
+  <li><strong>maxSurge</strong>: Maximum number or percentage of pods that can be created over the desired number during the update</li>
 </ul>
 
-<h4 id="2-recreate">2. Recreate</h4>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">spec</span><span class="pi">:</span>
+<h4 id="benefits">Benefits:</h4>
+<ul>
+  <li>Minimizes downtime during updates</li>
+  <li>Provides continuous service availability</li>
+  <li>Allows for gradual rollout of changes</li>
+  <li>Built into Kubernetes, no additional tools required</li>
+</ul>
+
+<h4 id="limitations">Limitations:</h4>
+<ul>
+  <li>Both versions run simultaneously during the transition</li>
+  <li>May cause issues if versions aren’t backward compatible</li>
+  <li>Slower than recreate strategy</li>
+  <li>Rollback requires another rolling update</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="2-recreate-strategy">2. Recreate Strategy</h3>
+
+<p>The Recreate strategy terminates all existing pods before creating new ones.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant User
+      participant Svc as Service
+      participant Old as Old Pods (v1)
+      participant New as New Pods (v2)
+      
+      Note over Old: 3 pods running v1
+      User-&gt;&gt;Svc: Traffic routed to old pods
+      Svc-&gt;&gt;Old: Requests served
+      
+      Note over Old,New: Deployment update triggered
+      Note over Old: All v1 pods terminated
+      User-&gt;&gt;Svc: Requests fail (downtime)
+      
+      Note over New: All v2 pods created
+      User-&gt;&gt;Svc: Traffic resumes
+      Svc-&gt;&gt;New: Requests served by v2
+  </div>
+</div>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>
   <span class="na">strategy</span><span class="pi">:</span>
     <span class="na">type</span><span class="pi">:</span> <span class="s">Recreate</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:v2</span>
+        <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">8080</span>
 </code></pre></div></div>
 
+<h4 id="benefits-1">Benefits:</h4>
 <ul>
-  <li>Terminates all existing pods before creating new ones</li>
-  <li>Results in downtime between versions</li>
-  <li>Ensures clean deployment of new version</li>
-  <li>Suitable for development environments or when downtime is acceptable</li>
+  <li>Simple implementation</li>
+  <li>Ensures clean state deployment</li>
+  <li>Useful for applications with database schema changes</li>
+  <li>No version overlap during deployment</li>
+  <li>Minimal resource usage</li>
+</ul>
+
+<h4 id="limitations-1">Limitations:</h4>
+<ul>
+  <li>Creates downtime between versions</li>
+  <li>Not suitable for production applications requiring high availability</li>
+  <li>Impacts user experience during updates</li>
 </ul>
 
 <p><br /></p>
 
-<h3 id="strategy-comparison-table">Strategy Comparison Table</h3>
+<h2 id="strategy-comparison">Strategy Comparison</h2>
 
-<table class="table-modern">
-  <tr>
-    <th>Strategy</th>
-    <th>Downtime</th>
-    <th>Resource Usage</th>
-    <th>Complexity</th>
-    <th>Rollback</th>
-  </tr>
-  <tr>
-    <td>RollingUpdate</td>
-    <td>Minimal</td>
-    <td>Normal</td>
-    <td>Low</td>
-    <td>Gradual</td>
-  </tr>
-  <tr>
-    <td>Recreate</td>
-    <td>Yes</td>
-    <td>Minimal</td>
-    <td>Very Low</td>
-    <td>Immediate</td>
-  </tr>
-  <tr>
-    <td>Blue/Green</td>
-    <td>None</td>
-    <td>Double</td>
-    <td>High</td>
-    <td>Immediate</td>
-  </tr>
-  <tr>
-    <td>Canary</td>
-    <td>None</td>
-    <td>Variable</td>
-    <td>High</td>
-    <td>Simple</td>
-  </tr>
-</table>
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 15%;">Strategy</th>
+      <th style="width: 15%;">Downtime</th>
+      <th style="width: 15%;">Resource Usage</th>
+      <th style="width: 15%;">Complexity</th>
+      <th style="width: 15%;">Rollback Speed</th>
+      <th style="width: 25%;">Best For</th>
+    </tr>
+    <tr>
+      <td>RollingUpdate</td>
+      <td>Minimal</td>
+      <td>Normal</td>
+      <td>Low</td>
+      <td>Gradual</td>
+      <td>General-purpose applications with backward compatibility</td>
+    </tr>
+    <tr>
+      <td>Recreate</td>
+      <td>Yes</td>
+      <td>Minimal</td>
+      <td>Very Low</td>
+      <td>Immediate</td>
+      <td>Development environments, major version changes</td>
+    </tr>
+    <tr>
+      <td>Blue/Green</td>
+      <td>None</td>
+      <td>Double</td>
+      <td>High</td>
+      <td>Immediate</td>
+      <td>Mission-critical applications requiring zero downtime</td>
+    </tr>
+    <tr>
+      <td>Canary</td>
+      <td>None</td>
+      <td>Variable</td>
+      <td>High</td>
+      <td>Simple</td>
+      <td>Risk-sensitive applications needing gradual validation</td>
+    </tr>
+  </table>
+</div>
 
 <p><br /></p>
 
-<h3 id="advanced-deployment-strategies">Advanced Deployment Strategies</h3>
+<h2 id="advanced-deployment-strategies">Advanced Deployment Strategies</h2>
 
-<h4 id="1-bluegreen-deployment">1. Blue/Green Deployment</h4>
-<ul>
-  <li>Maintains two identical environments (blue and green)</li>
-  <li>Switches traffic instantly between versions</li>
-  <li>Provides zero downtime deployment</li>
-  <li>Enables immediate rollback capability</li>
-  <li>Requires double the resources</li>
-</ul>
+<h3 id="1-bluegreen-deployment">1. Blue/Green Deployment</h3>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Blue/Green Deployment Service</span>
+<p>Blue/Green deployment maintains two identical environments, with only one serving production traffic at a time.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[User Traffic] --&gt; B[Service]
+      
+      subgraph "Before Switch"
+        B --&gt;|Active| C[Blue Environment<br />Version 1]
+        D[Green Environment<br />Version 2]
+      end
+      
+      subgraph "After Switch"
+        E[Service] --&gt;|Traffic Switched| G[Green Environment<br />Version 2]
+        F[Blue Environment<br />Version 1]
+      end
+      
+      style C fill:#1E88E5,stroke:#0D47A1,color:#FFF
+      style G fill:#43A047,stroke:#2E7D32,color:#FFF
+  </div>
+</div>
+
+<h4 id="implementation-in-kubernetes">Implementation in Kubernetes:</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Blue deployment</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-blue</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+      <span class="na">version</span><span class="pi">:</span> <span class="s">blue</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">version</span><span class="pi">:</span> <span class="s">blue</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:v1</span>
+        <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">8080</span>
+<span class="nn">---</span>
+<span class="c1"># Green deployment</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-green</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+      <span class="na">version</span><span class="pi">:</span> <span class="s">green</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">version</span><span class="pi">:</span> <span class="s">green</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:v2</span>
+        <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">8080</span>
+<span class="nn">---</span>
+<span class="c1"># Service routing to blue (switch to green during deployment)</span>
 <span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
 <span class="na">metadata</span><span class="pi">:</span>
@@ -354,63 +573,232 @@ January 13, 2025
       <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8080</span>
 </code></pre></div></div>
 
-<h4 id="2-canary-deployment">2. Canary Deployment</h4>
+<h4 id="switching-between-environments">Switching Between Environments:</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update service to point to green environment</span>
+kubectl patch service my-app <span class="nt">-p</span> <span class="s1">'{"spec":{"selector":{"version":"green"}}}'</span>
+
+<span class="c"># To rollback, point back to blue environment</span>
+kubectl patch service my-app <span class="nt">-p</span> <span class="s1">'{"spec":{"selector":{"version":"blue"}}}'</span>
+</code></pre></div></div>
+
+<h4 id="benefits-2">Benefits:</h4>
 <ul>
-  <li>Gradually rolls out changes to a subset of users</li>
-  <li>Enables risk mitigation through partial deployment</li>
-  <li>Allows testing with real user traffic</li>
-  <li>Requires sophisticated traffic control</li>
+  <li>Zero downtime during deployment</li>
+  <li>Instant rollback capability</li>
+  <li>Complete testing of new version before switching</li>
+  <li>Users experience only one version at a time</li>
 </ul>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Canary Deployment with Ingress</span>
+<h4 id="limitations-2">Limitations:</h4>
+<ul>
+  <li>Requires double the resources</li>
+  <li>Needs additional orchestration for database migrations</li>
+  <li>More complex setup than native Kubernetes strategies</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="2-canary-deployment">2. Canary Deployment</h3>
+
+<p>Canary deployment routes a small percentage of traffic to the new version for testing before full rollout.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[User Traffic] --&gt; B[Load Balancer / Ingress]
+      B --&gt; |90%| C[Stable Version<br />v1]
+      B --&gt; |10%| D[Canary Version<br />v2]
+      
+      style C fill:#1E88E5,stroke:#0D47A1,color:#FFF
+      style D fill:#FB8C00,stroke:#EF6C00,color:#FFF
+  </div>
+</div>
+
+<h4 id="implementation-options">Implementation Options:</h4>
+
+<ol>
+  <li><strong>Using Kubernetes Services and multiple deployments:</strong></li>
+</ol>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Stable deployment</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-stable</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">9</span>  <span class="c1"># 90% of traffic</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+      <span class="na">track</span><span class="pi">:</span> <span class="s">stable</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">track</span><span class="pi">:</span> <span class="s">stable</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:v1</span>
+<span class="nn">---</span>
+<span class="c1"># Canary deployment</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-canary</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>  <span class="c1"># 10% of traffic</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+      <span class="na">track</span><span class="pi">:</span> <span class="s">canary</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">track</span><span class="pi">:</span> <span class="s">canary</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:v2</span>
+<span class="nn">---</span>
+<span class="c1"># Service routing to both deployments</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>  <span class="c1"># Selects both stable and canary pods</span>
+  <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8080</span>
+</code></pre></div></div>
+
+<ol>
+  <li><strong>Using Ingress for HTTP traffic splitting:</strong></li>
+</ol>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Ingress with canary annotations (NGINX ingress controller)</span>
 <span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
 <span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-canary</span>
   <span class="na">annotations</span><span class="pi">:</span>
     <span class="na">nginx.ingress.kubernetes.io/canary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
     <span class="na">nginx.ingress.kubernetes.io/canary-weight</span><span class="pi">:</span> <span class="s2">"</span><span class="s">20"</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="s">myapp.example.com</span>
+    <span class="na">http</span><span class="pi">:</span>
+      <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+        <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+        <span class="na">backend</span><span class="pi">:</span>
+          <span class="na">service</span><span class="pi">:</span>
+            <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-canary</span>
+            <span class="na">port</span><span class="pi">:</span>
+              <span class="na">number</span><span class="pi">:</span> <span class="m">80</span>
 </code></pre></div></div>
 
-<p><br /></p>
+<ol>
+  <li><strong>Using a service mesh like Istio:</strong></li>
+</ol>
 
-<h3 id="strategy-selection-guide">Strategy Selection Guide</h3>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.istio.io/v1alpha3</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">VirtualService</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">hosts</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">myapp.example.com</span>
+  <span class="na">http</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">route</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">destination</span><span class="pi">:</span>
+        <span class="na">host</span><span class="pi">:</span> <span class="s">my-app-stable</span>
+        <span class="na">subset</span><span class="pi">:</span> <span class="s">v1</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">80</span>
+    <span class="pi">-</span> <span class="na">destination</span><span class="pi">:</span>
+        <span class="na">host</span><span class="pi">:</span> <span class="s">my-app-canary</span>
+        <span class="na">subset</span><span class="pi">:</span> <span class="s">v2</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">20</span>
+</code></pre></div></div>
 
-<p><br /></p>
+<h4 id="canary-implementation-approaches">Canary Implementation Approaches:</h4>
 
-<div class="info-box info-box-success">
-  <ul>
-    <li>
-      <strong>RollingUpdate</strong><br />
-      - Need continuous availability<br />
-      - Can handle both versions simultaneously<br />
-      - Have limited resources
-    </li>
-    <li>
-      <strong>Recreate</strong><br />
-      - Need clean slate deployment<br />
-      - Can tolerate downtime<br />
-      - Have version incompatibility issues
-    </li>
-    <li>
-      <strong>Blue/Green</strong><br />
-      - Need zero downtime<br />
-      - Have sufficient resources<br />
-      - Need immediate rollback capability
-    </li>
-    <li>
-      <strong>Canary</strong><br />
-      - Need gradual validation<br />
-      - Want to test with real users<br />
-      - Can manage complex traffic routing
-    </li>
-  </ul>
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th>Method</th>
+      <th>Pros</th>
+      <th>Cons</th>
+    </tr>
+    <tr>
+      <td>Pod ratio adjustment</td>
+      <td>
+        - Simple to implement<br />
+        - Works with any application
+      </td>
+      <td>
+        - Less precise traffic control<br />
+        - Limited by pod granularity
+      </td>
+    </tr>
+    <tr>
+      <td>Ingress controllers</td>
+      <td>
+        - More precise percentages<br />
+        - HTTP header-based routing
+      </td>
+      <td>
+        - Only works for HTTP/HTTPS<br />
+        - Requires specific ingress controller
+      </td>
+    </tr>
+    <tr>
+      <td>Service mesh (Istio)</td>
+      <td>
+        - Fine-grained traffic control<br />
+        - Advanced metrics and tracing<br />
+        - Multiple routing criteria
+      </td>
+      <td>
+        - Complex to set up<br />
+        - Requires service mesh installation<br />
+        - Overhead in performance
+      </td>
+    </tr>
+  </table>
 </div>
 
+<h4 id="benefits-3">Benefits:</h4>
+<ul>
+  <li>Minimal risk exposure - issues only affect a small percentage of users</li>
+  <li>Real-world testing with actual users</li>
+  <li>Gradual rollout allows for performance and stability monitoring</li>
+  <li>Controlled exposure of new features</li>
+</ul>
+
+<h4 id="limitations-3">Limitations:</h4>
+<ul>
+  <li>More complex to set up than basic strategies</li>
+  <li>Requires additional traffic management tools or service mesh</li>
+  <li>Monitoring overhead to detect issues</li>
+  <li>May require coordinated database schema changes</li>
+</ul>
+
 <p><br /></p>
 
-<h3 id="-deployment-health-checks">🔍 Deployment Health Checks</h3>
+<h2 id="deployment-health-checks">Deployment Health Checks</h2>
 
-<h4 id="1-readiness-probe">1. Readiness Probe</h4>
+<p>Kubernetes uses probes to determine the health and readiness of your applications, which are critical for successful deployments.</p>
+
+<h3 id="1-readiness-probe">1. Readiness Probe</h3>
+
+<p>Indicates when a pod is ready to accept traffic. During rolling updates, new pods won’t receive traffic until they pass readiness checks.</p>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">spec</span><span class="pi">:</span>
   <span class="na">containers</span><span class="pi">:</span>
   <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
@@ -420,14 +808,23 @@ January 13, 2025
         <span class="na">port</span><span class="pi">:</span> <span class="m">8080</span>
       <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="m">5</span>
       <span class="na">periodSeconds</span><span class="pi">:</span> <span class="m">10</span>
+      <span class="na">timeoutSeconds</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">successThreshold</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">failureThreshold</span><span class="pi">:</span> <span class="m">3</span>
 </code></pre></div></div>
+
+<h4 id="available-probe-types">Available Probe Types:</h4>
+
 <ul>
-  <li>Determines when a pod is ready to accept traffic</li>
-  <li>Essential for smooth rolling updates</li>
-  <li>Prevents routing to partially started pods</li>
+  <li><strong>HTTP GET</strong>: Performs an HTTP GET request</li>
+  <li><strong>TCP Socket</strong>: Tries to establish a TCP connection</li>
+  <li><strong>Exec</strong>: Executes a command in the container</li>
 </ul>
 
-<h4 id="2-liveness-probe">2. Liveness Probe</h4>
+<h3 id="2-liveness-probe">2. Liveness Probe</h3>
+
+<p>Detects when a pod enters an unhealthy state and needs to be restarted.</p>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">spec</span><span class="pi">:</span>
   <span class="na">containers</span><span class="pi">:</span>
   <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
@@ -437,23 +834,52 @@ January 13, 2025
         <span class="na">port</span><span class="pi">:</span> <span class="m">8080</span>
       <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="m">15</span>
       <span class="na">periodSeconds</span><span class="pi">:</span> <span class="m">20</span>
+      <span class="na">timeoutSeconds</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">successThreshold</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">failureThreshold</span><span class="pi">:</span> <span class="m">3</span>
 </code></pre></div></div>
-<ul>
-  <li>Checks if a pod is healthy and running</li>
-  <li>Automatically restarts unhealthy pods</li>
-  <li>Crucial for maintaining application reliability</li>
-</ul>
+
+<h3 id="3-startup-probe">3. Startup Probe</h3>
+
+<p>Indicates when an application has started successfully, providing additional time for slow-starting containers.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+    <span class="na">startupProbe</span><span class="pi">:</span>
+      <span class="na">httpGet</span><span class="pi">:</span>
+        <span class="na">path</span><span class="pi">:</span> <span class="s">/health</span>
+        <span class="na">port</span><span class="pi">:</span> <span class="m">8080</span>
+      <span class="na">failureThreshold</span><span class="pi">:</span> <span class="m">30</span>
+      <span class="na">periodSeconds</span><span class="pi">:</span> <span class="m">10</span>
+</code></pre></div></div>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Critical Probe Parameters:</strong>
+  <ul>
+    <li><strong>initialDelaySeconds</strong>: Time to wait before first probe</li>
+    <li><strong>periodSeconds</strong>: How often to perform the probe</li>
+    <li><strong>timeoutSeconds</strong>: Probe timeout period</li>
+    <li><strong>successThreshold</strong>: Minimum consecutive successes to consider probe successful</li>
+    <li><strong>failureThreshold</strong>: Number of failures before giving up</li>
+  </ul>
+  <p>Incorrect probe configuration can cause unnecessary restarts or prevent successful deployments!</p>
+</div>
 
 <p><br /></p>
 
-<h3 id="advanced-configuration-options">Advanced Configuration Options</h3>
+<h2 id="advanced-configuration-and-tools">Advanced Configuration and Tools</h2>
 
-<h4 id="1-progressive-delivery-with-argo-rollouts">1. Progressive Delivery with Argo Rollouts</h4>
+<h3 id="1-progressive-delivery-with-argo-rollouts">1. Progressive Delivery with Argo Rollouts</h3>
+
+<p>Argo Rollouts extends Kubernetes with advanced deployment strategies.</p>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">argoproj.io/v1alpha1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Rollout</span>
 <span class="na">metadata</span><span class="pi">:</span>
   <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-rollout</span>
 <span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">5</span>
   <span class="na">strategy</span><span class="pi">:</span>
     <span class="na">canary</span><span class="pi">:</span>
       <span class="na">steps</span><span class="pi">:</span>
@@ -461,14 +887,27 @@ January 13, 2025
       <span class="pi">-</span> <span class="na">pause</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">duration</span><span class="pi">:</span> <span class="nv">1h</span><span class="pi">}</span>
       <span class="pi">-</span> <span class="na">setWeight</span><span class="pi">:</span> <span class="m">40</span>
       <span class="pi">-</span> <span class="na">pause</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">duration</span><span class="pi">:</span> <span class="nv">1h</span><span class="pi">}</span>
+      <span class="pi">-</span> <span class="na">setWeight</span><span class="pi">:</span> <span class="m">60</span>
+      <span class="pi">-</span> <span class="na">pause</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">duration</span><span class="pi">:</span> <span class="nv">1h</span><span class="pi">}</span>
+      <span class="pi">-</span> <span class="na">setWeight</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="pi">-</span> <span class="na">pause</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">duration</span><span class="pi">:</span> <span class="nv">1h</span><span class="pi">}</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:v2</span>
 </code></pre></div></div>
-<ul>
-  <li>Automated canary analysis</li>
-  <li>Traffic weight management</li>
-  <li>Metric-based promotion/rollback</li>
-</ul>
 
-<h4 id="2-ab-testing-configuration">2. A/B Testing Configuration</h4>
+<h3 id="2-advanced-ab-testing-configuration">2. Advanced A/B Testing Configuration</h3>
+
+<p>A/B testing allows directing specific users to different versions based on criteria.</p>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
 <span class="na">metadata</span><span class="pi">:</span>
@@ -476,66 +915,212 @@ January 13, 2025
     <span class="na">nginx.ingress.kubernetes.io/canary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
     <span class="na">nginx.ingress.kubernetes.io/canary-by-header</span><span class="pi">:</span> <span class="s2">"</span><span class="s">User-Country"</span>
     <span class="na">nginx.ingress.kubernetes.io/canary-by-header-value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">US"</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="s">myapp.example.com</span>
+    <span class="na">http</span><span class="pi">:</span>
+      <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+        <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+        <span class="na">backend</span><span class="pi">:</span>
+          <span class="na">service</span><span class="pi">:</span>
+            <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-experiment</span>
+            <span class="na">port</span><span class="pi">:</span>
+              <span class="na">number</span><span class="pi">:</span> <span class="m">80</span>
 </code></pre></div></div>
-<ul>
-  <li>Feature testing with specific user segments</li>
-  <li>Header-based routing</li>
-  <li>Geographical distribution</li>
-</ul>
+
+<h3 id="3-deployment-protection-with-pod-disruption-budget-pdb">3. Deployment Protection with Pod Disruption Budget (PDB)</h3>
+
+<p>PDBs ensure minimum available replicas during voluntary disruptions like deployments.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">policy/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">PodDisruptionBudget</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app-pdb</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">minAvailable</span><span class="pi">:</span> <span class="m">2</span>  <span class="c1"># or use maxUnavailable: 1</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+</code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="common-pitfalls-and-best-practices">Common Pitfalls and Best Practices</h3>
+<h2 id="common-pitfalls-and-best-practices">Common Pitfalls and Best Practices</h2>
 
-<div class="info-box info-box-warning">
-  <strong>Common Issues to Avoid:</strong>
+<h3 id="common-issues-to-avoid">Common Issues to Avoid</h3>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Deployment Pitfalls:</strong>
   <ul>
-    <li>Not setting appropriate resource limits and requests</li>
-    <li>Ignoring readiness/liveness probe configuration</li>
-    <li>Insufficient monitoring during deployments</li>
-    <li>Not planning for rollback scenarios</li>
+    <li><strong>Resource constraints</strong>: Insufficient CPU/memory requests or limits</li>
+    <li><strong>Probe misconfiguration</strong>: Aggressive timeouts or inappropriate health checks</li>
+    <li><strong>Image issues</strong>: Using 'latest' tag or unreliable registries</li>
+    <li><strong>Database schema changes</strong>: Not planning for backward compatibility</li>
+    <li><strong>No rollback plan</strong>: Not preserving revision history</li>
+    <li><strong>Insufficient monitoring</strong>: Inability to detect deployment issues</li>
   </ul>
 </div>
 
-<div class="info-box info-box-success">
-  <strong>Best Practices:</strong>
+<h3 id="best-practices-for-successful-deployments">Best Practices for Successful Deployments</h3>
+
+<div class="info-box info-box-success-not-check">
+  <strong>Deployment Best Practices:</strong>
   <ul>
-    <li>Always use version tags instead of 'latest'</li>
-    <li>Implement proper health checks</li>
-    <li>Monitor deployment metrics</li>
-    <li>Maintain deployment history for rollbacks</li>
-    <li>Use pod disruption budgets for high availability</li>
+    <li><strong>Version control</strong>: Use specific immutable image tags, never 'latest'</li>
+    <li><strong>Proper health checks</strong>: Implement meaningful readiness/liveness probes</li>
+    <li><strong>Resource planning</strong>: Set appropriate CPU and memory requests/limits</li>
+    <li><strong>Automated testing</strong>: Run thorough tests before deployment</li>
+    <li><strong>Monitoring</strong>: Implement metrics for deployment success rates and performance</li>
+    <li><strong>Rollback readiness</strong>: Maintain revision history and test rollback procedures</li>
+    <li><strong>Documentation</strong>: Document deployment procedures, dependencies, and requirements</li>
+    <li><strong>Small, frequent updates</strong>: Prefer smaller, incremental changes over large updates</li>
   </ul>
 </div>
 
 <p><br /></p>
 
-<h3 id="monitoring-deployments">Monitoring Deployments</h3>
+<h2 id="monitoring-deployments">Monitoring Deployments</h2>
 
-<h4 id="key-metrics-to-monitor">Key Metrics to Monitor</h4>
-<ul>
-  <li>Deployment success rate</li>
-  <li>Rollout duration</li>
-  <li>Error rates during deployment</li>
-  <li>Resource utilization</li>
-  <li>Response times</li>
-  <li>Pod health status</li>
-</ul>
+<p>Proper monitoring is essential for successful deployments and quick reaction to issues.</p>
 
-<h4 id="example-prometheus-query">Example Prometheus Query</h4>
-<pre><code class="language-promql">rate(http_requests_total{status!~"5.."}[5m]) 
-/ 
-rate(http_requests_total[5m])
+<h3 id="key-metrics-to-monitor">Key Metrics to Monitor</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th>Metric Type</th>
+      <th>Examples</th>
+      <th>Why Monitor</th>
+    </tr>
+    <tr>
+      <td>Application Performance</td>
+      <td>
+        - Response time<br />
+        - Error rate<br />
+        - Throughput
+      </td>
+      <td>Detect performance regressions with new version</td>
+    </tr>
+    <tr>
+      <td>Resource Utilization</td>
+      <td>
+        - CPU usage<br />
+        - Memory consumption<br />
+        - Network traffic
+      </td>
+      <td>Identify resource leaks or inefficiencies</td>
+    </tr>
+    <tr>
+      <td>Deployment Status</td>
+      <td>
+        - Pod status<br />
+        - Rollout progress<br />
+        - Availability
+      </td>
+      <td>Track deployment progress and success</td>
+    </tr>
+    <tr>
+      <td>Business Metrics</td>
+      <td>
+        - Conversion rates<br />
+        - User engagement<br />
+        - Transaction volume
+      </td>
+      <td>Measure business impact of deployment</td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="example-prometheus-queries">Example Prometheus Queries</h3>
+
+<pre><code class="language-promql"># Success rate of HTTP requests
+sum(rate(http_requests_total{status=~"2.."}[5m])) / sum(rate(http_requests_total[5m]))
+
+# Error rate change after deployment
+sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))
+
+# Response time percentiles
+histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+# Container restarts during deployment
+sum(changes(container_start_time_seconds[1h])) by (pod)
 </code></pre>
+
+<h3 id="visualizing-deployments">Visualizing Deployments</h3>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    gantt
+      title Deployment Timeline
+      dateFormat  YYYY-MM-DD HH:mm
+      axisFormat %H:%M
+      
+      section Deployment
+      Deployment Starts       :a1, 2023-01-01 12:00, 2m
+      First Pods Updated      :a2, after a1, 3m
+      50% Complete           :a3, after a2, 5m
+      Deployment Complete    :a4, after a3, 2m
+      
+      section Metrics
+      Baseline Metrics       :b1, 2023-01-01 11:55, 5m
+      Canary Metrics         :b2, 2023-01-01 12:02, 8m
+      Full Deployment Metrics :b3, after a4, 10m
+      
+      section Validation
+      Automated Tests        :c1, after a1, 10m
+      Manual Validation      :c2, after a4, 15m
+      Decision to Keep/Rollback  :milestone, after c2, 0m
+  </div>
+</div>
+
+<p><br /></p>
+
+<h2 id="conclusion-and-strategy-selection">Conclusion and Strategy Selection</h2>
+
+<p>The choice of deployment strategy depends on your specific requirements, with tradeoffs between simplicity, downtime, resource usage, and risk.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Deployment Strategy Selection] --&gt; B[Application Requirements]
+      A --&gt; C[Infrastructure Capabilities]
+      A --&gt; D[Team Experience]
+      A --&gt; E[Business Constraints]
+      
+      B --&gt; F[Availability Requirements]
+      B --&gt; G[Version Compatibility]
+      B --&gt; H[Resource Requirements]
+      
+      C --&gt; I[Kubernetes Version]
+      C --&gt; J[Available Tools]
+      C --&gt; K[Cluster Capacity]
+      
+      D --&gt; L[Operations Experience]
+      D --&gt; M[Monitoring Capabilities]
+      
+      E --&gt; N[Risk Tolerance]
+      E --&gt; O[User Impact]
+      
+      F &amp; G &amp; H &amp; I &amp; J &amp; K &amp; L &amp; M &amp; N &amp; O --&gt; P[Strategy Decision]
+      
+      style P fill:#f9f,stroke:#333,stroke-width:4px
+  </div>
+</div>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="-reference">📚 Reference</h3>
+<h2 id="references">References</h2>
+
 <ul>
-  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/">Kubernetes Official Documentation</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/">Kubernetes Official Documentation - Deployments</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes">Kubernetes Official Documentation - Container Probes</a></li>
   <li><a href="https://spacelift.io/blog/kubernetes-deployment-strategies">Spacelift Deployment Strategies</a></li>
+  <li><a href="https://argoproj.github.io/argo-rollouts/">Argo Rollouts Documentation</a></li>
+  <li><a href="https://istio.io/latest/docs/concepts/traffic-management/">Istio Traffic Management</a></li>
+  <li><a href="https://flagger.app/">Flagger - Progressive Delivery Operator</a></li>
   <li><a href="https://github.com/somaz94/DevOps-Engineer/wiki/KR_%EC%BF%A0%EB%B2%84%EB%84%A4%ED%8B%B0%EC%8A%A4">DevOps Engineer Wiki</a></li>
 </ul>
 
@@ -587,7 +1172,7 @@ rate(http_requests_total[5m])
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="5">
+            <div class="time-bar" data-minutes="17">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -629,7 +1214,7 @@ rate(http_requests_total[5m])
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to different deployment strategies in Kubernetes including RollingUpdate, Recreate, Blue/Green, and Canary&quot;%20https://somaz.blog/category/kubernetes/k8s-deployment-strategy/%20via%20&#64;twitter_username&hashtags=kubernetes,deployment,strategies,rolling-update"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to different deployment strategies in Kubernetes including RollingUpdate, Recreate, Blue/Green, and Canary&quot;%20https://somaz.blog/category/kubernetes/k8s-deployment-strategy/%20via%20&#64;twitter_username&hashtags=kubernetes,deployment,strategies,rolling-update,canary,blue-green"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -884,7 +1469,7 @@ rate(http_requests_total[5m])
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Kubernetes Deployment Strategies",
-            "headline": "",
+            "headline": "Choose the right approach for updating your applications with zero to minimal downtime",
             "description": "A comprehensive guide to different deployment strategies in Kubernetes including RollingUpdate, Recreate, Blue/Green, and Canary",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737351308/kubernetes-deployment-strategy_wcb9yy.png",
             "url": "https://somaz.blog/category/kubernetes/k8s-deployment-strategy/",
@@ -897,84 +1482,240 @@ rate(http_requests_total[5m])
 
 
 Overview
-Kubernetes deployment strategies define how to update Pods or sets of Pods when deploying new application versions or container images.
 
-  RollingUpdate is the default strategy.
-  Recreate is the strategy that terminates all existing pods before creating new ones.
+Kubernetes deployment strategies define how to update Pods or sets of Pods when deploying new application versions or container images. The right deployment strategy helps maintain system stability, minimize downtime, and ensure a smooth transition between versions.
 
 
+  Deployment Strategy Considerations
+  When choosing a deployment strategy, consider these factors:
+  
+    Acceptable downtime window
+    Application architecture compatibility
+    Available resources
+    Risk tolerance
+    User impact
+    Rollback requirements
+  
 
 
-🔄 Basic Deployment Strategies
+
+  
+    graph TD
+      A[Application Update Needed] --&amp;gt; B{Downtime Acceptable?}
+      B --&amp;gt;|Yes| C[Recreate Strategy]
+      B --&amp;gt;|No| D{Testing with Real Users?}
+      D --&amp;gt;|Yes| E[Canary Deployment]
+      D --&amp;gt;|No| F{Need Instant Rollback?}
+      F --&amp;gt;|Yes| G[Blue/Green Deployment]
+      F --&amp;gt;|No| H[Rolling Update Deployment]
+      
+      style C fill:#f9f,stroke:#333,stroke-width:2px
+      style E fill:#bbf,stroke:#333,stroke-width:2px
+      style G fill:#ffa,stroke:#333,stroke-width:2px
+      style H fill:#bfb,stroke:#333,stroke-width:2px
+  
+
+
+
+
+Basic Deployment Strategies
 
 1. RollingUpdate (Default)
+
+The RollingUpdate strategy gradually replaces instances of the previous version with instances of the new version, one by one.
+
+
+  
+    sequenceDiagram
+      participant User
+      participant Svc as Service
+      participant Old as Old Pods
+      participant New as New Pods
+      
+      Note over Old: 3 pods running v1
+      User-&amp;gt;&amp;gt;Svc: Traffic routed to old pods
+      
+      Note over Old,New: Deployment update triggered
+      Svc-&amp;gt;&amp;gt;Old: Traffic continues
+      
+      Note over New: 1 new pod created
+      Note over Old: 1 old pod terminated
+      Svc-&amp;gt;&amp;gt;Old: Traffic to remaining v1 pods
+      Svc-&amp;gt;&amp;gt;New: Traffic to new v2 pod
+      
+      Note over New: Another new pod created
+      Note over Old: Another old pod terminated
+      Svc-&amp;gt;&amp;gt;Old: Traffic to remaining v1 pod
+      Svc-&amp;gt;&amp;gt;New: Traffic to v2 pods
+      
+      Note over New: Final new pod created
+      Note over Old: Final old pod terminated
+      Svc-&amp;gt;&amp;gt;New: All traffic to v2 pods
+  
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
 spec:
+  replicas: 3
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 1  # Maximum number of pods that can be unavailable during update
-      maxSurge: 1       # Maximum number of pods that can be created above desired number
+      maxSurge: 1        # Maximum number of pods that can be created above desired number
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v2
+        ports:
+        - containerPort: 8080
 
 
+Key Parameters:
 
-  Gradually updates pods in small batches
+
+  maxUnavailable: Maximum number or percentage of pods that can be unavailable during the update
+  maxSurge: Maximum number or percentage of pods that can be created over the desired number during the update
+
+
+Benefits:
+
   Minimizes downtime during updates
-  Ideal for maintaining high availability
-  Controls update pace with maxUnavailable and maxSurge parameters
+  Provides continuous service availability
+  Allows for gradual rollout of changes
+  Built into Kubernetes, no additional tools required
 
 
-2. Recreate
+Limitations:
+
+  Both versions run simultaneously during the transition
+  May cause issues if versions aren’t backward compatible
+  Slower than recreate strategy
+  Rollback requires another rolling update
+
+
+
+
+2. Recreate Strategy
+
+The Recreate strategy terminates all existing pods before creating new ones.
+
+
+  
+    sequenceDiagram
+      participant User
+      participant Svc as Service
+      participant Old as Old Pods (v1)
+      participant New as New Pods (v2)
+      
+      Note over Old: 3 pods running v1
+      User-&amp;gt;&amp;gt;Svc: Traffic routed to old pods
+      Svc-&amp;gt;&amp;gt;Old: Requests served
+      
+      Note over Old,New: Deployment update triggered
+      Note over Old: All v1 pods terminated
+      User-&amp;gt;&amp;gt;Svc: Requests fail (downtime)
+      
+      Note over New: All v2 pods created
+      User-&amp;gt;&amp;gt;Svc: Traffic resumes
+      Svc-&amp;gt;&amp;gt;New: Requests served by v2
+  
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
 spec:
+  replicas: 3
   strategy:
     type: Recreate
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v2
+        ports:
+        - containerPort: 8080
+
+
+Benefits:
+
+  Simple implementation
+  Ensures clean state deployment
+  Useful for applications with database schema changes
+  No version overlap during deployment
+  Minimal resource usage
+
+
+Limitations:
+
+  Creates downtime between versions
+  Not suitable for production applications requiring high availability
+  Impacts user experience during updates
 
 
 
-  Terminates all existing pods before creating new ones
-  Results in downtime between versions
-  Ensures clean deployment of new version
-  Suitable for development environments or when downtime is acceptable
 
-
-
-
-Strategy Comparison Table
+Strategy Comparison
 
 
   
-    Strategy
-    Downtime
-    Resource Usage
-    Complexity
-    Rollback
-  
-  
-    RollingUpdate
-    Minimal
-    Normal
-    Low
-    Gradual
-  
-  
-    Recreate
-    Yes
-    Minimal
-    Very Low
-    Immediate
-  
-  
-    Blue/Green
-    None
-    Double
-    High
-    Immediate
-  
-  
-    Canary
-    None
-    Variable
-    High
-    Simple
+    
+      Strategy
+      Downtime
+      Resource Usage
+      Complexity
+      Rollback Speed
+      Best For
+    
+    
+      RollingUpdate
+      Minimal
+      Normal
+      Low
+      Gradual
+      General-purpose applications with backward compatibility
+    
+    
+      Recreate
+      Yes
+      Minimal
+      Very Low
+      Immediate
+      Development environments, major version changes
+    
+    
+      Blue/Green
+      None
+      Double
+      High
+      Immediate
+      Mission-critical applications requiring zero downtime
+    
+    
+      Canary
+      None
+      Variable
+      High
+      Simple
+      Risk-sensitive applications needing gradual validation
+    
   
 
 
@@ -984,14 +1725,77 @@ Advanced Deployment Strategies
 
 1. Blue/Green Deployment
 
-  Maintains two identical environments (blue and green)
-  Switches traffic instantly between versions
-  Provides zero downtime deployment
-  Enables immediate rollback capability
-  Requires double the resources
+Blue/Green deployment maintains two identical environments, with only one serving production traffic at a time.
 
 
-# Blue/Green Deployment Service
+  
+    graph TD
+      A[User Traffic] --&amp;gt; B[Service]
+      
+      subgraph &quot;Before Switch&quot;
+        B --&amp;gt;|Active| C[Blue EnvironmentVersion 1]
+        D[Green EnvironmentVersion 2]
+      end
+      
+      subgraph &quot;After Switch&quot;
+        E[Service] --&amp;gt;|Traffic Switched| G[Green EnvironmentVersion 2]
+        F[Blue EnvironmentVersion 1]
+      end
+      
+      style C fill:#1E88E5,stroke:#0D47A1,color:#FFF
+      style G fill:#43A047,stroke:#2E7D32,color:#FFF
+  
+
+
+Implementation in Kubernetes:
+
+# Blue deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: my-app
+        version: blue
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v1
+        ports:
+        - containerPort: 8080
+---
+# Green deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+      version: green
+  template:
+    metadata:
+      labels:
+        app: my-app
+        version: green
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v2
+        ports:
+        - containerPort: 8080
+---
+# Service routing to blue (switch to green during deployment)
 apiVersion: v1
 kind: Service
 metadata:
@@ -1006,63 +1810,232 @@ spec:
       targetPort: 8080
 
 
+Switching Between Environments:
+
+# Update service to point to green environment
+kubectl patch service my-app -p &apos;{&quot;spec&quot;:{&quot;selector&quot;:{&quot;version&quot;:&quot;green&quot;}}}&apos;
+
+# To rollback, point back to blue environment
+kubectl patch service my-app -p &apos;{&quot;spec&quot;:{&quot;selector&quot;:{&quot;version&quot;:&quot;blue&quot;}}}&apos;
+
+
+Benefits:
+
+  Zero downtime during deployment
+  Instant rollback capability
+  Complete testing of new version before switching
+  Users experience only one version at a time
+
+
+Limitations:
+
+  Requires double the resources
+  Needs additional orchestration for database migrations
+  More complex setup than native Kubernetes strategies
+
+
+
+
 2. Canary Deployment
 
-  Gradually rolls out changes to a subset of users
-  Enables risk mitigation through partial deployment
-  Allows testing with real user traffic
-  Requires sophisticated traffic control
+Canary deployment routes a small percentage of traffic to the new version for testing before full rollout.
 
 
-# Canary Deployment with Ingress
+  
+    graph LR
+      A[User Traffic] --&amp;gt; B[Load Balancer / Ingress]
+      B --&amp;gt; |90%| C[Stable Versionv1]
+      B --&amp;gt; |10%| D[Canary Versionv2]
+      
+      style C fill:#1E88E5,stroke:#0D47A1,color:#FFF
+      style D fill:#FB8C00,stroke:#EF6C00,color:#FFF
+  
+
+
+Implementation Options:
+
+
+  Using Kubernetes Services and multiple deployments:
+
+
+# Stable deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-stable
+spec:
+  replicas: 9  # 90% of traffic
+  selector:
+    matchLabels:
+      app: my-app
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: my-app
+        track: stable
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v1
+---
+# Canary deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-canary
+spec:
+  replicas: 1  # 10% of traffic
+  selector:
+    matchLabels:
+      app: my-app
+      track: canary
+  template:
+    metadata:
+      labels:
+        app: my-app
+        track: canary
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v2
+---
+# Service routing to both deployments
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app
+spec:
+  selector:
+    app: my-app  # Selects both stable and canary pods
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+
+
+
+  Using Ingress for HTTP traffic splitting:
+
+
+# Ingress with canary annotations (NGINX ingress controller)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  name: my-app-canary
   annotations:
     nginx.ingress.kubernetes.io/canary: &quot;true&quot;
     nginx.ingress.kubernetes.io/canary-weight: &quot;20&quot;
+spec:
+  rules:
+  - host: myapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-app-canary
+            port:
+              number: 80
 
 
 
+  Using a service mesh like Istio:
 
-Strategy Selection Guide
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: my-app
+spec:
+  hosts:
+  - myapp.example.com
+  http:
+  - route:
+    - destination:
+        host: my-app-stable
+        subset: v1
+      weight: 80
+    - destination:
+        host: my-app-canary
+        subset: v2
+      weight: 20
 
 
+Canary Implementation Approaches:
 
 
   
     
-      RollingUpdate
-      - Need continuous availability
-      - Can handle both versions simultaneously
-      - Have limited resources
+      Method
+      Pros
+      Cons
     
     
-      Recreate
-      - Need clean slate deployment
-      - Can tolerate downtime
-      - Have version incompatibility issues
+      Pod ratio adjustment
+      
+        - Simple to implement
+        - Works with any application
+      
+      
+        - Less precise traffic control
+        - Limited by pod granularity
+      
     
     
-      Blue/Green
-      - Need zero downtime
-      - Have sufficient resources
-      - Need immediate rollback capability
+      Ingress controllers
+      
+        - More precise percentages
+        - HTTP header-based routing
+      
+      
+        - Only works for HTTP/HTTPS
+        - Requires specific ingress controller
+      
     
     
-      Canary
-      - Need gradual validation
-      - Want to test with real users
-      - Can manage complex traffic routing
+      Service mesh (Istio)
+      
+        - Fine-grained traffic control
+        - Advanced metrics and tracing
+        - Multiple routing criteria
+      
+      
+        - Complex to set up
+        - Requires service mesh installation
+        - Overhead in performance
+      
     
   
 
 
+Benefits:
+
+  Minimal risk exposure - issues only affect a small percentage of users
+  Real-world testing with actual users
+  Gradual rollout allows for performance and stability monitoring
+  Controlled exposure of new features
 
 
-🔍 Deployment Health Checks
+Limitations:
+
+  More complex to set up than basic strategies
+  Requires additional traffic management tools or service mesh
+  Monitoring overhead to detect issues
+  May require coordinated database schema changes
+
+
+
+
+Deployment Health Checks
+
+Kubernetes uses probes to determine the health and readiness of your applications, which are critical for successful deployments.
 
 1. Readiness Probe
+
+Indicates when a pod is ready to accept traffic. During rolling updates, new pods won’t receive traffic until they pass readiness checks.
+
 spec:
   containers:
   - name: my-app
@@ -1072,14 +2045,23 @@ spec:
         port: 8080
       initialDelaySeconds: 5
       periodSeconds: 10
+      timeoutSeconds: 1
+      successThreshold: 1
+      failureThreshold: 3
 
 
-  Determines when a pod is ready to accept traffic
-  Essential for smooth rolling updates
-  Prevents routing to partially started pods
+Available Probe Types:
+
+
+  HTTP GET: Performs an HTTP GET request
+  TCP Socket: Tries to establish a TCP connection
+  Exec: Executes a command in the container
 
 
 2. Liveness Probe
+
+Detects when a pod enters an unhealthy state and needs to be restarted.
+
 spec:
   containers:
   - name: my-app
@@ -1089,23 +2071,52 @@ spec:
         port: 8080
       initialDelaySeconds: 15
       periodSeconds: 20
+      timeoutSeconds: 1
+      successThreshold: 1
+      failureThreshold: 3
 
 
-  Checks if a pod is healthy and running
-  Automatically restarts unhealthy pods
-  Crucial for maintaining application reliability
+3. Startup Probe
+
+Indicates when an application has started successfully, providing additional time for slow-starting containers.
+
+spec:
+  containers:
+  - name: my-app
+    startupProbe:
+      httpGet:
+        path: /health
+        port: 8080
+      failureThreshold: 30
+      periodSeconds: 10
+
+
+
+  Critical Probe Parameters:
+  
+    initialDelaySeconds: Time to wait before first probe
+    periodSeconds: How often to perform the probe
+    timeoutSeconds: Probe timeout period
+    successThreshold: Minimum consecutive successes to consider probe successful
+    failureThreshold: Number of failures before giving up
+  
+  Incorrect probe configuration can cause unnecessary restarts or prevent successful deployments!
 
 
 
 
-Advanced Configuration Options
+Advanced Configuration and Tools
 
 1. Progressive Delivery with Argo Rollouts
+
+Argo Rollouts extends Kubernetes with advanced deployment strategies.
+
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
   name: my-app-rollout
 spec:
+  replicas: 5
   strategy:
     canary:
       steps:
@@ -1113,14 +2124,27 @@ spec:
       - pause: {duration: 1h}
       - setWeight: 40
       - pause: {duration: 1h}
+      - setWeight: 60
+      - pause: {duration: 1h}
+      - setWeight: 80
+      - pause: {duration: 1h}
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v2
 
 
-  Automated canary analysis
-  Traffic weight management
-  Metric-based promotion/rollback
+2. Advanced A/B Testing Configuration
 
+A/B testing allows directing specific users to different versions based on criteria.
 
-2. A/B Testing Configuration
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -1128,35 +2152,66 @@ metadata:
     nginx.ingress.kubernetes.io/canary: &quot;true&quot;
     nginx.ingress.kubernetes.io/canary-by-header: &quot;User-Country&quot;
     nginx.ingress.kubernetes.io/canary-by-header-value: &quot;US&quot;
+spec:
+  rules:
+  - host: myapp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-app-experiment
+            port:
+              number: 80
 
 
-  Feature testing with specific user segments
-  Header-based routing
-  Geographical distribution
+3. Deployment Protection with Pod Disruption Budget (PDB)
+
+PDBs ensure minimum available replicas during voluntary disruptions like deployments.
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: my-app-pdb
+spec:
+  minAvailable: 2  # or use maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: my-app
 
 
 
 
 Common Pitfalls and Best Practices
 
+Common Issues to Avoid
 
-  Common Issues to Avoid:
+
+  Deployment Pitfalls:
   
-    Not setting appropriate resource limits and requests
-    Ignoring readiness/liveness probe configuration
-    Insufficient monitoring during deployments
-    Not planning for rollback scenarios
+    Resource constraints: Insufficient CPU/memory requests or limits
+    Probe misconfiguration: Aggressive timeouts or inappropriate health checks
+    Image issues: Using &apos;latest&apos; tag or unreliable registries
+    Database schema changes: Not planning for backward compatibility
+    No rollback plan: Not preserving revision history
+    Insufficient monitoring: Inability to detect deployment issues
   
 
 
+Best Practices for Successful Deployments
 
-  Best Practices:
+
+  Deployment Best Practices:
   
-    Always use version tags instead of &apos;latest&apos;
-    Implement proper health checks
-    Monitor deployment metrics
-    Maintain deployment history for rollbacks
-    Use pod disruption budgets for high availability
+    Version control: Use specific immutable image tags, never &apos;latest&apos;
+    Proper health checks: Implement meaningful readiness/liveness probes
+    Resource planning: Set appropriate CPU and memory requests/limits
+    Automated testing: Run thorough tests before deployment
+    Monitoring: Implement metrics for deployment success rates and performance
+    Rollback readiness: Maintain revision history and test rollback procedures
+    Documentation: Document deployment procedures, dependencies, and requirements
+    Small, frequent updates: Prefer smaller, incremental changes over large updates
   
 
 
@@ -1164,34 +2219,149 @@ Common Pitfalls and Best Practices
 
 Monitoring Deployments
 
+Proper monitoring is essential for successful deployments and quick reaction to issues.
+
 Key Metrics to Monitor
 
-  Deployment success rate
-  Rollout duration
-  Error rates during deployment
-  Resource utilization
-  Response times
-  Pod health status
+
+  
+    
+      Metric Type
+      Examples
+      Why Monitor
+    
+    
+      Application Performance
+      
+        - Response time
+        - Error rate
+        - Throughput
+      
+      Detect performance regressions with new version
+    
+    
+      Resource Utilization
+      
+        - CPU usage
+        - Memory consumption
+        - Network traffic
+      
+      Identify resource leaks or inefficiencies
+    
+    
+      Deployment Status
+      
+        - Pod status
+        - Rollout progress
+        - Availability
+      
+      Track deployment progress and success
+    
+    
+      Business Metrics
+      
+        - Conversion rates
+        - User engagement
+        - Transaction volume
+      
+      Measure business impact of deployment
+    
+  
 
 
-Example Prometheus Query
-rate(http_requests_total{status!~&quot;5..&quot;}[5m]) 
-/ 
-rate(http_requests_total[5m])
+Example Prometheus Queries
+
+# Success rate of HTTP requests
+sum(rate(http_requests_total{status=~&quot;2..&quot;}[5m])) / sum(rate(http_requests_total[5m]))
+
+# Error rate change after deployment
+sum(rate(http_requests_total{status=~&quot;5..&quot;}[5m])) / sum(rate(http_requests_total[5m]))
+
+# Response time percentiles
+histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+# Container restarts during deployment
+sum(changes(container_start_time_seconds[1h])) by (pod)
+
+
+Visualizing Deployments
+
+
+  
+    gantt
+      title Deployment Timeline
+      dateFormat  YYYY-MM-DD HH:mm
+      axisFormat %H:%M
+      
+      section Deployment
+      Deployment Starts       :a1, 2023-01-01 12:00, 2m
+      First Pods Updated      :a2, after a1, 3m
+      50% Complete           :a3, after a2, 5m
+      Deployment Complete    :a4, after a3, 2m
+      
+      section Metrics
+      Baseline Metrics       :b1, 2023-01-01 11:55, 5m
+      Canary Metrics         :b2, 2023-01-01 12:02, 8m
+      Full Deployment Metrics :b3, after a4, 10m
+      
+      section Validation
+      Automated Tests        :c1, after a1, 10m
+      Manual Validation      :c2, after a4, 15m
+      Decision to Keep/Rollback  :milestone, after c2, 0m
+  
+
+
+
+
+Conclusion and Strategy Selection
+
+The choice of deployment strategy depends on your specific requirements, with tradeoffs between simplicity, downtime, resource usage, and risk.
+
+
+  
+    graph TD
+      A[Deployment Strategy Selection] --&amp;gt; B[Application Requirements]
+      A --&amp;gt; C[Infrastructure Capabilities]
+      A --&amp;gt; D[Team Experience]
+      A --&amp;gt; E[Business Constraints]
+      
+      B --&amp;gt; F[Availability Requirements]
+      B --&amp;gt; G[Version Compatibility]
+      B --&amp;gt; H[Resource Requirements]
+      
+      C --&amp;gt; I[Kubernetes Version]
+      C --&amp;gt; J[Available Tools]
+      C --&amp;gt; K[Cluster Capacity]
+      
+      D --&amp;gt; L[Operations Experience]
+      D --&amp;gt; M[Monitoring Capabilities]
+      
+      E --&amp;gt; N[Risk Tolerance]
+      E --&amp;gt; O[User Impact]
+      
+      F &amp;amp; G &amp;amp; H &amp;amp; I &amp;amp; J &amp;amp; K &amp;amp; L &amp;amp; M &amp;amp; N &amp;amp; O --&amp;gt; P[Strategy Decision]
+      
+      style P fill:#f9f,stroke:#333,stroke-width:4px
+  
 
 
 
 
 
 
-📚 Reference
+References
 
-  Kubernetes Official Documentation
+
+  Kubernetes Official Documentation - Deployments
+  Kubernetes Official Documentation - Container Probes
   Spacelift Deployment Strategies
+  Argo Rollouts Documentation
+  Istio Traffic Management
+  Flagger - Progressive Delivery Operator
   DevOps Engineer Wiki
 
 ",
-            "wordcount": "936",
+            "wordcount": "3197",
             "inLanguage": "en",
             "dateCreated": "2025-01-13/",
             "datePublished": "2025-01-13/",
@@ -1222,7 +2392,7 @@ rate(http_requests_total[5m])
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","deployment","strategies","rolling-update"]
+            "keywords": ["kubernetes","deployment","strategies","rolling-update","canary","blue-green"]
         }
         </script>
     </body>

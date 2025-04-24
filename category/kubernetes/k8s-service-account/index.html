@@ -40,7 +40,7 @@
     <title>Kubernetes Service Accounts | somaz</title>
     <meta name="description" content="A comprehensive guide to Kubernetes Service Accounts, their components, and practical usage">
     
-        <meta name="keywords" content="kubernetes, security, service-account, rbac">
+        <meta name="keywords" content="kubernetes, security, service-account, rbac, authentication, authorization, k8s-security">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 10, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>8 min to read</span>
+                    <span>13 min to read</span>
                 </p>
                 <h1 class="post-title">Kubernetes Service Accounts</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">Authentication and Authorization for Pod-based Applications</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737095858/k8s-service-account_xiooaw.png" alt="Featured image" class="post-cover">
@@ -236,27 +236,72 @@ January 10, 2025
                 <!-- Add your table of contents here -->
 
 
-                <p><a href="https://www.bogotobogo.com/DevOps/Docker/Docker-Kubernetes-Service-Account.php">image reference link</a></p>
+                <p><a href="https://www.bogotobogo.com/DevOps/Docker/Docker-Kubernetes-Service-Account.php">Image reference link</a></p>
 
 <p><br /></p>
 
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p>Service Accounts in Kubernetes are credentials used to grant permissions to pods for interacting with the API server.</p>
+
+<div class="info-box info-box-default-not-check">
+  <p>Service Accounts in Kubernetes are a fundamental security mechanism that provides identity to processes running inside Pods. They enable controlled access to the Kubernetes API server, allowing applications to interact with cluster resources based on defined permissions.</p>
+  <p>Understanding Service Accounts is essential for implementing proper security practices and ensuring your applications have the appropriate level of access within the cluster.</p>
+</div>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph LR
+      A[Pod] --&gt; B[Service Account]
+      B --&gt; C[Token]
+      B --&gt; D[RBAC Permissions]
+      D --&gt; E[Role/ClusterRole]
+      D --&gt; F[RoleBinding/ClusterRoleBinding]
+      C --&gt; G[API Server]
+      F --&gt; G
+  </div>
+</div>
 
 <p><br /></p>
 
-<h3 id="what-is-service-account">What is Service Account?</h3>
-<blockquote>
-  <p>Service Account is a Kubernetes resource that provides an identity for processes that run in a Pod. <br /><br />
-Service account key elements play an essential role in the authentication and authorization process within the cluster.</p>
-</blockquote>
+<hr />
+
+<h2 id="service-account-core-concepts">Service Account Core Concepts</h2>
+
+<h3 id="what-is-a-service-account">What is a Service Account?</h3>
+
+<div class="info-box info-box-info-not-check">
+  <p>A Service Account is a Kubernetes resource that provides an identity for processes running in Pods. It enables applications to authenticate with the Kubernetes API server and perform authorized operations within the cluster.</p>
+</div>
 
 <p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737096536/k8s-service-account-component_xxwj07.png" alt="k8s-service-account-component" />
-<a href="https://ssup2.github.io/theory_analysis/Kubernetes_Authentication_Service_Account">image reference link</a></p>
+<a href="https://ssup2.github.io/theory_analysis/Kubernetes_Authentication_Service_Account">Image reference link</a></p>
 
-<p>Before Kubernetes 1.24, the service account token is automatically created when the service account is created for the first time.</p>
+<p>Service Accounts function as the identity mechanism for Pods, similar to how user accounts function for humans. When a Pod uses a Service Account, it receives credentials that allow it to interact with the Kubernetes API server according to the permissions assigned to that Service Account.</p>
+
+<h3 id="service-account-lifecycle">Service Account Lifecycle</h3>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant U as User/System
+      participant K as Kubernetes API
+      participant C as Controller Manager
+      participant P as Pod
+      
+      U-&gt;&gt;K: Create ServiceAccount
+      K-&gt;&gt;C: ServiceAccount Created
+      C-&gt;&gt;K: Create Token (pre-1.24) or Mount ProjectedVolume (1.24+)
+      U-&gt;&gt;K: Create Pod with ServiceAccount
+      K-&gt;&gt;P: Assign ServiceAccount
+      P-&gt;&gt;K: Access API with Token
+  </div>
+</div>
+
+<h4 id="pre-kubernetes-124">Pre-Kubernetes 1.24</h4>
+
+<p>In versions before Kubernetes 1.24, a Secret containing a service account token was automatically created when a ServiceAccount was created:</p>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>kubectl get serviceaccount <span class="nt">-n</span> somaz
 NAME                                   SECRETS   AGE
 default                                1         27d
@@ -266,304 +311,513 @@ NAME                                               TYPE                         
 default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
 </code></pre></div></div>
 
-<h3 id="service-account-basics">Service Account Basics</h3>
+<h4 id="kubernetes-124-and-later">Kubernetes 1.24 and Later</h4>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Basic Service Account Structure (K8s 1.24+)</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">servicenow-discovery</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">default</span>
-<span class="nn">---</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<p>Starting with Kubernetes 1.24, long-lived service account tokens are no longer automatically created. Instead, tokens are obtained through the TokenRequest API and mounted as projected volumes with automatic rotation.</p>
+
+<p>For backward compatibility or specific use cases, you can still manually create long-lived tokens:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
 <span class="na">type</span><span class="pi">:</span> <span class="s">kubernetes.io/service-account-token</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">servicenow-discovery-token</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">default</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-service-account-token</span>
   <span class="na">annotations</span><span class="pi">:</span>
-    <span class="na">kubernetes.io/service-account.name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">servicenow-discovery"</span>
-<span class="nn">---</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="c1"># "namespace" omitted since ClusterRoles are not namespaced</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">read-only</span>
-<span class="na">rules</span><span class="pi">:</span>
-<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="s">apps</span>
-    <span class="pi">-</span> <span class="s">extensions</span>
-    <span class="pi">-</span> <span class="s2">"</span><span class="s">*"</span>
-    <span class="pi">-</span> <span class="s2">"</span><span class="s">"</span>
-  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">*"</span><span class="pi">]</span>
-  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">watch"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">]</span>
-<span class="nn">---</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRoleBinding</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">discovery-global</span>
-<span class="na">subjects</span><span class="pi">:</span>
-<span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">servicenow-discovery</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">default</span>
-<span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">User</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">servicenow-discovery</span>
-  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
-<span class="na">roleRef</span><span class="pi">:</span>
-  <span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">read-only</span>
-  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
+    <span class="na">kubernetes.io/service-account.name</span><span class="pi">:</span> <span class="s">my-service-account</span>
 </code></pre></div></div>
-
-<p><br /></p>
-
-<p><strong>Cluster Role Binding</strong></p>
-<ul>
-  <li>Binds the ClusterRole to the ServiceAccount</li>
-</ul>
-
-<p><strong>Cluster Role</strong></p>
-<ul>
-  <li>Defines the permissions for the ServiceAccount</li>
-</ul>
-
-<p><strong>Role Binding</strong></p>
-<ul>
-  <li>Binds the Role to the ServiceAccount</li>
-</ul>
-
-<p><strong>Role</strong></p>
-<ul>
-  <li>Defines the permissions for the ServiceAccount</li>
-</ul>
-
-<p><br /></p>
-
-<h3 id="key-components">Key Components</h3>
-
-<ol>
-  <li><strong>ServiceAccount Admission Controller</strong>
-    <ul>
-      <li>Assigns default SA to pods</li>
-      <li>Part of K8s API server</li>
-    </ul>
-  </li>
-  <li><strong>ServiceAccount Token Controller</strong>
-    <ul>
-      <li>Manages token generation</li>
-      <li>Part of kube-controller-manager</li>
-    </ul>
-  </li>
-  <li><strong>ServiceAccount Controller</strong>
-    <ul>
-      <li>Manages SA lifecycle</li>
-      <li>Handles secret creation/deletion</li>
-    </ul>
-  </li>
-</ol>
-
-<h3 id="-kubernetes-authentication-components">🔑 Kubernetes Authentication Components</h3>
-<ul>
-  <li>Token</li>
-  <li>ca.crt</li>
-  <li>Namespace</li>
-</ul>
-
-<blockquote>
-  <p>When a service account is created, Kubernetes automatically creates a security secret containing the following three components.</p>
-</blockquote>
-
-<h4 id="token">Token</h4>
-<p>A token is a JSON web token (JWT) that can be used to authenticate requests to the Kubernetes API server on behalf of service accounts. The token is signed with the private key of the Kubernetes API server</p>
-
-<p>It can be verified using the corresponding public key (in ca.crt). The token contains information about the service account, such as its name and namespaces to which it belongs.</p>
-
-<h4 id="cacrt">ca.crt</h4>
-<p>The ca.crt file contains a certificate of certification authority (CA) for the Kubernetes cluster. It is used to establish trust between the client and the API server when making a request.</p>
-
-<p>The client can use this CA certificate to verify that the API server’s certificate is valid and signed by the same CA. This allows the client to verify that it is communicating with an authenticated API server and not a malicious actor.</p>
-
-<h4 id="namespace">Namespace</h4>
-<p>Namespace is a key component of Kubernetes’ multi-tenant architecture. Namespace is used to logically separate resources within a cluster, allowing multiple teams or projects to share the same cluster without interfering with each other.</p>
-
-<p>When a service account is created, it is associated with a specific namespace. If the service account is not granted full cluster permission through ClusterRoleBindings, the token of the service account authorized for that namespace through RoleBindings can only be used to access resources within that namespace.</p>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="component-table">Component Table</h3>
+<h2 id="service-account-components">Service Account Components</h2>
+
+<h3 id="key-elements-of-service-accounts">Key Elements of Service Accounts</h3>
 
 <table class="table-beauty">
   <tr>
-    <th style="width: 30%;">🔧 Component</th>
-    <th style="width: 70%;">📝 Description</th>
+    <th style="width: 20%;">Component</th>
+    <th style="width: 30%;">Description</th>
+    <th style="width: 50%;">Purpose</th>
   </tr>
   <tr>
     <td>Token</td>
-    <td>JWT for API authentication</td>
+    <td>JSON Web Token (JWT)</td>
+    <td>Authenticates API requests, contains encoded identity information</td>
   </tr>
   <tr>
     <td>ca.crt</td>
     <td>Cluster CA certificate</td>
+    <td>Verifies API server identity to prevent MITM attacks</td>
   </tr>
   <tr>
     <td>Namespace</td>
     <td>Associated namespace</td>
+    <td>Defines the scope of the service account permissions</td>
   </tr>
 </table>
+
+<h3 id="1-token">1. Token</h3>
+
+<div class="info-box info-box-default-not-check">
+  <p>The token is a JSON Web Token (JWT) that authenticates requests to the Kubernetes API server on behalf of a service account.</p>
+</div>
+
+<p>Key characteristics:</p>
+<ul>
+  <li>Signed with the private key of the Kubernetes API server</li>
+  <li>Can be verified using the corresponding public key</li>
+  <li>Contains claims about the service account identity</li>
+  <li>Used in HTTP Authorization header when making API requests</li>
+</ul>
+
+<p>Token location in a Pod:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/var/run/secrets/kubernetes.io/serviceaccount/token
+</code></pre></div></div>
+
+<h3 id="2-cacrt">2. ca.crt</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">ca.crt</code> file contains the certificate of the certificate authority (CA) for the Kubernetes cluster. It serves as a trust anchor for verifying the API server’s identity.</p>
+
+<p>Key characteristics:</p>
+<ul>
+  <li>Used to validate the API server’s TLS certificate</li>
+  <li>Prevents man-in-the-middle attacks</li>
+  <li>Establishes secure TLS connection to the API server</li>
+</ul>
+
+<p>CA certificate location in a Pod:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+</code></pre></div></div>
+
+<h3 id="3-namespace">3. Namespace</h3>
+
+<p>The namespace element defines the default scope for the service account’s permissions when using Role and RoleBinding (as opposed to ClusterRole and ClusterRoleBinding).</p>
+
+<p>Key characteristics:</p>
+<ul>
+  <li>Stored as plain text in the mounted volume</li>
+  <li>Indicates which namespace the service account belongs to</li>
+  <li>Used by client libraries to determine the default namespace</li>
+</ul>
+
+<p>Namespace location in a Pod:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/var/run/secrets/kubernetes.io/serviceaccount/namespace
+</code></pre></div></div>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="pratice-service-account">Pratice Service Account</h3>
+<h2 id="internal-architecture">Internal Architecture</h2>
 
-<p>I’m going to proceed with the existing service account and service account token.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>k get serviceaccounts <span class="nt">-n</span> somaz
-NAME                                   SECRETS   AGE
-default                                1         27d
+<div class="info-box info-box-success-not-check">
+  <h3>Kubernetes Controllers for Service Accounts</h3>
+  <p>Several controllers in Kubernetes manage the lifecycle and functionality of service accounts:</p>
+</div>
 
-<span class="nv">$ </span>k get secret <span class="nt">-n</span> somaz
-NAME                                               TYPE                                  DATA   AGE
-default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
+<h3 id="1-serviceaccount-admission-controller">1. ServiceAccount Admission Controller</h3>
+
+<p>The ServiceAccount Admission Controller is part of the Kubernetes API server and performs the following functions:</p>
+<ul>
+  <li>Assigns the default service account to pods that don’t specify a service account</li>
+  <li>Ensures pods have a valid service account</li>
+  <li>Modifies the pod spec to include volume mounts for service account tokens</li>
+</ul>
+
+<h3 id="2-serviceaccount-token-controller">2. ServiceAccount Token Controller</h3>
+
+<p>The ServiceAccount Token Controller is part of the kube-controller-manager and:</p>
+<ul>
+  <li>Manages token generation for service accounts</li>
+  <li>Creates and deletes token secrets when service accounts are created or deleted</li>
+  <li>Removes tokens for deleted service accounts</li>
+  <li>Adds tokens for new service accounts</li>
+</ul>
+
+<h3 id="3-serviceaccount-controller">3. ServiceAccount Controller</h3>
+
+<p>The ServiceAccount Controller ensures:</p>
+<ul>
+  <li>Every namespace has a default service account</li>
+  <li>Manages the lifecycle of service accounts</li>
+  <li>Synchronizes service account resources with the cluster state</li>
+</ul>
+
+<h3 id="4-token-request-projection">4. Token Request Projection</h3>
+
+<p>In Kubernetes 1.24+, the token request projection system:</p>
+<ul>
+  <li>Generates short-lived tokens bound to specific pods</li>
+  <li>Automatically rotates tokens before expiration</li>
+  <li>Invalidates tokens when pods are deleted</li>
+  <li>Provides tokens through the projected volume mechanism</li>
+</ul>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="rbac-integration-with-service-accounts">RBAC Integration with Service Accounts</h2>
+
+<div class="info-box info-box-warning-not-check">
+  <h3>Role-Based Access Control (RBAC)</h3>
+  <p>Service accounts themselves don't provide permissions - they must be bound to Roles or ClusterRoles through RoleBindings or ClusterRoleBindings.</p>
+</div>
+
+<h3 id="understanding-rbac-components">Understanding RBAC Components</h3>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph TD
+      A[Service Account] --&gt; B[RoleBinding/ClusterRoleBinding]
+      B --&gt; C[Role/ClusterRole]
+      C --&gt; D[Rules]
+      D --&gt; E[API Groups]
+      D --&gt; F[Resources]
+      D --&gt; G[Verbs]
+  </div>
+</div>
+
+<table class="table-beauty">
+  <tr>
+    <th style="width: 20%;">RBAC Component</th>
+    <th style="width: 40%;">Purpose</th>
+    <th style="width: 40%;">Scope</th>
+  </tr>
+  <tr>
+    <td>Role</td>
+    <td>Defines permissions to resources</td>
+    <td>Namespace-specific</td>
+  </tr>
+  <tr>
+    <td>ClusterRole</td>
+    <td>Defines permissions to resources</td>
+    <td>Cluster-wide</td>
+  </tr>
+  <tr>
+    <td>RoleBinding</td>
+    <td>Binds service account to role</td>
+    <td>Namespace-specific</td>
+  </tr>
+  <tr>
+    <td>ClusterRoleBinding</td>
+    <td>Binds service account to cluster role</td>
+    <td>Cluster-wide</td>
+  </tr>
+</table>
+
+<h3 id="complete-rbac-example">Complete RBAC Example</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Service Account Definition</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">monitoring-agent</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
+<span class="nn">---</span>
+<span class="c1"># Token Secret (K8s 1.24+)</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+<span class="na">type</span><span class="pi">:</span> <span class="s">kubernetes.io/service-account-token</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">monitoring-agent-token</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">kubernetes.io/service-account.name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">monitoring-agent"</span>
+<span class="nn">---</span>
+<span class="c1"># Role Definition - Namespace Scoped</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">pod-metrics-reader</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
+<span class="na">rules</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">pods"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">pods/metrics"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">]</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">metrics.k8s.io"</span><span class="pi">]</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">pods"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">]</span>
+<span class="nn">---</span>
+<span class="c1"># RoleBinding - Binds Service Account to Role</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RoleBinding</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">monitoring-agent-metrics-reader</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
+<span class="na">subjects</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">monitoring-agent</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
+<span class="na">roleRef</span><span class="pi">:</span>
+  <span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">pod-metrics-reader</span>
+  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
+<span class="nn">---</span>
+<span class="c1"># ClusterRole Definition - Cluster Scoped</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">node-metrics-reader</span>
+<span class="na">rules</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">nodes"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">nodes/metrics"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">nodes/stats"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">]</span>
+<span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">metrics.k8s.io"</span><span class="pi">]</span>
+  <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">nodes"</span><span class="pi">]</span>
+  <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">]</span>
+<span class="nn">---</span>
+<span class="c1"># ClusterRoleBinding - Binds Service Account to ClusterRole</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRoleBinding</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">monitoring-agent-node-metrics-reader</span>
+<span class="na">subjects</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">monitoring-agent</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
+<span class="na">roleRef</span><span class="pi">:</span>
+  <span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">node-metrics-reader</span>
+  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
 </code></pre></div></div>
 
-<p>The service account is mounted on the pad as shown below.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k describe po <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm
-    Mounts:
-      /etc/mysql/conf.d from config-volume <span class="o">(</span>rw<span class="o">)</span>
-      /var/lib/mysql from mysql-persistent-storage-dev2 <span class="o">(</span>rw<span class="o">)</span>
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9dnzq <span class="o">(</span>ro<span class="o">)</span>
+<p><br /></p>
+
+<hr />
+
+<h2 id="practical-service-account-examples">Practical Service Account Examples</h2>
+
+<h3 id="examining-service-account-in-a-pod">Examining Service Account in a Pod</h3>
+
+<p>Let’s look at how a service account manifests inside a running Pod:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check which service account is used by a Pod</span>
+kubectl describe pod <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm
 </code></pre></div></div>
 
-<p>If you check the pad, there is a token in the place where it is mounted. So you can communicate with the Kubernetes API server with that token.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> <span class="nb">ls</span> <span class="nt">-l</span> /var/run/secrets/kubernetes.io/serviceaccount/
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Mounts:
+  /etc/mysql/conf.d from config-volume (rw)
+  /var/lib/mysql from mysql-persistent-storage-dev2 (rw)
+  /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9dnzq (ro)
+</code></pre></div></div>
+
+<h3 id="examining-the-service-account-tokens">Examining the Service Account Tokens</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># List files in the service account mount</span>
+kubectl <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> <span class="nb">ls</span> <span class="nt">-l</span> /var/run/secrets/kubernetes.io/serviceaccount/
+
 total 0
 lrwxrwxrwx 1 root root 13 Apr 12 10:00 ca.crt -&gt; ..data/ca.crt
 lrwxrwxrwx 1 root root 16 Apr 12 10:00 namespace -&gt; ..data/namespace
 lrwxrwxrwx 1 root root 12 Apr 12 10:00 token -&gt; ..data/token
 </code></pre></div></div>
 
-<p>If you check the token file, there is a value.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> <span class="nb">cat</span> /var/run/secrets/kubernetes.io/serviceaccount/token
-eyJhbGciOi...
+<h3 id="creating-and-binding-permissions">Creating and Binding Permissions</h3>
+
+<p>Below is an example of creating a Role and RoleBinding for a service account to access Pod information in a specific namespace:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">pod-reader</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">somaz</span>
+<span class="na">rules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">"</span><span class="pi">]</span> 
+    <span class="na">resources</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">pods"</span><span class="pi">]</span>
+    <span class="na">verbs</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">get"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">watch"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">list"</span><span class="pi">]</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">RoleBinding</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">pod-reader-binding</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">somaz</span> 
+<span class="na">subjects</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">default</span>
+    <span class="na">namespace</span><span class="pi">:</span> <span class="s">somaz</span>
+<span class="na">roleRef</span><span class="pi">:</span>
+  <span class="na">kind</span><span class="pi">:</span> <span class="s">Role</span> 
+  <span class="na">name</span><span class="pi">:</span> <span class="s">pod-reader</span>
+  <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
 </code></pre></div></div>
 
-<p>And after creating the Role, Rollbinding is done.</p>
+<h3 id="testing-api-access-from-a-pod">Testing API Access from a Pod</h3>
 
-<p>Simply put, Role is a role that only works in certain namespaces ClusterRole is a role that operates throughout the cluster</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: service-account-somaz-role
-  namespace: somaz
-rules:
-  - apiGroups: <span class="o">[</span><span class="s2">""</span><span class="o">]</span> 
-    resources: <span class="o">[</span><span class="s2">"pods"</span><span class="o">]</span>
-    verbs: <span class="o">[</span><span class="s2">"get"</span>, <span class="s2">"watch"</span>, <span class="s2">"list"</span><span class="o">]</span>
-<span class="nt">---</span>
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: service-account-somaz-role-binding
-  namespace: somaz 
-subjects:
-  - kind: ServiceAccount
-    name: default
-    namespace: somaz
-roleRef:
-  kind: Role 
-  name: service-account-somaz-role 
-  apiGroup: rbac.authorization.k8s.io
-</code></pre></div></div>
+<p>Once the permissions are set up, you can test the access from inside a Pod:</p>
 
-<p>Check the communication as below.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> bash
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Access the Pod</span>
+kubectl <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> bash
+
+<span class="c"># Inside the Pod, access the Kubernetes API using the service account token</span>
 bash-4.4# <span class="nb">cd</span> /var/run/secrets/kubernetes.io/serviceaccount/
 bash-4.4# <span class="nv">TOKEN</span><span class="o">=</span><span class="si">$(</span><span class="nb">cat </span>token<span class="si">)</span>
-bash-4.4# curl <span class="nt">-X</span> GET https://<span class="nv">$KUBERNETES_SERVICE_HOST</span>/api/v1/namespaces/somaz/pods <span class="nt">--header</span> <span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span> <span class="nt">--insecure</span>
-<span class="o">{</span>
-  <span class="s2">"kind"</span>: <span class="s2">"PodList"</span>,
-  <span class="s2">"apiVersion"</span>: <span class="s2">"v1"</span>,
-  <span class="s2">"metadata"</span>: <span class="o">{</span>
-    <span class="s2">"resourceVersion"</span>: <span class="s2">"79523984"</span>
-  <span class="o">}</span>,
-  <span class="s2">"items"</span>: <span class="o">[</span>
-    <span class="o">{</span>
-      <span class="s2">"metadata"</span>: <span class="o">{</span>
-        <span class="s2">"name"</span>: <span class="s2">"somaz-db-d7d785ff4-mwgfm"</span>,
-        <span class="s2">"generateName"</span>: <span class="s2">"somaz-db-d7d785ff4-"</span>,
-        <span class="s2">"namespace"</span>: <span class="s2">"somaz"</span>,
-        <span class="s2">"uid"</span>: <span class="s2">"2f44c054-937a-478c-b719-20298846f236"</span>,
-...
+bash-4.4# curl <span class="nt">-X</span> GET https://<span class="nv">$KUBERNETES_SERVICE_HOST</span>/api/v1/namespaces/somaz/pods <span class="se">\</span>
+  <span class="nt">--header</span> <span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span> <span class="se">\</span>
+  <span class="nt">--cacert</span> ca.crt
 </code></pre></div></div>
 
-<h3 id="-common-questions">❓ Common Questions</h3>
-
-<blockquote>
-  <p>Q1: What is $KUBERNETES_SERVICE_HOST?<br />
-A1: API server IP address automatically injected into pods</p>
-</blockquote>
-
-<blockquote>
-  <p>Q2: Why are pod and cluster token values different?<br />
-A2: Kubernetes automatically rotates tokens for security purposes</p>
-</blockquote>
-
-<h3 id="-what-is-kubernetes_service_host">🔑 What is $KUBERNETES_SERVICE_HOST?</h3>
-<p>It indicates the IP address of the Kubernetes API server.</p>
-
-<p>It is automatically injected into the Pod environment and allows the running Pod to communicate with the API server.</p>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="nv">$KUBERNETES_SERVICE_HOST</span>
-10.233.0.1
-
-k get service <span class="nt">-n</span> default
-NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT<span class="o">(</span>S<span class="o">)</span>   AGE
-kubernetes   ClusterIP   10.233.0.1   &lt;none&gt;        443/TCP   372d
-</code></pre></div></div>
-
-<h3 id="why-are-pod-and-cluster-token-values-different">Why are pod and cluster token values different?</h3>
-
-<p>First, check the token value of the pad.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k <span class="nb">exec</span> <span class="nt">-ti</span> <span class="nt">-n</span> somaz somaz-db-d7d785ff4-mwgfm <span class="nt">--</span> <span class="nb">cat</span> /var/run/secrets/kubernetes.io/serviceaccount/token
-eyJhbGciOiJSUzI1NiIsImtpZC...
-</code></pre></div></div>
-
-<p>Second, check the token value of the cluster.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>k get secrets <span class="nt">-n</span> somaz
-NAME                                               TYPE                                  DATA   AGE
-default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
-
-<span class="nv">$ </span>k get secrets <span class="nt">-n</span> somaz default-token-7c6dm <span class="nt">-o</span> yaml | k neat
-apiVersion: v1
-data:
-  ca.crt:...
-  namespace: c29tYXoK <span class="c"># echo "somaz" | base64 -&gt; c29tYXoK</span>
-  token: ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkltVlNSalpvYnpaR09UZER...
-</code></pre></div></div>
-
-<blockquote>
-  <p>Obviously the two token values are different. So how do we communicate?</p>
-</blockquote>
-
-<div class="info-box info-box-default">
-  <strong>Why Are the Two Tokens Different?</strong><br /><br />
-  The reasons are as follows. In fact, it seems that the two tokens should be the same, but Kubernetes automatically rotates the service account token for security reasons. <br /><br /> This is a measure to strengthen security in case the service account token is stolen or leaked. The rotation period of the service account token varies according to the Kubernetes cluster setting. <br /><br />Therefore, depending on the time of creation, the token of the pad and the token inquired with the <code>kubectl get secret</code> command may be different. This is why the two tokens are different.
+<div class="info-box info-box-success-not-check">
+  <h3>API Access from Pod</h3>
+  <p>The example above demonstrates how a Pod with the appropriate service account permissions can access the Kubernetes API server to retrieve information about other pods in the same namespace.</p>
 </div>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="reference">Reference</h3>
+<h2 id="common-questions-and-best-practices">Common Questions and Best Practices</h2>
+
+<h3 id="frequently-asked-questions">Frequently Asked Questions</h3>
+
+<div class="info-box info-box-info-not-check">
+  <h3>What is $KUBERNETES_SERVICE_HOST?</h3>
+  <p>$KUBERNETES_SERVICE_HOST is an environment variable automatically injected into all Pods. It contains the IP address of the Kubernetes API server, allowing Pods to communicate with it without hardcoding the address.</p>
+
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Example:</span>
+<span class="nb">echo</span> <span class="nv">$KUBERNETES_SERVICE_HOST</span>
+10.233.0.1
+
+kubectl get service <span class="nt">-n</span> default
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT<span class="o">(</span>S<span class="o">)</span>   AGE
+kubernetes   ClusterIP   10.233.0.1   &lt;none&gt;        443/TCP   372d
+</code></pre></div></div>
+
+<div class="info-box info-box-warning-not-check">
+  <h3>Why are Pod and Cluster Token Values Different?</h3>
+  <p>With Kubernetes 1.24+, tokens mounted in Pods are different from tokens stored in Secrets because:</p>
+  <ul>
+    <li>Pod tokens are short-lived and automatically rotated</li>
+    <li>Pod tokens are audience-scoped and bound to the specific Pod</li>
+    <li>Pod tokens have a limited validity period (usually 1 hour by default)</li>
+    <li>Token rotation provides better security by limiting the impact of token compromise</li>
+  </ul>
+  <p>This prevents long-term credential abuse if tokens are leaked.</p>
+</div>
+
+<h3 id="service-account-best-practices">Service Account Best Practices</h3>
+
+<table class="table-beauty">
+  <tr>
+    <th style="width: 30%;">Best Practice</th>
+    <th style="width: 70%;">Description</th>
+  </tr>
+  <tr>
+    <td>Principle of Least Privilege</td>
+    <td>Assign only the minimum necessary permissions to service accounts</td>
+  </tr>
+  <tr>
+    <td>Use Namespace-Scoped Roles</td>
+    <td>Prefer Role/RoleBinding over ClusterRole/ClusterRoleBinding when possible</td>
+  </tr>
+  <tr>
+    <td>Custom Service Accounts</td>
+    <td>Create dedicated service accounts for each application instead of using default</td>
+  </tr>
+  <tr>
+    <td>Disable automountServiceAccountToken</td>
+    <td>Set <code>automountServiceAccountToken: false</code> for Pods that don't need API access</td>
+  </tr>
+  <tr>
+    <td>Audit Service Account Usage</td>
+    <td>Regularly review service account permissions and bindings</td>
+  </tr>
+  <tr>
+    <td>Token Scope Limitation</td>
+    <td>Use audience-restricted tokens with appropriate validity periods</td>
+  </tr>
+  <tr>
+    <td>Network Policies</td>
+    <td>Restrict Pod network access to the API server when possible</td>
+  </tr>
+</table>
+
+<h3 id="example-custom-service-account-with-limited-permissions">Example: Custom Service Account with Limited Permissions</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Create a dedicated service account</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">app-specific-account</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">my-namespace</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">kubernetes.io/description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Service</span><span class="nv"> </span><span class="s">account</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">my</span><span class="nv"> </span><span class="s">application</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">limited</span><span class="nv"> </span><span class="s">permissions"</span>
+<span class="nn">---</span>
+<span class="c1"># Disable auto-mounting for pods that don't need it</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">no-api-access-pod</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">serviceAccountName</span><span class="pi">:</span> <span class="s">default</span>
+  <span class="na">automountServiceAccountToken</span><span class="pi">:</span> <span class="no">false</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-container</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s">nginx</span>
+<span class="nn">---</span>
+<span class="c1"># Create time-limited tokens when needed</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+<span class="na">type</span><span class="pi">:</span> <span class="s">kubernetes.io/service-account-token</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">time-limited-token</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">kubernetes.io/service-account.name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">app-specific-account"</span>
+    <span class="na">kubernetes.io/service-account.expiration</span><span class="pi">:</span> <span class="s2">"</span><span class="s">86400"</span> <span class="c1"># 24 hours in seconds</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="advanced-service-account-topics">Advanced Service Account Topics</h2>
+
+<h3 id="service-account-impersonation">Service Account Impersonation</h3>
+
+<p>Kubernetes allows users with appropriate permissions to impersonate service accounts, which can be useful for debugging or testing permissions:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl get pods <span class="nt">--as</span><span class="o">=</span>system:serviceaccount:namespace:serviceaccountname
+</code></pre></div></div>
+
+<h3 id="external-identity-integration">External Identity Integration</h3>
+
+<p>Service accounts can be integrated with external identity providers:</p>
+
+<ol>
+  <li><strong>OIDC Integration</strong>: Through token exchange mechanisms</li>
+  <li><strong>Cloud Provider IAM</strong>: GCP Workload Identity, AWS IAM Roles for Service Accounts, Azure Pod Identity</li>
+  <li><strong>Vault Integration</strong>: HashiCorp Vault for dynamic secret generation</li>
+</ol>
+
+<h3 id="service-accounts-in-cicd-pipelines">Service Accounts in CI/CD Pipelines</h3>
+
+<p>Best practices for using service accounts in CI/CD pipelines:</p>
+
+<ol>
+  <li>Create dedicated service accounts for each pipeline with scoped permissions</li>
+  <li>Rotate tokens regularly</li>
+  <li>Store tokens securely in CI/CD secret management</li>
+  <li>Audit pipeline service account usage</li>
+</ol>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
 <ul>
-  <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/">Kubernetes Service Accounts Admin</a></li>
+  <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/">Kubernetes Official Documentation - Service Accounts</a></li>
+  <li><a href="https://kubernetes.io/docs/reference/access-authn-authz/rbac/">Kubernetes Official Documentation - RBAC</a></li>
+  <li><a href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/">Kubernetes Official Documentation - Managing Service Accounts</a></li>
+  <li><a href="https://kubernetes.io/blog/2021/04/13/kube-api-server-watch-list-vulnerability-emergency-release-1-21-0/">Kubernetes Blog - Bound Service Account Tokens</a></li>
   <li><a href="https://ssup2.github.io/theory_analysis/Kubernetes_Authentication_Service_Account/">Service Account Deep Dive</a></li>
   <li><a href="https://www.bogotobogo.com/DevOps/Docker/Docker-Kubernetes-Service-Account.php">Kubernetes Service Account Guide</a></li>
+  <li><a href="https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-request-v1/">Kubernetes Token Request API</a></li>
 </ul>
 
 
@@ -614,7 +868,7 @@ data:
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="8">
+            <div class="time-bar" data-minutes="13">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -656,7 +910,7 @@ data:
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Kubernetes Service Accounts, their components, and practical usage&quot;%20https://somaz.blog/category/kubernetes/k8s-service-account/%20via%20&#64;twitter_username&hashtags=kubernetes,security,service-account,rbac"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Kubernetes Service Accounts, their components, and practical usage&quot;%20https://somaz.blog/category/kubernetes/k8s-service-account/%20via%20&#64;twitter_username&hashtags=kubernetes,security,service-account,rbac,authentication,authorization,k8s-security"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -911,31 +1165,76 @@ data:
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Kubernetes Service Accounts",
-            "headline": "",
+            "headline": "Authentication and Authorization for Pod-based Applications",
             "description": "A comprehensive guide to Kubernetes Service Accounts, their components, and practical usage",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737095858/k8s-service-account_xiooaw.png",
             "url": "https://somaz.blog/category/kubernetes/k8s-service-account/",
-            "articleBody": "image reference link
+            "articleBody": "Image reference link
 
 
 
 
 
 Overview
-Service Accounts in Kubernetes are credentials used to grant permissions to pods for interacting with the API server.
+
+
+  Service Accounts in Kubernetes are a fundamental security mechanism that provides identity to processes running inside Pods. They enable controlled access to the Kubernetes API server, allowing applications to interact with cluster resources based on defined permissions.
+  Understanding Service Accounts is essential for implementing proper security practices and ensuring your applications have the appropriate level of access within the cluster.
 
 
 
-What is Service Account?
+  
+    graph LR
+      A[Pod] --&amp;gt; B[Service Account]
+      B --&amp;gt; C[Token]
+      B --&amp;gt; D[RBAC Permissions]
+      D --&amp;gt; E[Role/ClusterRole]
+      D --&amp;gt; F[RoleBinding/ClusterRoleBinding]
+      C --&amp;gt; G[API Server]
+      F --&amp;gt; G
+  
 
-  Service Account is a Kubernetes resource that provides an identity for processes that run in a Pod. 
-Service account key elements play an essential role in the authentication and authorization process within the cluster.
 
 
 
-image reference link
 
-Before Kubernetes 1.24, the service account token is automatically created when the service account is created for the first time.
+
+Service Account Core Concepts
+
+What is a Service Account?
+
+
+  A Service Account is a Kubernetes resource that provides an identity for processes running in Pods. It enables applications to authenticate with the Kubernetes API server and perform authorized operations within the cluster.
+
+
+
+Image reference link
+
+Service Accounts function as the identity mechanism for Pods, similar to how user accounts function for humans. When a Pod uses a Service Account, it receives credentials that allow it to interact with the Kubernetes API server according to the permissions assigned to that Service Account.
+
+Service Account Lifecycle
+
+
+  
+    sequenceDiagram
+      participant U as User/System
+      participant K as Kubernetes API
+      participant C as Controller Manager
+      participant P as Pod
+      
+      U-&amp;gt;&amp;gt;K: Create ServiceAccount
+      K-&amp;gt;&amp;gt;C: ServiceAccount Created
+      C-&amp;gt;&amp;gt;K: Create Token (pre-1.24) or Mount ProjectedVolume (1.24+)
+      U-&amp;gt;&amp;gt;K: Create Pod with ServiceAccount
+      K-&amp;gt;&amp;gt;P: Assign ServiceAccount
+      P-&amp;gt;&amp;gt;K: Access API with Token
+  
+
+
+Pre-Kubernetes 1.24
+
+In versions before Kubernetes 1.24, a Secret containing a service account token was automatically created when a ServiceAccount was created:
+
 $ kubectl get serviceaccount -n somaz
 NAME                                   SECRETS   AGE
 default                                1         27d
@@ -945,199 +1244,318 @@ NAME                                               TYPE                         
 default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
 
 
-Service Account Basics
+Kubernetes 1.24 and Later
 
-# Basic Service Account Structure (K8s 1.24+)
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: servicenow-discovery
-  namespace: default
----
+Starting with Kubernetes 1.24, long-lived service account tokens are no longer automatically created. Instead, tokens are obtained through the TokenRequest API and mounted as projected volumes with automatic rotation.
+
+For backward compatibility or specific use cases, you can still manually create long-lived tokens:
+
 apiVersion: v1
 kind: Secret
 type: kubernetes.io/service-account-token
 metadata:
-  name: servicenow-discovery-token
-  namespace: default
+  name: my-service-account-token
   annotations:
-    kubernetes.io/service-account.name: &quot;servicenow-discovery&quot;
----
-apiVersion: v1
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  # &quot;namespace&quot; omitted since ClusterRoles are not namespaced
-  name: read-only
-rules:
-- apiGroups:
-    - apps
-    - extensions
-    - &quot;*&quot;
-    - &quot;&quot;
-  resources: [&quot;*&quot;]
-  verbs: [&quot;get&quot;, &quot;watch&quot;, &quot;list&quot;]
----
-apiVersion: v1
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: discovery-global
-subjects:
-- kind: ServiceAccount
-  name: servicenow-discovery
-  namespace: default
-- kind: User
-  name: servicenow-discovery
-  apiGroup: rbac.authorization.k8s.io
-roleRef:
-  kind: ClusterRole
-  name: read-only
-  apiGroup: rbac.authorization.k8s.io
-
-
-
-
-Cluster Role Binding
-
-  Binds the ClusterRole to the ServiceAccount
-
-
-Cluster Role
-
-  Defines the permissions for the ServiceAccount
-
-
-Role Binding
-
-  Binds the Role to the ServiceAccount
-
-
-Role
-
-  Defines the permissions for the ServiceAccount
-
-
-
-
-Key Components
-
-
-  ServiceAccount Admission Controller
-    
-      Assigns default SA to pods
-      Part of K8s API server
-    
-  
-  ServiceAccount Token Controller
-    
-      Manages token generation
-      Part of kube-controller-manager
-    
-  
-  ServiceAccount Controller
-    
-      Manages SA lifecycle
-      Handles secret creation/deletion
-    
-  
-
-
-🔑 Kubernetes Authentication Components
-
-  Token
-  ca.crt
-  Namespace
-
-
-
-  When a service account is created, Kubernetes automatically creates a security secret containing the following three components.
-
-
-Token
-A token is a JSON web token (JWT) that can be used to authenticate requests to the Kubernetes API server on behalf of service accounts. The token is signed with the private key of the Kubernetes API server
-
-It can be verified using the corresponding public key (in ca.crt). The token contains information about the service account, such as its name and namespaces to which it belongs.
-
-ca.crt
-The ca.crt file contains a certificate of certification authority (CA) for the Kubernetes cluster. It is used to establish trust between the client and the API server when making a request.
-
-The client can use this CA certificate to verify that the API server’s certificate is valid and signed by the same CA. This allows the client to verify that it is communicating with an authenticated API server and not a malicious actor.
-
-Namespace
-Namespace is a key component of Kubernetes’ multi-tenant architecture. Namespace is used to logically separate resources within a cluster, allowing multiple teams or projects to share the same cluster without interfering with each other.
-
-When a service account is created, it is associated with a specific namespace. If the service account is not granted full cluster permission through ClusterRoleBindings, the token of the service account authorized for that namespace through RoleBindings can only be used to access resources within that namespace.
+    kubernetes.io/service-account.name: my-service-account
 
 
 
 
 
-Component Table
+
+Service Account Components
+
+Key Elements of Service Accounts
 
 
   
-    🔧 Component
-    📝 Description
+    Component
+    Description
+    Purpose
   
   
     Token
-    JWT for API authentication
+    JSON Web Token (JWT)
+    Authenticates API requests, contains encoded identity information
   
   
     ca.crt
     Cluster CA certificate
+    Verifies API server identity to prevent MITM attacks
   
   
     Namespace
     Associated namespace
+    Defines the scope of the service account permissions
+  
+
+
+1. Token
+
+
+  The token is a JSON Web Token (JWT) that authenticates requests to the Kubernetes API server on behalf of a service account.
+
+
+Key characteristics:
+
+  Signed with the private key of the Kubernetes API server
+  Can be verified using the corresponding public key
+  Contains claims about the service account identity
+  Used in HTTP Authorization header when making API requests
+
+
+Token location in a Pod:
+/var/run/secrets/kubernetes.io/serviceaccount/token
+
+
+2. ca.crt
+
+The ca.crt file contains the certificate of the certificate authority (CA) for the Kubernetes cluster. It serves as a trust anchor for verifying the API server’s identity.
+
+Key characteristics:
+
+  Used to validate the API server’s TLS certificate
+  Prevents man-in-the-middle attacks
+  Establishes secure TLS connection to the API server
+
+
+CA certificate location in a Pod:
+/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+
+3. Namespace
+
+The namespace element defines the default scope for the service account’s permissions when using Role and RoleBinding (as opposed to ClusterRole and ClusterRoleBinding).
+
+Key characteristics:
+
+  Stored as plain text in the mounted volume
+  Indicates which namespace the service account belongs to
+  Used by client libraries to determine the default namespace
+
+
+Namespace location in a Pod:
+/var/run/secrets/kubernetes.io/serviceaccount/namespace
+
+
+
+
+
+
+Internal Architecture
+
+
+  Kubernetes Controllers for Service Accounts
+  Several controllers in Kubernetes manage the lifecycle and functionality of service accounts:
+
+
+1. ServiceAccount Admission Controller
+
+The ServiceAccount Admission Controller is part of the Kubernetes API server and performs the following functions:
+
+  Assigns the default service account to pods that don’t specify a service account
+  Ensures pods have a valid service account
+  Modifies the pod spec to include volume mounts for service account tokens
+
+
+2. ServiceAccount Token Controller
+
+The ServiceAccount Token Controller is part of the kube-controller-manager and:
+
+  Manages token generation for service accounts
+  Creates and deletes token secrets when service accounts are created or deleted
+  Removes tokens for deleted service accounts
+  Adds tokens for new service accounts
+
+
+3. ServiceAccount Controller
+
+The ServiceAccount Controller ensures:
+
+  Every namespace has a default service account
+  Manages the lifecycle of service accounts
+  Synchronizes service account resources with the cluster state
+
+
+4. Token Request Projection
+
+In Kubernetes 1.24+, the token request projection system:
+
+  Generates short-lived tokens bound to specific pods
+  Automatically rotates tokens before expiration
+  Invalidates tokens when pods are deleted
+  Provides tokens through the projected volume mechanism
+
+
+
+
+
+
+RBAC Integration with Service Accounts
+
+
+  Role-Based Access Control (RBAC)
+  Service accounts themselves don&apos;t provide permissions - they must be bound to Roles or ClusterRoles through RoleBindings or ClusterRoleBindings.
+
+
+Understanding RBAC Components
+
+
+  
+    graph TD
+      A[Service Account] --&amp;gt; B[RoleBinding/ClusterRoleBinding]
+      B --&amp;gt; C[Role/ClusterRole]
+      C --&amp;gt; D[Rules]
+      D --&amp;gt; E[API Groups]
+      D --&amp;gt; F[Resources]
+      D --&amp;gt; G[Verbs]
   
 
 
 
+  
+    RBAC Component
+    Purpose
+    Scope
+  
+  
+    Role
+    Defines permissions to resources
+    Namespace-specific
+  
+  
+    ClusterRole
+    Defines permissions to resources
+    Cluster-wide
+  
+  
+    RoleBinding
+    Binds service account to role
+    Namespace-specific
+  
+  
+    ClusterRoleBinding
+    Binds service account to cluster role
+    Cluster-wide
+  
+
+
+Complete RBAC Example
+
+# Service Account Definition
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: monitoring-agent
+  namespace: monitoring
+---
+# Token Secret (K8s 1.24+)
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: monitoring-agent-token
+  namespace: monitoring
+  annotations:
+    kubernetes.io/service-account.name: &quot;monitoring-agent&quot;
+---
+# Role Definition - Namespace Scoped
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-metrics-reader
+  namespace: monitoring
+rules:
+- apiGroups: [&quot;&quot;]
+  resources: [&quot;pods&quot;, &quot;pods/metrics&quot;]
+  verbs: [&quot;get&quot;, &quot;list&quot;]
+- apiGroups: [&quot;metrics.k8s.io&quot;]
+  resources: [&quot;pods&quot;]
+  verbs: [&quot;get&quot;, &quot;list&quot;]
+---
+# RoleBinding - Binds Service Account to Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: monitoring-agent-metrics-reader
+  namespace: monitoring
+subjects:
+- kind: ServiceAccount
+  name: monitoring-agent
+  namespace: monitoring
+roleRef:
+  kind: Role
+  name: pod-metrics-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+# ClusterRole Definition - Cluster Scoped
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-metrics-reader
+rules:
+- apiGroups: [&quot;&quot;]
+  resources: [&quot;nodes&quot;, &quot;nodes/metrics&quot;, &quot;nodes/stats&quot;]
+  verbs: [&quot;get&quot;, &quot;list&quot;]
+- apiGroups: [&quot;metrics.k8s.io&quot;]
+  resources: [&quot;nodes&quot;]
+  verbs: [&quot;get&quot;, &quot;list&quot;]
+---
+# ClusterRoleBinding - Binds Service Account to ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: monitoring-agent-node-metrics-reader
+subjects:
+- kind: ServiceAccount
+  name: monitoring-agent
+  namespace: monitoring
+roleRef:
+  kind: ClusterRole
+  name: node-metrics-reader
+  apiGroup: rbac.authorization.k8s.io
 
 
 
-Pratice Service Account
-
-I’m going to proceed with the existing service account and service account token.
-$ k get serviceaccounts -n somaz
-NAME                                   SECRETS   AGE
-default                                1         27d
-
-$ k get secret -n somaz
-NAME                                               TYPE                                  DATA   AGE
-default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
 
 
-The service account is mounted on the pad as shown below.
-k describe po -n somaz somaz-db-d7d785ff4-mwgfm
-    Mounts:
-      /etc/mysql/conf.d from config-volume (rw)
-      /var/lib/mysql from mysql-persistent-storage-dev2 (rw)
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9dnzq (ro)
+
+Practical Service Account Examples
+
+Examining Service Account in a Pod
+
+Let’s look at how a service account manifests inside a running Pod:
+
+# Check which service account is used by a Pod
+kubectl describe pod -n somaz somaz-db-d7d785ff4-mwgfm
 
 
-If you check the pad, there is a token in the place where it is mounted. So you can communicate with the Kubernetes API server with that token.
-k exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- ls -l /var/run/secrets/kubernetes.io/serviceaccount/
+Output:
+Mounts:
+  /etc/mysql/conf.d from config-volume (rw)
+  /var/lib/mysql from mysql-persistent-storage-dev2 (rw)
+  /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-9dnzq (ro)
+
+
+Examining the Service Account Tokens
+
+# List files in the service account mount
+kubectl exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- ls -l /var/run/secrets/kubernetes.io/serviceaccount/
+
 total 0
 lrwxrwxrwx 1 root root 13 Apr 12 10:00 ca.crt -&amp;gt; ..data/ca.crt
 lrwxrwxrwx 1 root root 16 Apr 12 10:00 namespace -&amp;gt; ..data/namespace
 lrwxrwxrwx 1 root root 12 Apr 12 10:00 token -&amp;gt; ..data/token
 
 
-If you check the token file, there is a value.
-k exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
-eyJhbGciOi...
+Creating and Binding Permissions
 
+Below is an example of creating a Role and RoleBinding for a service account to access Pod information in a specific namespace:
 
-And after creating the Role, Rollbinding is done.
-
-Simply put, Role is a role that only works in certain namespaces ClusterRole is a role that operates throughout the cluster
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: service-account-somaz-role
+  name: pod-reader
   namespace: somaz
 rules:
   - apiGroups: [&quot;&quot;] 
@@ -1147,7 +1565,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: service-account-somaz-role-binding
+  name: pod-reader-binding
   namespace: somaz 
 subjects:
   - kind: ServiceAccount
@@ -1155,97 +1573,187 @@ subjects:
     namespace: somaz
 roleRef:
   kind: Role 
-  name: service-account-somaz-role 
+  name: pod-reader
   apiGroup: rbac.authorization.k8s.io
 
 
-Check the communication as below.
-k exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- bash
+Testing API Access from a Pod
+
+Once the permissions are set up, you can test the access from inside a Pod:
+
+# Access the Pod
+kubectl exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- bash
+
+# Inside the Pod, access the Kubernetes API using the service account token
 bash-4.4# cd /var/run/secrets/kubernetes.io/serviceaccount/
 bash-4.4# TOKEN=$(cat token)
-bash-4.4# curl -X GET https://$KUBERNETES_SERVICE_HOST/api/v1/namespaces/somaz/pods --header &quot;Authorization: Bearer $TOKEN&quot; --insecure
-{
-  &quot;kind&quot;: &quot;PodList&quot;,
-  &quot;apiVersion&quot;: &quot;v1&quot;,
-  &quot;metadata&quot;: {
-    &quot;resourceVersion&quot;: &quot;79523984&quot;
-  },
-  &quot;items&quot;: [
-    {
-      &quot;metadata&quot;: {
-        &quot;name&quot;: &quot;somaz-db-d7d785ff4-mwgfm&quot;,
-        &quot;generateName&quot;: &quot;somaz-db-d7d785ff4-&quot;,
-        &quot;namespace&quot;: &quot;somaz&quot;,
-        &quot;uid&quot;: &quot;2f44c054-937a-478c-b719-20298846f236&quot;,
-...
-
-
-❓ Common Questions
-
-
-  Q1: What is $KUBERNETES_SERVICE_HOST?
-A1: API server IP address automatically injected into pods
+bash-4.4# curl -X GET https://$KUBERNETES_SERVICE_HOST/api/v1/namespaces/somaz/pods \
+  --header &quot;Authorization: Bearer $TOKEN&quot; \
+  --cacert ca.crt
 
 
 
-  Q2: Why are pod and cluster token values different?
-A2: Kubernetes automatically rotates tokens for security purposes
+  API Access from Pod
+  The example above demonstrates how a Pod with the appropriate service account permissions can access the Kubernetes API server to retrieve information about other pods in the same namespace.
 
 
-🔑 What is $KUBERNETES_SERVICE_HOST?
-It indicates the IP address of the Kubernetes API server.
 
-It is automatically injected into the Pod environment and allows the running Pod to communicate with the API server.
 
+
+
+Common Questions and Best Practices
+
+Frequently Asked Questions
+
+
+  What is $KUBERNETES_SERVICE_HOST?
+  $KUBERNETES_SERVICE_HOST is an environment variable automatically injected into all Pods. It contains the IP address of the Kubernetes API server, allowing Pods to communicate with it without hardcoding the address.
+
+
+
+# Example:
 echo $KUBERNETES_SERVICE_HOST
 10.233.0.1
 
-k get service -n default
+kubectl get service -n default
 NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.233.0.1   &amp;lt;none&amp;gt;        443/TCP   372d
 
 
-Why are pod and cluster token values different?
 
-First, check the token value of the pad.
-k exec -ti -n somaz somaz-db-d7d785ff4-mwgfm -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
-eyJhbGciOiJSUzI1NiIsImtpZC...
+  Why are Pod and Cluster Token Values Different?
+  With Kubernetes 1.24+, tokens mounted in Pods are different from tokens stored in Secrets because:
+  
+    Pod tokens are short-lived and automatically rotated
+    Pod tokens are audience-scoped and bound to the specific Pod
+    Pod tokens have a limited validity period (usually 1 hour by default)
+    Token rotation provides better security by limiting the impact of token compromise
+  
+  This prevents long-term credential abuse if tokens are leaked.
 
 
-Second, check the token value of the cluster.
-$ k get secrets -n somaz
-NAME                                               TYPE                                  DATA   AGE
-default-token-7c6dm                                kubernetes.io/service-account-token   3      27d
+Service Account Best Practices
 
-$ k get secrets -n somaz default-token-7c6dm -o yaml | k neat
+
+  
+    Best Practice
+    Description
+  
+  
+    Principle of Least Privilege
+    Assign only the minimum necessary permissions to service accounts
+  
+  
+    Use Namespace-Scoped Roles
+    Prefer Role/RoleBinding over ClusterRole/ClusterRoleBinding when possible
+  
+  
+    Custom Service Accounts
+    Create dedicated service accounts for each application instead of using default
+  
+  
+    Disable automountServiceAccountToken
+    Set automountServiceAccountToken: false for Pods that don&apos;t need API access
+  
+  
+    Audit Service Account Usage
+    Regularly review service account permissions and bindings
+  
+  
+    Token Scope Limitation
+    Use audience-restricted tokens with appropriate validity periods
+  
+  
+    Network Policies
+    Restrict Pod network access to the API server when possible
+  
+
+
+Example: Custom Service Account with Limited Permissions
+
+# Create a dedicated service account
 apiVersion: v1
-data:
-  ca.crt:...
-  namespace: c29tYXoK # echo &quot;somaz&quot; | base64 -&amp;gt; c29tYXoK
-  token: ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkltVlNSalpvYnpaR09UZER...
+kind: ServiceAccount
+metadata:
+  name: app-specific-account
+  namespace: my-namespace
+  annotations:
+    kubernetes.io/description: &quot;Service account for my application with limited permissions&quot;
+---
+# Disable auto-mounting for pods that don&apos;t need it
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-api-access-pod
+spec:
+  serviceAccountName: default
+  automountServiceAccountToken: false
+  containers:
+  - name: my-container
+    image: nginx
+---
+# Create time-limited tokens when needed
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: time-limited-token
+  annotations:
+    kubernetes.io/service-account.name: &quot;app-specific-account&quot;
+    kubernetes.io/service-account.expiration: &quot;86400&quot; # 24 hours in seconds
 
 
 
-  Obviously the two token values are different. So how do we communicate?
 
 
 
-  Why Are the Two Tokens Different?
-  The reasons are as follows. In fact, it seems that the two tokens should be the same, but Kubernetes automatically rotates the service account token for security reasons.  This is a measure to strengthen security in case the service account token is stolen or leaked. The rotation period of the service account token varies according to the Kubernetes cluster setting. Therefore, depending on the time of creation, the token of the pad and the token inquired with the kubectl get secret command may be different. This is why the two tokens are different.
+Advanced Service Account Topics
+
+Service Account Impersonation
+
+Kubernetes allows users with appropriate permissions to impersonate service accounts, which can be useful for debugging or testing permissions:
+
+kubectl get pods --as=system:serviceaccount:namespace:serviceaccountname
+
+
+External Identity Integration
+
+Service accounts can be integrated with external identity providers:
+
+
+  OIDC Integration: Through token exchange mechanisms
+  Cloud Provider IAM: GCP Workload Identity, AWS IAM Roles for Service Accounts, Azure Pod Identity
+  Vault Integration: HashiCorp Vault for dynamic secret generation
+
+
+Service Accounts in CI/CD Pipelines
+
+Best practices for using service accounts in CI/CD pipelines:
+
+
+  Create dedicated service accounts for each pipeline with scoped permissions
+  Rotate tokens regularly
+  Store tokens securely in CI/CD secret management
+  Audit pipeline service account usage
 
 
 
 
 
 
-Reference
+References
 
-  Kubernetes Service Accounts Admin
+
+  Kubernetes Official Documentation - Service Accounts
+  Kubernetes Official Documentation - RBAC
+  Kubernetes Official Documentation - Managing Service Accounts
+  Kubernetes Blog - Bound Service Account Tokens
   Service Account Deep Dive
   Kubernetes Service Account Guide
+  Kubernetes Token Request API
 
 ",
-            "wordcount": "1510",
+            "wordcount": "2508",
             "inLanguage": "en",
             "dateCreated": "2025-01-10/",
             "datePublished": "2025-01-10/",
@@ -1276,7 +1784,7 @@ Reference
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","security","service-account","rbac"]
+            "keywords": ["kubernetes","security","service-account","rbac","authentication","authorization","k8s-security"]
         }
         </script>
     </body>

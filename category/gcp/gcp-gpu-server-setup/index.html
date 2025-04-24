@@ -40,7 +40,7 @@
     <title>Setting up GPU Server on Google Cloud Platform | somaz</title>
     <meta name="description" content="A comprehensive guide to setting up and configuring NVIDIA A100 GPU servers on GCP">
     
-        <meta name="keywords" content="gcp, gpu, nvidia, cloud-computing">
+        <meta name="keywords" content="gcp, gpu, nvidia, cloud-computing, machine-learning, a100">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 15, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>5 min to read</span>
+                    <span>15 min to read</span>
                 </p>
                 <h1 class="post-title">Setting up GPU Server on Google Cloud Platform</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">A complete guide to deploying and configuring NVIDIA A100 GPU instances on GCP</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737358848/gpu_keixqz.png" alt="Featured image" class="post-cover">
@@ -241,19 +241,74 @@ January 15, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p>Learn how to set up and configure NVIDIA A100 GPU servers on Google Cloud Platform (GCP) for AI/ML workloads.</p>
+
+<p>Google Cloud Platform (GCP) offers powerful GPU-accelerated computing instances that are ideal for AI/ML workloads, scientific computing, and rendering applications. This guide focuses on setting up and optimizing NVIDIA A100 GPU servers, which represent some of the most powerful GPU resources currently available in the cloud.</p>
+
+<p>The NVIDIA A100 offers exceptional performance for deep learning training and inference, with variants including the 40GB and 80GB memory configurations. This guide walks through the entire process from checking GPU availability, requesting quota, deploying via Terraform, installing drivers and frameworks, to running popular AI applications.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>NVIDIA A100 Specifications</strong>
+  <table class="table-modern" style="margin-top:10px">
+    <tr>
+      <th>Specification</th>
+      <th>A100 40GB</th>
+      <th>A100 80GB</th>
+    </tr>
+    <tr>
+      <td>GPU Memory</td>
+      <td>40GB HBM2</td>
+      <td>80GB HBM2e</td>
+    </tr>
+    <tr>
+      <td>Memory Bandwidth</td>
+      <td>1.6 TB/s</td>
+      <td>2.0 TB/s</td>
+    </tr>
+    <tr>
+      <td>FP32 Performance</td>
+      <td>19.5 TFLOPS</td>
+      <td>19.5 TFLOPS</td>
+    </tr>
+    <tr>
+      <td>Tensor Cores</td>
+      <td>432</td>
+      <td>432</td>
+    </tr>
+    <tr>
+      <td>CUDA Cores</td>
+      <td>6,912</td>
+      <td>6,912</td>
+    </tr>
+    <tr>
+      <td>TensorFloat-32 (TF32)</td>
+      <td>156 TFLOPS</td>
+      <td>156 TFLOPS</td>
+    </tr>
+    <tr>
+      <td>GCP Machine Types</td>
+      <td>a2-highgpu-*</td>
+      <td>a2-ultragpu-*</td>
+    </tr>
+  </table>
+</div>
 
 <p><br /></p>
 
-<h3 id="gpu-availability-check">GPU Availability Check</h3>
+<hr />
 
-<p>The GPU platform to be used can be found in the link below.</p>
+<h2 id="gpu-availability-and-quota">GPU Availability and Quota</h2>
+
+<h3 id="checking-gpu-availability-by-region">Checking GPU Availability by Region</h3>
+
+<p>Before deploying a GPU instance, you need to verify which GPU types are available in your preferred region and zones. The availability varies by region, and not all zones support all GPU types.</p>
+
+<h4 id="official-documentation">Official Documentation</h4>
 <ul>
-  <li><a href="https://cloud.google.com/compute/docs/gpus?hl=en">English</a></li>
-  <li><a href="https://cloud.google.com/compute/docs/gpus?hl=ko">Korean</a></li>
+  <li><a href="https://cloud.google.com/compute/docs/gpus?hl=en">English Documentation</a></li>
+  <li><a href="https://cloud.google.com/compute/docs/gpus?hl=ko">Korean Documentation</a></li>
 </ul>
 
-<p>The GPUs available are different for each zone of a specific region. I’m going to explain it based on NVIDIA A100.</p>
+<h4 id="using-gcloud-cli-to-check-availability">Using gcloud CLI to Check Availability</h4>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check A100 availability in Seoul region</span>
 gcloud compute accelerator-types list <span class="nt">--filter</span><span class="o">=</span><span class="s2">"name:nvidia-tesla-a100 AND zone:asia-northeast3"</span>
@@ -262,137 +317,266 @@ nvidia-tesla-a100  asia-northeast3-a  NVIDIA A100 40GB
 nvidia-tesla-a100  asia-northeast3-b  NVIDIA A100 40GB
 
 <span class="c"># Check A100 availability in all regions</span>
-gcloud compute accelerator-types list |grep a100
+gcloud compute accelerator-types list | <span class="nb">grep </span>a100
 nvidia-a100-80gb       us-central1-a              NVIDIA A100 80GB
 nvidia-tesla-a100      us-central1-a              NVIDIA A100 40GB
 nvidia-tesla-a100      us-central1-b              NVIDIA A100 40GB
-nvidia-a100-80gb       us-central1-c              NVIDIA A100 80GB
-nvidia-tesla-a100      us-central1-c              NVIDIA A100 40GB
-nvidia-tesla-a100      us-central1-f              NVIDIA A100 40GB
-nvidia-tesla-a100      us-west1-b                 NVIDIA A100 40GB
-nvidia-tesla-a100      us-east1-a                 NVIDIA A100 40GB
-nvidia-tesla-a100      us-east1-b                 NVIDIA A100 40GB
-nvidia-tesla-a100      asia-northeast1-a          NVIDIA A100 40GB
-nvidia-tesla-a100      asia-northeast1-c          NVIDIA A100 40GB
-nvidia-tesla-a100      asia-southeast1-b          NVIDIA A100 40GB
-nvidia-a100-80gb       asia-southeast1-c          NVIDIA A100 80GB
-nvidia-tesla-a100      asia-southeast1-c          NVIDIA A100 40GB
-nvidia-a100-80gb       us-east4-c                 NVIDIA A100 80GB
-nvidia-tesla-a100      europe-west4-b             NVIDIA A100 40GB
-nvidia-a100-80gb       europe-west4-a             NVIDIA A100 80GB
-nvidia-tesla-a100      europe-west4-a             NVIDIA A100 40GB
-nvidia-tesla-a100      asia-northeast3-a          NVIDIA A100 40GB
-nvidia-tesla-a100      asia-northeast3-b          NVIDIA A100 40GB
-nvidia-tesla-a100      us-west3-b                 NVIDIA A100 40GB
-nvidia-tesla-a100      us-west4-b                 NVIDIA A100 40GB
-nvidia-a100-80gb       us-east7-a                 NVIDIA A100 80GB
-nvidia-tesla-a100      us-east7-b                 NVIDIA A100 40GB
-nvidia-a100-80gb       us-east5-b                 NVIDIA A100 80GB
-nvidia-tesla-a100      me-west1-b                 NVIDIA A100 40GB
-nvidia-tesla-a100      me-west1-c                 NVIDIA A100 40GB
+<span class="c"># ... more output ...</span>
 </code></pre></div></div>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph TD
+      A[GPU Selection Process] --&gt; B{Determine Memory Needs}
+      B --&gt;|High Memory Requirements| C[A100 80GB]
+      B --&gt;|Standard Requirements| D[A100 40GB]
+      C --&gt; E{Check Zone Availability}
+      D --&gt; E
+      E --&gt; F[Request Quota Increase]
+      F --&gt; G[Deploy GPU Instance]
+  </div>
+</div>
 
 <p><br /></p>
 
-<h3 id="how-to-turn-off-gpu-quota-and-select-compute-engine">How to turn off GPU Quota and select Compute Engine</h3>
+<h3 id="requesting-gpu-quota-increase">Requesting GPU Quota Increase</h3>
 
-<p>The NVIDIA A100 80GB is basically Quota hanging, so you need to apply for an upgrade through a Quota request.</p>
+<p>By default, GCP accounts have limited or no GPU quota. To use GPUs, especially high-end models like the A100, you need to request a quota increase:</p>
 
-<p>After identifying the GPU Quota name of the desired A100 GPU by referring to the document [1] it is possible to apply for Quota upward in the same manner as in the document (2).</p>
+<ol>
+  <li>Navigate to <strong>IAM &amp; Admin &gt; Quotas &amp; System Limits</strong> in the GCP Console</li>
+  <li>Filter for “NVIDIA A100” or specific quota names</li>
+  <li>Select the region(s) where you need quota</li>
+  <li>Click “EDIT QUOTAS” and enter your requested limit</li>
+  <li>Submit and provide business justification if prompted</li>
+</ol>
+
+<p><strong>Important Resources:</strong></p>
 <ul>
-  <li>[1] <a href="https://cloud.google.com/compute/resource-usage?hl=en#gpu_quota">gpu_quota</a></li>
-  <li>[2] <a href="https://cloud.google.com/docs/quotas/view-manage?hl=en#requesting_higher_quota">requesting_higher_quota</a></li>
-  <li>[3] <a href="https://cloud.google.com/compute/docs/gpus/add-remove-gpus?hl=en#accelerator-optimized_vms">accelerator-optimized_vms</a></li>
-  <li>[4] <a href="https://cloud.google.com/compute/docs/gpus/add-remove-gpus?hl=en#modify_the_gpu_count">modify_the_gpu_count</a></li>
+  <li><a href="https://cloud.google.com/compute/resource-usage?hl=en#gpu_quota">GPU Quota Documentation</a></li>
+  <li><a href="https://cloud.google.com/docs/quotas/view-manage?hl=en#requesting_higher_quota">Requesting Higher Quota</a></li>
+  <li><a href="https://cloud.google.com/compute/docs/gpus/add-remove-gpus?hl=en#accelerator-optimized_vms">Accelerator-optimized VMs</a></li>
+  <li><a href="https://cloud.google.com/compute/docs/gpus/add-remove-gpus?hl=en#modify_the_gpu_count">Modifying GPU Count</a></li>
 </ul>
 
 <p><br /></p>
 
-<h3 id="gpu-price">GPU Price</h3>
+<div class="info-box info-box-warning-not-check">
+  <strong>Quota Request Tips</strong>
+  <ul>
+    <li>Be specific about your use case (AI training, inference, scientific computing)</li>
+    <li>Request quota in regions with known availability</li>
+    <li>Specify timeline and duration of GPU usage</li>
+    <li>For large quota requests, be prepared to provide business justification</li>
+    <li>Allow 1-2 business days for quota approval</li>
+  </ul>
+</div>
 
-<p>You can check it in the link below.</p>
+<p><br /></p>
+
+<hr />
+
+<h2 id="gpu-pricing">GPU Pricing</h2>
+
+<p>GPU pricing varies significantly by type, region, and commitment level. Always check the current pricing before deployment.</p>
+
+<h3 id="official-pricing-documentation">Official Pricing Documentation</h3>
 <ul>
   <li><a href="https://cloud.google.com/compute/all-pricing?hl=en">English</a></li>
   <li><a href="https://cloud.google.com/compute/all-pricing?hl=ko">Korean</a></li>
 </ul>
 
+<h3 id="nvidia-a100-pricing-example-as-of-2025">NVIDIA A100 Pricing Example (as of 2025)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Machine Type</th>
+      <th>GPU Configuration</th>
+      <th>Monthly Cost</th>
+      <th>Daily Cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>a2-highgpu-1g</td>
+      <td>1x A100 40GB</td>
+      <td>~₩3.95M</td>
+      <td>~₩120K</td>
+    </tr>
+    <tr>
+      <td>a2-highgpu-2g</td>
+      <td>2x A100 40GB</td>
+      <td>~₩7.9M</td>
+      <td>~₩240K</td>
+    </tr>
+    <tr>
+      <td>a2-highgpu-4g</td>
+      <td>4x A100 40GB</td>
+      <td>~₩15.8M</td>
+      <td>~₩480K</td>
+    </tr>
+    <tr>
+      <td>a2-ultragpu-1g</td>
+      <td>1x A100 80GB</td>
+      <td>~₩6.2M</td>
+      <td>~₩205K</td>
+    </tr>
+    <tr>
+      <td>a2-ultragpu-2g</td>
+      <td>2x A100 80GB</td>
+      <td>~₩12.4M</td>
+      <td>~₩410K</td>
+    </tr>
+    <tr>
+      <td>a2-ultragpu-4g</td>
+      <td>4x A100 80GB</td>
+      <td>~₩24.8M</td>
+      <td>~₩820K</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="info-box info-box-info">
+  <h3><strong>Cost Optimization Strategies</strong></h3>
+  <ul>
+    <li><strong>Spot Instances:</strong> Use preemptible VMs for interruptible workloads (60-91% discount)</li>
+    <li><strong>Committed Use Discounts:</strong> 1-year or 3-year commitments for predictable workloads (20-57% discount)</li>
+    <li><strong>Right-sizing:</strong> Select appropriate GPU count based on actual needs</li>
+    <li><strong>Resource Scheduling:</strong> Create startup/shutdown schedules for non-production environments</li>
+    <li><strong>Monitoring:</strong> Set up budget alerts and utilization monitoring</li>
+  </ul>
+</div>
+
 <p><br /></p>
 
-<h3 id="terraform-configuration-example">Terraform Configuration Example</h3>
+<hr />
 
-<pre><code class="language-hcl:compute-engine.tf">## ai_server ##
-resource "google_compute_address" "ai_server_ip" {
-  name   = var.ai_server_ip
-  region = var.region
-}
+<h2 id="infrastructure-deployment-with-terraform">Infrastructure Deployment with Terraform</h2>
 
-resource "google_compute_instance" "ai_server" {
-  name                      = var.ai_server
-  machine_type              = "a2-highgpu-2g" # a2-ultragpu-2g = A100 80G 2 / a2-highgpu-2g = A100 40G 2
-  labels                    = local.default_labels
-  zone                      = "${var.region}-a"
-  allow_stopping_for_update = true
+<p>Terraform allows for declarative, version-controlled deployment of GPU instances. Below is an example configuration for an A100 GPU server:</p>
 
-  tags = [var.nfs_client]
+<div class="language-hcl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">## ai_server ##</span>
+<span class="nx">resource</span> <span class="s2">"google_compute_address"</span> <span class="s2">"ai_server_ip"</span> <span class="p">{</span>
+  <span class="nx">name</span>   <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">ai_server_ip</span>
+  <span class="nx">region</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">region</span>
+<span class="p">}</span>
 
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      size  = 100
-    }
-  }
+<span class="nx">resource</span> <span class="s2">"google_compute_instance"</span> <span class="s2">"ai_server"</span> <span class="p">{</span>
+  <span class="nx">name</span>                      <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">ai_server</span>
+  <span class="nx">machine_type</span>              <span class="p">=</span> <span class="s2">"a2-highgpu-2g"</span> <span class="c1"># a2-ultragpu-2g = A100 80G 2 / a2-highgpu-2g = A100 40G 2</span>
+  <span class="nx">labels</span>                    <span class="p">=</span> <span class="nx">local</span><span class="err">.</span><span class="nx">default_labels</span>
+  <span class="nx">zone</span>                      <span class="p">=</span> <span class="s2">"${var.region}-a"</span>
+  <span class="nx">allow_stopping_for_update</span> <span class="p">=</span> <span class="kc">true</span>
 
-  metadata = {
-    ssh-keys              = "somaz:${file("../../key/ai-server.pub")}"
-    install-nvidia-driver = "true"
-  }
+  <span class="nx">tags</span> <span class="p">=</span> <span class="p">[</span><span class="nx">var</span><span class="err">.</span><span class="nx">nfs_client</span><span class="p">]</span>
 
-  network_interface {
-    network    = "projects/${var.host_project}/global/networks/${var.shared_vpc}"
-    subnetwork = "projects/${var.host_project}/regions/${var.region}/subnetworks/${var.subnet_share}-ai-b"
+  <span class="nx">boot_disk</span> <span class="p">{</span>
+    <span class="nx">initialize_params</span> <span class="p">{</span>
+      <span class="nx">image</span> <span class="p">=</span> <span class="s2">"ubuntu-os-cloud/ubuntu-2204-lts"</span>
+      <span class="nx">size</span>  <span class="p">=</span> <span class="mi">100</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
 
-    access_config {
-      ## Include this section to give the VM an external ip ##
-      nat_ip = google_compute_address.ai_server_ip.address
-    }
-  }
+  <span class="nx">metadata</span> <span class="p">=</span> <span class="p">{</span>
+    <span class="nx">ssh</span><span class="err">-</span><span class="nx">keys</span>              <span class="p">=</span> <span class="s2">"somaz:${file("</span><span class="err">../../</span><span class="nx">key</span><span class="err">/</span><span class="nx">ai</span><span class="err">-</span><span class="nx">server</span><span class="err">.</span><span class="nx">pub</span><span class="s2">")}"</span>
+    <span class="nx">install</span><span class="err">-</span><span class="nx">nvidia</span><span class="err">-</span><span class="nx">driver</span> <span class="p">=</span> <span class="s2">"true"</span>
+  <span class="p">}</span>
 
-  scheduling {
-    on_host_maintenance = "TERMINATE" # 또는 "MIGRATE" 대신 "RESTART" 사용
-    automatic_restart   = true
-    preemptible         = false
-  }
+  <span class="nx">network_interface</span> <span class="p">{</span>
+    <span class="nx">network</span>    <span class="p">=</span> <span class="s2">"projects/${var.host_project}/global/networks/${var.shared_vpc}"</span>
+    <span class="nx">subnetwork</span> <span class="p">=</span> <span class="s2">"projects/${var.host_project}/regions/${var.region}/subnetworks/${var.subnet_share}-ai-b"</span>
 
-  guest_accelerator {
-    type  = "nvidia-tesla-a100" # nvidia-a100-80gb = A100 80G / nvidia-tesla-a100 = A100 40G
-    count = 2
-  }
+    <span class="nx">access_config</span> <span class="p">{</span>
+      <span class="c1">## Include this section to give the VM an external ip ##</span>
+      <span class="nx">nat_ip</span> <span class="p">=</span> <span class="nx">google_compute_address</span><span class="err">.</span><span class="nx">ai_server_ip</span><span class="err">.</span><span class="nx">address</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
 
-  depends_on = [google_compute_address.ai_server_ip]
+  <span class="nx">scheduling</span> <span class="p">{</span>
+    <span class="nx">on_host_maintenance</span> <span class="p">=</span> <span class="s2">"TERMINATE"</span> <span class="c1"># Required for GPU instances</span>
+    <span class="nx">automatic_restart</span>   <span class="p">=</span> <span class="kc">true</span>
+    <span class="nx">preemptible</span>         <span class="p">=</span> <span class="kc">false</span> <span class="c1"># Set to true for preemptible instances</span>
+  <span class="p">}</span>
 
-}
-</code></pre>
+  <span class="nx">guest_accelerator</span> <span class="p">{</span>
+    <span class="nx">type</span>  <span class="p">=</span> <span class="s2">"nvidia-tesla-a100"</span> <span class="c1"># nvidia-a100-80gb = A100 80G / nvidia-tesla-a100 = A100 40G</span>
+    <span class="nx">count</span> <span class="p">=</span> <span class="mi">2</span>
+  <span class="p">}</span>
+
+  <span class="nx">depends_on</span> <span class="p">=</span> <span class="p">[</span><span class="nx">google_compute_address</span><span class="err">.</span><span class="nx">ai_server_ip</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="key-terraform-configuration-points">Key Terraform Configuration Points</h3>
+
+<ol>
+  <li><strong>Machine Type Selection</strong>:
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">a2-highgpu-*g</code> for A100 40GB (where * is the GPU count)</li>
+      <li><code class="language-plaintext highlighter-rouge">a2-ultragpu-*g</code> for A100 80GB (where * is the GPU count)</li>
+    </ul>
+  </li>
+  <li><strong>Boot Disk</strong>:
+    <ul>
+      <li>Use Ubuntu 20.04 or 22.04 for best compatibility</li>
+      <li>Allocate sufficient disk space (100GB+) for datasets and model weights</li>
+    </ul>
+  </li>
+  <li><strong>GPU-specific Settings</strong>:
+    <ul>
+      <li>Set <code class="language-plaintext highlighter-rouge">on_host_maintenance = "TERMINATE"</code> (required for GPU VMs)</li>
+      <li>Use <code class="language-plaintext highlighter-rouge">guest_accelerator</code> block to specify GPU type and count</li>
+      <li>Consider setting <code class="language-plaintext highlighter-rouge">metadata.install-nvidia-driver = "true"</code> for automatic driver installation</li>
+    </ul>
+  </li>
+  <li><strong>Networking</strong>:
+    <ul>
+      <li>Consider whether your workload needs an external IP</li>
+      <li>Configure appropriate firewall rules for your services</li>
+    </ul>
+  </li>
+</ol>
 
 <p><br /></p>
 
-<h3 id="gpu-server-setup">GPU Server Setup</h3>
+<hr />
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Os Version</span>
+<h2 id="gpu-server-setup-and-configuration">GPU Server Setup and Configuration</h2>
+
+<p>After deploying the VM, you need to install drivers, CUDA toolkit, and other necessary software.</p>
+
+<h3 id="verifying-gpu-availability">Verifying GPU Availability</h3>
+
+<p>First, check if the GPUs are properly attached to the VM:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># OS Version</span>
 lsb_release <span class="nt">-a</span>
 
-<span class="c"># Confirm GPU</span>
+<span class="c"># Confirm GPU hardware detection</span>
 <span class="nb">sudo </span>lspci | <span class="nb">grep</span> <span class="nt">-i</span> nvidia
 <span class="nb">sudo </span>lshw <span class="nt">-c</span> display
+</code></pre></div></div>
 
-<span class="c"># Install required packages</span>
+<h3 id="installing-drivers-and-cuda-toolkit">Installing Drivers and CUDA Toolkit</h3>
+
+<p>GCP can automatically install NVIDIA drivers if you set the <code class="language-plaintext highlighter-rouge">install-nvidia-driver = "true"</code> metadata. If you need to install manually:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install required packages</span>
 <span class="nb">sudo </span>apt update
 <span class="nb">sudo </span>apt <span class="nb">install</span> <span class="nt">-y</span> ubuntu-drivers-common
 <span class="nb">sudo </span>apt <span class="nb">install</span> <span class="nt">-y</span> nvidia-driver-535
 <span class="nb">sudo </span>apt <span class="nb">install</span> <span class="nt">-y</span> nvidia-cuda-toolkit
+</code></pre></div></div>
 
-<span class="c">## Install CUDA</span>
+<h3 id="installing-cudnn">Installing cuDNN</h3>
+
+<p>NVIDIA cuDNN is required for deep learning frameworks:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Download cuDNN (requires NVIDIA Developer account)</span>
+<span class="c"># Example assumes you've downloaded the archive</span>
 <span class="nb">tar </span>xvf cudnn-linux-x86_64-8.6.0.163_cuda11-archive.tar.xz
-<span class="nb">cd </span>cudnn-linux-x86_64-8.6.0.163_cuda11-archive.tar.xz
+<span class="nb">cd </span>cudnn-linux-x86_64-8.6.0.163_cuda11-archive
 
 <span class="c"># Copy header files</span>
 <span class="nb">sudo cp </span>include/cudnn<span class="k">*</span>.h /usr/include
@@ -403,16 +587,36 @@ lsb_release <span class="nt">-a</span>
 <span class="c"># Set permissions and update library cache</span>
 <span class="nb">sudo chmod </span>a+r /usr/include/cudnn<span class="k">*</span>.h /usr/lib/x86_64-linux-gnu/libcudnn<span class="k">*</span>
 <span class="nb">sudo </span>ldconfig
+</code></pre></div></div>
 
-<span class="c"># Verify installation</span>
+<h3 id="verifying-installation">Verifying Installation</h3>
 
-<span class="c">## nvidia version</span>
+<p>Verify that drivers, CUDA, and cuDNN are properly installed:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check NVIDIA driver</span>
 nvidia-smi
 
-<span class="c">## cuda version</span>
+<span class="c"># Expected output example:</span>
+<span class="c"># +-----------------------------------------------------------------------------+</span>
+<span class="c"># | NVIDIA-SMI 535.104.05   Driver Version: 535.104.05   CUDA Version: 12.2     |</span>
+<span class="c"># |-------------------------------+----------------------+----------------------+</span>
+<span class="c"># | GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |</span>
+<span class="c"># | Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |</span>
+<span class="c"># |                               |                      |               MIG M. |</span>
+<span class="c"># |===============================+======================+======================|</span>
+<span class="c"># |   0  NVIDIA A100-SXM...  On   | 00000000:00:04.0 Off |                    0 |</span>
+<span class="c"># | N/A   32C    P0    39W / 400W |      0MiB / 40960MiB |      0%      Default |</span>
+<span class="c"># |                               |                      |             Disabled |</span>
+<span class="c"># +-------------------------------+----------------------+----------------------+</span>
+<span class="c"># |   1  NVIDIA A100-SXM...  On   | 00000000:00:05.0 Off |                    0 |</span>
+<span class="c"># | N/A   34C    P0    41W / 400W |      0MiB / 40960MiB |      0%      Default |</span>
+<span class="c"># |                               |                      |             Disabled |</span>
+<span class="c"># +-------------------------------+----------------------+----------------------+</span>
+
+<span class="c"># Check CUDA version</span>
 nvcc <span class="nt">--version</span>
 
-<span class="c">## cudnn test</span>
+<span class="c"># Test cuDNN installation</span>
 <span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> &gt; cudnn_test.cpp
 #include &lt;cudnn.h&gt;
 #include &lt;iostream&gt;
@@ -426,121 +630,302 @@ int main() {
 }
 </span><span class="no">EOF
 
-</span><span class="c"># Compile</span>
+</span><span class="c"># Compile and run the cuDNN test</span>
 nvcc <span class="nt">-o</span> cudnn_test cudnn_test.cpp <span class="nt">-lcudnn</span>
-
-<span class="c"># Run</span>
 ./cudnn_test
-CuDNN version: 8600
+<span class="c"># Expected output: CuDNN version: 8600</span>
 </code></pre></div></div>
 
-<p>(Optional) nvidia-docker</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>apt <span class="nb">install </span>docker.io
+<h3 id="setting-up-nvidia-docker-optional">Setting Up NVIDIA Docker (Optional)</h3>
 
-<span class="nv">distribution</span><span class="o">=</span><span class="si">$(</span><span class="nb">.</span> /etc/os-release<span class="p">;</span><span class="nb">echo</span> <span class="nv">$ID$VERSION_ID</span><span class="si">)</span> <span class="se">\\</span>
-   <span class="o">&amp;&amp;</span> curl <span class="nt">-s</span> <span class="nt">-L</span> &lt;https://nvidia.github.io/nvidia-docker/gpgkey&gt; | <span class="nb">sudo </span>apt-key add - <span class="se">\\</span>
-   <span class="o">&amp;&amp;</span> curl <span class="nt">-s</span> <span class="nt">-L</span> &lt;https://nvidia.github.io/nvidia-docker/<span class="nv">$distribution</span>/nvidia-docker.list&gt; | <span class="nb">sudo tee</span> /etc/apt/sources.list.d/nvidia-docker.list
+<p>For containerized workloads, NVIDIA Docker allows GPU access from containers:</p>
 
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install Docker</span>
+<span class="nb">sudo </span>apt <span class="nb">install</span> <span class="nt">-y</span> docker.io
+
+<span class="c"># Add NVIDIA Docker repositories</span>
+<span class="nv">distribution</span><span class="o">=</span><span class="si">$(</span><span class="nb">.</span> /etc/os-release<span class="p">;</span><span class="nb">echo</span> <span class="nv">$ID$VERSION_ID</span><span class="si">)</span> <span class="se">\</span>
+   <span class="o">&amp;&amp;</span> curl <span class="nt">-s</span> <span class="nt">-L</span> https://nvidia.github.io/nvidia-docker/gpgkey | <span class="nb">sudo </span>apt-key add - <span class="se">\</span>
+   <span class="o">&amp;&amp;</span> curl <span class="nt">-s</span> <span class="nt">-L</span> https://nvidia.github.io/nvidia-docker/<span class="nv">$distribution</span>/nvidia-docker.list | <span class="nb">sudo tee</span> /etc/apt/sources.list.d/nvidia-docker.list
+
+<span class="c"># Install NVIDIA Docker</span>
 <span class="nb">sudo </span>apt update
-<span class="nb">sudo </span>apt-get <span class="nb">install</span> <span class="nt">-y</span> nvidia-docker2
-
+<span class="nb">sudo </span>apt <span class="nb">install</span> <span class="nt">-y</span> nvidia-docker2
 <span class="nb">sudo </span>systemctl restart docker
 
-<span class="c"># test</span>
-<span class="nb">sudo </span>docker run <span class="nt">--rm</span> <span class="nt">--gpus</span> all ubuntu:18.04 nvidia-smi
+<span class="c"># Test GPU access inside container</span>
+<span class="nb">sudo </span>docker run <span class="nt">--rm</span> <span class="nt">--gpus</span> all nvidia/cuda:11.6.2-base-ubuntu20.04 nvidia-smi
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="application-setup">Application Setup</h3>
+<hr />
 
-<h4 id="stable-diffusion-webui">Stable Diffusion WebUI</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget <span class="nt">-q</span> https://raw.githubusercontent.com/AUTOMATIC1111/stable-diffusion-webui/master/webui.sh
+<h2 id="aiml-application-setup">AI/ML Application Setup</h2>
+
+<p>With the GPU environment configured, you can now set up popular AI/ML applications.</p>
+
+<h3 id="stable-diffusion-webui">Stable Diffusion WebUI</h3>
+
+<p>A popular interface for text-to-image generation:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone repository and run installation script</span>
+wget <span class="nt">-q</span> https://raw.githubusercontent.com/AUTOMATIC1111/stable-diffusion-webui/master/webui.sh
 <span class="nb">chmod</span> +x webui.sh
-./webui.sh <span class="nt">--listen</span>
+
+<span class="c"># Start the WebUI with remote access enabled</span>
+./webui.sh <span class="nt">--listen</span> <span class="nt">--xformers</span>
 </code></pre></div></div>
 
-<h4 id="kohya_ss">Kohya_ss</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/bmaltais/kohya_ss.git
+<p>Access the web UI at <code class="language-plaintext highlighter-rouge">http://&lt;your-vm-ip&gt;:7860</code></p>
+
+<h3 id="kohya_ss">Kohya_ss</h3>
+
+<p>A tool for training and fine-tuning Stable Diffusion models:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone repository</span>
+git clone https://github.com/bmaltais/kohya_ss.git
 <span class="nb">cd </span>kohya_ss
+
+<span class="c"># Run installation script</span>
 ./setup.sh
+
+<span class="c"># Start the UI with remote access</span>
 ./gui.sh <span class="nt">--listen</span><span class="o">=</span>0.0.0.0 <span class="nt">--headless</span>
 </code></pre></div></div>
 
-<h4 id="comfyui">ComfyUI</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/comfyanonymous/ComfyUI.git
+<p>Access the web UI at <code class="language-plaintext highlighter-rouge">http://&lt;your-vm-ip&gt;:7860</code></p>
+
+<h3 id="comfyui">ComfyUI</h3>
+
+<p>A node-based UI for Stable Diffusion:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone repository</span>
+git clone https://github.com/comfyanonymous/ComfyUI.git
 <span class="nb">cd </span>ComfyUI
+
+<span class="c"># Install dependencies</span>
 pip <span class="nb">install</span> <span class="nt">-r</span> requirements.txt
+
+<span class="c"># Start the UI with remote access</span>
 python3 main.py <span class="nt">--listen</span> 0.0.0.0
+</code></pre></div></div>
+
+<p>Access the web UI at <code class="language-plaintext highlighter-rouge">http://&lt;your-vm-ip&gt;:8188</code></p>
+
+<h3 id="pytorch-and-tensorflow-performance-testing">PyTorch and TensorFlow Performance Testing</h3>
+
+<p>Test the GPU performance with standard benchmarks:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install ML frameworks</span>
+pip <span class="nb">install </span>torch torchvision torchaudio
+pip <span class="nb">install </span>tensorflow
+
+<span class="c"># PyTorch GPU test</span>
+python <span class="nt">-c</span> <span class="s2">"import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA device count: {torch.cuda.device_count()}'); print(f'CUDA device name: {torch.cuda.get_device_name(0)}'); x = torch.rand(5000, 5000).cuda(); print(f'Matrix multiplication time: {timeit -n 10 -r 3 -o torch.matmul(x, x)}');"</span>
+
+<span class="c"># TensorFlow GPU test</span>
+python <span class="nt">-c</span> <span class="s2">"import tensorflow as tf; print(f'TensorFlow version: {tf.__version__}'); print(f'GPU devices: {tf.config.list_physical_devices(</span><span class="se">\"</span><span class="s2">GPU</span><span class="se">\"</span><span class="s2">)}'); print(f'GPU info: {tf.sysconfig.get_build_info()}');"</span>
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="pricing-information">Pricing Information</h3>
+<hr />
 
-<table>
-  <thead>
-    <tr>
-      <th>Machine Type</th>
-      <th>GPU Configuration</th>
-      <th>Monthly Cost</th>
-      <th>Daily Cost</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>a2-highgpu-2g</td>
-      <td>2x A100 40GB</td>
-      <td>~₩7.9M</td>
-      <td>~₩240K</td>
-    </tr>
-    <tr>
-      <td>a2-ultragpu-2g</td>
-      <td>2x A100 80GB</td>
-      <td>~₩12.4M</td>
-      <td>~₩410K</td>
-    </tr>
-  </tbody>
-</table>
+<h2 id="performance-optimization">Performance Optimization</h2>
+
+<h3 id="nvidia-a100-performance-tuning">NVIDIA A100 Performance Tuning</h3>
+
+<ol>
+  <li><strong>GPU Compute Mode</strong>:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="nb">sudo </span>nvidia-smi <span class="nt">-i</span> 0 <span class="nt">-c</span> EXCLUSIVE_PROCESS  <span class="c"># For dedicated single process</span>
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Memory Clock Optimization</strong>:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="nb">sudo </span>nvidia-smi <span class="nt">-i</span> 0 <span class="nt">-ac</span> 1215,1410  <span class="c"># Set memory and graphics clocks</span>
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Persistent Mode</strong> (reduces initialization overhead):
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="nb">sudo </span>nvidia-smi <span class="nt">-i</span> 0 <span class="nt">-pm</span> 1  <span class="c"># Enable persistent mode</span>
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<h3 id="system-level-optimizations">System-level Optimizations</h3>
+
+<ol>
+  <li><strong>Disable CPU Power Management</strong>:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="nb">sudo </span>apt <span class="nb">install </span>cpufrequtils
+   <span class="nb">sudo </span>cpufreq-set <span class="nt">-g</span> performance
+</code></pre></div>    </div>
+  </li>
+  <li><strong>I/O Optimization</strong> for dataset loading:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="nb">echo</span> <span class="s1">'vm.dirty_ratio = 10'</span> | <span class="nb">sudo tee</span> <span class="nt">-a</span> /etc/sysctl.conf
+   <span class="nb">echo</span> <span class="s1">'vm.dirty_background_ratio = 5'</span> | <span class="nb">sudo tee</span> <span class="nt">-a</span> /etc/sysctl.conf
+   <span class="nb">sudo </span>sysctl <span class="nt">-p</span>
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Memory Configuration</strong> for AI workloads:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="nb">echo</span> <span class="s1">'vm.overcommit_memory = 1'</span> | <span class="nb">sudo tee</span> <span class="nt">-a</span> /etc/sysctl.conf
+   <span class="nb">sudo </span>sysctl <span class="nt">-p</span>
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<h3 id="framework-specific-optimizations">Framework-specific Optimizations</h3>
+
+<ol>
+  <li><strong>PyTorch</strong>:
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="n">torch</span><span class="p">.</span><span class="n">backends</span><span class="p">.</span><span class="n">cudnn</span><span class="p">.</span><span class="n">benchmark</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c1"># Auto-tuner for convolutions
+</span>   <span class="n">torch</span><span class="p">.</span><span class="n">backends</span><span class="p">.</span><span class="n">cuda</span><span class="p">.</span><span class="n">matmul</span><span class="p">.</span><span class="n">allow_tf32</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c1"># Enable TF32 for faster training
+</span></code></pre></div>    </div>
+  </li>
+  <li><strong>TensorFlow</strong>:
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   <span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="n">tf</span>
+   <span class="n">tf</span><span class="p">.</span><span class="n">config</span><span class="p">.</span><span class="n">optimizer</span><span class="p">.</span><span class="n">set_jit</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>  <span class="c1"># Enable XLA JIT compilation
+</span>   <span class="n">mixed_precision</span> <span class="o">=</span> <span class="n">tf</span><span class="p">.</span><span class="n">keras</span><span class="p">.</span><span class="n">mixed_precision</span><span class="p">.</span><span class="n">Policy</span><span class="p">(</span><span class="s">'mixed_float16'</span><span class="p">)</span>
+   <span class="n">tf</span><span class="p">.</span><span class="n">keras</span><span class="p">.</span><span class="n">mixed_precision</span><span class="p">.</span><span class="n">set_global_policy</span><span class="p">(</span><span class="n">mixed_precision</span><span class="p">)</span>
+</code></pre></div>    </div>
+  </li>
+</ol>
 
 <p><br /></p>
 
-<h3 id="best-practices">Best Practices</h3>
+<hr />
 
-<div class="info-box info-box-success">
-<br />
-<strong>1. GPU Selection:</strong>
-   - Choose appropriate GPU type<br />
-   - Consider memory requirements<br />
-   - Check zone availability<br /><br />
+<h2 id="monitoring-gpu-usage">Monitoring GPU Usage</h2>
 
-<strong>2. Cost Optimization:</strong>
-   - Monitor usage<br />
-   - Use preemptible instances<br />
-   - Schedule workloads<br /><br />
+<h3 id="nvidia-system-management-interface">NVIDIA System Management Interface</h3>
 
-<strong>3. Security:</strong>
-   - Configure firewall rules<br />
-   - Use service accounts<br />
-   - Enable monitoring<br /><br />
+<p>The primary tool for monitoring NVIDIA GPUs is <code class="language-plaintext highlighter-rouge">nvidia-smi</code>:</p>
 
-4. Performance:
-   - Install latest drivers<br />
-   - Optimize CUDA settings<br />
-   - Monitor GPU utilization<br /><br />
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Basic GPU status</span>
+nvidia-smi
+
+<span class="c"># Continuous monitoring (updates every 1s)</span>
+nvidia-smi <span class="nt">-l</span> 1
+
+<span class="c"># Show memory usage by process</span>
+nvidia-smi <span class="nt">--query-compute-apps</span><span class="o">=</span>pid,process_name,used_memory <span class="nt">--format</span><span class="o">=</span>csv
+
+<span class="c"># Monitor specific metrics</span>
+nvidia-smi <span class="nt">--query-gpu</span><span class="o">=</span>timestamp,name,pci.bus_id,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used <span class="nt">--format</span><span class="o">=</span>csv <span class="nt">-l</span> 5
+</code></pre></div></div>
+
+<h3 id="dcgm-data-center-gpu-manager">DCGM (Data Center GPU Manager)</h3>
+
+<p>For production environments, NVIDIA DCGM provides more advanced monitoring:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install DCGM</span>
+<span class="nb">sudo </span>apt-get <span class="nb">install</span> <span class="nt">-y</span> datacenter-gpu-manager
+
+<span class="c"># Start the service</span>
+<span class="nb">sudo </span>systemctl start dcgm
+
+<span class="c"># Run DCGM diagnostics</span>
+<span class="nb">sudo </span>dcgmi diag <span class="nt">-r</span> 3
+
+<span class="c"># Monitor GPU stats</span>
+<span class="nb">sudo </span>dcgmi dmon
+</code></pre></div></div>
+
+<h3 id="integrating-with-prometheus-and-grafana">Integrating with Prometheus and Grafana</h3>
+
+<p>For long-term monitoring and visualization:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install Prometheus NVIDIA exporter</span>
+git clone https://github.com/NVIDIA/dcgm-exporter.git
+<span class="nb">cd </span>dcgm-exporter
+make binary
+<span class="nb">sudo </span>make <span class="nb">install</span>
+
+<span class="c"># Start the exporter</span>
+<span class="nb">sudo </span>dcgm-exporter
+
+<span class="c"># Configure Prometheus to scrape the exporter</span>
+<span class="c"># Add to prometheus.yml:</span>
+<span class="c"># - job_name: 'dcgm_exporter'</span>
+<span class="c">#   static_configs:</span>
+<span class="c">#   - targets: ['localhost:9400']</span>
+</code></pre></div></div>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph LR
+      A[NVIDIA GPU] --&gt; B[DCGM Exporter]
+      B --&gt; C[Prometheus]
+      C --&gt; D[Grafana]
+      D --&gt; E[Alerts]
+      D --&gt; F[Dashboards]
+  </div>
 </div>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="reference">Reference</h3>
+<h2 id="best-practices-and-security">Best Practices and Security</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>GPU Server Best Practices</strong>
+  
+  <strong>1. GPU Selection:</strong>
+  <ul>
+    <li>Choose appropriate GPU type based on memory requirements and computational needs</li>
+    <li>Consider scalability - start small and scale up as needed</li>
+    <li>Check zone availability before planning deployments</li>
+  </ul>
+  
+  <strong>2. Cost Optimization:</strong>
+  <ul>
+    <li>Monitor usage patterns and adjust instance types accordingly</li>
+    <li>Use preemptible instances for non-critical, fault-tolerant workloads</li>
+    <li>Implement auto-shutdown for development environments</li>
+    <li>Use committed use discounts for predictable workloads</li>
+  </ul>
+  
+  <strong>3. Security:</strong>
+  <ul>
+    <li>Configure firewall rules to restrict access to necessary ports only</li>
+    <li>Use service accounts with minimum required permissions</li>
+    <li>Enable OS Login for centralized SSH access management</li>
+    <li>Apply security patches promptly</li>
+    <li>Enable Virtual Private Cloud (VPC) Service Controls for sensitive workloads</li>
+  </ul>
+  
+  <strong>4. Performance:</strong>
+  <ul>
+    <li>Install the latest NVIDIA drivers compatible with your workload</li>
+    <li>Configure appropriate CUDA and cuDNN versions</li>
+    <li>Monitor GPU utilization and memory usage</li>
+    <li>Implement proper cooling and power policies</li>
+    <li>Use mixed precision training where possible</li>
+  </ul>
+  
+  <strong>5. Data Management:</strong>
+  <ul>
+    <li>Use high-performance storage options for datasets (SSD, Local SSD)</li>
+    <li>Implement data caching mechanisms</li>
+    <li>Consider Cloud Storage with parallel transfers for large datasets</li>
+    <li>Implement proper backup strategies for trained models</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
 <ul>
   <li><a href="https://cloud.google.com/compute/docs/gpus">GCP GPU Documentation</a></li>
+  <li><a href="https://www.nvidia.com/en-us/data-center/a100/">NVIDIA A100 Tensor Core GPU</a></li>
+  <li><a href="https://docs.nvidia.com/cuda/">CUDA Toolkit Documentation</a></li>
   <li><a href="https://github.com/somaz94/terraform-infra-gcp/tree/main/project/somaz-ai-project">Terraform Infrastructure Example</a></li>
   <li><a href="https://github.com/AUTOMATIC1111/stable-diffusion-webui">Stable Diffusion WebUI</a></li>
   <li><a href="https://github.com/bmaltais/kohya_ss">Kohya_ss</a></li>
   <li><a href="https://github.com/comfyanonymous/ComfyUI">ComfyUI</a></li>
+  <li><a href="https://docs.nvidia.com/datacenter/dcgm/latest/">NVIDIA DCGM Documentation</a></li>
 </ul>
 
 
@@ -591,7 +976,7 @@ python3 main.py <span class="nt">--listen</span> 0.0.0.0
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="5">
+            <div class="time-bar" data-minutes="15">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -633,7 +1018,7 @@ python3 main.py <span class="nt">--listen</span> 0.0.0.0
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to setting up and configuring NVIDIA A100 GPU servers on GCP&quot;%20https://somaz.blog/category/gcp/gcp-gpu-server-setup/%20via%20&#64;twitter_username&hashtags=gcp,gpu,nvidia,cloud-computing"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to setting up and configuring NVIDIA A100 GPU servers on GCP&quot;%20https://somaz.blog/category/gcp/gcp-gpu-server-setup/%20via%20&#64;twitter_username&hashtags=gcp,gpu,nvidia,cloud-computing,machine-learning,a100"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -888,7 +1273,7 @@ python3 main.py <span class="nt">--listen</span> 0.0.0.0
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Setting up GPU Server on Google Cloud Platform",
-            "headline": "",
+            "headline": "A complete guide to deploying and configuring NVIDIA A100 GPU instances on GCP",
             "description": "A comprehensive guide to setting up and configuring NVIDIA A100 GPU servers on GCP",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737358848/gpu_keixqz.png",
             "url": "https://somaz.blog/category/gcp/gcp-gpu-server-setup/",
@@ -897,19 +1282,74 @@ python3 main.py <span class="nt">--listen</span> 0.0.0.0
 
 
 Overview
-Learn how to set up and configure NVIDIA A100 GPU servers on Google Cloud Platform (GCP) for AI/ML workloads.
+
+Google Cloud Platform (GCP) offers powerful GPU-accelerated computing instances that are ideal for AI/ML workloads, scientific computing, and rendering applications. This guide focuses on setting up and optimizing NVIDIA A100 GPU servers, which represent some of the most powerful GPU resources currently available in the cloud.
+
+The NVIDIA A100 offers exceptional performance for deep learning training and inference, with variants including the 40GB and 80GB memory configurations. This guide walks through the entire process from checking GPU availability, requesting quota, deploying via Terraform, installing drivers and frameworks, to running popular AI applications.
+
+
+  NVIDIA A100 Specifications
+  
+    
+      Specification
+      A100 40GB
+      A100 80GB
+    
+    
+      GPU Memory
+      40GB HBM2
+      80GB HBM2e
+    
+    
+      Memory Bandwidth
+      1.6 TB/s
+      2.0 TB/s
+    
+    
+      FP32 Performance
+      19.5 TFLOPS
+      19.5 TFLOPS
+    
+    
+      Tensor Cores
+      432
+      432
+    
+    
+      CUDA Cores
+      6,912
+      6,912
+    
+    
+      TensorFloat-32 (TF32)
+      156 TFLOPS
+      156 TFLOPS
+    
+    
+      GCP Machine Types
+      a2-highgpu-*
+      a2-ultragpu-*
+    
+  
 
 
 
-GPU Availability Check
-
-The GPU platform to be used can be found in the link below.
-
-  English
-  Korean
 
 
-The GPUs available are different for each zone of a specific region. I’m going to explain it based on NVIDIA A100.
+
+GPU Availability and Quota
+
+Checking GPU Availability by Region
+
+Before deploying a GPU instance, you need to verify which GPU types are available in your preferred region and zones. The availability varies by region, and not all zones support all GPU types.
+
+Official Documentation
+
+  English Documentation
+  Korean Documentation
+
+
+Using gcloud CLI to Check Availability
 
 # Check A100 availability in Seoul region
 gcloud compute accelerator-types list --filter=&quot;name:nvidia-tesla-a100 AND zone:asia-northeast3&quot;
@@ -918,63 +1358,144 @@ nvidia-tesla-a100  asia-northeast3-a  NVIDIA A100 40GB
 nvidia-tesla-a100  asia-northeast3-b  NVIDIA A100 40GB
 
 # Check A100 availability in all regions
-gcloud compute accelerator-types list |grep a100
+gcloud compute accelerator-types list | grep a100
 nvidia-a100-80gb       us-central1-a              NVIDIA A100 80GB
 nvidia-tesla-a100      us-central1-a              NVIDIA A100 40GB
 nvidia-tesla-a100      us-central1-b              NVIDIA A100 40GB
-nvidia-a100-80gb       us-central1-c              NVIDIA A100 80GB
-nvidia-tesla-a100      us-central1-c              NVIDIA A100 40GB
-nvidia-tesla-a100      us-central1-f              NVIDIA A100 40GB
-nvidia-tesla-a100      us-west1-b                 NVIDIA A100 40GB
-nvidia-tesla-a100      us-east1-a                 NVIDIA A100 40GB
-nvidia-tesla-a100      us-east1-b                 NVIDIA A100 40GB
-nvidia-tesla-a100      asia-northeast1-a          NVIDIA A100 40GB
-nvidia-tesla-a100      asia-northeast1-c          NVIDIA A100 40GB
-nvidia-tesla-a100      asia-southeast1-b          NVIDIA A100 40GB
-nvidia-a100-80gb       asia-southeast1-c          NVIDIA A100 80GB
-nvidia-tesla-a100      asia-southeast1-c          NVIDIA A100 40GB
-nvidia-a100-80gb       us-east4-c                 NVIDIA A100 80GB
-nvidia-tesla-a100      europe-west4-b             NVIDIA A100 40GB
-nvidia-a100-80gb       europe-west4-a             NVIDIA A100 80GB
-nvidia-tesla-a100      europe-west4-a             NVIDIA A100 40GB
-nvidia-tesla-a100      asia-northeast3-a          NVIDIA A100 40GB
-nvidia-tesla-a100      asia-northeast3-b          NVIDIA A100 40GB
-nvidia-tesla-a100      us-west3-b                 NVIDIA A100 40GB
-nvidia-tesla-a100      us-west4-b                 NVIDIA A100 40GB
-nvidia-a100-80gb       us-east7-a                 NVIDIA A100 80GB
-nvidia-tesla-a100      us-east7-b                 NVIDIA A100 40GB
-nvidia-a100-80gb       us-east5-b                 NVIDIA A100 80GB
-nvidia-tesla-a100      me-west1-b                 NVIDIA A100 40GB
-nvidia-tesla-a100      me-west1-c                 NVIDIA A100 40GB
+# ... more output ...
+
+
+
+  
+    graph TD
+      A[GPU Selection Process] --&amp;gt; B{Determine Memory Needs}
+      B --&amp;gt;|High Memory Requirements| C[A100 80GB]
+      B --&amp;gt;|Standard Requirements| D[A100 40GB]
+      C --&amp;gt; E{Check Zone Availability}
+      D --&amp;gt; E
+      E --&amp;gt; F[Request Quota Increase]
+      F --&amp;gt; G[Deploy GPU Instance]
+  
 
 
 
 
-How to turn off GPU Quota and select Compute Engine
+Requesting GPU Quota Increase
 
-The NVIDIA A100 80GB is basically Quota hanging, so you need to apply for an upgrade through a Quota request.
-
-After identifying the GPU Quota name of the desired A100 GPU by referring to the document [1] it is possible to apply for Quota upward in the same manner as in the document (2).
-
-  [1] gpu_quota
-  [2] requesting_higher_quota
-  [3] accelerator-optimized_vms
-  [4] modify_the_gpu_count
+By default, GCP accounts have limited or no GPU quota. To use GPUs, especially high-end models like the A100, you need to request a quota increase:
 
 
+  Navigate to IAM &amp;amp; Admin &amp;gt; Quotas &amp;amp; System Limits in the GCP Console
+  Filter for “NVIDIA A100” or specific quota names
+  Select the region(s) where you need quota
+  Click “EDIT QUOTAS” and enter your requested limit
+  Submit and provide business justification if prompted
 
 
-GPU Price
+Important Resources:
 
-You can check it in the link below.
+  GPU Quota Documentation
+  Requesting Higher Quota
+  Accelerator-optimized VMs
+  Modifying GPU Count
+
+
+
+
+
+  Quota Request Tips
+  
+    Be specific about your use case (AI training, inference, scientific computing)
+    Request quota in regions with known availability
+    Specify timeline and duration of GPU usage
+    For large quota requests, be prepared to provide business justification
+    Allow 1-2 business days for quota approval
+  
+
+
+
+
+
+
+GPU Pricing
+
+GPU pricing varies significantly by type, region, and commitment level. Always check the current pricing before deployment.
+
+Official Pricing Documentation
 
   English
   Korean
 
 
+NVIDIA A100 Pricing Example (as of 2025)
 
 
-Terraform Configuration Example
+  
+    
+      Machine Type
+      GPU Configuration
+      Monthly Cost
+      Daily Cost
+    
+  
+  
+    
+      a2-highgpu-1g
+      1x A100 40GB
+      ~₩3.95M
+      ~₩120K
+    
+    
+      a2-highgpu-2g
+      2x A100 40GB
+      ~₩7.9M
+      ~₩240K
+    
+    
+      a2-highgpu-4g
+      4x A100 40GB
+      ~₩15.8M
+      ~₩480K
+    
+    
+      a2-ultragpu-1g
+      1x A100 80GB
+      ~₩6.2M
+      ~₩205K
+    
+    
+      a2-ultragpu-2g
+      2x A100 80GB
+      ~₩12.4M
+      ~₩410K
+    
+    
+      a2-ultragpu-4g
+      4x A100 80GB
+      ~₩24.8M
+      ~₩820K
+    
+  
+
+
+
+  Cost Optimization Strategies
+  
+    Spot Instances: Use preemptible VMs for interruptible workloads (60-91% discount)
+    Committed Use Discounts: 1-year or 3-year commitments for predictable workloads (20-57% discount)
+    Right-sizing: Select appropriate GPU count based on actual needs
+    Resource Scheduling: Create startup/shutdown schedules for non-production environments
+    Monitoring: Set up budget alerts and utilization monitoring
+  
+
+
+
+
+
+
+Infrastructure Deployment with Terraform
+
+Terraform allows for declarative, version-controlled deployment of GPU instances. Below is an example configuration for an A100 GPU server:
 
 ## ai_server ##
 resource &quot;google_compute_address&quot; &quot;ai_server_ip&quot; {
@@ -1014,9 +1535,9 @@ resource &quot;google_compute_instance&quot; &quot;ai_server&quot; {
   }
 
   scheduling {
-    on_host_maintenance = &quot;TERMINATE&quot; # 또는 &quot;MIGRATE&quot; 대신 &quot;RESTART&quot; 사용
+    on_host_maintenance = &quot;TERMINATE&quot; # Required for GPU instances
     automatic_restart   = true
-    preemptible         = false
+    preemptible         = false # Set to true for preemptible instances
   }
 
   guest_accelerator {
@@ -1025,20 +1546,62 @@ resource &quot;google_compute_instance&quot; &quot;ai_server&quot; {
   }
 
   depends_on = [google_compute_address.ai_server_ip]
-
 }
 
 
+Key Terraform Configuration Points
 
 
-GPU Server Setup
+  Machine Type Selection:
+    
+      a2-highgpu-*g for A100 40GB (where * is the GPU count)
+      a2-ultragpu-*g for A100 80GB (where * is the GPU count)
+    
+  
+  Boot Disk:
+    
+      Use Ubuntu 20.04 or 22.04 for best compatibility
+      Allocate sufficient disk space (100GB+) for datasets and model weights
+    
+  
+  GPU-specific Settings:
+    
+      Set on_host_maintenance = &quot;TERMINATE&quot; (required for GPU VMs)
+      Use guest_accelerator block to specify GPU type and count
+      Consider setting metadata.install-nvidia-driver = &quot;true&quot; for automatic driver installation
+    
+  
+  Networking:
+    
+      Consider whether your workload needs an external IP
+      Configure appropriate firewall rules for your services
+    
+  
 
-# Os Version
+
+
+
+
+
+GPU Server Setup and Configuration
+
+After deploying the VM, you need to install drivers, CUDA toolkit, and other necessary software.
+
+Verifying GPU Availability
+
+First, check if the GPUs are properly attached to the VM:
+
+# OS Version
 lsb_release -a
 
-# Confirm GPU
+# Confirm GPU hardware detection
 sudo lspci | grep -i nvidia
 sudo lshw -c display
+
+
+Installing Drivers and CUDA Toolkit
+
+GCP can automatically install NVIDIA drivers if you set the install-nvidia-driver = &quot;true&quot; metadata. If you need to install manually:
 
 # Install required packages
 sudo apt update
@@ -1046,9 +1609,15 @@ sudo apt install -y ubuntu-drivers-common
 sudo apt install -y nvidia-driver-535
 sudo apt install -y nvidia-cuda-toolkit
 
-## Install CUDA
+
+Installing cuDNN
+
+NVIDIA cuDNN is required for deep learning frameworks:
+
+# Download cuDNN (requires NVIDIA Developer account)
+# Example assumes you&apos;ve downloaded the archive
 tar xvf cudnn-linux-x86_64-8.6.0.163_cuda11-archive.tar.xz
-cd cudnn-linux-x86_64-8.6.0.163_cuda11-archive.tar.xz
+cd cudnn-linux-x86_64-8.6.0.163_cuda11-archive
 
 # Copy header files
 sudo cp include/cudnn*.h /usr/include
@@ -1060,15 +1629,35 @@ sudo cp lib/libcudnn* /usr/lib/x86_64-linux-gnu
 sudo chmod a+r /usr/include/cudnn*.h /usr/lib/x86_64-linux-gnu/libcudnn*
 sudo ldconfig
 
-# Verify installation
 
-## nvidia version
+Verifying Installation
+
+Verify that drivers, CUDA, and cuDNN are properly installed:
+
+# Check NVIDIA driver
 nvidia-smi
 
-## cuda version
+# Expected output example:
+# +-----------------------------------------------------------------------------+
+# | NVIDIA-SMI 535.104.05   Driver Version: 535.104.05   CUDA Version: 12.2     |
+# |-------------------------------+----------------------+----------------------+
+# | GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+# | Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+# |                               |                      |               MIG M. |
+# |===============================+======================+======================|
+# |   0  NVIDIA A100-SXM...  On   | 00000000:00:04.0 Off |                    0 |
+# | N/A   32C    P0    39W / 400W |      0MiB / 40960MiB |      0%      Default |
+# |                               |                      |             Disabled |
+# +-------------------------------+----------------------+----------------------+
+# |   1  NVIDIA A100-SXM...  On   | 00000000:00:05.0 Off |                    0 |
+# | N/A   34C    P0    41W / 400W |      0MiB / 40960MiB |      0%      Default |
+# |                               |                      |             Disabled |
+# +-------------------------------+----------------------+----------------------+
+
+# Check CUDA version
 nvcc --version
 
-## cudnn test
+# Test cuDNN installation
 cat &amp;lt;&amp;lt;EOF &amp;gt; cudnn_test.cpp
 #include &amp;lt;cudnn.h&amp;gt;
 #include &amp;lt;iostream&amp;gt;
@@ -1082,124 +1671,305 @@ int main() {
 }
 EOF
 
-# Compile
+# Compile and run the cuDNN test
 nvcc -o cudnn_test cudnn_test.cpp -lcudnn
-
-# Run
 ./cudnn_test
-CuDNN version: 8600
+# Expected output: CuDNN version: 8600
 
 
-(Optional) nvidia-docker
-sudo apt install docker.io
+Setting Up NVIDIA Docker (Optional)
 
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \\
-   &amp;amp;&amp;amp; curl -s -L &amp;lt;https://nvidia.github.io/nvidia-docker/gpgkey&amp;gt; | sudo apt-key add - \\
-   &amp;amp;&amp;amp; curl -s -L &amp;lt;https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list&amp;gt; | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+For containerized workloads, NVIDIA Docker allows GPU access from containers:
 
+# Install Docker
+sudo apt install -y docker.io
+
+# Add NVIDIA Docker repositories
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+   &amp;amp;&amp;amp; curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+   &amp;amp;&amp;amp; curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+# Install NVIDIA Docker
 sudo apt update
-sudo apt-get install -y nvidia-docker2
-
+sudo apt install -y nvidia-docker2
 sudo systemctl restart docker
 
-# test
-sudo docker run --rm --gpus all ubuntu:18.04 nvidia-smi
+# Test GPU access inside container
+sudo docker run --rm --gpus all nvidia/cuda:11.6.2-base-ubuntu20.04 nvidia-smi
 
 
 
 
-Application Setup
+
+
+AI/ML Application Setup
+
+With the GPU environment configured, you can now set up popular AI/ML applications.
 
 Stable Diffusion WebUI
+
+A popular interface for text-to-image generation:
+
+# Clone repository and run installation script
 wget -q https://raw.githubusercontent.com/AUTOMATIC1111/stable-diffusion-webui/master/webui.sh
 chmod +x webui.sh
-./webui.sh --listen
 
+# Start the WebUI with remote access enabled
+./webui.sh --listen --xformers
+
+
+Access the web UI at http://&amp;lt;your-vm-ip&amp;gt;:7860
 
 Kohya_ss
+
+A tool for training and fine-tuning Stable Diffusion models:
+
+# Clone repository
 git clone https://github.com/bmaltais/kohya_ss.git
 cd kohya_ss
+
+# Run installation script
 ./setup.sh
+
+# Start the UI with remote access
 ./gui.sh --listen=0.0.0.0 --headless
 
 
+Access the web UI at http://&amp;lt;your-vm-ip&amp;gt;:7860
+
 ComfyUI
+
+A node-based UI for Stable Diffusion:
+
+# Clone repository
 git clone https://github.com/comfyanonymous/ComfyUI.git
 cd ComfyUI
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Start the UI with remote access
 python3 main.py --listen 0.0.0.0
 
 
+Access the web UI at http://&amp;lt;your-vm-ip&amp;gt;:8188
+
+PyTorch and TensorFlow Performance Testing
+
+Test the GPU performance with standard benchmarks:
+
+# Install ML frameworks
+pip install torch torchvision torchaudio
+pip install tensorflow
+
+# PyTorch GPU test
+python -c &quot;import torch; print(f&apos;PyTorch version: {torch.__version__}&apos;); print(f&apos;CUDA available: {torch.cuda.is_available()}&apos;); print(f&apos;CUDA device count: {torch.cuda.device_count()}&apos;); print(f&apos;CUDA device name: {torch.cuda.get_device_name(0)}&apos;); x = torch.rand(5000, 5000).cuda(); print(f&apos;Matrix multiplication time: {timeit -n 10 -r 3 -o torch.matmul(x, x)}&apos;);&quot;
+
+# TensorFlow GPU test
+python -c &quot;import tensorflow as tf; print(f&apos;TensorFlow version: {tf.__version__}&apos;); print(f&apos;GPU devices: {tf.config.list_physical_devices(\&quot;GPU\&quot;)}&apos;); print(f&apos;GPU info: {tf.sysconfig.get_build_info()}&apos;);&quot;
 
 
-Pricing Information
+
+
+
+
+Performance Optimization
+
+NVIDIA A100 Performance Tuning
+
+
+  GPU Compute Mode:
+       sudo nvidia-smi -i 0 -c EXCLUSIVE_PROCESS  # For dedicated single process
+    
+  
+  Memory Clock Optimization:
+       sudo nvidia-smi -i 0 -ac 1215,1410  # Set memory and graphics clocks
+    
+  
+  Persistent Mode (reduces initialization overhead):
+       sudo nvidia-smi -i 0 -pm 1  # Enable persistent mode
+    
+  
+
+
+System-level Optimizations
+
+
+  Disable CPU Power Management:
+       sudo apt install cpufrequtils
+   sudo cpufreq-set -g performance
+    
+  
+  I/O Optimization for dataset loading:
+       echo &apos;vm.dirty_ratio = 10&apos; | sudo tee -a /etc/sysctl.conf
+   echo &apos;vm.dirty_background_ratio = 5&apos; | sudo tee -a /etc/sysctl.conf
+   sudo sysctl -p
+    
+  
+  Memory Configuration for AI workloads:
+       echo &apos;vm.overcommit_memory = 1&apos; | sudo tee -a /etc/sysctl.conf
+   sudo sysctl -p
+    
+  
+
+
+Framework-specific Optimizations
+
+
+  PyTorch:
+       torch.backends.cudnn.benchmark = True  # Auto-tuner for convolutions
+   torch.backends.cuda.matmul.allow_tf32 = True  # Enable TF32 for faster training
+    
+  
+  TensorFlow:
+       import tensorflow as tf
+   tf.config.optimizer.set_jit(True)  # Enable XLA JIT compilation
+   mixed_precision = tf.keras.mixed_precision.Policy(&apos;mixed_float16&apos;)
+   tf.keras.mixed_precision.set_global_policy(mixed_precision)
+    
+  
+
+
+
+
+
+
+Monitoring GPU Usage
+
+NVIDIA System Management Interface
+
+The primary tool for monitoring NVIDIA GPUs is nvidia-smi:
+
+# Basic GPU status
+nvidia-smi
+
+# Continuous monitoring (updates every 1s)
+nvidia-smi -l 1
+
+# Show memory usage by process
+nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv
+
+# Monitor specific metrics
+nvidia-smi --query-gpu=timestamp,name,pci.bus_id,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used --format=csv -l 5
+
+
+DCGM (Data Center GPU Manager)
+
+For production environments, NVIDIA DCGM provides more advanced monitoring:
+
+# Install DCGM
+sudo apt-get install -y datacenter-gpu-manager
+
+# Start the service
+sudo systemctl start dcgm
+
+# Run DCGM diagnostics
+sudo dcgmi diag -r 3
+
+# Monitor GPU stats
+sudo dcgmi dmon
+
+
+Integrating with Prometheus and Grafana
+
+For long-term monitoring and visualization:
+
+# Install Prometheus NVIDIA exporter
+git clone https://github.com/NVIDIA/dcgm-exporter.git
+cd dcgm-exporter
+make binary
+sudo make install
+
+# Start the exporter
+sudo dcgm-exporter
+
+# Configure Prometheus to scrape the exporter
+# Add to prometheus.yml:
+# - job_name: &apos;dcgm_exporter&apos;
+#   static_configs:
+#   - targets: [&apos;localhost:9400&apos;]
+
 
 
   
-    
-      Machine Type
-      GPU Configuration
-      Monthly Cost
-      Daily Cost
-    
-  
-  
-    
-      a2-highgpu-2g
-      2x A100 40GB
-      ~₩7.9M
-      ~₩240K
-    
-    
-      a2-ultragpu-2g
-      2x A100 80GB
-      ~₩12.4M
-      ~₩410K
-    
+    graph LR
+      A[NVIDIA GPU] --&amp;gt; B[DCGM Exporter]
+      B --&amp;gt; C[Prometheus]
+      C --&amp;gt; D[Grafana]
+      D --&amp;gt; E[Alerts]
+      D --&amp;gt; F[Dashboards]
   
 
 
 
 
-Best Practices
+
+
+Best Practices and Security
+
+
+  GPU Server Best Practices
+  
+  1. GPU Selection:
+  
+    Choose appropriate GPU type based on memory requirements and computational needs
+    Consider scalability - start small and scale up as needed
+    Check zone availability before planning deployments
+  
+  
+  2. Cost Optimization:
+  
+    Monitor usage patterns and adjust instance types accordingly
+    Use preemptible instances for non-critical, fault-tolerant workloads
+    Implement auto-shutdown for development environments
+    Use committed use discounts for predictable workloads
+  
+  
+  3. Security:
+  
+    Configure firewall rules to restrict access to necessary ports only
+    Use service accounts with minimum required permissions
+    Enable OS Login for centralized SSH access management
+    Apply security patches promptly
+    Enable Virtual Private Cloud (VPC) Service Controls for sensitive workloads
+  
+  
+  4. Performance:
+  
+    Install the latest NVIDIA drivers compatible with your workload
+    Configure appropriate CUDA and cuDNN versions
+    Monitor GPU utilization and memory usage
+    Implement proper cooling and power policies
+    Use mixed precision training where possible
+  
+  
+  5. Data Management:
+  
+    Use high-performance storage options for datasets (SSD, Local SSD)
+    Implement data caching mechanisms
+    Consider Cloud Storage with parallel transfers for large datasets
+    Implement proper backup strategies for trained models
+  
 
 
 
-1. GPU Selection:
-   - Choose appropriate GPU type
-   - Consider memory requirements
-   - Check zone availability
-
-2. Cost Optimization:
-   - Monitor usage
-   - Use preemptible instances
-   - Schedule workloads
-
-3. Security:
-   - Configure firewall rules
-   - Use service accounts
-   - Enable monitoring
-
-4. Performance:
-   - Install latest drivers
-   - Optimize CUDA settings
-   - Monitor GPU utilization
 
 
 
+References
 
-
-
-Reference
 
   GCP GPU Documentation
+  NVIDIA A100 Tensor Core GPU
+  CUDA Toolkit Documentation
   Terraform Infrastructure Example
   Stable Diffusion WebUI
   Kohya_ss
   ComfyUI
+  NVIDIA DCGM Documentation
 
 ",
-            "wordcount": "994",
+            "wordcount": "2733",
             "inLanguage": "en",
             "dateCreated": "2025-01-15/",
             "datePublished": "2025-01-15/",
@@ -1230,7 +2000,7 @@ Reference
             "mainEntityOfPage": "True",
             "genre": "GCP",
             "articleSection": "GCP",
-            "keywords": ["gcp","gpu","nvidia","cloud-computing"]
+            "keywords": ["gcp","gpu","nvidia","cloud-computing","machine-learning","a100"]
         }
         </script>
     </body>

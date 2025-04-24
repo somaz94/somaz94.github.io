@@ -40,7 +40,7 @@
     <title>Kubernetes Network Traffic Flow | somaz</title>
     <meta name="description" content="A comprehensive guide to Kubernetes networking in both CSP and On-premise environments">
     
-        <meta name="keywords" content="kubernetes, networking, traffic-flow, ingress">
+        <meta name="keywords" content="kubernetes, networking, traffic-flow, ingress, service-mesh, cni">
     
 
     <!-- Social: Twitter -->
@@ -220,10 +220,10 @@ January 12, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>8 min to read</span>
+                    <span>12 min to read</span>
                 </p>
                 <h1 class="post-title">Kubernetes Network Traffic Flow</h1>
-                <p class="post-subtitle"></p>
+                <p class="post-subtitle">Understanding network communication in CSP and On-premise environments</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737342408/kubernetes-network-flow_urqjgq.png" alt="Featured image" class="post-cover">
@@ -245,234 +245,635 @@ January 12, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
-<p>Understanding Kubernetes network traffic flow is crucial for both CSP (Cloud Service Provider) and on-premise environments.</p>
+
+<p>Understanding Kubernetes network traffic flow is crucial for proper cluster architecture, security, and troubleshooting. This guide explores networking in both Cloud Service Provider (CSP) and on-premise environments, detailing how traffic moves through different components of a Kubernetes cluster.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Kubernetes Networking Principles</strong>
+  <p>Kubernetes networking is built on several key principles:</p>
+  <ul>
+    <li>Every Pod gets its own IP address</li>
+    <li>Pods can communicate with all other pods without NAT</li>
+    <li>Agents on a node can communicate with all pods on that node</li>
+    <li>The Pod network is flat - all pods can reach each other directly</li>
+  </ul>
+</div>
 
 <p><br /></p>
 
-<h3 id="network-environments-traffic-flow">Network Environments Traffic Flow</h3>
+<h2 id="network-traffic-paths">Network Traffic Paths</h2>
 
-<h4 id="csp-environment-traffic-flow">CSP Environment Traffic Flow</h4>
-<ul>
-  <li>External Load Balancer: The cloud provider provides a Load Balancer for routing external traffic into the cluster. It is located outside the cluster and forwards requests from outside to the service or the ingress controller.</li>
-  <li>Ingress Controller/Service: Ingress Controller handles HTTP/HTTPS traffic, and the service of <code class="language-plaintext highlighter-rouge">type: LoadBalancer</code> handles other protocols. They receive traffic from the cloud load balancer and route it to the appropriate pod.</li>
-  <li>Pods: Pod is the minimum unit that runs the container of an application. Traffic is delivered to them through Service or Ingress.</li>
-</ul>
+<p>Kubernetes networking involves several distinct traffic paths, each with its own characteristics and components.</p>
 
-<p><img src="/assets/svg/k8s-network-traffic/csp-traffic.svg" alt="CSP Environment Traffic Flow" /></p>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[External Traffic] --&gt; B[Load Balancer / Ingress]
+      B --&gt; C[Services]
+      C --&gt; D[Pods]
+      D --&gt; E[Containers]
+      
+      F[Pod-to-Pod Traffic] --&gt; D
+      G[Pod-to-Service Traffic] --&gt; C
+      H[External Egress Traffic] --&gt; I[Node Network]
+      D --&gt; H
+      
+      style A fill:#f9f,stroke:#333,stroke-width:2px
+      style E fill:#bbf,stroke:#333,stroke-width:2px
+      style C fill:#ffa,stroke:#333,stroke-width:2px
+  </div>
+</div>
 
 <p><br /></p>
 
-<h4 id="on-premise-environment-traffic-flow">On-premise Environment Traffic Flow</h4>
-<ul>
-  <li>External Load Balancer/Router: In an on-premises environment, a self-configured load balancer or router routes external traffic into the cluster. It is located within the on-premises data center.</li>
-  <li>Ingress Controller/Service: This step is similar to the CSP environment. The Ingress Controller handles HTTP/HTTPS traffic, and the service of type: LoadBalancer handles other protocols. They receive traffic from an external Load Balancer/Router and route it to an appropriate Pod.</li>
-  <li>Pods: Even in an on-premises environment, Pods are the same as the minimum unit that runs the container of the application.</li>
-</ul>
-
-<p><img src="/assets/svg/k8s-network-traffic/onpremise-traffic.svg" alt="On-premise Environment Traffic Flow" /></p>
+<h2 id="network-environments-and-traffic-flow">Network Environments and Traffic Flow</h2>
 
 <p><br /></p>
 
-<h4 id="ingress-controllers-in-csp-environments">Ingress Controllers in CSP Environments</h4>
-<blockquote>
-  <p>In CSP environments, ingress controllers are often integrated with load balancer services from cloud providers. <br /><br /> When the ingress controller service type is set to LoadBalancer, the cloud provider automatically assigns an external IP address (usually a public IP), which becomes the IP address of the cloud load balancer. <br /><br /> Through this allocated IP address, external traffic is routed to the ingress controller through the cloud load balancer, and finally delivered to the appropriate path.</p>
-</blockquote>
+<h3 id="csp-environment-traffic-flow">CSP Environment Traffic Flow</h3>
 
-<p>I describe the relationship between an ingress controller and a load balancer controller in a cloud service provider (CSP) environment.</p>
+<p>In cloud service provider environments (AWS, GCP, Azure, etc.), Kubernetes leverages cloud infrastructure for external connectivity.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Internet] --&gt; B[Cloud Load Balancer]
+      B --&gt; C[Ingress Controller or<br />Service LoadBalancer]
+      C --&gt; D{Routing}
+      D --&gt; E[Pod 1]
+      D --&gt; F[Pod 2]
+      D --&gt; G[Pod 3]
+      
+      style A fill:#f9f,stroke:#333,stroke-width:2px
+      style B fill:#bbf,stroke:#333,stroke-width:2px
+      style C fill:#ffa,stroke:#333,stroke-width:2px
+  </div>
+</div>
+
+<h4 id="key-components-in-csp-environments">Key Components in CSP Environments</h4>
 
 <ol>
-  <li>Ingress Controller
+  <li><strong>External Load Balancer</strong>:
     <ul>
-      <li>The ingress controller is software that runs within the Kubernetes cluster. Observe the ingress resource and implement the routing rules defined in this resource.</li>
-      <li>The ingress controller serves to deliver traffic to appropriate services and pads.</li>
+      <li>Provided by the cloud provider (e.g., AWS ELB/ALB, GCP Load Balancer, Azure Load Balancer)</li>
+      <li>Located outside the Kubernetes cluster in the cloud provider’s infrastructure</li>
+      <li>Automatically provisioned when a Service of type <code class="language-plaintext highlighter-rouge">LoadBalancer</code> is created</li>
+      <li>Routes external traffic to nodes in the cluster</li>
     </ul>
   </li>
-  <li>Load Balancer Controller
+  <li><strong>Ingress Controller/Service</strong>:
     <ul>
-      <li>In a cloud environment, load balancer controllers are usually separate services managed by cloud providers.</li>
-      <li>The service serves to route external traffic to the Kubernetes cluster.</li>
+      <li>Ingress Controllers handle HTTP/HTTPS traffic routing based on hostnames and paths</li>
+      <li>Services of type <code class="language-plaintext highlighter-rouge">LoadBalancer</code> expose non-HTTP protocols</li>
+      <li>Receive traffic from the cloud load balancer and route it to the appropriate pods</li>
     </ul>
   </li>
-  <li>Integration operations
+  <li><strong>Pods</strong>:
     <ul>
-      <li>When a Kubernetes service is created as a LoadBalancer type (for example, for an ingress controller), the cloud provider automatically allocates an external IP address and configures a load balancer.</li>
-      <li>This load balancer takes external traffic and passes it to the ingress controller. The ingress controller then routes the traffic to the appropriate service or pad within the Kubernetes.</li>
-    </ul>
-  </li>
-  <li>CSP environment features
-    <ul>
-      <li>In CSP environments, the ingress controller and load balancer are typically tightly integrated, and users do not need to manage the load balancer separately.</li>
-      <li>Instead, by configuring Kubernetes services and defining ingress resources, you can automatically take advantage of the cloud provider’s load balancing capabilities.</li>
+      <li>End destinations for network traffic</li>
+      <li>Run application containers</li>
+      <li>Each has a unique IP address within the cluster</li>
     </ul>
   </li>
 </ol>
 
 <p><br /></p>
 
+<h3 id="on-premise-environment-traffic-flow">On-premise Environment Traffic Flow</h3>
+
+<p>On-premise Kubernetes deployments require different networking approaches since they don’t have cloud provider integration.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Internet] --&gt; B[On-premise Load Balancer<br />or Router]
+      B --&gt; C[Ingress Controller<br />NodePort or MetalLB]
+      C --&gt; D{Routing}
+      D --&gt; E[Pod 1]
+      D --&gt; F[Pod 2]
+      D --&gt; G[Pod 3]
+      
+      style A fill:#f9f,stroke:#333,stroke-width:2px
+      style B fill:#bbf,stroke:#333,stroke-width:2px
+      style C fill:#ffa,stroke:#333,stroke-width:2px
+  </div>
+</div>
+
+<h4 id="key-components-in-on-premise-environments">Key Components in On-premise Environments</h4>
+
+<ol>
+  <li><strong>External Load Balancer/Router</strong>:
+    <ul>
+      <li>Self-managed hardware or software load balancer (e.g., F5, NGINX, HAProxy)</li>
+      <li>Located within the on-premise data center</li>
+      <li>Manually configured to route traffic to Kubernetes nodes</li>
+    </ul>
+  </li>
+  <li><strong>Ingress Controller/Service</strong>:
+    <ul>
+      <li>Similar role as in CSP environments</li>
+      <li>Often exposed via <code class="language-plaintext highlighter-rouge">NodePort</code> services or with MetalLB</li>
+      <li>Receive traffic from the external load balancer and route it to appropriate pods</li>
+    </ul>
+  </li>
+  <li><strong>Pods</strong>:
+    <ul>
+      <li>Functionally identical to pods in CSP environments</li>
+      <li>Network connectivity may be implemented differently depending on CNI plugin choice</li>
+    </ul>
+  </li>
+</ol>
+
+<p><br /></p>
+
+<h2 id="ingress-controllers-in-different-environments">Ingress Controllers in Different Environments</h2>
+
+<h3 id="ingress-controllers-in-csp-environments">Ingress Controllers in CSP Environments</h3>
+
+<p>In cloud environments, ingress controllers are tightly integrated with cloud provider load balancing services.</p>
+
 <div class="info-box info-box-default">
-  <strong>Conclusion</strong>
+  <strong>CSP Ingress Controller Integration</strong>
+  <p>When you deploy an Ingress Controller in a CSP environment:</p>
+  <ol>
+    <li>The Ingress Controller pod(s) are deployed in the cluster</li>
+    <li>A Service of type LoadBalancer is created for the Ingress Controller</li>
+    <li>The CSP automatically provisions an external load balancer and assigns it a public IP</li>
+    <li>The CSP configures the load balancer to route traffic to the Ingress Controller</li>
+    <li>The Ingress Controller handles routing based on Ingress resources</li>
+  </ol>
+</div>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example AWS ALB Ingress Controller configuration</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">example-ingress</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">kubernetes.io/ingress.class</span><span class="pi">:</span> <span class="s">alb</span>
+    <span class="na">alb.ingress.kubernetes.io/scheme</span><span class="pi">:</span> <span class="s">internet-facing</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="s">example.com</span>
+    <span class="na">http</span><span class="pi">:</span>
+      <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+        <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+        <span class="na">backend</span><span class="pi">:</span>
+          <span class="na">service</span><span class="pi">:</span>
+            <span class="na">name</span><span class="pi">:</span> <span class="s">example-service</span>
+            <span class="na">port</span><span class="pi">:</span>
+              <span class="na">number</span><span class="pi">:</span> <span class="m">80</span>
+</code></pre></div></div>
+
+<h3 id="ingress-controllers-in-on-premise-environments">Ingress Controllers in On-premise Environments</h3>
+
+<p>In on-premise environments, the LoadBalancer service type doesn’t automatically receive an external IP without additional components.</p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>On-premise Challenges</strong>
+  <p>In on-premise environments, several challenges must be addressed:</p>
   <ul>
-    <li>
-      In conclusion, the ingress controller in CSP is tightly integrated with the cloud provider's load balancer, which enables efficient routing of external traffic to the appropriate service or path within the cluster.
-    </li>
+    <li>No automatic external IP assignment for LoadBalancer services</li>
+    <li>Manual configuration of external load balancers</li>
+    <li>IP address management</li>
+    <li>Network routing between external networks and the Kubernetes cluster</li>
   </ul>
 </div>
 
-<p><br /></p>
+<p>On-premise deployments typically use one of these approaches:</p>
 
-<h4 id="ingress-controllers-in-on-premise-environments">Ingress Controllers in On-premise Environments</h4>
-<ul>
-  <li>
-    <p>In an on-premises environment, LoadBalancer type services are not automatically assigned external IPs.
-Instead, you should use an external load balancer or router that is typically managed by an on-premises network.
-In this case, you manually set the IP address to the external load balancer or router and configure that IP to route traffic to the ingress controller or service.</p>
+<ol>
+  <li><strong>NodePort Services</strong>:
+    <ul>
+      <li>Expose the Ingress Controller on a port on each node (30000-32767 range)</li>
+      <li>Configure external load balancer to distribute traffic to these ports across nodes</li>
+    </ul>
   </li>
-  <li>
-    <p>In an on-premises environment, you can access the ingress controller using the NodePort or ClusterIP service type, and an external load balancer routes traffic to that service type.
-Therefore, when the ingress controller has an external load balancer IP (IP) in the on-premise server, it is usually the result of a network configuration or manual setup. Unlike a CSP environment, automatic IP allocation is not common in an on-premise environment.</p>
+  <li><strong>MetalLB or similar solutions</strong>:
+    <ul>
+      <li>Enables LoadBalancer service type in on-premise environments</li>
+      <li>Provides automatic IP assignment from a configured pool</li>
+    </ul>
   </li>
-</ul>
+</ol>
 
-<p><br /></p>
+<p><br /><br /></p>
 
-<hr />
+<h2 id="metallb-for-on-premise-load-balancing">MetalLB for On-premise Load Balancing</h2>
 
-<h3 id="metallbonpremise-loadbalancer">MetalLB(Onpremise LoadBalancer)</h3>
-<div class="info-box info-box-default">
-  <br />
-  MetalLB is a solution designed to support the LoadBalancer service type in the on-premises Kubernetes cluster. In general, the load balancer function provided in the cloud environment can be used in the on-premises environment. <br /><br /> If you specify an IP address pool in the MetalLB setting, MetalLB dynamically allocates an IP address from this pool to provide the IP address to Kubernetes' LoadBalancer type service. <br /><br /> The IP address allocated in this way is used as an access point to the Kubernetes cluster from the outside.
-  <br />
+<p>MetalLB is a popular solution for implementing LoadBalancer services in on-premise Kubernetes clusters.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Client] --&gt; B[MetalLB Managed<br />IP Address]
+      B --&gt; C[MetalLB Speaker<br />Layer 2 or BGP]
+      C --&gt; D[Kubernetes<br />Service LoadBalancer]
+      D --&gt; E[Target Pods]
+      
+      style B fill:#bbf,stroke:#333,stroke-width:2px
+      style C fill:#ffa,stroke:#333,stroke-width:2px
+  </div>
 </div>
 
-<p>For example, in a Metal LB setting, you can specify an IP address range as follows.</p>
+<h3 id="metallb-configuration">MetalLB Configuration</h3>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<p>MetalLB works in two modes:</p>
+
+<ol>
+  <li><strong>Layer 2 Mode</strong>: Uses ARP (IPv4) or NDP (IPv6) to claim IP addresses on the local network</li>
+  <li><strong>BGP Mode</strong>: Establishes BGP peering sessions with network routers for more advanced configurations</li>
+</ol>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Example MetalLB configuration</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">IPAddressPool</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">example-pool</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">production-pool</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
 <span class="na">spec</span><span class="pi">:</span>
   <span class="na">addresses</span><span class="pi">:</span>
   <span class="pi">-</span> <span class="s">192.168.1.100-192.168.1.150</span>
+
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">L2Advertisement</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">l2-advertisement</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ipAddressPools</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">production-pool</span>
 </code></pre></div></div>
-<ul>
-  <li>MetalLB can assign IP addresses between 192.168.1.100 and 192.168.1.150 to LoadBalancer services.</li>
-  <li>When the ingress controller is deployed as a LoadBalancer service, MetalLB automatically allocates the IP address from this IP pool and provides it to the ingress controller. This IP address is used to route traffic from the outside to the ingress controller.</li>
-  <li>In conclusion, MetalLB enables the use of the LoadBalancer service in an on-premises environment in a similar way to the cloud, allowing an IP address to be automatically assigned to the ingress controller.</li>
-</ul>
+
+<p>When a LoadBalancer service is deployed with MetalLB:</p>
+
+<ol>
+  <li>MetalLB assigns an IP from the configured pool</li>
+  <li>The speaker component advertises the IP on the local network</li>
+  <li>Traffic sent to that IP is routed to the appropriate service</li>
+  <li>The service distributes traffic to the pods</li>
+</ol>
 
 <p><br /></p>
 
-<hr />
+<h2 id="component-communication-in-kubernetes">Component Communication in Kubernetes</h2>
 
-<h3 id="component-communication-container-pod-service">Component Communication (Container, Pod, Service)</h3>
-<p>Kubernetes networking is designed to allow various types of entities within Kubernetes to communicate.</p>
-<ul>
-  <li>Container-to-container networking</li>
-  <li>Pod-to-Pod networking</li>
-  <li>Pod-to-Service networking</li>
-  <li>Internet-to-Service networking</li>
-</ul>
+<p>Kubernetes networking enables several types of communication between different components in a cluster.</p>
 
 <p><br /></p>
 
-<p><strong>Container-to-Container</strong></p>
-<ul>
-  <li>Kubernetes within a single Pod allows multiple containers to share the same network namespace. This means that containers within the same Pod share the same IP address and port space, so they can communicate with each other using localhost.</li>
-  <li>These intra-Pod communications are critical for containers that must work closely together (e.g., primary application containers and sidecar containers that record or monitor primary applications).
-<img src="/assets/svg/k8s-network-traffic/container-to-container.svg" alt="Container-to-Container" /></li>
-</ul>
+<h3 id="container-to-container-communication">Container-to-Container Communication</h3>
 
-<p><br /></p>
+<p>Containers within the same Pod share the same network namespace, enabling localhost communication.</p>
 
-<p><strong>Pod-to-Pod</strong></p>
-<ul>
-  <li>With Kubernetes, all nodes have a range of CIDR IPs designated for the pods. This way, all the pods will receive a unique IP address that can be seen in other pods in the cluster.</li>
-  <li>Kubernetes ensures that the pads can communicate with each other between nodes without Network Address Translation (NAT). Each pad gets a unique IP address, so this IP address can be used to communicate with other pads in the cluster regardless of which node all the pads are at.
--This is achieved through basic network plug-ins implementing container network interface (CNI) standards, and various implementations (e.g., Calico, Flannel, or Cilium) provide a variety of ways to enable this node-to-node inter-pad communication.
-<img src="/assets/svg/k8s-network-traffic/pod-to-pod.svg" alt="Pod-to-Pod" /></li>
-</ul>
-
-<p><br /></p>
-
-<p><strong>Pod-to-Service</strong></p>
-<div class="info-box info-box-default">
-  <br />
-  In Kubernetes, a service provides a stable interface for pods. The service mediates requests for a specific set of pods and routes traffic to an appropriate pad. <br /><br /> Each service has a unique IP address called ClusterIP, which keeps the service stable.
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      subgraph "Pod"
+        A[Container A<br />Port 8080] --- B[Container B<br />Port 9090]
+        A --&gt; |localhost:9090| B
+        B --&gt; |localhost:8080| A
+      end
+      
+      style A fill:#bbf,stroke:#333,stroke-width:2px
+      style B fill:#ffa,stroke:#333,stroke-width:2px
+  </div>
 </div>
+
+<p><strong>Key Characteristics</strong>:</p>
 <ul>
-  <li>Pod: Each pod is an instance of an application running within a Kubernetes cluster. A pod has its own IP address and can communicate with other pods.</li>
-  <li>Virtual bridge: It is connected through eth0 and veth pairs in the pod. This bridge serves as an intermediate communication that allows the pod to communicate with the node’s network.</li>
-  <li>Node: A physical or virtual machine in a cluster. Each node hosts several pad and manages network traffic through kube-proxy.</li>
-  <li>kube-proxy: Runs within a node, uses iptables or IPVS to route traffic to the service’s ClusterIP, and delivers traffic to the appropriate pad according to the service’s pad selection algorithm (e.g., round robin).</li>
-  <li>Service: represents a logical set of pods and allows clients to access the pods in a consistent way without having to know the individual IPs of the pods. ClusterIP can be used to access the pods inside the cluster and may be exposed to the outside as needed (e.g., NodePort, LoadBalancer).</li>
-  <li>Cluster Network: A network that enables communication throughout a cluster. Node-to-node communication and pad-to-pad communication are performed through this network.</li>
+  <li>Containers in the same pod share the same IP address</li>
+  <li>They can communicate via localhost</li>
+  <li>Shared volumes allow file-based communication</li>
+  <li>Container ports must be unique within a pod</li>
+  <li>This enables sidecar, ambassador, and adapter patterns</li>
 </ul>
 
 <p><br /></p>
 
-<p><img src="/assets/svg/k8s-network-traffic/pod-to-service.svg" alt="Pod-to-Service" /></p>
+<h3 id="pod-to-pod-communication">Pod-to-Pod Communication</h3>
+
+<p>Kubernetes ensures all pods can communicate directly with each other regardless of their node location.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      subgraph "Node 1"
+        A[Pod A<br />10.244.1.2]
+        B[Pod B<br />10.244.1.3]
+      end
+      
+      subgraph "Node 2"
+        C[Pod C<br />10.244.2.2]
+        D[Pod D<br />10.244.2.3]
+      end
+      
+      A &lt;--&gt; B
+      A &lt;--&gt; C
+      A &lt;--&gt; D
+      B &lt;--&gt; C
+      B &lt;--&gt; D
+      C &lt;--&gt; D
+      
+      style A fill:#bbf,stroke:#333,stroke-width:2px
+      style D fill:#ffa,stroke:#333,stroke-width:2px
+  </div>
+</div>
+
+<p><strong>Key Characteristics</strong>:</p>
+<ul>
+  <li>Every pod has a unique IP address</li>
+  <li>All pods can reach each other without NAT</li>
+  <li>CNI (Container Network Interface) plugins implement this functionality</li>
+  <li>Different CNI implementations (Calico, Flannel, Cilium, etc.) provide various features and performance characteristics</li>
+  <li>Cross-node communication typically uses overlay networks or direct routing</li>
+</ul>
 
 <p><br /></p>
 
-<p><strong>Internet-to-Service</strong></p>
+<h3 id="pod-to-service-communication">Pod-to-Service Communication</h3>
+
+<p>Services provide stable endpoints for pods, handling internal load balancing and service discovery.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Client Pod<br />10.244.1.2] --&gt; |ClusterIP<br />10.96.0.10| B[Kubernetes Service]
+      B --&gt; C[Endpoint 1<br />10.244.2.2]
+      B --&gt; D[Endpoint 2<br />10.244.3.3]
+      B --&gt; E[Endpoint 3<br />10.244.1.4]
+      
+      style A fill:#bbf,stroke:#333,stroke-width:2px
+      style B fill:#ffa,stroke:#333,stroke-width:2px
+  </div>
+</div>
+
+<p><strong>Key Components</strong>:</p>
 <ul>
-  <li>Egress: outbound traffic</li>
-  <li>Ingress: inbound traffic</li>
+  <li><strong>Pod</strong>: Source of traffic, with its own IP address</li>
+  <li><strong>Virtual Interface</strong>: Each pod has an eth0 interface connecting to the node’s network</li>
+  <li><strong>Node</strong>: Hosts multiple pods and manages network traffic</li>
+  <li><strong>kube-proxy</strong>: Runs on each node, managing service routing using iptables, IPVS, or userspace proxying</li>
+  <li><strong>Service</strong>: Provides a stable ClusterIP that routes to a dynamic set of pod endpoints</li>
+  <li><strong>Cluster Network</strong>: Enables all communication across the cluster</li>
 </ul>
 
-<p><img src="/assets/svg/k8s-network-traffic/internet-to-service.svg" alt="Internet-to-Service" /></p>
+<h3 id="internet-to-service-communication">Internet-to-Service Communication</h3>
 
-<hr />
+<p>External traffic enters the cluster through several different mechanisms.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Internet<br />Client] --&gt; B{Access Type}
+      
+      B --&gt; |LoadBalancer| C[Cloud<br />Load Balancer]
+      C --&gt; G[Service<br />LoadBalancer]
+      
+      B --&gt; |NodePort| D[Any Node<br />Port 30000-32767]
+      D --&gt; H[Service<br />NodePort]
+      
+      B --&gt; |Ingress| E[Ingress<br />Controller]
+      E --&gt; I[Ingress<br />Resource]
+      I --&gt; J[Service<br />ClusterIP]
+      
+      G --&gt; K[Target Pods]
+      H --&gt; K
+      J --&gt; K
+      
+      style A fill:#f9f,stroke:#333,stroke-width:2px
+      style K fill:#bbf,stroke:#333,stroke-width:2px
+  </div>
+</div>
+
+<p><strong>Access Types</strong>:</p>
+<ol>
+  <li><strong>LoadBalancer Service</strong>:
+    <ul>
+      <li>Automatically provisions a cloud load balancer in CSP environments</li>
+      <li>Requires MetalLB or similar solution in on-premise deployments</li>
+      <li>Provides stable external IP address</li>
+    </ul>
+  </li>
+  <li><strong>NodePort Service</strong>:
+    <ul>
+      <li>Opens a specific port on all nodes</li>
+      <li>Allows access via any node’s IP address</li>
+      <li>Port range is limited to 30000-32767 by default</li>
+    </ul>
+  </li>
+  <li><strong>Ingress</strong>:
+    <ul>
+      <li>HTTP/HTTPS-based routing layer</li>
+      <li>Enables hostname and path-based routing</li>
+      <li>Can provide SSL termination, authentication, and more sophisticated traffic management</li>
+    </ul>
+  </li>
+</ol>
+
+<p><br /></p>
+
+<h2 id="network-components-and-features">Network Components and Features</h2>
+
 <h3 id="network-components-table">Network Components Table</h3>
 
-<table class="table-beauty">
-  <tr>
-    <th style="width: 30%;">🔧 Component</th>
-    <th style="width: 40%;">📄 Purpose</th>
-    <th style="width: 30%;">📡 Communication Type</th>
-  </tr>
-  <tr>
-    <td>🛠️ <code>Container</code></td>
-    <td>Application runtime</td>
-    <td>localhost</td>
-  </tr>
-  <tr>
-    <td>📦 <code>Pod</code></td>
-    <td>Basic scheduling unit</td>
-    <td>Pod IP</td>
-  </tr>
-  <tr>
-    <td>🖥️ <code>Service</code></td>
-    <td>Stable endpoint</td>
-    <td>ClusterIP</td>
-  </tr>
-  <tr>
-    <td>🌐 <code>Ingress</code></td>
-    <td>External access</td>
-    <td>LoadBalancer/NodePort</td>
-  </tr></table>
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Component</th>
+      <th style="width: 30%;">Purpose</th>
+      <th style="width: 25%;">Communication Type</th>
+      <th style="width: 25%;">Implementation Examples</th>
+    </tr>
+    <tr>
+      <td>🛠️ <code>Container</code></td>
+      <td>Application runtime environment</td>
+      <td>localhost (127.0.0.1)</td>
+      <td>Docker, containerd, CRI-O</td>
+    </tr>
+    <tr>
+      <td>📦 <code>Pod</code></td>
+      <td>Basic scheduling unit, shared network namespace</td>
+      <td>Pod IP (e.g., 10.244.1.2)</td>
+      <td>kubelet, container runtime</td>
+    </tr>
+    <tr>
+      <td>🖥️ <code>Service</code></td>
+      <td>Stable endpoint for pod sets</td>
+      <td>ClusterIP (e.g., 10.96.0.10)</td>
+      <td>kube-proxy, CoreDNS</td>
+    </tr>
+    <tr>
+      <td>🌐 <code>Ingress</code></td>
+      <td>HTTP/HTTPS routing to services</td>
+      <td>HTTP(S) host/path based</td>
+      <td>NGINX, Traefik, Contour</td>
+    </tr>
+    <tr>
+      <td>🔌 <code>CNI Plugin</code></td>
+      <td>Pod networking implementation</td>
+      <td>Pod-to-pod networking</td>
+      <td>Calico, Flannel, Cilium</td>
+    </tr>
+    <tr>
+      <td>⚖️ <code>Load Balancer</code></td>
+      <td>External traffic distribution</td>
+      <td>External IP to Service</td>
+      <td>Cloud LB, MetalLB, HAProxy</td>
+    </tr>
+  </table>
+</div>
 
 <h3 id="key-network-features">Key Network Features</h3>
 
-<div class="info-box info-box-success">
+<div class="info-box info-box-success-not-check">
+  <strong>Kubernetes Network Features by Layer</strong>
   <ul>
     <li>
-      <strong>Pod Networking</strong>
+      <strong>Pod Networking (Layer 3)</strong><br />
       - Flat network space<br />
       - No NAT between pods<br />
-      - Unique IP per pod
+      - Unique IP per pod<br />
+      - Implemented by CNI plugins
     </li>
     <li>
-      <strong>Service Networking</strong>
-      - Stable endpoints<br />
-      - Load balancing<br />
-      - Service discovery
+      <strong>Service Networking (Layer 4)</strong><br />
+      - Stable endpoints via ClusterIP<br />
+      - Load balancing across pods<br />
+      - Service discovery via DNS<br />
+      - Implemented by kube-proxy and CoreDNS
     </li>
     <li>
-      <strong>External Access</strong>
-      - Ingress controllers<br />
-      - Load balancers<br />
-      - NodePorts
+      <strong>Application Routing (Layer 7)</strong><br />
+      - HTTP/HTTPS routing via Ingress<br />
+      - Path and hostname based routing<br />
+      - SSL termination<br />
+      - Authentication options
+    </li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h2 id="advanced-networking-concepts">Advanced Networking Concepts</h2>
+
+<h3 id="network-policies">Network Policies</h3>
+
+<p>Network Policies provide firewall-like rules for pod-to-pod communication, enabling micro-segmentation.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">NetworkPolicy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">allow-frontend-to-backend</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">podSelector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">backend</span>
+  <span class="na">policyTypes</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">Ingress</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">from</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">podSelector</span><span class="pi">:</span>
+        <span class="na">matchLabels</span><span class="pi">:</span>
+          <span class="na">app</span><span class="pi">:</span> <span class="s">frontend</span>
+    <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">8080</span>
+</code></pre></div></div>
+
+<h3 id="service-mesh">Service Mesh</h3>
+
+<p>Service meshes like Istio, Linkerd, and Consul provide advanced networking capabilities for microservices:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Feature</th>
+      <th style="width: 75%;">Description</th>
+    </tr>
+    <tr>
+      <td>Traffic Management</td>
+      <td>Fine-grained routing, traffic splitting, A/B testing, canary deployments</td>
+    </tr>
+    <tr>
+      <td>Security</td>
+      <td>Mutual TLS, certificate management, authentication, authorization</td>
+    </tr>
+    <tr>
+      <td>Observability</td>
+      <td>Distributed tracing, metrics collection, traffic visualization</td>
+    </tr>
+    <tr>
+      <td>Reliability</td>
+      <td>Circuit breaking, retries, timeouts, fault injection</td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="dns-in-kubernetes">DNS in Kubernetes</h3>
+
+<p>CoreDNS provides service discovery within Kubernetes clusters:</p>
+
+<ul>
+  <li>Each Service gets a DNS entry: <code class="language-plaintext highlighter-rouge">&lt;service-name&gt;.&lt;namespace&gt;.svc.cluster.local</code></li>
+  <li>Pods can have DNS entries (if enabled): <code class="language-plaintext highlighter-rouge">&lt;pod-ip-with-dashes&gt;.&lt;namespace&gt;.pod.cluster.local</code></li>
+  <li>DNS resolution is handled by CoreDNS pods in the <code class="language-plaintext highlighter-rouge">kube-system</code> namespace</li>
+</ul>
+
+<p><br /></p>
+
+<h2 id="troubleshooting-kubernetes-networking">Troubleshooting Kubernetes Networking</h2>
+
+<p>Common networking issues and diagnostic commands:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check if pods can reach each other</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> &lt;pod-name&gt; <span class="nt">--</span> ping &lt;other-pod-ip&gt;
+
+<span class="c"># Check DNS resolution from a pod</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> &lt;pod-name&gt; <span class="nt">--</span> nslookup &lt;service-name&gt;
+
+<span class="c"># Examine service configuration</span>
+kubectl describe service &lt;service-name&gt;
+
+<span class="c"># Check endpoints for a service</span>
+kubectl get endpoints &lt;service-name&gt;
+
+<span class="c"># Test connectivity to a service</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> &lt;pod-name&gt; <span class="nt">--</span> curl &lt;service-name&gt;:&lt;port&gt;
+
+<span class="c"># Check ingress configuration</span>
+kubectl describe ingress &lt;ingress-name&gt;
+
+<span class="c"># View network policies</span>
+kubectl get networkpolicies
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="key-points">Key Points</h2>
+
+<div class="info-box info-box-default">
+  <strong>Kubernetes Networking Summary</strong>
+  <ul>
+    <li>
+      <strong>Architecture Differences</strong><br />
+      - CSP environments leverage cloud load balancers<br />
+      - On-premise requires solutions like MetalLB<br />
+      - Both share common internal networking principles
+    </li>
+    <li>
+      <strong>Traffic Flow</strong><br />
+      - External → Ingress/Service → Pods → Containers<br />
+      - Pod-to-Pod communication across nodes<br />
+      - Service abstraction for stable endpoints
+    </li>
+    <li>
+      <strong>Implementation Considerations</strong><br />
+      - CNI plugin selection affects performance and features<br />
+      - NetworkPolicy support varies by CNI plugin<br />
+      - Service mesh adds overhead but provides advanced features
     </li>
   </ul>
 </div>
@@ -481,12 +882,16 @@ Therefore, when the ingress controller has an external load balancer IP (IP) in 
 
 <hr />
 
-<h3 id="reference">Reference</h3>
+<h2 id="references">References</h2>
+
 <ul>
   <li><a href="https://opensource.com/article/22/6/kubernetes-networking-fundamentals">Kubernetes Networking Fundamentals</a></li>
-  <li><a href="https://learn.microsoft.com/ko-kr/azure/virtual-network/kubernetes-network-policies">Azure Kubernetes Network Policies</a></li>
-  <li><a href="https://www.researchgate.net/figure/Kubernetes-Network-routing-to-export-the-services_fig1_337362475">Kubernetes Network Routing</a></li>
-  <li><a href="https://kubernetes.io/ko/docs/concepts/cluster-administration/networking/">Kubernetes Networking Guide</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/cluster-administration/networking/">Kubernetes Networking Guide</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/">Kubernetes Network Policies</a></li>
+  <li><a href="https://metallb.universe.tf/">MetalLB Documentation</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/service/">Service Networking in Kubernetes</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/">DNS for Services and Pods</a></li>
+  <li><a href="https://github.com/containernetworking/cni/blob/master/SPEC.md">Container Network Interface (CNI) Specification</a></li>
 </ul>
 
 
@@ -537,7 +942,7 @@ Therefore, when the ingress controller has an external load balancer IP (IP) in 
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="8">
+            <div class="time-bar" data-minutes="12">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -579,7 +984,7 @@ Therefore, when the ingress controller has an external load balancer IP (IP) in 
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Kubernetes networking in both CSP and On-premise environments&quot;%20https://somaz.blog/category/kubernetes/k8s-network-traffic/%20via%20&#64;twitter_username&hashtags=kubernetes,networking,traffic-flow,ingress"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Kubernetes networking in both CSP and On-premise environments&quot;%20https://somaz.blog/category/kubernetes/k8s-network-traffic/%20via%20&#64;twitter_username&hashtags=kubernetes,networking,traffic-flow,ingress,service-mesh,cni"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -834,7 +1239,7 @@ Therefore, when the ingress controller has an external load balancer IP (IP) in 
             "@context": "http://schema.org",
             "@type": "BlogPosting",
             "name": "Kubernetes Network Traffic Flow",
-            "headline": "",
+            "headline": "Understanding network communication in CSP and On-premise environments",
             "description": "A comprehensive guide to Kubernetes networking in both CSP and On-premise environments",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737342408/kubernetes-network-flow_urqjgq.png",
             "url": "https://somaz.blog/category/kubernetes/k8s-network-traffic/",
@@ -847,234 +1252,635 @@ Therefore, when the ingress controller has an external load balancer IP (IP) in 
 
 
 Overview
-Understanding Kubernetes network traffic flow is crucial for both CSP (Cloud Service Provider) and on-premise environments.
+
+Understanding Kubernetes network traffic flow is crucial for proper cluster architecture, security, and troubleshooting. This guide explores networking in both Cloud Service Provider (CSP) and on-premise environments, detailing how traffic moves through different components of a Kubernetes cluster.
+
+
+  Kubernetes Networking Principles
+  Kubernetes networking is built on several key principles:
+  
+    Every Pod gets its own IP address
+    Pods can communicate with all other pods without NAT
+    Agents on a node can communicate with all pods on that node
+    The Pod network is flat - all pods can reach each other directly
+  
 
 
 
-Network Environments Traffic Flow
+
+Network Traffic Paths
+
+Kubernetes networking involves several distinct traffic paths, each with its own characteristics and components.
+
+
+  
+    graph TD
+      A[External Traffic] --&amp;gt; B[Load Balancer / Ingress]
+      B --&amp;gt; C[Services]
+      C --&amp;gt; D[Pods]
+      D --&amp;gt; E[Containers]
+      
+      F[Pod-to-Pod Traffic] --&amp;gt; D
+      G[Pod-to-Service Traffic] --&amp;gt; C
+      H[External Egress Traffic] --&amp;gt; I[Node Network]
+      D --&amp;gt; H
+      
+      style A fill:#f9f,stroke:#333,stroke-width:2px
+      style E fill:#bbf,stroke:#333,stroke-width:2px
+      style C fill:#ffa,stroke:#333,stroke-width:2px
+  
+
+
+
+
+Network Environments and Traffic Flow
+
+
 
 CSP Environment Traffic Flow
 
-  External Load Balancer: The cloud provider provides a Load Balancer for routing external traffic into the cluster. It is located outside the cluster and forwards requests from outside to the service or the ingress controller.
-  Ingress Controller/Service: Ingress Controller handles HTTP/HTTPS traffic, and the service of type: LoadBalancer handles other protocols. They receive traffic from the cloud load balancer and route it to the appropriate pod.
-  Pods: Pod is the minimum unit that runs the container of an application. Traffic is delivered to them through Service or Ingress.
+In cloud service provider environments (AWS, GCP, Azure, etc.), Kubernetes leverages cloud infrastructure for external connectivity.
 
 
+  
+    graph LR
+      A[Internet] --&amp;gt; B[Cloud Load Balancer]
+      B --&amp;gt; C[Ingress Controller orService LoadBalancer]
+      C --&amp;gt; D{Routing}
+      D --&amp;gt; E[Pod 1]
+      D --&amp;gt; F[Pod 2]
+      D --&amp;gt; G[Pod 3]
+      
+      style A fill:#f9f,stroke:#333,stroke-width:2px
+      style B fill:#bbf,stroke:#333,stroke-width:2px
+      style C fill:#ffa,stroke:#333,stroke-width:2px
+  
+
+
+Key Components in CSP Environments
+
+
+  External Load Balancer:
+    
+      Provided by the cloud provider (e.g., AWS ELB/ALB, GCP Load Balancer, Azure Load Balancer)
+      Located outside the Kubernetes cluster in the cloud provider’s infrastructure
+      Automatically provisioned when a Service of type LoadBalancer is created
+      Routes external traffic to nodes in the cluster
+    
+  
+  Ingress Controller/Service:
+    
+      Ingress Controllers handle HTTP/HTTPS traffic routing based on hostnames and paths
+      Services of type LoadBalancer expose non-HTTP protocols
+      Receive traffic from the cloud load balancer and route it to the appropriate pods
+    
+  
+  Pods:
+    
+      End destinations for network traffic
+      Run application containers
+      Each has a unique IP address within the cluster
+    
+  
 
 
 
 
 On-premise Environment Traffic Flow
 
-  External Load Balancer/Router: In an on-premises environment, a self-configured load balancer or router routes external traffic into the cluster. It is located within the on-premises data center.
-  Ingress Controller/Service: This step is similar to the CSP environment. The Ingress Controller handles HTTP/HTTPS traffic, and the service of type: LoadBalancer handles other protocols. They receive traffic from an external Load Balancer/Router and route it to an appropriate Pod.
-  Pods: Even in an on-premises environment, Pods are the same as the minimum unit that runs the container of the application.
+On-premise Kubernetes deployments require different networking approaches since they don’t have cloud provider integration.
+
+
+  
+    graph LR
+      A[Internet] --&amp;gt; B[On-premise Load Balanceror Router]
+      B --&amp;gt; C[Ingress ControllerNodePort or MetalLB]
+      C --&amp;gt; D{Routing}
+      D --&amp;gt; E[Pod 1]
+      D --&amp;gt; F[Pod 2]
+      D --&amp;gt; G[Pod 3]
+      
+      style A fill:#f9f,stroke:#333,stroke-width:2px
+      style B fill:#bbf,stroke:#333,stroke-width:2px
+      style C fill:#ffa,stroke:#333,stroke-width:2px
+  
+
+
+Key Components in On-premise Environments
+
+
+  External Load Balancer/Router:
+    
+      Self-managed hardware or software load balancer (e.g., F5, NGINX, HAProxy)
+      Located within the on-premise data center
+      Manually configured to route traffic to Kubernetes nodes
+    
+  
+  Ingress Controller/Service:
+    
+      Similar role as in CSP environments
+      Often exposed via NodePort services or with MetalLB
+      Receive traffic from the external load balancer and route it to appropriate pods
+    
+  
+  Pods:
+    
+      Functionally identical to pods in CSP environments
+      Network connectivity may be implemented differently depending on CNI plugin choice
+    
+  
 
 
 
 
-
+Ingress Controllers in Different Environments
 
 Ingress Controllers in CSP Environments
 
-  In CSP environments, ingress controllers are often integrated with load balancer services from cloud providers.  When the ingress controller service type is set to LoadBalancer, the cloud provider automatically assigns an external IP address (usually a public IP), which becomes the IP address of the cloud load balancer.  Through this allocated IP address, external traffic is routed to the ingress controller through the cloud load balancer, and finally delivered to the appropriate path.
+In cloud environments, ingress controllers are tightly integrated with cloud provider load balancing services.
 
 
-I describe the relationship between an ingress controller and a load balancer controller in a cloud service provider (CSP) environment.
-
-
-  Ingress Controller
-    
-      The ingress controller is software that runs within the Kubernetes cluster. Observe the ingress resource and implement the routing rules defined in this resource.
-      The ingress controller serves to deliver traffic to appropriate services and pads.
-    
+  CSP Ingress Controller Integration
+  When you deploy an Ingress Controller in a CSP environment:
   
-  Load Balancer Controller
-    
-      In a cloud environment, load balancer controllers are usually separate services managed by cloud providers.
-      The service serves to route external traffic to the Kubernetes cluster.
-    
-  
-  Integration operations
-    
-      When a Kubernetes service is created as a LoadBalancer type (for example, for an ingress controller), the cloud provider automatically allocates an external IP address and configures a load balancer.
-      This load balancer takes external traffic and passes it to the ingress controller. The ingress controller then routes the traffic to the appropriate service or pad within the Kubernetes.
-    
-  
-  CSP environment features
-    
-      In CSP environments, the ingress controller and load balancer are typically tightly integrated, and users do not need to manage the load balancer separately.
-      Instead, by configuring Kubernetes services and defining ingress resources, you can automatically take advantage of the cloud provider’s load balancing capabilities.
-    
+    The Ingress Controller pod(s) are deployed in the cluster
+    A Service of type LoadBalancer is created for the Ingress Controller
+    The CSP automatically provisions an external load balancer and assigns it a public IP
+    The CSP configures the load balancer to route traffic to the Ingress Controller
+    The Ingress Controller handles routing based on Ingress resources
   
 
 
-
-
-
-  Conclusion
-  
-    
-      In conclusion, the ingress controller in CSP is tightly integrated with the cloud provider&apos;s load balancer, which enables efficient routing of external traffic to the appropriate service or path within the cluster.
-    
-  
-
-
+# Example AWS ALB Ingress Controller configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+spec:
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: example-service
+            port:
+              number: 80
 
 
 Ingress Controllers in On-premise Environments
 
+In on-premise environments, the LoadBalancer service type doesn’t automatically receive an external IP without additional components.
+
+
+  On-premise Challenges
+  In on-premise environments, several challenges must be addressed:
   
-    In an on-premises environment, LoadBalancer type services are not automatically assigned external IPs.
-Instead, you should use an external load balancer or router that is typically managed by an on-premises network.
-In this case, you manually set the IP address to the external load balancer or router and configure that IP to route traffic to the ingress controller or service.
-  
-  
-    In an on-premises environment, you can access the ingress controller using the NodePort or ClusterIP service type, and an external load balancer routes traffic to that service type.
-Therefore, when the ingress controller has an external load balancer IP (IP) in the on-premise server, it is usually the result of a network configuration or manual setup. Unlike a CSP environment, automatic IP allocation is not common in an on-premise environment.
-  
-
-
-
-
-
-
-MetalLB(Onpremise LoadBalancer)
-
-  
-  MetalLB is a solution designed to support the LoadBalancer service type in the on-premises Kubernetes cluster. In general, the load balancer function provided in the cloud environment can be used in the on-premises environment.  If you specify an IP address pool in the MetalLB setting, MetalLB dynamically allocates an IP address from this pool to provide the IP address to Kubernetes&apos; LoadBalancer type service.  The IP address allocated in this way is used as an access point to the Kubernetes cluster from the outside.
+    No automatic external IP assignment for LoadBalancer services
+    Manual configuration of external load balancers
+    IP address management
+    Network routing between external networks and the Kubernetes cluster
   
 
 
-For example, in a Metal LB setting, you can specify an IP address range as follows.
+On-premise deployments typically use one of these approaches:
 
+
+  NodePort Services:
+    
+      Expose the Ingress Controller on a port on each node (30000-32767 range)
+      Configure external load balancer to distribute traffic to these ports across nodes
+    
+  
+  MetalLB or similar solutions:
+    
+      Enables LoadBalancer service type in on-premise environments
+      Provides automatic IP assignment from a configured pool
+    
+  
+
+
+
+
+MetalLB for On-premise Load Balancing
+
+MetalLB is a popular solution for implementing LoadBalancer services in on-premise Kubernetes clusters.
+
+
+  
+    graph LR
+      A[Client] --&amp;gt; B[MetalLB ManagedIP Address]
+      B --&amp;gt; C[MetalLB SpeakerLayer 2 or BGP]
+      C --&amp;gt; D[KubernetesService LoadBalancer]
+      D --&amp;gt; E[Target Pods]
+      
+      style B fill:#bbf,stroke:#333,stroke-width:2px
+      style C fill:#ffa,stroke:#333,stroke-width:2px
+  
+
+
+MetalLB Configuration
+
+MetalLB works in two modes:
+
+
+  Layer 2 Mode: Uses ARP (IPv4) or NDP (IPv6) to claim IP addresses on the local network
+  BGP Mode: Establishes BGP peering sessions with network routers for more advanced configurations
+
+
+# Example MetalLB configuration
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
-  name: example-pool
+  name: production-pool
+  namespace: metallb-system
 spec:
   addresses:
   - 192.168.1.100-192.168.1.150
 
-
-  MetalLB can assign IP addresses between 192.168.1.100 and 192.168.1.150 to LoadBalancer services.
-  When the ingress controller is deployed as a LoadBalancer service, MetalLB automatically allocates the IP address from this IP pool and provides it to the ingress controller. This IP address is used to route traffic from the outside to the ingress controller.
-  In conclusion, MetalLB enables the use of the LoadBalancer service in an on-premises environment in a similar way to the cloud, allowing an IP address to be automatically assigned to the ingress controller.
-
-
-
-
-
-
-Component Communication (Container, Pod, Service)
-Kubernetes networking is designed to allow various types of entities within Kubernetes to communicate.
-
-  Container-to-container networking
-  Pod-to-Pod networking
-  Pod-to-Service networking
-  Internet-to-Service networking
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: l2-advertisement
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - production-pool
 
 
+When a LoadBalancer service is deployed with MetalLB:
 
 
-Container-to-Container
-
-  Kubernetes within a single Pod allows multiple containers to share the same network namespace. This means that containers within the same Pod share the same IP address and port space, so they can communicate with each other using localhost.
-  These intra-Pod communications are critical for containers that must work closely together (e.g., primary application containers and sidecar containers that record or monitor primary applications).
+  MetalLB assigns an IP from the configured pool
+  The speaker component advertises the IP on the local network
+  Traffic sent to that IP is routed to the appropriate service
+  The service distributes traffic to the pods
 
 
 
 
+Component Communication in Kubernetes
 
-Pod-to-Pod
-
-  With Kubernetes, all nodes have a range of CIDR IPs designated for the pods. This way, all the pods will receive a unique IP address that can be seen in other pods in the cluster.
-  Kubernetes ensures that the pads can communicate with each other between nodes without Network Address Translation (NAT). Each pad gets a unique IP address, so this IP address can be used to communicate with other pads in the cluster regardless of which node all the pads are at.
--This is achieved through basic network plug-ins implementing container network interface (CNI) standards, and various implementations (e.g., Calico, Flannel, or Cilium) provide a variety of ways to enable this node-to-node inter-pad communication.
+Kubernetes networking enables several types of communication between different components in a cluster.
 
 
 
+Container-to-Container Communication
 
+Containers within the same Pod share the same network namespace, enabling localhost communication.
 
-Pod-to-Service
 
   
-  In Kubernetes, a service provides a stable interface for pods. The service mediates requests for a specific set of pods and routes traffic to an appropriate pad.  Each service has a unique IP address called ClusterIP, which keeps the service stable.
+    graph TD
+      subgraph &quot;Pod&quot;
+        A[Container APort 8080] --- B[Container BPort 9090]
+        A --&amp;gt; |localhost:9090| B
+        B --&amp;gt; |localhost:8080| A
+      end
+      
+      style A fill:#bbf,stroke:#333,stroke-width:2px
+      style B fill:#ffa,stroke:#333,stroke-width:2px
+  
 
 
-  Pod: Each pod is an instance of an application running within a Kubernetes cluster. A pod has its own IP address and can communicate with other pods.
-  Virtual bridge: It is connected through eth0 and veth pairs in the pod. This bridge serves as an intermediate communication that allows the pod to communicate with the node’s network.
-  Node: A physical or virtual machine in a cluster. Each node hosts several pad and manages network traffic through kube-proxy.
-  kube-proxy: Runs within a node, uses iptables or IPVS to route traffic to the service’s ClusterIP, and delivers traffic to the appropriate pad according to the service’s pad selection algorithm (e.g., round robin).
-  Service: represents a logical set of pods and allows clients to access the pods in a consistent way without having to know the individual IPs of the pods. ClusterIP can be used to access the pods inside the cluster and may be exposed to the outside as needed (e.g., NodePort, LoadBalancer).
-  Cluster Network: A network that enables communication throughout a cluster. Node-to-node communication and pad-to-pad communication are performed through this network.
+Key Characteristics:
 
-
-
-
-
-
-
-
-Internet-to-Service
-
-  Egress: outbound traffic
-  Ingress: inbound traffic
+  Containers in the same pod share the same IP address
+  They can communicate via localhost
+  Shared volumes allow file-based communication
+  Container ports must be unique within a pod
+  This enables sidecar, ambassador, and adapter patterns
 
 
 
 
+Pod-to-Pod Communication
+
+Kubernetes ensures all pods can communicate directly with each other regardless of their node location.
+
+
+  
+    graph TD
+      subgraph &quot;Node 1&quot;
+        A[Pod A10.244.1.2]
+        B[Pod B10.244.1.3]
+      end
+      
+      subgraph &quot;Node 2&quot;
+        C[Pod C10.244.2.2]
+        D[Pod D10.244.2.3]
+      end
+      
+      A &amp;lt;--&amp;gt; B
+      A &amp;lt;--&amp;gt; C
+      A &amp;lt;--&amp;gt; D
+      B &amp;lt;--&amp;gt; C
+      B &amp;lt;--&amp;gt; D
+      C &amp;lt;--&amp;gt; D
+      
+      style A fill:#bbf,stroke:#333,stroke-width:2px
+      style D fill:#ffa,stroke:#333,stroke-width:2px
+  
+
+
+Key Characteristics:
+
+  Every pod has a unique IP address
+  All pods can reach each other without NAT
+  CNI (Container Network Interface) plugins implement this functionality
+  Different CNI implementations (Calico, Flannel, Cilium, etc.) provide various features and performance characteristics
+  Cross-node communication typically uses overlay networks or direct routing
+
+
+
+
+Pod-to-Service Communication
+
+Services provide stable endpoints for pods, handling internal load balancing and service discovery.
+
+
+  
+    graph TD
+      A[Client Pod10.244.1.2] --&amp;gt; |ClusterIP10.96.0.10| B[Kubernetes Service]
+      B --&amp;gt; C[Endpoint 110.244.2.2]
+      B --&amp;gt; D[Endpoint 210.244.3.3]
+      B --&amp;gt; E[Endpoint 310.244.1.4]
+      
+      style A fill:#bbf,stroke:#333,stroke-width:2px
+      style B fill:#ffa,stroke:#333,stroke-width:2px
+  
+
+
+Key Components:
+
+  Pod: Source of traffic, with its own IP address
+  Virtual Interface: Each pod has an eth0 interface connecting to the node’s network
+  Node: Hosts multiple pods and manages network traffic
+  kube-proxy: Runs on each node, managing service routing using iptables, IPVS, or userspace proxying
+  Service: Provides a stable ClusterIP that routes to a dynamic set of pod endpoints
+  Cluster Network: Enables all communication across the cluster
+
+
+Internet-to-Service Communication
+
+External traffic enters the cluster through several different mechanisms.
+
+
+  
+    graph TD
+      A[InternetClient] --&amp;gt; B{Access Type}
+      
+      B --&amp;gt; |LoadBalancer| C[CloudLoad Balancer]
+      C --&amp;gt; G[ServiceLoadBalancer]
+      
+      B --&amp;gt; |NodePort| D[Any NodePort 30000-32767]
+      D --&amp;gt; H[ServiceNodePort]
+      
+      B --&amp;gt; |Ingress| E[IngressController]
+      E --&amp;gt; I[IngressResource]
+      I --&amp;gt; J[ServiceClusterIP]
+      
+      G --&amp;gt; K[Target Pods]
+      H --&amp;gt; K
+      J --&amp;gt; K
+      
+      style A fill:#f9f,stroke:#333,stroke-width:2px
+      style K fill:#bbf,stroke:#333,stroke-width:2px
+  
+
+
+Access Types:
+
+  LoadBalancer Service:
+    
+      Automatically provisions a cloud load balancer in CSP environments
+      Requires MetalLB or similar solution in on-premise deployments
+      Provides stable external IP address
+    
+  
+  NodePort Service:
+    
+      Opens a specific port on all nodes
+      Allows access via any node’s IP address
+      Port range is limited to 30000-32767 by default
+    
+  
+  Ingress:
+    
+      HTTP/HTTPS-based routing layer
+      Enables hostname and path-based routing
+      Can provide SSL termination, authentication, and more sophisticated traffic management
+    
+  
+
+
+
+
+Network Components and Features
 
 Network Components Table
 
 
   
-    🔧 Component
-    📄 Purpose
-    📡 Communication Type
+    
+      Component
+      Purpose
+      Communication Type
+      Implementation Examples
+    
+    
+      🛠️ Container
+      Application runtime environment
+      localhost (127.0.0.1)
+      Docker, containerd, CRI-O
+    
+    
+      📦 Pod
+      Basic scheduling unit, shared network namespace
+      Pod IP (e.g., 10.244.1.2)
+      kubelet, container runtime
+    
+    
+      🖥️ Service
+      Stable endpoint for pod sets
+      ClusterIP (e.g., 10.96.0.10)
+      kube-proxy, CoreDNS
+    
+    
+      🌐 Ingress
+      HTTP/HTTPS routing to services
+      HTTP(S) host/path based
+      NGINX, Traefik, Contour
+    
+    
+      🔌 CNI Plugin
+      Pod networking implementation
+      Pod-to-pod networking
+      Calico, Flannel, Cilium
+    
+    
+      ⚖️ Load Balancer
+      External traffic distribution
+      External IP to Service
+      Cloud LB, MetalLB, HAProxy
+    
   
-  
-    🛠️ Container
-    Application runtime
-    localhost
-  
-  
-    📦 Pod
-    Basic scheduling unit
-    Pod IP
-  
-  
-    🖥️ Service
-    Stable endpoint
-    ClusterIP
-  
-  
-    🌐 Ingress
-    External access
-    LoadBalancer/NodePort
-  
+
 
 Key Network Features
 
 
+  Kubernetes Network Features by Layer
   
     
-      Pod Networking
+      Pod Networking (Layer 3)
       - Flat network space
       - No NAT between pods
       - Unique IP per pod
+      - Implemented by CNI plugins
     
     
-      Service Networking
-      - Stable endpoints
-      - Load balancing
-      - Service discovery
+      Service Networking (Layer 4)
+      - Stable endpoints via ClusterIP
+      - Load balancing across pods
+      - Service discovery via DNS
+      - Implemented by kube-proxy and CoreDNS
     
     
-      External Access
-      - Ingress controllers
-      - Load balancers
-      - NodePorts
+      Application Routing (Layer 7)
+      - HTTP/HTTPS routing via Ingress
+      - Path and hostname based routing
+      - SSL termination
+      - Authentication options
+    
+  
+
+
+
+
+Advanced Networking Concepts
+
+Network Policies
+
+Network Policies provide firewall-like rules for pod-to-pod communication, enabling micro-segmentation.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - protocol: TCP
+      port: 8080
+
+
+Service Mesh
+
+Service meshes like Istio, Linkerd, and Consul provide advanced networking capabilities for microservices:
+
+
+  
+    
+      Feature
+      Description
+    
+    
+      Traffic Management
+      Fine-grained routing, traffic splitting, A/B testing, canary deployments
+    
+    
+      Security
+      Mutual TLS, certificate management, authentication, authorization
+    
+    
+      Observability
+      Distributed tracing, metrics collection, traffic visualization
+    
+    
+      Reliability
+      Circuit breaking, retries, timeouts, fault injection
+    
+  
+
+
+DNS in Kubernetes
+
+CoreDNS provides service discovery within Kubernetes clusters:
+
+
+  Each Service gets a DNS entry: &amp;lt;service-name&amp;gt;.&amp;lt;namespace&amp;gt;.svc.cluster.local
+  Pods can have DNS entries (if enabled): &amp;lt;pod-ip-with-dashes&amp;gt;.&amp;lt;namespace&amp;gt;.pod.cluster.local
+  DNS resolution is handled by CoreDNS pods in the kube-system namespace
+
+
+
+
+Troubleshooting Kubernetes Networking
+
+Common networking issues and diagnostic commands:
+
+# Check if pods can reach each other
+kubectl exec -it &amp;lt;pod-name&amp;gt; -- ping &amp;lt;other-pod-ip&amp;gt;
+
+# Check DNS resolution from a pod
+kubectl exec -it &amp;lt;pod-name&amp;gt; -- nslookup &amp;lt;service-name&amp;gt;
+
+# Examine service configuration
+kubectl describe service &amp;lt;service-name&amp;gt;
+
+# Check endpoints for a service
+kubectl get endpoints &amp;lt;service-name&amp;gt;
+
+# Test connectivity to a service
+kubectl exec -it &amp;lt;pod-name&amp;gt; -- curl &amp;lt;service-name&amp;gt;:&amp;lt;port&amp;gt;
+
+# Check ingress configuration
+kubectl describe ingress &amp;lt;ingress-name&amp;gt;
+
+# View network policies
+kubectl get networkpolicies
+
+
+
+
+Key Points
+
+
+  Kubernetes Networking Summary
+  
+    
+      Architecture Differences
+      - CSP environments leverage cloud load balancers
+      - On-premise requires solutions like MetalLB
+      - Both share common internal networking principles
+    
+    
+      Traffic Flow
+      - External → Ingress/Service → Pods → Containers
+      - Pod-to-Pod communication across nodes
+      - Service abstraction for stable endpoints
+    
+    
+      Implementation Considerations
+      - CNI plugin selection affects performance and features
+      - NetworkPolicy support varies by CNI plugin
+      - Service mesh adds overhead but provides advanced features
     
   
 
@@ -1083,15 +1889,19 @@ Key Network Features
 
 
 
-Reference
+References
+
 
   Kubernetes Networking Fundamentals
-  Azure Kubernetes Network Policies
-  Kubernetes Network Routing
   Kubernetes Networking Guide
+  Kubernetes Network Policies
+  MetalLB Documentation
+  Service Networking in Kubernetes
+  DNS for Services and Pods
+  Container Network Interface (CNI) Specification
 
 ",
-            "wordcount": "1597",
+            "wordcount": "2302",
             "inLanguage": "en",
             "dateCreated": "2025-01-12/",
             "datePublished": "2025-01-12/",
@@ -1122,7 +1932,7 @@ Reference
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","networking","traffic-flow","ingress"]
+            "keywords": ["kubernetes","networking","traffic-flow","ingress","service-mesh","cni"]
         }
         </script>
     </body>
