@@ -220,7 +220,7 @@ January 9, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>2 min to read</span>
+                    <span>15 min to read</span>
                 </p>
                 <h1 class="post-title">Understanding Linux Standard Streams - stdin, stdout, and stderr</h1>
                 <p class="post-subtitle">A comprehensive guide to Linux standard streams and redirection</p>
@@ -241,76 +241,208 @@ January 9, 2025
 <hr />
 
 <h2 id="overview">Overview</h2>
+
 <p>Linux standard streams (stdin, stdout, and stderr) are fundamental channels for managing input and output in terminal or command-line interfaces.</p>
+
+<p>Standard streams are a key concept in Unix/Linux operating systems, providing a unified way for programs to receive input and send output without needing to know the source or destination. This abstraction is one of the powerful features that enables the Unix philosophy of creating simple, modular tools that can be combined to perform complex operations.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Historical Context</strong>
+  <p>The concept of standard streams originated with Unix in the early 1970s. Ken Thompson and Dennis Ritchie designed this I/O model to provide a consistent interface for program interaction. This design decision has influenced virtually all operating systems and programming languages since then.</p>
+  <p>The file descriptor numbers (0, 1, and 2) were assigned to these streams as they were the first files to be opened by a process under Unix, establishing a convention that has persisted for over 50 years.</p>
+</div>
 
 <p><br /></p>
 
+<h2 id="the-three-standard-streams">The Three Standard Streams</h2>
+
 <h3 id="standard-input-stdin">Standard Input (stdin)</h3>
 
+<p>Standard Input is the primary channel through which a program receives data.</p>
+
 <blockquote>
-  <p>File Descriptor: 0<br />
-Default Source: Keyboard<br />
-Purpose: Receives input for commands</p>
+  <p><strong>File Descriptor:</strong> 0<br />
+<strong>Default Source:</strong> Keyboard<br />
+<strong>Purpose:</strong> Receives input for commands</p>
 </blockquote>
 
-<h4 id="examples">Examples</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Basic stdin usage</span>
-<span class="nb">cat</span>    <span class="c"># Waits for keyboard input</span>
+<p>In the terminal, stdin typically connects to the keyboard, allowing users to type input directly to programs. However, this stream can be redirected to come from files or the output of other programs.</p>
+
+<h4 id="basic-examples">Basic Examples</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Basic stdin usage - waits for keyboard input</span>
+<span class="nb">cat</span>    <span class="c"># Press Ctrl+D to signal end of input (EOF)</span>
 
 <span class="c"># Redirect file to stdin</span>
 <span class="nb">cat</span> &lt; file.txt
+
+<span class="c"># Here document (multi-line input)</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+This is line one
+This is line two
+This is the final line
+</span><span class="no">EOF
+</span></code></pre></div></div>
+
+<h4 id="advanced-stdin-usage">Advanced stdin Usage</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Using here-string</span>
+<span class="nb">grep</span> <span class="s2">"pattern"</span> <span class="o">&lt;&lt;&lt;</span> <span class="s2">"Text to search in"</span>
+
+<span class="c"># Multiple input files</span>
+<span class="nb">cat</span> &lt; file1.txt &lt; file2.txt  <span class="c"># Only reads file2.txt (last redirection wins)</span>
+
+<span class="c"># Process substitution</span>
+diff &lt;<span class="o">(</span><span class="nb">ls </span>dir1<span class="o">)</span> &lt;<span class="o">(</span><span class="nb">ls </span>dir2<span class="o">)</span>  <span class="c"># Compare directory listings</span>
 </code></pre></div></div>
+
+<p><br /></p>
 
 <h3 id="standard-output-stdout">Standard Output (stdout)</h3>
 
+<p>Standard Output is the default channel for normal program output.</p>
+
 <blockquote>
-  <p>File Descriptor: 1<br />
-Default Destination: Terminal screen<br />
-Purpose: Displays command output</p>
+  <p><strong>File Descriptor:</strong> 1<br />
+<strong>Default Destination:</strong> Terminal screen<br />
+<strong>Purpose:</strong> Displays command output</p>
 </blockquote>
 
-<h4 id="examples-1">Examples</h4>
+<p>When a program runs successfully and generates output, that output is sent to stdout by default, which typically displays on the terminal.</p>
+
+<h4 id="basic-examples-1">Basic Examples</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Basic stdout usage</span>
 <span class="nb">echo</span> <span class="s2">"Hello, World!"</span>
 
-<span class="c"># Redirect stdout to file</span>
+<span class="c"># Redirect stdout to file (overwrites existing content)</span>
 <span class="nb">echo</span> <span class="s2">"Hello, World!"</span> <span class="o">&gt;</span> output.txt
+
+<span class="c"># Append stdout to file</span>
+<span class="nb">echo</span> <span class="s2">"Another line"</span> <span class="o">&gt;&gt;</span> output.txt
 </code></pre></div></div>
+
+<h4 id="advanced-stdout-usage">Advanced stdout Usage</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Redirect to /dev/null (discard output)</span>
+<span class="nb">ls</span> <span class="nt">-la</span> <span class="o">&gt;</span> /dev/null
+
+<span class="c"># Redirect to multiple files using tee</span>
+<span class="nb">echo</span> <span class="s2">"Same content"</span> | <span class="nb">tee </span>file1.txt file2.txt
+
+<span class="c"># Using process substitution</span>
+<span class="nb">tee</span> <span class="o">&gt;(</span><span class="nb">sort</span> <span class="o">&gt;</span> sorted.txt<span class="o">)</span> <span class="o">&gt;(</span><span class="nb">wc</span> <span class="nt">-l</span> <span class="o">&gt;</span> count.txt<span class="o">)</span> &lt; data.txt
+</code></pre></div></div>
+
+<p><br /></p>
 
 <h3 id="standard-error-stderr">Standard Error (stderr)</h3>
 
+<p>Standard Error is a separate output channel specifically for error messages and diagnostics.</p>
+
 <blockquote>
-  <p>File Descriptor: 2<br />
-Default Destination: Terminal screen<br />
-Purpose: Displays error messages</p>
+  <p><strong>File Descriptor:</strong> 2<br />
+<strong>Default Destination:</strong> Terminal screen<br />
+<strong>Purpose:</strong> Displays error messages and warnings</p>
 </blockquote>
 
-<h4 id="examples-2">Examples</h4>
+<p>This separation of normal output and error messages is a powerful feature that allows for more flexible handling of program behavior, especially in scripts and automated processes.</p>
+
+<h4 id="basic-examples-2">Basic Examples</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generate stderr output</span>
 <span class="nb">ls</span> /nonexistent-directory
 
 <span class="c"># Redirect stderr to file</span>
 <span class="nb">ls</span> /nonexistent-directory 2&gt; error.log
+
+<span class="c"># Append stderr to file</span>
+<span class="nb">ls</span> /nonexistent-directory 2&gt;&gt; error.log
+</code></pre></div></div>
+
+<h4 id="advanced-stderr-usage">Advanced stderr Usage</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Redirect stderr to stdout</span>
+<span class="nb">ls</span> /nonexistent-directory 2&gt;&amp;1
+
+<span class="c"># Redirect only stderr to /dev/null (suppress errors)</span>
+<span class="nb">ls</span> /nonexistent-directory /etc 2&gt;/dev/null
+
+<span class="c"># Redirect stdout and stderr to different files</span>
+<span class="nb">ls</span> /etc /nonexistent-directory <span class="o">&gt;</span> output.log 2&gt; error.log
 </code></pre></div></div>
 
 <p><br /></p>
 
-<hr />
+<h2 id="advanced-stream-operations">Advanced Stream Operations</h2>
 
-<h3 id="advanced-stream-operations">Advanced Stream Operations</h3>
+<h3 id="combining-and-redirecting-streams">Combining and Redirecting Streams</h3>
 
-<h4 id="combining-stdout-and-stderr">Combining stdout and stderr</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Both to same file</span>
+<p>Combining and redirecting streams allows for powerful control over program input and output.</p>
+
+<h4 id="redirecting-both-stdout-and-stderr">Redirecting Both stdout and stderr</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Both to same file (bash 4+)</span>
+<span class="nb">ls</span> /nonexistent-directory /etc &amp;&gt; all_output.log
+
+<span class="c"># Traditional syntax for both to same file</span>
 <span class="nb">ls</span> /nonexistent-directory /etc <span class="o">&gt;</span> all_output.log 2&gt;&amp;1
+
+<span class="c"># Both to same file (append mode)</span>
+<span class="nb">ls</span> /nonexistent-directory /etc <span class="o">&gt;&gt;</span> all_output.log 2&gt;&amp;1
 
 <span class="c"># Separate files</span>
 ./myscript.sh <span class="o">&gt;</span> output.log 2&gt; error.log
-
-<span class="c"># Using tee</span>
-<span class="nb">ls</span> /etc | <span class="nb">tee </span>output.log
 </code></pre></div></div>
 
-<h3 id="shell-redirection-operators">Shell Redirection Operators</h3>
+<h4 id="swapping-streams">Swapping Streams</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Swap stdout and stderr</span>
+./myscript.sh 3&gt;&amp;2 2&gt;&amp;1 1&gt;&amp;3 | <span class="nb">grep</span> <span class="s2">"error"</span>
+
+<span class="c"># Explanation:</span>
+<span class="c"># 3&gt;&amp;2 : Create a new FD 3 and point it to where stderr (2) points</span>
+<span class="c"># 2&gt;&amp;1 : Redirect stderr to stdout</span>
+<span class="c"># 1&gt;&amp;3 : Redirect stdout to FD 3 (which has original stderr)</span>
+<span class="c"># Result: stdout and stderr are swapped</span>
+</code></pre></div></div>
+
+<h3 id="using-tee-for-multiple-destinations">Using tee for Multiple Destinations</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">tee</code> command is like a T-junction in plumbing – it sends output to both a file and stdout.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Send output to both screen and file</span>
+<span class="nb">ls</span> /etc | <span class="nb">tee </span>output.log
+
+<span class="c"># Send output to screen and multiple files</span>
+<span class="nb">ls</span> /etc | <span class="nb">tee </span>file1.log file2.log
+
+<span class="c"># Append to files instead of overwriting</span>
+<span class="nb">ls</span> /etc | <span class="nb">tee</span> <span class="nt">-a</span> logfile.txt
+
+<span class="c"># Combine with stderr redirection</span>
+./script.sh 2&gt;&amp;1 | <span class="nb">tee </span>full_log.txt
+</code></pre></div></div>
+
+<div style="width: 100%; margin: auto; margin-top: 40px;">
+  <!-- ✅ Stream Redirection Flow -->
+  <div class="mermaid">
+    graph TD
+      A[Command or Program] -- stdout --&gt; B[Terminal Screen]
+      A -- stderr --&gt; B
+      A -- stdin --&gt; A
+      
+      C[Keyboard] --&gt; A
+      A -- "stdout &gt; file" --&gt; D[File]
+      A -- "stderr 2&gt; file" --&gt; E[Error File]
+      A -- "stdout | command2" --&gt; F[Another Command]
+      A -- "&lt; file" --&gt; G[Input File]
+  </div>
+</div>
+
+<p><br /></p>
+
+<h2 id="shell-redirection-operators">Shell Redirection Operators</h2>
 
 <table class="table-beauty">
   <tr>
@@ -342,16 +474,330 @@ Purpose: Displays error messages</p>
     <td>Redirects <strong>stderr</strong> to <strong>stdout</strong></td>
   </tr>
   <tr>
-    <td><code>&gt; file 2&gt;&amp;1</code></td>
-    <td>Redirects both <strong>stdout</strong> and <strong>stderr</strong> to a file</td>
+    <td><code>1&gt;&amp;2</code></td>
+    <td>Redirects <strong>stdout</strong> to <strong>stderr</strong></td>
+  </tr>
+  <tr>
+    <td><code>&amp;&gt; file</code></td>
+    <td>Redirects both <strong>stdout</strong> and <strong>stderr</strong> to a file (Bash 4+)</td>
+  </tr>
+  <tr>
+    <td><code>&amp;&gt;&gt; file</code></td>
+    <td>Appends both <strong>stdout</strong> and <strong>stderr</strong> to a file (Bash 4+)</td>
+  </tr>
+  <tr>
+    <td><code>|</code></td>
+    <td>Pipes <strong>stdout</strong> from one command to <strong>stdin</strong> of another</td>
+  </tr>
+  <tr>
+    <td><code>|&amp;</code></td>
+    <td>Pipes both <strong>stdout</strong> and <strong>stderr</strong> to <strong>stdin</strong> of another command (Bash 4+)</td>
+  </tr>
+  <tr>
+    <td><code>&lt;&lt;&lt; "string"</code></td>
+    <td>Here-string: Sends string to <strong>stdin</strong></td>
+  </tr>
+  <tr>
+    <td><code>&lt;&lt; EOF ... EOF</code></td>
+    <td>Here-document: Multi-line string to <strong>stdin</strong></td>
+  </tr>
+  <tr>
+    <td><code>n&gt;&amp;m</code></td>
+    <td>Redirects file descriptor <code>n</code> to file descriptor <code>m</code></td>
+  </tr>
+  <tr>
+    <td><code>n&lt;&amp;m</code></td>
+    <td>Duplicates <code>stdin</code> from file descriptor <code>m</code> to file descriptor <code>n</code></td>
   </tr>
 </table>
 
 <p><br /></p>
 
-<hr />
+<h2 id="the-pipe-mechanism">The Pipe Mechanism</h2>
 
-<h3 id="key-points">Key Points</h3>
+<p>The pipe operator (<code class="language-plaintext highlighter-rouge">|</code>) is one of the most powerful features in Unix/Linux systems, allowing commands to be chained together by connecting the stdout of one command to the stdin of another.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>The Power of Pipes</strong>
+  <p>The pipe mechanism is a cornerstone of the Unix philosophy: "Write programs that do one thing and do it well. Write programs to work together." It enables complex operations through the composition of simple tools.</p>
+  <p>When Doug McIlroy, the inventor of Unix pipes, described his vision, he said: "We should have some ways of connecting programs like a garden hose — screw in another segment when it becomes necessary to massage data in another way."</p>
+</div>
+
+<h3 id="basic-pipe-examples">Basic Pipe Examples</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Count files in a directory</span>
+<span class="nb">ls</span> | <span class="nb">wc</span> <span class="nt">-l</span>
+
+<span class="c"># Find the largest files</span>
+<span class="nb">du</span> <span class="nt">-h</span> /etc | <span class="nb">sort</span> <span class="nt">-hr</span> | <span class="nb">head</span> <span class="nt">-10</span>
+
+<span class="c"># Count occurrences of a pattern</span>
+<span class="nb">cat</span> /var/log/syslog | <span class="nb">grep</span> <span class="s2">"error"</span> | <span class="nb">wc</span> <span class="nt">-l</span>
+</code></pre></div></div>
+
+<h3 id="advanced-pipe-examples">Advanced Pipe Examples</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Multiple transformations</span>
+<span class="nb">cat </span>data.txt | <span class="nb">grep</span> <span class="s2">"important"</span> | <span class="nb">sort</span> | <span class="nb">uniq</span> <span class="nt">-c</span> | <span class="nb">sort</span> <span class="nt">-nr</span>
+
+<span class="c"># Named pipes (FIFOs)</span>
+<span class="nb">mkfifo </span>mypipe
+<span class="nb">ls</span> <span class="nt">-la</span> <span class="o">&gt;</span> mypipe &amp;
+<span class="nb">cat </span>mypipe
+
+<span class="c"># Process substitution with pipes</span>
+diff &lt;<span class="o">(</span><span class="nb">ls</span> <span class="nt">-la</span> /dir1<span class="o">)</span> &lt;<span class="o">(</span><span class="nb">ls</span> <span class="nt">-la</span> /dir2 | <span class="nb">grep</span> <span class="nt">-v</span> <span class="s2">"temp"</span><span class="o">)</span>
+</code></pre></div></div>
+
+<h3 id="redirection-order-matters">Redirection Order Matters</h3>
+
+<p>The order of redirection operations can affect their behavior:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># This works (stderr goes to error.log, stdout goes to the pipe)</span>
+./script.sh 2&gt; error.log | <span class="nb">grep</span> <span class="s2">"important"</span>
+
+<span class="c"># This doesn't work as expected - both stdout and stderr go to error.log</span>
+./script.sh <span class="o">&gt;</span> error.log 2&gt;&amp;1 | <span class="nb">grep</span> <span class="s2">"important"</span>
+
+<span class="c"># The correct way to redirect stderr and pipe stdout</span>
+./script.sh 2&gt; error.log | <span class="nb">grep</span> <span class="s2">"important"</span>
+
+<span class="c"># To pipe both stdout and stderr</span>
+./script.sh 2&gt;&amp;1 | <span class="nb">grep</span> <span class="s2">"important"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="practical-use-cases">Practical Use Cases</h2>
+
+<h3 id="log-management">Log Management</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Save both output and errors to separate log files</span>
+./backup_script.sh <span class="o">&gt;</span> backup.log 2&gt; backup_error.log
+
+<span class="c"># Create timestamped log entries</span>
+<span class="nb">echo</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">date</span><span class="si">)</span><span class="s2"> - Backup started"</span> <span class="o">&gt;&gt;</span> backup_history.log
+
+<span class="c"># Capture command output in variables</span>
+<span class="nv">output</span><span class="o">=</span><span class="si">$(</span><span class="nb">ls</span> <span class="nt">-la</span> 2&gt;/dev/null<span class="si">)</span>
+</code></pre></div></div>
+
+<h3 id="error-handling-in-scripts">Error Handling in Scripts</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Redirect errors to a function</span>
+<span class="nb">exec </span>2&gt; <span class="o">&gt;(</span>error_handler<span class="o">)</span>
+
+error_handler<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">echo</span> <span class="s2">"Error occurred at </span><span class="si">$(</span><span class="nb">date</span><span class="si">)</span><span class="s2">"</span> <span class="o">&gt;&gt;</span> error.log
+    <span class="k">while </span><span class="nb">read </span>line<span class="p">;</span> <span class="k">do
+        </span><span class="nb">echo</span> <span class="s2">"  </span><span class="nv">$line</span><span class="s2">"</span> <span class="o">&gt;&gt;</span> error.log
+    <span class="k">done</span>
+<span class="o">}</span>
+
+<span class="c"># Rest of script follows</span>
+<span class="nb">ls</span> /nonexistent
+<span class="nb">echo</span> <span class="s2">"Script continues..."</span>
+</code></pre></div></div>
+
+<h3 id="data-processing-pipelines">Data Processing Pipelines</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Extract, filter, and format data</span>
+<span class="nb">cat </span>server.log | 
+    <span class="nb">grep</span> <span class="s2">"ERROR"</span> | 
+    <span class="nb">cut</span> <span class="nt">-d</span><span class="s1">' '</span> <span class="nt">-f3-</span> | 
+    <span class="nb">sed</span> <span class="s1">'s/^\[.*\] //'</span> | 
+    <span class="nb">sort</span> | 
+    <span class="nb">uniq</span> <span class="nt">-c</span> | 
+    <span class="nb">sort</span> <span class="nt">-nr</span> <span class="o">&gt;</span> error_summary.txt
+</code></pre></div></div>
+
+<h3 id="custom-file-descriptors">Custom File Descriptors</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Create custom file descriptors</span>
+<span class="nb">exec </span>3&gt; output.log
+<span class="nb">exec </span>4&gt; debug.log
+
+<span class="c"># Use them in the script</span>
+<span class="nb">echo</span> <span class="s2">"Regular output"</span> <span class="o">&gt;</span>&amp;3
+<span class="nb">echo</span> <span class="s2">"Debug information"</span> <span class="o">&gt;</span>&amp;4
+
+<span class="c"># Close them when done</span>
+<span class="nb">exec </span>3&gt;&amp;-
+<span class="nb">exec </span>4&gt;&amp;-
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="file-descriptors-in-detail">File Descriptors in Detail</h2>
+
+<p>File descriptors are numeric handles that represent open files or I/O channels within a process.</p>
+
+<h3 id="standard-file-descriptors">Standard File Descriptors</h3>
+
+<ul>
+  <li><strong>0 (stdin)</strong>: Standard input - read operations</li>
+  <li><strong>1 (stdout)</strong>: Standard output - write operations for normal output</li>
+  <li><strong>2 (stderr)</strong>: Standard error - write operations for error messages</li>
+</ul>
+
+<h3 id="creating-and-using-custom-file-descriptors">Creating and Using Custom File Descriptors</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Open a file descriptor for writing</span>
+<span class="nb">exec </span>3&gt; custom.log
+
+<span class="c"># Write to the descriptor</span>
+<span class="nb">echo</span> <span class="s2">"Custom log entry"</span> <span class="o">&gt;</span>&amp;3
+
+<span class="c"># Redirect stdout to the custom descriptor</span>
+<span class="nb">echo</span> <span class="s2">"This goes to custom.log"</span> 1&gt;&amp;3
+
+<span class="c"># Close the descriptor</span>
+<span class="nb">exec </span>3&gt;&amp;-
+
+<span class="c"># Open descriptors for both reading and writing</span>
+<span class="nb">exec </span>4&lt;<span class="o">&gt;</span> data.txt
+
+<span class="c"># Read from descriptor</span>
+<span class="nb">read </span>line &lt;&amp;4
+<span class="nb">echo</span> <span class="s2">"Read: </span><span class="nv">$line</span><span class="s2">"</span>
+
+<span class="c"># Write to descriptor</span>
+<span class="nb">echo</span> <span class="s2">"New data"</span> <span class="o">&gt;</span>&amp;4
+
+<span class="c"># Close descriptor</span>
+<span class="nb">exec </span>4&gt;&amp;-
+</code></pre></div></div>
+
+<div class="info-box info-box-default-not-check">
+  <strong>File Descriptor Limits</strong>
+  <p>Each process has a limit on the number of file descriptors it can open. The traditional limit was 1024, but modern systems often allow much higher limits.</p>
+  <p>You can check the current limits with:</p>
+  <pre>ulimit -n</pre>
+  <p>For system-wide limits, check:</p>
+  <pre>cat /proc/sys/fs/file-max</pre>
+</div>
+
+<p><br /></p>
+
+<h2 id="common-patterns-and-best-practices">Common Patterns and Best Practices</h2>
+
+<h3 id="silent-operations">Silent Operations</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Discard all output</span>
+<span class="nb">command</span> <span class="o">&gt;</span> /dev/null 2&gt;&amp;1
+
+<span class="c"># Discard only errors</span>
+<span class="nb">command </span>2&gt; /dev/null
+</code></pre></div></div>
+
+<h3 id="logging-with-timestamps">Logging with Timestamps</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Save output with timestamps</span>
+<span class="nb">command </span>2&gt;&amp;1 | <span class="k">while </span><span class="nb">read </span>line<span class="p">;</span> <span class="k">do 
+    </span><span class="nb">echo</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">date</span> <span class="s1">'+%Y-%m-%d %H:%M:%S'</span><span class="si">)</span><span class="s2"> </span><span class="nv">$line</span><span class="s2">"</span> <span class="o">&gt;&gt;</span> logfile.txt
+<span class="k">done</span>
+</code></pre></div></div>
+
+<h3 id="debugging-scripts">Debugging Scripts</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Enable debug mode with redirected output</span>
+bash <span class="nt">-x</span> script.sh 2&gt; debug.log
+
+<span class="c"># Inside a script, enable debugging for a section</span>
+<span class="nb">set</span> <span class="nt">-x</span>  <span class="c"># Start debugging</span>
+critical_operations
+<span class="nb">set</span> +x  <span class="c"># Stop debugging</span>
+</code></pre></div></div>
+
+<h3 id="script-progress-updates">Script Progress Updates</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Display progress on stderr while stdout goes to a file</span>
+<span class="nb">echo</span> <span class="s2">"Starting backup..."</span> <span class="o">&gt;</span>&amp;2
+backup_command <span class="o">&gt;</span> backup.log
+<span class="nb">echo</span> <span class="s2">"Backup completed!"</span> <span class="o">&gt;</span>&amp;2
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="stream-related-commands">Stream-Related Commands</h2>
+
+<h3 id="key-commands-for-stream-manipulation">Key Commands for Stream Manipulation</h3>
+
+<table class="table-beauty">
+  <tr>
+    <th style="width: 20%;">Command</th>
+    <th style="width: 30%;">Description</th>
+    <th style="width: 50%;">Example</th>
+  </tr>
+  <tr>
+    <td><code>tee</code></td>
+    <td>Read from stdin and write to stdout and files</td>
+    <td><code>ls | tee output.txt</code></td>
+  </tr>
+  <tr>
+    <td><code>xargs</code></td>
+    <td>Build and execute commands from stdin</td>
+    <td><code>find . -name "*.txt" | xargs grep "pattern"</code></td>
+  </tr>
+  <tr>
+    <td><code>mkfifo</code></td>
+    <td>Create a named pipe (FIFO special file)</td>
+    <td><code>mkfifo mypipe; cat mypipe</code></td>
+  </tr>
+  <tr>
+    <td><code>exec</code></td>
+    <td>Replace current process or manipulate file descriptors</td>
+    <td><code>exec &gt; logfile.txt</code></td>
+  </tr>
+  <tr>
+    <td><code>stdbuf</code></td>
+    <td>Run command with modified buffering operations</td>
+    <td><code>stdbuf -oL command | grep "pattern"</code></td>
+  </tr>
+  <tr>
+    <td><code>pv</code></td>
+    <td>Monitor the progress of data through a pipe</td>
+    <td><code>cat largefile | pv | grep "pattern" &gt; output</code></td>
+  </tr>
+  <tr>
+    <td><code>script</code></td>
+    <td>Record terminal session</td>
+    <td><code>script -q -c "ls -la" output.txt</code></td>
+  </tr>
+</table>
+
+<p><br /></p>
+
+<h2 id="stream-buffering">Stream Buffering</h2>
+
+<p>Understanding stream buffering is crucial when working with complex pipelines or real-time data processing.</p>
+
+<h3 id="buffering-types">Buffering Types</h3>
+
+<ol>
+  <li><strong>Unbuffered</strong>: Data is processed immediately (character by character)</li>
+  <li><strong>Line buffered</strong>: Data is processed when a newline is encountered</li>
+  <li><strong>Fully buffered</strong>: Data is processed when the buffer is full</li>
+</ol>
+
+<h3 id="controlling-buffering">Controlling Buffering</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Unbuffered output from grep</span>
+<span class="nb">grep</span> <span class="nt">--line-buffered</span> <span class="s2">"pattern"</span> file.log | next_command
+
+<span class="c"># Using stdbuf to control buffering</span>
+<span class="nb">stdbuf</span> <span class="nt">-oL</span> <span class="nb">command</span> | <span class="nb">grep</span> <span class="s2">"pattern"</span>  <span class="c"># Line buffered output</span>
+<span class="nb">stdbuf</span> <span class="nt">-o0</span> <span class="nb">command</span> | <span class="nb">grep</span> <span class="s2">"pattern"</span>  <span class="c"># Unbuffered output</span>
+
+<span class="c"># Using python with different buffering</span>
+python <span class="nt">-u</span> script.py | <span class="nb">grep</span> <span class="s2">"pattern"</span>  <span class="c"># Unbuffered</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="key-points">Key Points</h2>
 
 <div class="info-box info-box-default">
   <strong>📊 Stream Types</strong>
@@ -372,19 +818,57 @@ Purpose: Displays error messages</p>
       <strong>Benefits</strong><br />
       - Flexible input/output control<br />
       - Error handling separation<br />
-      - Script automation support
+      - Script automation support<br />
+      - Enables command composition
     </li>
   </ul>
 </div>
 
 <p><br /></p>
 
+<h2 id="troubleshooting-common-issues">Troubleshooting Common Issues</h2>
+
+<h3 id="order-of-redirections">Order of Redirections</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Incorrect (stderr still goes to terminal)</span>
+<span class="nb">command</span> <span class="o">&gt;</span> output.log 2&gt; error.log | another_command
+
+<span class="c"># Correct (both stdout and stderr are properly handled)</span>
+<span class="o">{</span> <span class="nb">command</span> <span class="o">&gt;</span> output.log 2&gt; error.log<span class="p">;</span> <span class="o">}</span> | another_command
+</code></pre></div></div>
+
+<h3 id="redirection-in-functions">Redirection in Functions</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Function with local redirection</span>
+<span class="k">function </span>process<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">local </span>output
+    <span class="c"># Use subshell to contain redirection</span>
+    <span class="nv">output</span><span class="o">=</span><span class="si">$(</span><span class="nb">command </span>2&gt;/dev/null<span class="si">)</span>
+    <span class="nb">echo</span> <span class="s2">"</span><span class="nv">$output</span><span class="s2">"</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="common-errors">Common Errors</h3>
+
+<ol>
+  <li><strong>Permission denied</strong>: Attempting to write to a file without proper permissions</li>
+  <li><strong>No space left on device</strong>: Target filesystem is full</li>
+  <li><strong>Too many open files</strong>: Reached file descriptor limit (use <code class="language-plaintext highlighter-rouge">ulimit -n</code> to check)</li>
+  <li><strong>Bad file descriptor</strong>: Attempting to use a closed or invalid file descriptor</li>
+</ol>
+
+<p><br /></p>
+
 <hr />
 
-<h3 id="reference">Reference</h3>
+<h2 id="reference">Reference</h2>
 <ul>
   <li><a href="https://ko.wikipedia.org/wiki/표준_스트림">Standard Streams Wiki</a></li>
   <li><a href="https://tldp.org/LDP/abs/html/io-redirection.html">Linux Documentation Project</a></li>
+  <li><a href="https://tldp.org/LDP/abs/html/index.html">Advanced Bash-Scripting Guide</a></li>
+  <li><a href="https://www.gnu.org/software/bash/manual/bash.html">GNU Bash Manual</a></li>
+  <li><a href="https://www.linuxjournal.com/content/understanding-shell-streams-and-redirects">Linux Journal - Understanding Streams</a></li>
+  <li><a href="https://developer.ibm.com/tutorials/l-lpic1-103-4/">IBM Developer - Working with Linux Streams</a></li>
 </ul>
 
 
@@ -435,7 +919,7 @@ Purpose: Displays error messages</p>
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="2">
+            <div class="time-bar" data-minutes="15">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -741,11 +1225,24 @@ Purpose: Displays error messages</p>
 
 
 Overview
+
 Linux standard streams (stdin, stdout, and stderr) are fundamental channels for managing input and output in terminal or command-line interfaces.
 
+Standard streams are a key concept in Unix/Linux operating systems, providing a unified way for programs to receive input and send output without needing to know the source or destination. This abstraction is one of the powerful features that enables the Unix philosophy of creating simple, modular tools that can be combined to perform complex operations.
 
+
+  Historical Context
+  The concept of standard streams originated with Unix in the early 1970s. Ken Thompson and Dennis Ritchie designed this I/O model to provide a consistent interface for program interaction. This design decision has influenced virtually all operating systems and programming languages since then.
+  The file descriptor numbers (0, 1, and 2) were assigned to these streams as they were the first files to be opened by a process under Unix, establishing a convention that has persisted for over 50 years.
+
+
+
+
+The Three Standard Streams
 
 Standard Input (stdin)
+
+Standard Input is the primary channel through which a program receives data.
 
 
   File Descriptor: 0
@@ -753,15 +1250,41 @@ Default Source: Keyboard
 Purpose: Receives input for commands
 
 
-Examples
-# Basic stdin usage
-cat    # Waits for keyboard input
+In the terminal, stdin typically connects to the keyboard, allowing users to type input directly to programs. However, this stream can be redirected to come from files or the output of other programs.
+
+Basic Examples
+
+# Basic stdin usage - waits for keyboard input
+cat    # Press Ctrl+D to signal end of input (EOF)
 
 # Redirect file to stdin
 cat &amp;lt; file.txt
 
+# Here document (multi-line input)
+cat &amp;lt;&amp;lt; EOF
+This is line one
+This is line two
+This is the final line
+EOF
+
+
+Advanced stdin Usage
+
+# Using here-string
+grep &quot;pattern&quot; &amp;lt;&amp;lt;&amp;lt; &quot;Text to search in&quot;
+
+# Multiple input files
+cat &amp;lt; file1.txt &amp;lt; file2.txt  # Only reads file2.txt (last redirection wins)
+
+# Process substitution
+diff &amp;lt;(ls dir1) &amp;lt;(ls dir2)  # Compare directory listings
+
+
+
 
 Standard Output (stdout)
+
+Standard Output is the default channel for normal program output.
 
 
   File Descriptor: 1
@@ -769,45 +1292,138 @@ Default Destination: Terminal screen
 Purpose: Displays command output
 
 
-Examples
+When a program runs successfully and generates output, that output is sent to stdout by default, which typically displays on the terminal.
+
+Basic Examples
+
 # Basic stdout usage
 echo &quot;Hello, World!&quot;
 
-# Redirect stdout to file
+# Redirect stdout to file (overwrites existing content)
 echo &quot;Hello, World!&quot; &amp;gt; output.txt
+
+# Append stdout to file
+echo &quot;Another line&quot; &amp;gt;&amp;gt; output.txt
+
+
+Advanced stdout Usage
+
+# Redirect to /dev/null (discard output)
+ls -la &amp;gt; /dev/null
+
+# Redirect to multiple files using tee
+echo &quot;Same content&quot; | tee file1.txt file2.txt
+
+# Using process substitution
+tee &amp;gt;(sort &amp;gt; sorted.txt) &amp;gt;(wc -l &amp;gt; count.txt) &amp;lt; data.txt
+
+
 
 
 Standard Error (stderr)
 
+Standard Error is a separate output channel specifically for error messages and diagnostics.
+
 
   File Descriptor: 2
 Default Destination: Terminal screen
-Purpose: Displays error messages
+Purpose: Displays error messages and warnings
 
 
-Examples
+This separation of normal output and error messages is a powerful feature that allows for more flexible handling of program behavior, especially in scripts and automated processes.
+
+Basic Examples
+
 # Generate stderr output
 ls /nonexistent-directory
 
 # Redirect stderr to file
 ls /nonexistent-directory 2&amp;gt; error.log
 
+# Append stderr to file
+ls /nonexistent-directory 2&amp;gt;&amp;gt; error.log
 
+
+Advanced stderr Usage
+
+# Redirect stderr to stdout
+ls /nonexistent-directory 2&amp;gt;&amp;amp;1
+
+# Redirect only stderr to /dev/null (suppress errors)
+ls /nonexistent-directory /etc 2&amp;gt;/dev/null
+
+# Redirect stdout and stderr to different files
+ls /etc /nonexistent-directory &amp;gt; output.log 2&amp;gt; error.log
 
 
 
 
 Advanced Stream Operations
 
-Combining stdout and stderr
-# Both to same file
+Combining and Redirecting Streams
+
+Combining and redirecting streams allows for powerful control over program input and output.
+
+Redirecting Both stdout and stderr
+
+# Both to same file (bash 4+)
+ls /nonexistent-directory /etc &amp;amp;&amp;gt; all_output.log
+
+# Traditional syntax for both to same file
 ls /nonexistent-directory /etc &amp;gt; all_output.log 2&amp;gt;&amp;amp;1
+
+# Both to same file (append mode)
+ls /nonexistent-directory /etc &amp;gt;&amp;gt; all_output.log 2&amp;gt;&amp;amp;1
 
 # Separate files
 ./myscript.sh &amp;gt; output.log 2&amp;gt; error.log
 
-# Using tee
+
+Swapping Streams
+
+# Swap stdout and stderr
+./myscript.sh 3&amp;gt;&amp;amp;2 2&amp;gt;&amp;amp;1 1&amp;gt;&amp;amp;3 | grep &quot;error&quot;
+
+# Explanation:
+# 3&amp;gt;&amp;amp;2 : Create a new FD 3 and point it to where stderr (2) points
+# 2&amp;gt;&amp;amp;1 : Redirect stderr to stdout
+# 1&amp;gt;&amp;amp;3 : Redirect stdout to FD 3 (which has original stderr)
+# Result: stdout and stderr are swapped
+
+
+Using tee for Multiple Destinations
+
+The tee command is like a T-junction in plumbing – it sends output to both a file and stdout.
+
+# Send output to both screen and file
 ls /etc | tee output.log
+
+# Send output to screen and multiple files
+ls /etc | tee file1.log file2.log
+
+# Append to files instead of overwriting
+ls /etc | tee -a logfile.txt
+
+# Combine with stderr redirection
+./script.sh 2&amp;gt;&amp;amp;1 | tee full_log.txt
+
+
+
+  
+  
+    graph TD
+      A[Command or Program] -- stdout --&amp;gt; B[Terminal Screen]
+      A -- stderr --&amp;gt; B
+      A -- stdin --&amp;gt; A
+      
+      C[Keyboard] --&amp;gt; A
+      A -- &quot;stdout &amp;gt; file&quot; --&amp;gt; D[File]
+      A -- &quot;stderr 2&amp;gt; file&quot; --&amp;gt; E[Error File]
+      A -- &quot;stdout | command2&quot; --&amp;gt; F[Another Command]
+      A -- &quot;&amp;lt; file&quot; --&amp;gt; G[Input File]
+  
+
+
 
 
 Shell Redirection Operators
@@ -842,11 +1458,325 @@ Shell Redirection Operators
     Redirects stderr to stdout
   
   
-    &amp;gt; file 2&amp;gt;&amp;amp;1
-    Redirects both stdout and stderr to a file
+    1&amp;gt;&amp;amp;2
+    Redirects stdout to stderr
+  
+  
+    &amp;amp;&amp;gt; file
+    Redirects both stdout and stderr to a file (Bash 4+)
+  
+  
+    &amp;amp;&amp;gt;&amp;gt; file
+    Appends both stdout and stderr to a file (Bash 4+)
+  
+  
+    |
+    Pipes stdout from one command to stdin of another
+  
+  
+    |&amp;amp;
+    Pipes both stdout and stderr to stdin of another command (Bash 4+)
+  
+  
+    &amp;lt;&amp;lt;&amp;lt; &quot;string&quot;
+    Here-string: Sends string to stdin
+  
+  
+    &amp;lt;&amp;lt; EOF ... EOF
+    Here-document: Multi-line string to stdin
+  
+  
+    n&amp;gt;&amp;amp;m
+    Redirects file descriptor n to file descriptor m
+  
+  
+    n&amp;lt;&amp;amp;m
+    Duplicates stdin from file descriptor m to file descriptor n
   
 
 
+
+
+The Pipe Mechanism
+
+The pipe operator (|) is one of the most powerful features in Unix/Linux systems, allowing commands to be chained together by connecting the stdout of one command to the stdin of another.
+
+
+  The Power of Pipes
+  The pipe mechanism is a cornerstone of the Unix philosophy: &quot;Write programs that do one thing and do it well. Write programs to work together.&quot; It enables complex operations through the composition of simple tools.
+  When Doug McIlroy, the inventor of Unix pipes, described his vision, he said: &quot;We should have some ways of connecting programs like a garden hose — screw in another segment when it becomes necessary to massage data in another way.&quot;
+
+
+Basic Pipe Examples
+
+# Count files in a directory
+ls | wc -l
+
+# Find the largest files
+du -h /etc | sort -hr | head -10
+
+# Count occurrences of a pattern
+cat /var/log/syslog | grep &quot;error&quot; | wc -l
+
+
+Advanced Pipe Examples
+
+# Multiple transformations
+cat data.txt | grep &quot;important&quot; | sort | uniq -c | sort -nr
+
+# Named pipes (FIFOs)
+mkfifo mypipe
+ls -la &amp;gt; mypipe &amp;amp;
+cat mypipe
+
+# Process substitution with pipes
+diff &amp;lt;(ls -la /dir1) &amp;lt;(ls -la /dir2 | grep -v &quot;temp&quot;)
+
+
+Redirection Order Matters
+
+The order of redirection operations can affect their behavior:
+
+# This works (stderr goes to error.log, stdout goes to the pipe)
+./script.sh 2&amp;gt; error.log | grep &quot;important&quot;
+
+# This doesn&apos;t work as expected - both stdout and stderr go to error.log
+./script.sh &amp;gt; error.log 2&amp;gt;&amp;amp;1 | grep &quot;important&quot;
+
+# The correct way to redirect stderr and pipe stdout
+./script.sh 2&amp;gt; error.log | grep &quot;important&quot;
+
+# To pipe both stdout and stderr
+./script.sh 2&amp;gt;&amp;amp;1 | grep &quot;important&quot;
+
+
+
+
+Practical Use Cases
+
+Log Management
+
+# Save both output and errors to separate log files
+./backup_script.sh &amp;gt; backup.log 2&amp;gt; backup_error.log
+
+# Create timestamped log entries
+echo &quot;$(date) - Backup started&quot; &amp;gt;&amp;gt; backup_history.log
+
+# Capture command output in variables
+output=$(ls -la 2&amp;gt;/dev/null)
+
+
+Error Handling in Scripts
+
+#!/bin/bash
+# Redirect errors to a function
+exec 2&amp;gt; &amp;gt;(error_handler)
+
+error_handler() {
+    echo &quot;Error occurred at $(date)&quot; &amp;gt;&amp;gt; error.log
+    while read line; do
+        echo &quot;  $line&quot; &amp;gt;&amp;gt; error.log
+    done
+}
+
+# Rest of script follows
+ls /nonexistent
+echo &quot;Script continues...&quot;
+
+
+Data Processing Pipelines
+
+# Extract, filter, and format data
+cat server.log | 
+    grep &quot;ERROR&quot; | 
+    cut -d&apos; &apos; -f3- | 
+    sed &apos;s/^\[.*\] //&apos; | 
+    sort | 
+    uniq -c | 
+    sort -nr &amp;gt; error_summary.txt
+
+
+Custom File Descriptors
+
+#!/bin/bash
+# Create custom file descriptors
+exec 3&amp;gt; output.log
+exec 4&amp;gt; debug.log
+
+# Use them in the script
+echo &quot;Regular output&quot; &amp;gt;&amp;amp;3
+echo &quot;Debug information&quot; &amp;gt;&amp;amp;4
+
+# Close them when done
+exec 3&amp;gt;&amp;amp;-
+exec 4&amp;gt;&amp;amp;-
+
+
+
+
+File Descriptors in Detail
+
+File descriptors are numeric handles that represent open files or I/O channels within a process.
+
+Standard File Descriptors
+
+
+  0 (stdin): Standard input - read operations
+  1 (stdout): Standard output - write operations for normal output
+  2 (stderr): Standard error - write operations for error messages
+
+
+Creating and Using Custom File Descriptors
+
+# Open a file descriptor for writing
+exec 3&amp;gt; custom.log
+
+# Write to the descriptor
+echo &quot;Custom log entry&quot; &amp;gt;&amp;amp;3
+
+# Redirect stdout to the custom descriptor
+echo &quot;This goes to custom.log&quot; 1&amp;gt;&amp;amp;3
+
+# Close the descriptor
+exec 3&amp;gt;&amp;amp;-
+
+# Open descriptors for both reading and writing
+exec 4&amp;lt;&amp;gt; data.txt
+
+# Read from descriptor
+read line &amp;lt;&amp;amp;4
+echo &quot;Read: $line&quot;
+
+# Write to descriptor
+echo &quot;New data&quot; &amp;gt;&amp;amp;4
+
+# Close descriptor
+exec 4&amp;gt;&amp;amp;-
+
+
+
+  File Descriptor Limits
+  Each process has a limit on the number of file descriptors it can open. The traditional limit was 1024, but modern systems often allow much higher limits.
+  You can check the current limits with:
+  ulimit -n
+  For system-wide limits, check:
+  cat /proc/sys/fs/file-max
+
+
+
+
+Common Patterns and Best Practices
+
+Silent Operations
+
+# Discard all output
+command &amp;gt; /dev/null 2&amp;gt;&amp;amp;1
+
+# Discard only errors
+command 2&amp;gt; /dev/null
+
+
+Logging with Timestamps
+
+# Save output with timestamps
+command 2&amp;gt;&amp;amp;1 | while read line; do 
+    echo &quot;$(date &apos;+%Y-%m-%d %H:%M:%S&apos;) $line&quot; &amp;gt;&amp;gt; logfile.txt
+done
+
+
+Debugging Scripts
+
+# Enable debug mode with redirected output
+bash -x script.sh 2&amp;gt; debug.log
+
+# Inside a script, enable debugging for a section
+set -x  # Start debugging
+critical_operations
+set +x  # Stop debugging
+
+
+Script Progress Updates
+
+# Display progress on stderr while stdout goes to a file
+echo &quot;Starting backup...&quot; &amp;gt;&amp;amp;2
+backup_command &amp;gt; backup.log
+echo &quot;Backup completed!&quot; &amp;gt;&amp;amp;2
+
+
+
+
+Stream-Related Commands
+
+Key Commands for Stream Manipulation
+
+
+  
+    Command
+    Description
+    Example
+  
+  
+    tee
+    Read from stdin and write to stdout and files
+    ls | tee output.txt
+  
+  
+    xargs
+    Build and execute commands from stdin
+    find . -name &quot;*.txt&quot; | xargs grep &quot;pattern&quot;
+  
+  
+    mkfifo
+    Create a named pipe (FIFO special file)
+    mkfifo mypipe; cat mypipe
+  
+  
+    exec
+    Replace current process or manipulate file descriptors
+    exec &amp;gt; logfile.txt
+  
+  
+    stdbuf
+    Run command with modified buffering operations
+    stdbuf -oL command | grep &quot;pattern&quot;
+  
+  
+    pv
+    Monitor the progress of data through a pipe
+    cat largefile | pv | grep &quot;pattern&quot; &amp;gt; output
+  
+  
+    script
+    Record terminal session
+    script -q -c &quot;ls -la&quot; output.txt
+  
+
+
+
+
+Stream Buffering
+
+Understanding stream buffering is crucial when working with complex pipelines or real-time data processing.
+
+Buffering Types
+
+
+  Unbuffered: Data is processed immediately (character by character)
+  Line buffered: Data is processed when a newline is encountered
+  Fully buffered: Data is processed when the buffer is full
+
+
+Controlling Buffering
+
+# Unbuffered output from grep
+grep --line-buffered &quot;pattern&quot; file.log | next_command
+
+# Using stdbuf to control buffering
+stdbuf -oL command | grep &quot;pattern&quot;  # Line buffered output
+stdbuf -o0 command | grep &quot;pattern&quot;  # Unbuffered output
+
+# Using python with different buffering
+python -u script.py | grep &quot;pattern&quot;  # Unbuffered
 
 
 
@@ -873,8 +1803,42 @@ Key Points
       - Flexible input/output control
       - Error handling separation
       - Script automation support
+      - Enables command composition
     
   
+
+
+
+
+Troubleshooting Common Issues
+
+Order of Redirections
+
+# Incorrect (stderr still goes to terminal)
+command &amp;gt; output.log 2&amp;gt; error.log | another_command
+
+# Correct (both stdout and stderr are properly handled)
+{ command &amp;gt; output.log 2&amp;gt; error.log; } | another_command
+
+
+Redirection in Functions
+
+# Function with local redirection
+function process() {
+    local output
+    # Use subshell to contain redirection
+    output=$(command 2&amp;gt;/dev/null)
+    echo &quot;$output&quot;
+}
+
+
+Common Errors
+
+
+  Permission denied: Attempting to write to a file without proper permissions
+  No space left on device: Target filesystem is full
+  Too many open files: Reached file descriptor limit (use ulimit -n to check)
+  Bad file descriptor: Attempting to use a closed or invalid file descriptor
 
 
 
@@ -885,9 +1849,13 @@ Reference
 
   Standard Streams Wiki
   Linux Documentation Project
+  Advanced Bash-Scripting Guide
+  GNU Bash Manual
+  Linux Journal - Understanding Streams
+  IBM Developer - Working with Linux Streams
 
 ",
-            "wordcount": "403",
+            "wordcount": "2743",
             "inLanguage": "en",
             "dateCreated": "2025-01-09/",
             "datePublished": "2025-01-09/",
