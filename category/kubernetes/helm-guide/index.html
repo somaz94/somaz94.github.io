@@ -489,20 +489,23 @@ mongodb:
 <pre><code>apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: 
+  name: {{ include "mychart.fullname" . }}
   labels:
+    {{- include "mychart.labels" . | nindent 4 }}
 spec:
-  replicas: 
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
+      {{- include "mychart.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
+        {{- include "mychart.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-        - name: 
-          image: ":"
-          imagePullPolicy: 
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 80
@@ -526,18 +529,28 @@ spec:
 
 <p>Example template with control flow:</p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">-configmap</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-configmap</span>
 <span class="na">data</span><span class="pi">:</span>
+  <span class="pi">{{</span><span class="nv">- if eq .Values.environment "production"</span> <span class="pi">}}</span>
   <span class="na">log-level</span><span class="pi">:</span> <span class="s2">"</span><span class="s">error"</span>
+  <span class="pi">{{</span><span class="nv">- else</span> <span class="pi">}}</span>
   <span class="na">log-level</span><span class="pi">:</span> <span class="s2">"</span><span class="s">debug"</span>
-  <span class="na">database-url</span><span class="pi">:</span> 
-  <span class="na">timeout</span><span class="pi">:</span> 
+  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+  
+  <span class="pi">{{</span><span class="nv">- with .Values.config</span> <span class="pi">}}</span>
+  <span class="na">database-url</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.dbUrl | quote</span> <span class="pi">}}</span>
+  <span class="na">timeout</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.timeout | default 30</span> <span class="pi">}}</span>
+  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
   
   <span class="na">settings</span><span class="pi">:</span> <span class="pi">|</span>
-    <span class="s">: </span>
+    <span class="s">{{- range $key, $val := .Values.settings }}</span>
+    <span class="s">{{ $key }}: {{ $val | quote }}</span>
+    <span class="s">{{- end }}</span>
+
 </code></pre></div></div>
 
 <p><br /></p>
@@ -743,10 +756,11 @@ helm repo add myrepo https://example.com/charts
 
 <p>Example hook:</p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Job</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">-database-init</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-database-init</span>
   <span class="na">annotations</span><span class="pi">:</span>
     <span class="s2">"</span><span class="s">helm.sh/hook"</span><span class="err">:</span> <span class="s">post-install</span>
     <span class="s">"helm.sh/hook-weight"</span><span class="err">:</span> <span class="s2">"</span><span class="s">5"</span>
@@ -756,9 +770,10 @@ helm repo add myrepo https://example.com/charts
     <span class="na">spec</span><span class="pi">:</span>
       <span class="na">containers</span><span class="pi">:</span>
       <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">db-init-job</span>
-        <span class="na">image</span><span class="pi">:</span> <span class="s2">"</span><span class="s">:"</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s2">"</span><span class="s">{{</span><span class="nv"> </span><span class="s">.Values.initImage.repository</span><span class="nv"> </span><span class="s">}}:{{</span><span class="nv"> </span><span class="s">.Values.initImage.tag</span><span class="nv"> </span><span class="s">}}"</span>
         <span class="na">command</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">./init-db.sh"</span><span class="pi">]</span>
       <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">Never</span>
+
 </code></pre></div></div>
 
 <p><br /></p>
@@ -1557,20 +1572,23 @@ mongodb:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: 
+  name: {{ include &quot;mychart.fullname&quot; . }}
   labels:
+    {{- include &quot;mychart.labels&quot; . | nindent 4 }}
 spec:
-  replicas: 
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
+      {{- include &quot;mychart.selectorLabels&quot; . | nindent 6 }}
   template:
     metadata:
       labels:
+        {{- include &quot;mychart.selectorLabels&quot; . | nindent 8 }}
     spec:
       containers:
-        - name: 
-          image: &quot;:&quot;
-          imagePullPolicy: 
+        - name: {{ .Chart.Name }}
+          image: &quot;{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}&quot;
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 80
@@ -1594,18 +1612,28 @@ Helm uses Go templates to enable dynamic manifest generation. Some key templatin
 
 Example template with control flow:
 
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: -configmap
+  name: {{ .Release.Name }}-configmap
 data:
+  {{- if eq .Values.environment &quot;production&quot; }}
   log-level: &quot;error&quot;
+  {{- else }}
   log-level: &quot;debug&quot;
-  database-url: 
-  timeout: 
+  {{- end }}
+  
+  {{- with .Values.config }}
+  database-url: {{ .dbUrl | quote }}
+  timeout: {{ .timeout | default 30 }}
+  {{- end }}
   
   settings: |
-    : 
+    {{- range $key, $val := .Values.settings }}
+    {{ $key }}: {{ $val | quote }}
+    {{- end }}
+
 
 
 
@@ -1811,10 +1839,11 @@ Helm provides hooks that allow chart developers to intervene at certain points i
 
 Example hook:
 
+
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: -database-init
+  name: {{ .Release.Name }}-database-init
   annotations:
     &quot;helm.sh/hook&quot;: post-install
     &quot;helm.sh/hook-weight&quot;: &quot;5&quot;
@@ -1824,9 +1853,10 @@ spec:
     spec:
       containers:
       - name: db-init-job
-        image: &quot;:&quot;
+        image: &quot;{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}&quot;
         command: [&quot;./init-db.sh&quot;]
       restartPolicy: Never
+
 
 
 
@@ -2023,7 +2053,7 @@ Related Tools
   Helm Dashboard - Web UI for Helm
 
 ",
-            "wordcount": "2341",
+            "wordcount": "2479",
             "inLanguage": "en",
             "dateCreated": "2025-01-11/",
             "datePublished": "2025-01-11/",

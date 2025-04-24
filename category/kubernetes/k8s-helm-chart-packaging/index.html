@@ -426,10 +426,11 @@ helm create my-operator
 
 <h4 id="rbac-configuration-rbacyaml">RBAC Configuration (rbac.yaml)</h4>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">-role</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "helios-lb.fullname" .</span> <span class="pi">}}</span><span class="s">-role</span>
 <span class="na">rules</span><span class="pi">:</span>
 <span class="pi">-</span> <span class="na">apiGroups</span><span class="pi">:</span>
   <span class="pi">-</span> <span class="s2">"</span><span class="s">"</span>
@@ -469,15 +470,16 @@ helm create my-operator
 <span class="na">apiVersion</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRoleBinding</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">-rolebinding</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "helios-lb.fullname" .</span> <span class="pi">}}</span><span class="s">-rolebinding</span>
 <span class="na">roleRef</span><span class="pi">:</span>
   <span class="na">apiGroup</span><span class="pi">:</span> <span class="s">rbac.authorization.k8s.io</span>
   <span class="na">kind</span><span class="pi">:</span> <span class="s">ClusterRole</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">-role</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "helios-lb.fullname" .</span> <span class="pi">}}</span><span class="s">-role</span>
 <span class="na">subjects</span><span class="pi">:</span>
 <span class="pi">-</span> <span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceAccount</span>
-  <span class="na">name</span><span class="pi">:</span> 
-  <span class="na">namespace</span><span class="pi">:</span> 
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "helios-lb.serviceAccountName" .</span> <span class="pi">}}</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Namespace</span> <span class="pi">}}</span>
+
 </code></pre></div></div>
 
 <h4 id="crd-definition-example">CRD Definition Example</h4>
@@ -818,11 +820,13 @@ helm <span class="nb">install </span>my-release helios-lb/helios-lb <span class=
   </li>
 </ol>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># templates/crd-cleanup-hook.yaml</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="c1"># templates/crd-cleanup-hook.yaml</span>
+<span class="pi">{{</span><span class="nv">- if .Values.crd.cleanup</span> <span class="pi">}}</span>
 <span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Job</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">-crd-cleanup</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "helios-lb.fullname" .</span> <span class="pi">}}</span><span class="s">-crd-cleanup</span>
   <span class="na">annotations</span><span class="pi">:</span>
     <span class="s2">"</span><span class="s">helm.sh/hook"</span><span class="err">:</span> <span class="s">pre-delete</span>
     <span class="s">"helm.sh/hook-weight"</span><span class="err">:</span> <span class="s2">"</span><span class="s">0"</span>
@@ -830,7 +834,7 @@ helm <span class="nb">install </span>my-release helios-lb/helios-lb <span class=
 <span class="na">spec</span><span class="pi">:</span>
   <span class="na">template</span><span class="pi">:</span>
     <span class="na">spec</span><span class="pi">:</span>
-      <span class="na">serviceAccountName</span><span class="pi">:</span> 
+      <span class="na">serviceAccountName</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "helios-lb.serviceAccountName" .</span> <span class="pi">}}</span>
       <span class="na">containers</span><span class="pi">:</span>
       <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">kubectl</span>
         <span class="na">image</span><span class="pi">:</span> <span class="s">bitnami/kubectl:latest</span>
@@ -841,6 +845,8 @@ helm <span class="nb">install </span>my-release helios-lb/helios-lb <span class=
         <span class="pi">-</span> <span class="s">heliosconfigs.lb.helios.com</span>
       <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">Never</span>
   <span class="na">backoffLimit</span><span class="pi">:</span> <span class="m">1</span>
+<span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+
 </code></pre></div></div>
 
 <p><br /></p>
@@ -1456,10 +1462,11 @@ defaultConfig:
 
 RBAC Configuration (rbac.yaml)
 
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: -role
+  name: {{ include &quot;helios-lb.fullname&quot; . }}-role
 rules:
 - apiGroups:
   - &quot;&quot;
@@ -1499,15 +1506,16 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: -rolebinding
+  name: {{ include &quot;helios-lb.fullname&quot; . }}-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: -role
+  name: {{ include &quot;helios-lb.fullname&quot; . }}-role
 subjects:
 - kind: ServiceAccount
-  name: 
-  namespace: 
+  name: {{ include &quot;helios-lb.serviceAccountName&quot; . }}
+  namespace: {{ .Release.Namespace }}
+
 
 
 CRD Definition Example
@@ -1848,11 +1856,13 @@ CRDs require special handling in Helm charts:
   
 
 
+
 # templates/crd-cleanup-hook.yaml
+{{- if .Values.crd.cleanup }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: -crd-cleanup
+  name: {{ include &quot;helios-lb.fullname&quot; . }}-crd-cleanup
   annotations:
     &quot;helm.sh/hook&quot;: pre-delete
     &quot;helm.sh/hook-weight&quot;: &quot;0&quot;
@@ -1860,7 +1870,7 @@ metadata:
 spec:
   template:
     spec:
-      serviceAccountName: 
+      serviceAccountName: {{ include &quot;helios-lb.serviceAccountName&quot; . }}
       containers:
       - name: kubectl
         image: bitnami/kubectl:latest
@@ -1871,6 +1881,8 @@ spec:
         - heliosconfigs.lb.helios.com
       restartPolicy: Never
   backoffLimit: 1
+{{- end }}
+
 
 
 
@@ -1947,7 +1959,7 @@ References
   Previous Helm Posts
 
 ",
-            "wordcount": "2723",
+            "wordcount": "2788",
             "inLanguage": "en",
             "dateCreated": "2025-01-14/",
             "datePublished": "2025-01-14/",
