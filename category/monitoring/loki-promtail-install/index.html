@@ -220,7 +220,7 @@ February 4, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>3 min to read</span>
+                    <span>12 min to read</span>
                 </p>
                 <h1 class="post-title">How to install Loki and Promtail with Helm</h1>
                 <p class="post-subtitle">A guide to deploying Loki and Promtail on Kubernetes</p>
@@ -242,48 +242,214 @@ February 4, 2025
 
 <hr />
 
-<h2 id="overview">Overview</h2>
+<h2 id="installing-loki-and-promtail-on-kubernetes">Installing Loki and Promtail on Kubernetes</h2>
 
-<p>Following our previous post about <a href="https://somaz94.github.io/category/monitoring/loki/">Loki</a>, let’s explore how to install and configure these tools using Helm charts.</p>
+<div class="info-box info-box-modern">
+Loki and Promtail provide a powerful, resource-efficient logging stack for Kubernetes environments. This guide offers a step-by-step approach to installing and configuring both components using Helm charts, with a focus on optimizing for production use while minimizing resource consumption.
+</div>
+
+<h3 id="introduction-and-prerequisites">Introduction and Prerequisites</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Before You Begin</strong>
+  <p>This guide follows our <a href="https://somaz94.github.io/category/monitoring/loki/">previous post about Loki architecture and components</a>. Before proceeding with the installation, ensure you have the following prerequisites in place:</p>
+  
+  <ul>
+    <li><strong>Kubernetes Cluster</strong>: A running Kubernetes cluster with proper networking</li>
+    <li><strong>Storage</strong>: Storage provisioner configured for persistent volumes (default StorageClass)</li>
+    <li><strong>Helm</strong>: Helm 3.x installed and configured to work with your cluster</li>
+    <li><strong>kubectl</strong>: Properly configured with access to your cluster</li>
+    <li><strong>Namespace</strong>: A namespace for your monitoring stack (we'll use "monitoring" in this guide)</li>
+  </ul>
+  
+  <p>This guide uses a single-binary deployment mode for Loki, which is suitable for most small to medium deployments. For larger environments, you might want to consider the microservices deployment model.</p>
+</div>
 
 <div class="info-box info-box-warning">
-  <strong>Note:</strong> We're not using Loki-Stack due to version compatibility issues with recent Grafana query features.
+  <strong>Note:</strong> We're not using Loki-Stack due to version compatibility issues with recent Grafana query features. Instead, we'll install Loki and Promtail separately using their dedicated Helm charts.
 </div>
 
 <p><br /></p>
 
-<h3 id="installing-loki">Installing Loki</h3>
+<hr />
 
-<p>We’ll deploy Loki in SingleBinary mode for simplicity.</p>
+<h2 id="loki-deployment-approaches">Loki Deployment Approaches</h2>
 
-<h4 id="adding-helm-repository">Adding Helm Repository</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm repo add grafana https://grafana.github.io/helm-charts
+<div class="info-box info-box-modern">
+Loki can be deployed in different operational modes, each with its own advantages and resource requirements. This section explains the available deployment options and why we've chosen the single binary approach for this guide.
+</div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Loki Deployment Models] --&gt; B[Single Binary]
+      A --&gt; C[Microservices]
+      A --&gt; D[Simple Scalable]
+      
+      B --&gt; B1[All components in one process]
+      B --&gt; B2[Easiest to deploy]
+      B --&gt; B3[Lowest resource overhead]
+      B --&gt; B4[Limited horizontal scalability]
+      
+      C --&gt; C1[Components as separate services]
+      C --&gt; C2[Maximum scalability]
+      C --&gt; C3[Independent component scaling]
+      C --&gt; C4[Higher complexity]
+      
+      D --&gt; D1[Middle ground approach]
+      D --&gt; D2[Groups related components]
+      D --&gt; D3[Better than Single Binary for scale]
+      D --&gt; D4[Simpler than full Microservices]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Deployment Model</th>
+      <th style="width: 25%;">Best For</th>
+      <th style="width: 55%;">Characteristics</th>
+    </tr>
+    <tr>
+      <td><strong>Single Binary</strong></td>
+      <td>
+        Small to medium environments<br />
+        Testing and development<br />
+        Resource-constrained clusters
+      </td>
+      <td>
+        <ul>
+          <li>All Loki components run in a single process</li>
+          <li>Simplest deployment and maintenance</li>
+          <li>Lowest resource consumption</li>
+          <li>Limited horizontal scalability</li>
+          <li>Suitable for log volumes up to ~100GB/day</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Microservices</strong></td>
+      <td>
+        Large production environments<br />
+        High log volumes<br />
+        Multi-tenant deployments
+      </td>
+      <td>
+        <ul>
+          <li>Each component deployed separately</li>
+          <li>Maximum scalability and resilience</li>
+          <li>Independent scaling of components</li>
+          <li>Higher operational complexity</li>
+          <li>Suitable for log volumes &gt;100GB/day</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Simple Scalable</strong></td>
+      <td>
+        Medium production environments<br />
+        Growing environments<br />
+        Balance of simplicity and scale
+      </td>
+      <td>
+        <ul>
+          <li>Components grouped by function</li>
+          <li>Better scalability than Single Binary</li>
+          <li>Simpler than full Microservices</li>
+          <li>Good starting point for production</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="installing-loki">Installing Loki</h2>
+
+<div class="info-box info-box-modern">
+We'll deploy Loki in SingleBinary mode, which offers a good balance of simplicity and functionality for small to medium deployments. This approach bundles all Loki components into a single process, making it easier to manage while still providing all core capabilities.
+</div>
+
+<h3 id="preparing-for-installation">Preparing for Installation</h3>
+
+<div class="info-box info-box-default">
+  <strong>Step 1: Adding the Grafana Helm Repository</strong>
+  <p>First, add the Grafana Helm repository and update your local Helm charts:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add the Grafana Helm repository</span>
+helm repo add grafana https://grafana.github.io/helm-charts
+
+<span class="c"># Update Helm repositories</span>
 helm repo update
 </code></pre></div></div>
 
-<h4 id="preparing-installation-files">Preparing Installation Files</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone repository</span>
+<div class="info-box info-box-default">
+  <strong>Step 2: Clone the Repository and Prepare Configuration</strong>
+  <p>To access the latest charts and configurations, clone the Loki repository:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone the Loki repository</span>
 git clone https://github.com/grafana/loki.git
+
+<span class="c"># Navigate to the Helm chart directory</span>
 <span class="nb">cd </span>loki/production/helm/loki/
 
-<span class="c"># Update dependencies</span>
+<span class="c"># Update chart dependencies</span>
 helm dependency update
 
-<span class="c"># Create values directory</span>
+<span class="c"># Create directory for custom values</span>
 <span class="nb">mkdir </span>values
 <span class="nb">cp </span>values.yaml values/somaz.yaml
 </code></pre></div></div>
 
-<h4 id="configuration-valuessomazyaml">Configuration (values/somaz.yaml)</h4>
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">global.clusterDomain</code> : The domain name of the cluster. (e.g <code class="language-plaintext highlighter-rouge">somaz-cluster.local</code>)</li>
-  <li><code class="language-plaintext highlighter-rouge">global.dnsService</code> : The name of the DNS service in the cluster. (e.g <code class="language-plaintext highlighter-rouge">coredns</code>)</li>
-  <li><code class="language-plaintext highlighter-rouge">global.dnsNamespace</code> : The namespace of the DNS service in the cluster. (e.g <code class="language-plaintext highlighter-rouge">kube-system</code>)</li>
-  <li><code class="language-plaintext highlighter-rouge">deploymentMode</code> : The mode of the deployment. (e.g <code class="language-plaintext highlighter-rouge">SingleBinary</code>)</li>
-  <li><code class="language-plaintext highlighter-rouge">loki.commonConfig.replication_factor</code> : The replication factor of the Loki. (e.g <code class="language-plaintext highlighter-rouge">1</code>)</li>
-  <li><code class="language-plaintext highlighter-rouge">loki.storage.type</code> : The type of the storage. (e.g <code class="language-plaintext highlighter-rouge">filesystem</code>)</li>
-  <li><code class="language-plaintext highlighter-rouge">loki.schemaConfig.configs</code> : The schema config of the Loki. (e.g <code class="language-plaintext highlighter-rouge">2024-01-01</code>)</li>
-</ul>
+<h3 id="loki-configuration">Loki Configuration</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Configuration Parameters Explained</strong>
+  <p>Here are the key parameters in our configuration:</p>
+  
+  <ul>
+    <li><strong>global.clusterDomain</strong>: Your Kubernetes cluster domain (default: cluster.local)</li>
+    <li><strong>deploymentMode</strong>: Mode of deployment (SingleBinary for this guide)</li>
+    <li><strong>loki.storage.type</strong>: Storage type for logs (filesystem for simplicity)</li>
+    <li><strong>persistence</strong>: Configuration for persistent volume claims</li>
+    <li><strong>gateway</strong>: Ingress settings for accessing Loki API</li>
+  </ul>
+  
+  <p>The storage configuration uses <code>filesystem</code> for simplicity, but production environments should consider object storage like S3, GCS, or MinIO for better scalability and resilience.</p>
+</div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Loki Storage Configuration] --&gt;|Schema| B[Schema Configuration]
+      A --&gt;|Store| C[Store Selection]
+      B --&gt; B1[from: date]
+      B --&gt; B2[store: type]
+      B --&gt; B3[schema: version]
+      C --&gt; C1[filesystem]
+      C --&gt; C2[object storage]
+      C --&gt; C3[chunk stores]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<div class="info-box info-box-default">
+  <strong>Custom Configuration File (values/somaz.yaml)</strong>
+  <p>Create a custom values file with the following configuration:</p>
+</div>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">global</span><span class="pi">:</span>
   <span class="na">clusterDomain</span><span class="pi">:</span> <span class="s2">"</span><span class="s">somaz-cluster.local"</span>
@@ -325,37 +491,148 @@ helm dependency update
 <span class="c1"># ... (other components disabled)</span>
 </code></pre></div></div>
 
-<h4 id="installation-commands">Installation Commands</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify configuration</span>
+<h3 id="installation-process">Installation Process</h3>
+
+<div class="info-box info-box-default">
+  <strong>Installing Loki with Helm</strong>
+  <p>Now we're ready to install Loki using our custom configuration:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify configuration syntax</span>
 helm lint <span class="nt">--values</span> ./values/somaz.yaml
 
-<span class="c"># Test installation</span>
+<span class="c"># Optional: Generate and review the installation manifest</span>
 helm <span class="nb">install </span>loki <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span> <span class="nt">--dry-run</span> <span class="o">&gt;&gt;</span> output.yaml
 
-<span class="c"># Install</span>
+<span class="c"># Install Loki</span>
 helm <span class="nb">install </span>loki <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span>
 
-<span class="c"># Upgrade if needed</span>
+<span class="c"># If you need to upgrade later</span>
 helm upgrade loki <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
 </code></pre></div></div>
 
-<h4 id="verifying-installation">Verifying Installation</h4>
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+        participant User as You
+        participant Helm as Helm
+        participant K8s as Kubernetes
+        participant Loki as Loki Pod
+        participant PV as Persistent Volume
+        
+        User-&gt;&gt;Helm: helm install loki
+        Helm-&gt;&gt;K8s: Create namespace if needed
+        Helm-&gt;&gt;K8s: Apply ConfigMaps and Secrets
+        Helm-&gt;&gt;K8s: Create PVC
+        K8s-&gt;&gt;PV: Provision storage
+        Helm-&gt;&gt;K8s: Deploy Loki StatefulSet/Deployment
+        K8s-&gt;&gt;Loki: Create Loki container
+        Loki-&gt;&gt;PV: Mount storage
+        Loki-&gt;&gt;User: Ready for log ingestion
+  </div>
+</div>
+
+<h3 id="verifying-the-installation">Verifying the Installation</h3>
+
+<div class="info-box info-box-default">
+  <strong>Check Loki Components</strong>
+  <p>Verify that all Loki components are running correctly:</p>
+</div>
+
 <script src="https://gist.github.com/somaz94/7ce87cc7995e30c1239afe1af4158276.js"></script>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Troubleshooting Tips</strong>
+  <p>If you encounter issues with Loki deployment:</p>
+  
+  <ul>
+    <li><strong>Check Pod Status</strong>: <code>kubectl get pods -n monitoring</code></li>
+    <li><strong>View Logs</strong>: <code>kubectl logs -n monitoring deployment/loki</code></li>
+    <li><strong>Verify PVCs</strong>: <code>kubectl get pvc -n monitoring</code></li>
+    <li><strong>Check Services</strong>: <code>kubectl get svc -n monitoring</code></li>
+    <li><strong>Common Issues</strong>:
+      <ul>
+        <li>Storage provisioning failures (check StorageClass)</li>
+        <li>Insufficient resources (check resource limits/requests)</li>
+        <li>Service connectivity issues (check services and endpoints)</li>
+      </ul>
+    </li>
+  </ul>
+</div>
 
 <p><br /></p>
 
-<h3 id="installing-promtail">Installing Promtail</h3>
+<hr />
 
-<h4 id="preparing-installation-files-1">Preparing Installation Files</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/grafana/helm-charts.git
+<h2 id="installing-promtail">Installing Promtail</h2>
+
+<div class="info-box info-box-modern">
+Promtail is Loki's log collection agent, designed to discover and forward logs from Kubernetes pods and containers. It runs as a DaemonSet, ensuring coverage across all nodes in your cluster and automatically labels logs with metadata from Kubernetes.
+</div>
+
+<h3 id="preparing-for-installation-1">Preparing for Installation</h3>
+
+<div class="info-box info-box-default">
+  <strong>Obtaining and Configuring the Promtail Chart</strong>
+  <p>Clone the Grafana Helm charts repository to access the Promtail chart:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone the Grafana Helm charts repository</span>
+git clone https://github.com/grafana/helm-charts.git
+
+<span class="c"># Navigate to the Promtail chart directory</span>
 <span class="nb">cd </span>helm-charts/charts/promtail
+
+<span class="c"># Update chart dependencies</span>
 helm dependency update
 
+<span class="c"># Create directory for custom values</span>
 <span class="nb">mkdir </span>values
 <span class="nb">cp </span>values.yaml values/somaz.yaml
 </code></pre></div></div>
 
-<h4 id="configuration-valuessomazyaml-1">Configuration (values/somaz.yaml)</h4>
+<h3 id="promtail-configuration">Promtail Configuration</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Configuration Parameters Explained</strong>
+  <p>Key parameters in the Promtail configuration:</p>
+  
+  <ul>
+    <li><strong>daemonset.enabled</strong>: Deploys Promtail as a DaemonSet on all nodes</li>
+    <li><strong>serviceMonitor.enabled</strong>: Creates ServiceMonitor for Prometheus to scrape Promtail metrics</li>
+    <li><strong>config.logLevel</strong>: Log verbosity level (info, debug, etc.)</li>
+    <li><strong>config.serverPort</strong>: Port for Promtail's HTTP server</li>
+    <li><strong>config.clients</strong>: List of Loki instances to push logs to</li>
+  </ul>
+  
+  <p>The client URL points to the Loki Gateway service, which provides a centralized entry point to Loki.</p>
+</div>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Kubernetes Pods] --&gt;|Generate Logs| B[Container Log Files]
+      B --&gt;|Read| C[Promtail DaemonSet]
+      C --&gt;|Query| D[Kubernetes API]
+      D --&gt;|Pod Metadata| C
+      C --&gt;|Add Labels| C
+      C --&gt;|Push Logs| E[Loki Gateway]
+      E --&gt;|Forward| F[Loki Service]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+      style F fill:#ef9a9a,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<div class="info-box info-box-default">
+  <strong>Custom Configuration File (values/somaz.yaml)</strong>
+  <p>Create a custom values file for Promtail with the following configuration:</p>
+</div>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">daemonset</span><span class="pi">:</span>
   <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
 <span class="na">serviceMonitor</span><span class="pi">:</span>
@@ -369,39 +646,190 @@ helm dependency update
     <span class="pi">-</span> <span class="na">url</span><span class="pi">:</span> <span class="s">http://loki-gateway/loki/api/v1/push</span>
 </code></pre></div></div>
 
-<h4 id="installation-commands-1">Installation Commands</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify configuration</span>
+<h3 id="installation-process-1">Installation Process</h3>
+
+<div class="info-box info-box-default">
+  <strong>Installing Promtail with Helm</strong>
+  <p>Now we can install Promtail using our custom configuration:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify configuration syntax</span>
 helm lint <span class="nt">--values</span> ./values/somaz.yaml
 
-<span class="c"># Test installation</span>
+<span class="c"># Optional: Generate and review the installation manifest</span>
 helm <span class="nb">install </span>promtail <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span> <span class="nt">--dry-run</span> <span class="o">&gt;&gt;</span> output.yaml
 
-<span class="c"># Install</span>
+<span class="c"># Install Promtail</span>
 helm <span class="nb">install </span>promtail <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span>
 
-<span class="c"># Upgrade if needed</span>
+<span class="c"># If you need to upgrade later</span>
 helm upgrade promtail <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
+</code></pre></div></div>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Additional Configuration Options</strong>
+  <p>Advanced Promtail configurations you might consider for production:</p>
+  
+  <ul>
+    <li><strong>Resource Limits</strong>: Set appropriate CPU and memory limits</li>
+    <li><strong>Tolerations</strong>: Enable Promtail to run on tainted nodes</li>
+    <li><strong>extraVolumes</strong>: Mount additional log locations beyond standard paths</li>
+    <li><strong>extraScrapeConfigs</strong>: Add custom scrape configurations for non-standard log formats</li>
+    <li><strong>pipelineStages</strong>: Configure log processing pipelines to extract fields, add labels, etc.</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="accessing-and-using-your-logging-stack">Accessing and Using Your Logging Stack</h2>
+
+<div class="info-box info-box-modern">
+With Loki and Promtail installed, you now have a powerful logging infrastructure for your Kubernetes cluster. This section covers how to access logs and integrate with other components of your monitoring stack.
+</div>
+
+<h3 id="accessing-logs">Accessing Logs</h3>
+
+<div class="info-box info-box-default">
+  <strong>Querying Logs Through Loki API</strong>
+  <p>Loki provides a REST API for querying logs. You can access it directly:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Forward the Loki Gateway port to your local machine</span>
+kubectl port-forward service/loki-gateway 3100:80 <span class="nt">-n</span> monitoring
+
+<span class="c"># Query logs using curl (in another terminal)</span>
+curl <span class="nt">-G</span> <span class="nt">-s</span> <span class="s2">"http://localhost:3100/loki/api/v1/query_range"</span> <span class="se">\</span>
+  <span class="nt">--data-urlencode</span> <span class="s1">'query={app="nginx"}'</span> <span class="se">\</span>
+  <span class="nt">--data-urlencode</span> <span class="s1">'start=1625000000000000000'</span> <span class="se">\</span>
+  <span class="nt">--data-urlencode</span> <span class="s1">'end=1625001000000000000'</span> <span class="se">\</span>
+  | jq
+</code></pre></div></div>
+
+<h3 id="integrating-with-grafana">Integrating with Grafana</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Adding Loki as a Grafana Data Source</strong>
+  <p>To visualize logs in Grafana:</p>
+  
+  <ol>
+    <li>Open your Grafana instance</li>
+    <li>Go to Configuration &gt; Data Sources</li>
+    <li>Click "Add data source" and select "Loki"</li>
+    <li>Set the URL to <code>http://loki-gateway.monitoring.svc.cluster.local</code></li>
+    <li>Save and test the connection</li>
+  </ol>
+  
+  <p>Once connected, you can use Grafana's Explore view to query logs and create dashboards that combine logs with metrics from Prometheus.</p>
+</div>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Promtail] --&gt;|Push Logs| B[Loki]
+      C[Prometheus] --&gt;|Scrape Metrics| D[Targets]
+      E[Grafana] --&gt;|Query Logs| B
+      E --&gt;|Query Metrics| C
+      E --&gt;|Visualize| F[Dashboards]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+      style F fill:#ef9a9a,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<h3 id="sample-logql-queries">Sample LogQL Queries</h3>
+
+<div class="info-box info-box-default">
+  <strong>Useful LogQL Queries for Kubernetes</strong>
+  <p>Try these queries in Grafana's Explore view to get started with Loki:</p>
+</div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># View all logs from the 'kube-system' namespace
+{namespace="kube-system"}
+
+# Find error logs across all namespaces
+{namespace=~".+"} |= "error"
+
+# View logs from a specific pod
+{namespace="default", pod="my-application-pod"}
+
+# Extract JSON fields from structured logs
+{app="myapp"} | json | status_code &gt;= 400
+
+# Count HTTP 500 errors per minute
+sum(rate({app="nginx"} |= "HTTP/1.1\" 500" [1m])) by (host)
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="next-steps">Next Steps</h3>
+<hr />
 
-<p>In our next post, we’ll explore:</p>
-<ul>
-  <li>Setting up Grafana</li>
-  <li>Visualizing metrics from Prometheus and Thanos</li>
-  <li>Creating dashboards for logs collected by Loki and Promtail</li>
-</ul>
+<h2 id="next-steps">Next Steps</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>Upcoming Configuration Tasks</strong>
+  <p>In our next post, we'll explore:</p>
+  
+  <ul>
+    <li><strong>Setting up Grafana</strong>: Install and configure Grafana for visualization</li>
+    <li><strong>Creating Dashboards</strong>: Build comprehensive dashboards combining metrics and logs</li>
+    <li><strong>Alert Configuration</strong>: Set up alerts based on log patterns and metrics</li>
+    <li><strong>Log Integration</strong>: Correlate logs with metrics from Prometheus and Thanos</li>
+    <li><strong>Advanced LogQL</strong>: Advanced query techniques for log analysis</li>
+  </ul>
+</div>
 
 <p><br /></p>
 
-<h3 id="references">References</h3>
+<hr />
+
+<h2 id="key-points">Key Points</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>💡 Installation Summary</strong>
+  <ul>
+    <li>
+      <strong>Deployment Approach</strong><br />
+      - Single Binary mode for Loki simplifies deployment<br />
+      - DaemonSet deployment for Promtail ensures coverage on all nodes<br />
+      - Persistent storage for Loki ensures log durability
+    </li>
+    <li>
+      <strong>Configuration Highlights</strong><br />
+      - Filesystem storage used for simplicity (switch to object storage for production)<br />
+      - NodePort service type enables external access<br />
+      - ServiceMonitor integration for Prometheus metrics collection<br />
+      - Simple client configuration for Promtail
+    </li>
+    <li>
+      <strong>Usage Patterns</strong><br />
+      - Access logs via Loki API or Grafana<br />
+      - Use LogQL for powerful querying capabilities<br />
+      - Integrate with existing monitoring infrastructure<br />
+      - Consider multi-tenancy for team isolation in larger environments
+    </li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
 <ul>
   <li><a href="https://github.com/grafana/loki/tree/main/production/helm/loki">Loki Helm Chart</a></li>
   <li><a href="https://github.com/grafana/helm-charts/tree/main/charts/promtail">Promtail Helm Chart</a></li>
   <li><a href="https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/">Loki Installation Guide</a></li>
   <li><a href="https://hackernoon.com/grafana-loki-architecture-summary-and-running-in-kubernetes">Grafana Loki Architecture</a></li>
+  <li><a href="https://grafana.com/docs/loki/latest/logql/">LogQL Query Language Reference</a></li>
+  <li><a href="https://grafana.com/docs/loki/latest/best-practices/">Loki Best Practices</a></li>
+  <li><a href="https://grafana.com/docs/loki/latest/send-data/promtail/configuration/">Promtail Configuration</a></li>
+  <li><a href="https://grafana.com/docs/loki/latest/installation/kubernetes/">Kubernetes Logging with Loki</a></li>
 </ul>
 
 
@@ -452,7 +880,7 @@ helm upgrade promtail <span class="nb">.</span> <span class="nt">-n</span> monit
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="3">
+            <div class="time-bar" data-minutes="12">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -759,47 +1187,213 @@ helm upgrade promtail <span class="nb">.</span> <span class="nt">-n</span> monit
 
 
 
-Overview
-
-Following our previous post about Loki, let’s explore how to install and configure these tools using Helm charts.
+Installing Loki and Promtail on Kubernetes
 
 
-  Note: We&apos;re not using Loki-Stack due to version compatibility issues with recent Grafana query features.
+Loki and Promtail provide a powerful, resource-efficient logging stack for Kubernetes environments. This guide offers a step-by-step approach to installing and configuring both components using Helm charts, with a focus on optimizing for production use while minimizing resource consumption.
+
+
+Introduction and Prerequisites
+
+
+  Before You Begin
+  This guide follows our previous post about Loki architecture and components. Before proceeding with the installation, ensure you have the following prerequisites in place:
+  
+  
+    Kubernetes Cluster: A running Kubernetes cluster with proper networking
+    Storage: Storage provisioner configured for persistent volumes (default StorageClass)
+    Helm: Helm 3.x installed and configured to work with your cluster
+    kubectl: Properly configured with access to your cluster
+    Namespace: A namespace for your monitoring stack (we&apos;ll use &quot;monitoring&quot; in this guide)
+  
+  
+  This guide uses a single-binary deployment mode for Loki, which is suitable for most small to medium deployments. For larger environments, you might want to consider the microservices deployment model.
+
+
+
+  Note: We&apos;re not using Loki-Stack due to version compatibility issues with recent Grafana query features. Instead, we&apos;ll install Loki and Promtail separately using their dedicated Helm charts.
+
+
+
+
+
+
+Loki Deployment Approaches
+
+
+Loki can be deployed in different operational modes, each with its own advantages and resource requirements. This section explains the available deployment options and why we&apos;ve chosen the single binary approach for this guide.
+
+
+
+  
+    graph TD
+      A[Loki Deployment Models] --&amp;gt; B[Single Binary]
+      A --&amp;gt; C[Microservices]
+      A --&amp;gt; D[Simple Scalable]
+      
+      B --&amp;gt; B1[All components in one process]
+      B --&amp;gt; B2[Easiest to deploy]
+      B --&amp;gt; B3[Lowest resource overhead]
+      B --&amp;gt; B4[Limited horizontal scalability]
+      
+      C --&amp;gt; C1[Components as separate services]
+      C --&amp;gt; C2[Maximum scalability]
+      C --&amp;gt; C3[Independent component scaling]
+      C --&amp;gt; C4[Higher complexity]
+      
+      D --&amp;gt; D1[Middle ground approach]
+      D --&amp;gt; D2[Groups related components]
+      D --&amp;gt; D3[Better than Single Binary for scale]
+      D --&amp;gt; D4[Simpler than full Microservices]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+  
+
+
+
+  
+    
+      Deployment Model
+      Best For
+      Characteristics
+    
+    
+      Single Binary
+      
+        Small to medium environments
+        Testing and development
+        Resource-constrained clusters
+      
+      
+        
+          All Loki components run in a single process
+          Simplest deployment and maintenance
+          Lowest resource consumption
+          Limited horizontal scalability
+          Suitable for log volumes up to ~100GB/day
+        
+      
+    
+    
+      Microservices
+      
+        Large production environments
+        High log volumes
+        Multi-tenant deployments
+      
+      
+        
+          Each component deployed separately
+          Maximum scalability and resilience
+          Independent scaling of components
+          Higher operational complexity
+          Suitable for log volumes &amp;gt;100GB/day
+        
+      
+    
+    
+      Simple Scalable
+      
+        Medium production environments
+        Growing environments
+        Balance of simplicity and scale
+      
+      
+        
+          Components grouped by function
+          Better scalability than Single Binary
+          Simpler than full Microservices
+          Good starting point for production
+        
+      
+    
+  
+
+
 
 
 
 
 Installing Loki
 
-We’ll deploy Loki in SingleBinary mode for simplicity.
 
-Adding Helm Repository
+We&apos;ll deploy Loki in SingleBinary mode, which offers a good balance of simplicity and functionality for small to medium deployments. This approach bundles all Loki components into a single process, making it easier to manage while still providing all core capabilities.
+
+
+Preparing for Installation
+
+
+  Step 1: Adding the Grafana Helm Repository
+  First, add the Grafana Helm repository and update your local Helm charts:
+
+
+# Add the Grafana Helm repository
 helm repo add grafana https://grafana.github.io/helm-charts
+
+# Update Helm repositories
 helm repo update
 
 
-Preparing Installation Files
-# Clone repository
+
+  Step 2: Clone the Repository and Prepare Configuration
+  To access the latest charts and configurations, clone the Loki repository:
+
+
+# Clone the Loki repository
 git clone https://github.com/grafana/loki.git
+
+# Navigate to the Helm chart directory
 cd loki/production/helm/loki/
 
-# Update dependencies
+# Update chart dependencies
 helm dependency update
 
-# Create values directory
+# Create directory for custom values
 mkdir values
 cp values.yaml values/somaz.yaml
 
 
-Configuration (values/somaz.yaml)
+Loki Configuration
 
-  global.clusterDomain : The domain name of the cluster. (e.g somaz-cluster.local)
-  global.dnsService : The name of the DNS service in the cluster. (e.g coredns)
-  global.dnsNamespace : The namespace of the DNS service in the cluster. (e.g kube-system)
-  deploymentMode : The mode of the deployment. (e.g SingleBinary)
-  loki.commonConfig.replication_factor : The replication factor of the Loki. (e.g 1)
-  loki.storage.type : The type of the storage. (e.g filesystem)
-  loki.schemaConfig.configs : The schema config of the Loki. (e.g 2024-01-01)
+
+  Configuration Parameters Explained
+  Here are the key parameters in our configuration:
+  
+  
+    global.clusterDomain: Your Kubernetes cluster domain (default: cluster.local)
+    deploymentMode: Mode of deployment (SingleBinary for this guide)
+    loki.storage.type: Storage type for logs (filesystem for simplicity)
+    persistence: Configuration for persistent volume claims
+    gateway: Ingress settings for accessing Loki API
+  
+  
+  The storage configuration uses filesystem for simplicity, but production environments should consider object storage like S3, GCS, or MinIO for better scalability and resilience.
+
+
+
+  
+    graph TD
+      A[Loki Storage Configuration] --&amp;gt;|Schema| B[Schema Configuration]
+      A --&amp;gt;|Store| C[Store Selection]
+      B --&amp;gt; B1[from: date]
+      B --&amp;gt; B2[store: type]
+      B --&amp;gt; B3[schema: version]
+      C --&amp;gt; C1[filesystem]
+      C --&amp;gt; C2[object storage]
+      C --&amp;gt; C3[chunk stores]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+  
+
+
+
+  Custom Configuration File (values/somaz.yaml)
+  Create a custom values file with the following configuration:
 
 
 global:
@@ -842,37 +1436,148 @@ resultsCache:
 # ... (other components disabled)
 
 
-Installation Commands
-# Verify configuration
+Installation Process
+
+
+  Installing Loki with Helm
+  Now we&apos;re ready to install Loki using our custom configuration:
+
+
+# Verify configuration syntax
 helm lint --values ./values/somaz.yaml
 
-# Test installation
+# Optional: Generate and review the installation manifest
 helm install loki . -n monitoring -f ./values/somaz.yaml --create-namespace --dry-run &amp;gt;&amp;gt; output.yaml
 
-# Install
+# Install Loki
 helm install loki . -n monitoring -f ./values/somaz.yaml --create-namespace
 
-# Upgrade if needed
+# If you need to upgrade later
 helm upgrade loki . -n monitoring -f ./values/somaz.yaml
 
 
-Verifying Installation
+
+  
+    sequenceDiagram
+        participant User as You
+        participant Helm as Helm
+        participant K8s as Kubernetes
+        participant Loki as Loki Pod
+        participant PV as Persistent Volume
+        
+        User-&amp;gt;&amp;gt;Helm: helm install loki
+        Helm-&amp;gt;&amp;gt;K8s: Create namespace if needed
+        Helm-&amp;gt;&amp;gt;K8s: Apply ConfigMaps and Secrets
+        Helm-&amp;gt;&amp;gt;K8s: Create PVC
+        K8s-&amp;gt;&amp;gt;PV: Provision storage
+        Helm-&amp;gt;&amp;gt;K8s: Deploy Loki StatefulSet/Deployment
+        K8s-&amp;gt;&amp;gt;Loki: Create Loki container
+        Loki-&amp;gt;&amp;gt;PV: Mount storage
+        Loki-&amp;gt;&amp;gt;User: Ready for log ingestion
+  
+
+
+Verifying the Installation
+
+
+  Check Loki Components
+  Verify that all Loki components are running correctly:
+
+
+
+
+
+  Troubleshooting Tips
+  If you encounter issues with Loki deployment:
+  
+  
+    Check Pod Status: kubectl get pods -n monitoring
+    View Logs: kubectl logs -n monitoring deployment/loki
+    Verify PVCs: kubectl get pvc -n monitoring
+    Check Services: kubectl get svc -n monitoring
+    Common Issues:
+      
+        Storage provisioning failures (check StorageClass)
+        Insufficient resources (check resource limits/requests)
+        Service connectivity issues (check services and endpoints)
+      
+    
+  
+
+
 
 
 
 
 Installing Promtail
 
-Preparing Installation Files
+
+Promtail is Loki&apos;s log collection agent, designed to discover and forward logs from Kubernetes pods and containers. It runs as a DaemonSet, ensuring coverage across all nodes in your cluster and automatically labels logs with metadata from Kubernetes.
+
+
+Preparing for Installation
+
+
+  Obtaining and Configuring the Promtail Chart
+  Clone the Grafana Helm charts repository to access the Promtail chart:
+
+
+# Clone the Grafana Helm charts repository
 git clone https://github.com/grafana/helm-charts.git
+
+# Navigate to the Promtail chart directory
 cd helm-charts/charts/promtail
+
+# Update chart dependencies
 helm dependency update
 
+# Create directory for custom values
 mkdir values
 cp values.yaml values/somaz.yaml
 
 
-Configuration (values/somaz.yaml)
+Promtail Configuration
+
+
+  Configuration Parameters Explained
+  Key parameters in the Promtail configuration:
+  
+  
+    daemonset.enabled: Deploys Promtail as a DaemonSet on all nodes
+    serviceMonitor.enabled: Creates ServiceMonitor for Prometheus to scrape Promtail metrics
+    config.logLevel: Log verbosity level (info, debug, etc.)
+    config.serverPort: Port for Promtail&apos;s HTTP server
+    config.clients: List of Loki instances to push logs to
+  
+  
+  The client URL points to the Loki Gateway service, which provides a centralized entry point to Loki.
+
+
+
+  
+    graph TD
+      A[Kubernetes Pods] --&amp;gt;|Generate Logs| B[Container Log Files]
+      B --&amp;gt;|Read| C[Promtail DaemonSet]
+      C --&amp;gt;|Query| D[Kubernetes API]
+      D --&amp;gt;|Pod Metadata| C
+      C --&amp;gt;|Add Labels| C
+      C --&amp;gt;|Push Logs| E[Loki Gateway]
+      E --&amp;gt;|Forward| F[Loki Service]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+      style F fill:#ef9a9a,stroke:#333,stroke-width:1px
+  
+
+
+
+  Custom Configuration File (values/somaz.yaml)
+  Create a custom values file for Promtail with the following configuration:
+
+
 daemonset:
   enabled: true
 serviceMonitor:
@@ -886,29 +1591,176 @@ config:
     - url: http://loki-gateway/loki/api/v1/push
 
 
-Installation Commands
-# Verify configuration
+Installation Process
+
+
+  Installing Promtail with Helm
+  Now we can install Promtail using our custom configuration:
+
+
+# Verify configuration syntax
 helm lint --values ./values/somaz.yaml
 
-# Test installation
+# Optional: Generate and review the installation manifest
 helm install promtail . -n monitoring -f ./values/somaz.yaml --create-namespace --dry-run &amp;gt;&amp;gt; output.yaml
 
-# Install
+# Install Promtail
 helm install promtail . -n monitoring -f ./values/somaz.yaml --create-namespace
 
-# Upgrade if needed
+# If you need to upgrade later
 helm upgrade promtail . -n monitoring -f ./values/somaz.yaml
+
+
+
+  Additional Configuration Options
+  Advanced Promtail configurations you might consider for production:
+  
+  
+    Resource Limits: Set appropriate CPU and memory limits
+    Tolerations: Enable Promtail to run on tainted nodes
+    extraVolumes: Mount additional log locations beyond standard paths
+    extraScrapeConfigs: Add custom scrape configurations for non-standard log formats
+    pipelineStages: Configure log processing pipelines to extract fields, add labels, etc.
+  
+
+
+
+
+
+
+Accessing and Using Your Logging Stack
+
+
+With Loki and Promtail installed, you now have a powerful logging infrastructure for your Kubernetes cluster. This section covers how to access logs and integrate with other components of your monitoring stack.
+
+
+Accessing Logs
+
+
+  Querying Logs Through Loki API
+  Loki provides a REST API for querying logs. You can access it directly:
+
+
+# Forward the Loki Gateway port to your local machine
+kubectl port-forward service/loki-gateway 3100:80 -n monitoring
+
+# Query logs using curl (in another terminal)
+curl -G -s &quot;http://localhost:3100/loki/api/v1/query_range&quot; \
+  --data-urlencode &apos;query={app=&quot;nginx&quot;}&apos; \
+  --data-urlencode &apos;start=1625000000000000000&apos; \
+  --data-urlencode &apos;end=1625001000000000000&apos; \
+  | jq
+
+
+Integrating with Grafana
+
+
+  Adding Loki as a Grafana Data Source
+  To visualize logs in Grafana:
+  
+  
+    Open your Grafana instance
+    Go to Configuration &amp;gt; Data Sources
+    Click &quot;Add data source&quot; and select &quot;Loki&quot;
+    Set the URL to http://loki-gateway.monitoring.svc.cluster.local
+    Save and test the connection
+  
+  
+  Once connected, you can use Grafana&apos;s Explore view to query logs and create dashboards that combine logs with metrics from Prometheus.
+
+
+
+  
+    graph TD
+      A[Promtail] --&amp;gt;|Push Logs| B[Loki]
+      C[Prometheus] --&amp;gt;|Scrape Metrics| D[Targets]
+      E[Grafana] --&amp;gt;|Query Logs| B
+      E --&amp;gt;|Query Metrics| C
+      E --&amp;gt;|Visualize| F[Dashboards]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+      style F fill:#ef9a9a,stroke:#333,stroke-width:1px
+  
+
+
+Sample LogQL Queries
+
+
+  Useful LogQL Queries for Kubernetes
+  Try these queries in Grafana&apos;s Explore view to get started with Loki:
+
+
+# View all logs from the &apos;kube-system&apos; namespace
+{namespace=&quot;kube-system&quot;}
+
+# Find error logs across all namespaces
+{namespace=~&quot;.+&quot;} |= &quot;error&quot;
+
+# View logs from a specific pod
+{namespace=&quot;default&quot;, pod=&quot;my-application-pod&quot;}
+
+# Extract JSON fields from structured logs
+{app=&quot;myapp&quot;} | json | status_code &amp;gt;= 400
+
+# Count HTTP 500 errors per minute
+sum(rate({app=&quot;nginx&quot;} |= &quot;HTTP/1.1\&quot; 500&quot; [1m])) by (host)
+
+
 
 
 
 
 Next Steps
 
-In our next post, we’ll explore:
 
-  Setting up Grafana
-  Visualizing metrics from Prometheus and Thanos
-  Creating dashboards for logs collected by Loki and Promtail
+  Upcoming Configuration Tasks
+  In our next post, we&apos;ll explore:
+  
+  
+    Setting up Grafana: Install and configure Grafana for visualization
+    Creating Dashboards: Build comprehensive dashboards combining metrics and logs
+    Alert Configuration: Set up alerts based on log patterns and metrics
+    Log Integration: Correlate logs with metrics from Prometheus and Thanos
+    Advanced LogQL: Advanced query techniques for log analysis
+  
+
+
+
+
+
+
+Key Points
+
+
+  💡 Installation Summary
+  
+    
+      Deployment Approach
+      - Single Binary mode for Loki simplifies deployment
+      - DaemonSet deployment for Promtail ensures coverage on all nodes
+      - Persistent storage for Loki ensures log durability
+    
+    
+      Configuration Highlights
+      - Filesystem storage used for simplicity (switch to object storage for production)
+      - NodePort service type enables external access
+      - ServiceMonitor integration for Prometheus metrics collection
+      - Simple client configuration for Promtail
+    
+    
+      Usage Patterns
+      - Access logs via Loki API or Grafana
+      - Use LogQL for powerful querying capabilities
+      - Integrate with existing monitoring infrastructure
+      - Consider multi-tenancy for team isolation in larger environments
+    
+  
+
+
 
 
 
@@ -919,9 +1771,13 @@ References
   Promtail Helm Chart
   Loki Installation Guide
   Grafana Loki Architecture
+  LogQL Query Language Reference
+  Loki Best Practices
+  Promtail Configuration
+  Kubernetes Logging with Loki
 
 ",
-            "wordcount": "691",
+            "wordcount": "2327",
             "inLanguage": "en",
             "dateCreated": "2025-02-04/",
             "datePublished": "2025-02-04/",

@@ -220,7 +220,7 @@ February 2, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>5 min to read</span>
+                    <span>14 min to read</span>
                 </p>
                 <h1 class="post-title">Installing Prometheus and Thanos with Helm</h1>
                 <p class="post-subtitle">A step-by-step guide to setting up Prometheus and Thanos monitoring stack</p>
@@ -242,49 +242,139 @@ February 2, 2025
 
 <hr />
 
-<h2 id="overview">Overview</h2>
+<h2 id="installation-guide-for-prometheus-and-thanos">Installation Guide for Prometheus and Thanos</h2>
 
-<p>Following our previous post about <a href="https://somaz94.github.io/category/monitoring/prometheus-thanos/">Prometheus and Thanos</a>, let’s explore how to install and configure these tools using Helm charts. We’ll cover both single-cluster and multi-cluster setups.</p>
+<div class="info-box info-box-modern">
+This guide provides detailed, step-by-step instructions for installing and configuring Prometheus and Thanos using Helm charts in Kubernetes environments. Learn how to set up a scalable monitoring infrastructure for both single-cluster and multi-cluster deployments with long-term metrics storage and unified querying capabilities.
+</div>
 
-<div class="info-box info-box-default">
-  <strong>Prerequisites</strong>
+<h3 id="introduction-and-prerequisites">Introduction and Prerequisites</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Before You Begin</strong>
+  <p>This guide follows our <a href="https://somaz94.github.io/category/monitoring/prometheus-thanos/">previous post about Prometheus and Thanos</a>, focusing on the practical implementation aspects. Before proceeding with the installation, ensure you have the following prerequisites in place:</p>
+  
   <ul>
-    <li>Kubernetes cluster with storage provisioner configured</li>
-    <li>Object storage (AWS S3, GCP GCS, MinIO, Ceph, etc.)</li>
-    <li>Helm installed</li>
-    <li>kubectl configured</li>
+    <li><strong>Kubernetes Cluster</strong>: Running cluster with proper networking configuration</li>
+    <li><strong>Storage</strong>: Storage provisioner configured for persistent volumes</li>
+    <li><strong>Object Storage</strong>: Access to S3, GCS, MinIO, or other compatible object storage for Thanos</li>
+    <li><strong>Helm</strong>: Helm 3.x installed and configured</li>
+    <li><strong>kubectl</strong>: Properly configured with access to your cluster</li>
+    <li><strong>Namespace</strong>: A namespace for your monitoring stack (we'll use "monitoring" in this guide)</li>
   </ul>
+  
+  <p>If you're setting up a multi-cluster configuration, ensure you have network connectivity between clusters and the proper DNS configuration in place.</p>
 </div>
 
 <p><br /></p>
 
-<h3 id="installing-prometheus">Installing Prometheus</h3>
+<hr />
 
-<p>Prometheus examines the installation method using the kube-prometheus-stack chart and the prometheus-community chart.</p>
-<ul>
-  <li><a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">kube-prometheus-stack</a></li>
-  <li><a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus">prometheus-community</a></li>
-</ul>
+<h2 id="installing-prometheus">Installing Prometheus</h2>
 
-<p>And the values file below is an example of installing only the components I need. Therefore, you just need to check values.yaml and add or remove the necessary components.</p>
+<div class="info-box info-box-modern">
+Prometheus can be installed using different Helm charts depending on your requirements. This section covers two popular approaches: using the prometheus-community chart for basic installations and kube-prometheus-stack for a more comprehensive monitoring solution with additional components.
+</div>
 
-<p><br /></p>
+<h3 id="available-installation-methods">Available Installation Methods</h3>
 
-<h4 id="installing-prometheus-crds">Installing Prometheus CRDs</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add repository</span>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Prometheus Installation Methods] --&gt; B[prometheus-community Chart]
+      A --&gt; C[kube-prometheus-stack Chart]
+      
+      B --&gt; D[Basic Prometheus installation]
+      B --&gt; E[Customizable components]
+      B --&gt; F[Lighter weight]
+      
+      C --&gt; G[Complete monitoring solution]
+      C --&gt; H[Includes Grafana, Alertmanager]
+      C --&gt; I[Pre-configured alerts and dashboards]
+      C --&gt; J[Uses Prometheus Operator CRDs]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ffcc80,stroke:#333,stroke-width:1px
+      style F fill:#ffcc80,stroke:#333,stroke-width:1px
+      style G fill:#ce93d8,stroke:#333,stroke-width:1px
+      style H fill:#ce93d8,stroke:#333,stroke-width:1px
+      style I fill:#ce93d8,stroke:#333,stroke-width:1px
+      style J fill:#ce93d8,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Chart</th>
+      <th style="width: 70%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>prometheus-community</strong></td>
+      <td>
+        <ul>
+          <li>Basic Prometheus installation with core components</li>
+          <li>More granular control over individual components</li>
+          <li>Good for specific use cases with custom requirements</li>
+          <li>Lighter weight with less resource consumption</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>kube-prometheus-stack</strong></td>
+      <td>
+        <ul>
+          <li>Comprehensive monitoring solution using the Prometheus Operator</li>
+          <li>Includes Grafana, Alertmanager, and various exporters</li>
+          <li>Pre-configured alerts and dashboards for Kubernetes monitoring</li>
+          <li>Better integration with Thanos for scalable monitoring</li>
+          <li>Uses Custom Resource Definitions for declarative configuration</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="installing-prometheus-crds">Installing Prometheus CRDs</h3>
+
+<p>Before installing Prometheus with the operator-based approach, you need to install the required Custom Resource Definitions (CRDs):</p>
+
+<div class="info-box info-box-default">
+  <strong>Installing Required CRDs</strong>
+  <p>Execute these commands to install the Prometheus Operator CRDs:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add the Prometheus community repository</span>
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
-<span class="c"># Install CRDs</span>
+<span class="c"># Install CRDs in the monitoring namespace</span>
 helm <span class="nb">install </span>prometheus-operator-crds <span class="nt">-n</span> monitoring prometheus-community/prometheus-operator-crds
 
-<span class="c"># Verify installation</span>
+<span class="c"># Verify the installation</span>
 kubectl get crd | <span class="nb">grep </span>monitoring
 </code></pre></div></div>
 
-<h4 id="installing-prometheus-community-chart">Installing Prometheus Community Chart</h4>
+<div class="info-box info-box-default-not-check">
+  <strong>Why CRDs First?</strong>
+  <p>Installing CRDs separately before the main chart ensures:</p>
+  <ul>
+    <li>Clean upgrades without CRD-related conflicts</li>
+    <li>Better management of CRD lifecycle</li>
+    <li>Prevention of accidental CRD deletion during chart uninstallation</li>
+  </ul>
+</div>
 
-<p>Create values file (<code class="language-plaintext highlighter-rouge">values/somaz.yaml</code>):</p>
+<h3 id="option-1-installing-prometheus-community-chart">Option 1: Installing Prometheus Community Chart</h3>
+
+<div class="info-box info-box-default">
+  <strong>Configuring Prometheus Community Chart</strong>
+  <p>Create a values file (<code>values/somaz.yaml</code>) with the following configuration:</p>
+</div>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">server</span><span class="pi">:</span>
   <span class="na">name</span><span class="pi">:</span> <span class="s">server</span>
   <span class="na">image</span><span class="pi">:</span>
@@ -318,17 +408,25 @@ kubectl get crd | <span class="nb">grep </span>monitoring
     <span class="na">prometheus.io/probe</span><span class="pi">:</span> <span class="s">pushgateway</span>
 </code></pre></div></div>
 
-<p>Install Prometheus:</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install</span>
-helm <span class="nb">install </span>prometheus-community <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
+<div class="info-box info-box-default">
+  <strong>Installation Commands</strong>
+  <p>Install Prometheus using these commands:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install Prometheus</span>
+helm <span class="nb">install </span>prometheus-community prometheus-community/prometheus <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span>
 
 <span class="c"># Upgrade if needed</span>
-helm upgrade prometheus-community <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
+helm upgrade prometheus-community prometheus-community/prometheus <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
 </code></pre></div></div>
 
-<h4 id="installing-kube-prometheus-stack">Installing Kube-Prometheus-Stack</h4>
+<h3 id="option-2-installing-kube-prometheus-stack">Option 2: Installing Kube-Prometheus-Stack</h3>
 
-<p>Create values file (<code class="language-plaintext highlighter-rouge">values/somaz.yaml</code>):</p>
+<div class="info-box info-box-default">
+  <strong>Configuring Kube-Prometheus-Stack</strong>
+  <p>Create a values file (<code>values/somaz.yaml</code>) with this configuration for Thanos integration:</p>
+</div>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">alertmanager</span><span class="pi">:</span>
   <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
   <span class="na">config</span><span class="pi">:</span>
@@ -377,29 +475,116 @@ helm upgrade prometheus-community <span class="nb">.</span> <span class="nt">-n<
       <span class="na">cluster</span><span class="pi">:</span> <span class="s">mgmt</span>
 </code></pre></div></div>
 
-<p>Install Kube-Prometheus-Stack:</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify configuration</span>
+<div class="info-box info-box-default-not-check">
+  <strong>Key Configuration Points</strong>
+  <p>This configuration:</p>
+  <ul>
+    <li>Enables the Thanos sidecar for long-term storage integration</li>
+    <li>References a secret (<code>thanos-objstore</code>) containing object storage configuration</li>
+    <li>Adds external labels to identify metrics from this cluster</li>
+    <li>Configures ingress for accessing Prometheus UI</li>
+    <li>Sets up persistent storage for metrics data</li>
+  </ul>
+</div>
+
+<div class="info-box info-box-default">
+  <strong>Installation Commands</strong>
+  <p>Install the Kube-Prometheus-Stack using these commands:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify the configuration</span>
 helm lint <span class="nt">--values</span> ./values/somaz.yaml
 
-<span class="c"># Install</span>
-helm <span class="nb">install </span>kube-prometheus-stack <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span>
+<span class="c"># Install the stack</span>
+helm <span class="nb">install </span>kube-prometheus-stack prometheus-community/kube-prometheus-stack <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span>
 
 <span class="c"># Upgrade if needed</span>
-helm upgrade kube-prometheus-stack <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
+helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
+</code></pre></div></div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+        participant User as You
+        participant Helm as Helm
+        participant K8s as Kubernetes API
+        participant Operator as Prometheus Operator
+        participant Prometheus as Prometheus Pods
+        
+        User-&gt;&gt;Helm: helm install kube-prometheus-stack
+        Helm-&gt;&gt;K8s: Apply CRDs and resources
+        K8s-&gt;&gt;Operator: Create Operator Pod
+        Operator-&gt;&gt;K8s: Prometheus CR created
+        Operator-&gt;&gt;Prometheus: Create and configure Prometheus
+        Prometheus-&gt;&gt;User: Ready for monitoring
+  </div>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="thanos-object-storage-configuration">Thanos Object Storage Configuration</h2>
+
+<div class="info-box info-box-modern">
+Thanos requires object storage for long-term metrics retention. This section explains how to configure the object storage secret that both Prometheus and Thanos components will use.
+</div>
+
+<h3 id="creating-the-object-storage-secret">Creating the Object Storage Secret</h3>
+
+<div class="info-box info-box-default">
+  <strong>Object Storage Configuration</strong>
+  <p>Create a file named <code>objstore.yml</code> with your storage provider configuration:</p>
+</div>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">type</span><span class="pi">:</span> <span class="s">s3</span>
+<span class="na">config</span><span class="pi">:</span>
+  <span class="na">bucket</span><span class="pi">:</span> <span class="s">thanos</span>
+  <span class="na">endpoint</span><span class="pi">:</span> <span class="s">minio.storage.svc.cluster.local:9000</span>
+  <span class="na">access_key</span><span class="pi">:</span> <span class="s">minioadmin</span>
+  <span class="na">secret_key</span><span class="pi">:</span> <span class="s">minioadmin</span>
+  <span class="na">insecure</span><span class="pi">:</span> <span class="no">true</span>
+</code></pre></div></div>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Storage Provider Options</strong>
+  <p>Thanos supports various object storage providers:</p>
+  <ul>
+    <li><strong>AWS S3</strong>: For production environments in AWS</li>
+    <li><strong>Google Cloud Storage</strong>: For GCP deployments</li>
+    <li><strong>Azure Blob Storage</strong>: For Azure environments</li>
+    <li><strong>MinIO</strong>: For on-premises or testing (as shown in example)</li>
+    <li><strong>Others</strong>: Alibaba OSS, Tencent COS, OpenStack Swift, etc.</li>
+  </ul>
+  <p>Adjust the configuration according to your chosen provider.</p>
+</div>
+
+<div class="info-box info-box-default">
+  <strong>Creating the Kubernetes Secret</strong>
+  <p>Create a Kubernetes secret with your object storage configuration:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create the secret in the monitoring namespace</span>
+kubectl create secret generic thanos-objstore <span class="nt">-n</span> monitoring <span class="nt">--from-file</span><span class="o">=</span>objstore.yml
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="installing-thanos">Installing Thanos</h3>
+<hr />
 
-<p>Thanos learns how to import data from an internal Prometheus Thanos Discovery Sidecar, how to import data from an external cluster’s Prometheus Thanos Discovery Sidecar, and how to integrate and manage it as a single Thanos.</p>
-<ul>
-  <li><a href="https://github.com/bitnami/charts/tree/main/bitnami/thanos">bitnami/thanos</a></li>
-</ul>
+<h2 id="installing-thanos">Installing Thanos</h2>
 
-<h4 id="internal-cluster-setup">Internal Cluster Setup</h4>
+<div class="info-box info-box-modern">
+Thanos extends Prometheus with long-term storage, high availability, and global query capabilities. This section covers deploying Thanos components using the Bitnami Helm chart for both single-cluster and multi-cluster scenarios.
+</div>
 
-<p>Create values file (<code class="language-plaintext highlighter-rouge">values/somaz.yaml</code>):</p>
+<h3 id="single-cluster-thanos-configuration">Single-Cluster Thanos Configuration</h3>
+
+<div class="info-box info-box-default">
+  <strong>Internal Cluster Setup</strong>
+  <p>Create a values file (<code>values/somaz.yaml</code>) for a single-cluster Thanos deployment:</p>
+</div>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">global</span><span class="pi">:</span>
   <span class="na">defaultStorageClass</span><span class="pi">:</span> <span class="s2">"</span><span class="s">default"</span>
 
@@ -442,13 +627,46 @@ helm upgrade kube-prometheus-stack <span class="nb">.</span> <span class="nt">-n
     <span class="na">size</span><span class="pi">:</span> <span class="s">10Gi</span>
 </code></pre></div></div>
 
-<h4 id="external-cluster-setup">External Cluster Setup</h4>
-<ul>
-  <li>clusterDomain: external-cluster.local</li>
-  <li>existingObjstoreSecret: thanos-objstore</li>
-</ul>
+<div class="info-box info-box-default-not-check">
+  <strong>Component Explanations</strong>
+  <p>This configuration sets up the following Thanos components:</p>
+  <ul>
+    <li><strong>Query</strong>: The frontend for querying metrics from both local Prometheus and object storage</li>
+    <li><strong>Query Frontend</strong>: Provides advanced query optimization and caching</li>
+    <li><strong>Compactor</strong>: Handles data compaction and downsampling in object storage</li>
+    <li><strong>Store Gateway</strong>: Accesses historical metrics in object storage</li>
+  </ul>
+  <p>The <code>stores</code> configuration connects to your Prometheus Thanos sidecar using DNS service discovery.</p>
+</div>
 
-<p>Create values file (<code class="language-plaintext highlighter-rouge">values/somaz-externalcluster.yaml</code>):</p>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Prometheus + Thanos Sidecar] --&gt;|Upload metrics| B[Object Storage]
+      A --&gt;|Serve real-time metrics| C[Thanos Query]
+      D[Thanos Store Gateway] --&gt;|Fetch historical data| B
+      D --&gt;|Serve historical metrics| C
+      E[Thanos Compactor] --&gt;|Compact &amp; downsample| B
+      C --&gt;|Serve metrics API| F[Thanos Query Frontend]
+      F --&gt;|Expose UI &amp; API| G[Users/Grafana]
+      
+      style A fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style B fill:#64b5f6,stroke:#333,stroke-width:1px
+      style C fill:#ffcc80,stroke:#333,stroke-width:1px
+      style D fill:#ce93d8,stroke:#333,stroke-width:1px
+      style E fill:#ef9a9a,stroke:#333,stroke-width:1px
+      style F fill:#9fa8da,stroke:#333,stroke-width:1px
+      style G fill:#f5f5f5,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<h3 id="multi-cluster-thanos-configuration">Multi-Cluster Thanos Configuration</h3>
+
+<div class="info-box info-box-default">
+  <strong>External Cluster Setup</strong>
+  <p>For external clusters, create a values file (<code>values/somaz-externalcluster.yaml</code>):</p>
+</div>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">query</span><span class="pi">:</span>
   <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
   <span class="na">stores</span><span class="pi">:</span>
@@ -462,13 +680,10 @@ helm upgrade kube-prometheus-stack <span class="nb">.</span> <span class="nt">-n
         <span class="na">nginx.ingress.kubernetes.io/backend-protocol</span><span class="pi">:</span> <span class="s2">"</span><span class="s">GRPC"</span>
 </code></pre></div></div>
 
-<h4 id="multi-cluster-setup">Multi-cluster Setup</h4>
-
-<p>Update main Thanos values to include external cluster:</p>
-<ul>
-  <li>clusterDomain: somaz-cluster.local</li>
-  <li>existingObjstoreSecret: thanos-objstore</li>
-</ul>
+<div class="info-box info-box-default">
+  <strong>Primary Cluster with Multi-Cluster Configuration</strong>
+  <p>Update the main Thanos Query configuration to include the external cluster:</p>
+</div>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">query</span><span class="pi">:</span>
   <span class="na">stores</span><span class="pi">:</span>
@@ -476,48 +691,214 @@ helm upgrade kube-prometheus-stack <span class="nb">.</span> <span class="nt">-n
     <span class="pi">-</span> <span class="s">dnssrv+_grpc._tcp.thanos-multicluster-query-grpc.monitoring.svc.somaz-cluster.local</span>
 </code></pre></div></div>
 
-<p>Install Thanos:</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify configuration</span>
+<div class="info-box info-box-default-not-check">
+  <strong>Multi-Cluster Architecture</strong>
+  <p>In this setup:</p>
+  <ul>
+    <li>Each cluster runs Prometheus with Thanos sidecar uploading to shared object storage</li>
+    <li>External clusters expose their Thanos Query endpoints via gRPC</li>
+    <li>The primary cluster's Thanos Query connects to both local and external endpoints</li>
+    <li>All metrics are deduplicated and unified in the primary Thanos Query Frontend</li>
+  </ul>
+</div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      subgraph "Cluster 1 (Primary)"
+        A1[Prometheus] --&gt;|Upload| B[Object Storage]
+        A1 --&gt;|Serve| C1[Thanos Query 1]
+        D1[Store Gateway] --&gt;|Fetch| B
+        D1 --&gt;|Serve| C1
+        C1 --&gt;|Query| F[Query Frontend]
+      end
+      
+      subgraph "Cluster 2 (External)"
+        A2[Prometheus] --&gt;|Upload| B
+        A2 --&gt;|Serve| C2[Thanos Query 2]
+      end
+      
+      C1 -.-&gt;|Connect| C2
+      F --&gt;|Serve| G[Users/Grafana]
+      
+      style A1 fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style A2 fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style B fill:#64b5f6,stroke:#333,stroke-width:1px
+      style C1 fill:#ffcc80,stroke:#333,stroke-width:1px
+      style C2 fill:#ffcc80,stroke:#333,stroke-width:1px
+      style D1 fill:#ce93d8,stroke:#333,stroke-width:1px
+      style F fill:#9fa8da,stroke:#333,stroke-width:1px
+      style G fill:#f5f5f5,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<h3 id="installing-thanos-components">Installing Thanos Components</h3>
+
+<div class="info-box info-box-default">
+  <strong>Installation Commands</strong>
+  <p>Install Thanos using the Bitnami Helm chart:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add the Bitnami repository</span>
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+
+<span class="c"># Verify the configuration</span>
 helm lint <span class="nt">--values</span> ./values/somaz.yaml
 
-<span class="c"># Install</span>
-helm <span class="nb">install </span>thanos <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span>
+<span class="c"># Install Thanos</span>
+helm <span class="nb">install </span>thanos bitnami/thanos <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml <span class="nt">--create-namespace</span>
 
 <span class="c"># Upgrade if needed</span>
-helm upgrade thanos <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
+helm upgrade thanos bitnami/thanos <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/somaz.yaml
 </code></pre></div></div>
-
-<h4 id="debugging-tips">Debugging Tips</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check DNS resolution:</span>
-kubectl run <span class="nt">-it</span> <span class="nt">--rm</span> <span class="nt">--image</span><span class="o">=</span>nicolaka/netshoot dns-test <span class="nt">--restart</span><span class="o">=</span>Never <span class="nt">--</span> dig _grpc._tcp.kube-prometheus-stack-thanos-discovery.monitoring.svc.somaz-cluster.local
-</code></pre></div></div>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify endpoints:</span>
-kubectl get ep <span class="nt">-n</span> monitoring | <span class="nb">grep </span>thanos-discovery
-</code></pre></div></div>
-
-<p><br /></p>
-
-<h3 id="next-steps">Next Steps</h3>
-
-<p>In our next post, we’ll explore setting up:</p>
-<ul>
-  <li>Loki with Promtail</li>
-  <li>Node Feature Discovery</li>
-  <li>Grafana dashboards for visualizing metrics and logs</li>
-</ul>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="references">References</h3>
+<h2 id="verification-and-troubleshooting">Verification and Troubleshooting</h2>
+
+<div class="info-box info-box-modern">
+After installation, verify that all components are working correctly and troubleshoot any issues that may arise. This section provides guidance on common verification steps and troubleshooting techniques.
+</div>
+
+<h3 id="verifying-the-installation">Verifying the Installation</h3>
+
+<div class="info-box info-box-default">
+  <strong>Check Components Status</strong>
+  <p>Verify that all pods are running correctly:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check Prometheus and related components</span>
+kubectl get pods <span class="nt">-n</span> monitoring <span class="nt">-l</span> <span class="nv">app</span><span class="o">=</span>prometheus
+
+<span class="c"># Check Thanos components</span>
+kubectl get pods <span class="nt">-n</span> monitoring <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>thanos
+
+<span class="c"># Check service endpoints</span>
+kubectl get svc <span class="nt">-n</span> monitoring
+</code></pre></div></div>
+
+<h3 id="dns-and-connectivity-troubleshooting">DNS and Connectivity Troubleshooting</h3>
+
+<div class="info-box info-box-default">
+  <strong>Testing DNS Resolution</strong>
+  <p>Verify DNS resolution for service discovery:</p>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check DNS resolution for Thanos discovery endpoints</span>
+kubectl run <span class="nt">-it</span> <span class="nt">--rm</span> <span class="nt">--image</span><span class="o">=</span>nicolaka/netshoot dns-test <span class="nt">--restart</span><span class="o">=</span>Never <span class="nt">--</span> dig _grpc._tcp.kube-prometheus-stack-thanos-discovery.monitoring.svc.somaz-cluster.local
+
+<span class="c"># Verify endpoints are registered</span>
+kubectl get ep <span class="nt">-n</span> monitoring | <span class="nb">grep </span>thanos-discovery
+</code></pre></div></div>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Common Issues and Solutions</strong>
+  <ul>
+    <li><strong>DNS Resolution Failures</strong>: Ensure CoreDNS is working correctly and service names are accurate</li>
+    <li><strong>Thanos Query Cannot Find Stores</strong>: Verify store endpoints and network connectivity</li>
+    <li><strong>Object Storage Access Issues</strong>: Check credentials and endpoint configuration</li>
+    <li><strong>No Metrics in Thanos Query</strong>: Verify Prometheus external labels and proper sidecar configuration</li>
+    <li><strong>Ingress Connectivity Problems</strong>: Check ingress controller logs and annotations</li>
+  </ul>
+</div>
+
+<h3 id="accessing-user-interfaces">Accessing User Interfaces</h3>
+
+<div class="info-box info-box-default">
+  <strong>Component UIs</strong>
+  <p>Access the following UIs to verify your installation:</p>
+  <ul>
+    <li><strong>Prometheus UI</strong>: http://prometheus.somaz.link</li>
+    <li><strong>Thanos Query UI</strong>: http://thanos-query.somaz.link</li>
+    <li><strong>Thanos Frontend UI</strong>: http://thanos.somaz.link</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="next-steps-and-advanced-topics">Next Steps and Advanced Topics</h2>
+
+<div class="info-box info-box-modern">
+Once your Prometheus and Thanos installation is complete and verified, you can expand your monitoring infrastructure with additional components and integrations.
+</div>
+
+<h3 id="upcoming-content">Upcoming Content</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>In Our Next Post</strong>
+  <p>We'll explore additional monitoring capabilities including:</p>
+  <ul>
+    <li><strong>Loki with Promtail</strong>: Logging solution that integrates with your monitoring stack</li>
+    <li><strong>Node Feature Discovery</strong>: Enhancing Kubernetes node capabilities detection</li>
+    <li><strong>Grafana Dashboards</strong>: Creating comprehensive visualization dashboards</li>
+  </ul>
+</div>
+
+<h3 id="advanced-configuration-options">Advanced Configuration Options</h3>
+
+<div class="info-box info-box-default">
+  <strong>Fine-tuning Your Installation</strong>
+  <p>Consider these advanced configurations for production environments:</p>
+  <ul>
+    <li>Setting up high availability for Prometheus and Thanos components</li>
+    <li>Configuring detailed alert rules and notification channels</li>
+    <li>Implementing retention policies and downsampling strategies</li>
+    <li>Adding custom exporters for application-specific metrics</li>
+    <li>Integrating with existing notification systems (PagerDuty, Slack, etc.)</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="key-points">Key Points</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>💡 Installation Summary</strong>
+  <ul>
+    <li>
+      <strong>Installation Approach</strong><br />
+      - kube-prometheus-stack for comprehensive monitoring with Operator<br />
+      - prometheus-community chart for lightweight, customizable setups<br />
+      - Bitnami Thanos chart for long-term storage and multi-cluster capabilities
+    </li>
+    <li>
+      <strong>Key Components</strong><br />
+      - Prometheus with Thanos sidecar for metrics collection<br />
+      - Object storage backend for long-term metrics retention<br />
+      - Thanos Query for unified metric access<br />
+      - Thanos Store Gateway for historical data access
+    </li>
+    <li>
+      <strong>Multi-Cluster Setup</strong><br />
+      - Shared object storage between clusters<br />
+      - Federated query across cluster boundaries<br />
+      - Centralized view of all metrics<br />
+      - Seamless scaling as your infrastructure grows
+    </li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
 <ul>
   <li><a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">Kube-Prometheus-Stack</a></li>
   <li><a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus">Prometheus Helm Chart</a></li>
   <li><a href="https://thanos.io/v0.8/thanos/storage.md/">Thanos Storage Configuration</a></li>
   <li><a href="https://github.com/bitnami/charts/tree/main/bitnami/thanos">Bitnami Thanos Chart</a></li>
   <li><a href="https://particule.io/en/blog/thanos-monitoring/">Thanos Monitoring Guide</a></li>
+  <li><a href="https://thanos.io/tip/components/query.md/">Thanos Query Documentation</a></li>
+  <li><a href="https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/getting-started.md">Prometheus Operator User Guide</a></li>
+  <li><a href="https://www.infracloud.io/blogs/multicluster-monitoring-thanos/">Multi-cluster Monitoring with Thanos</a></li>
 </ul>
 
 
@@ -568,7 +949,7 @@ kubectl get ep <span class="nt">-n</span> monitoring | <span class="nb">grep </s
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="5">
+            <div class="time-bar" data-minutes="14">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -875,49 +1256,139 @@ kubectl get ep <span class="nt">-n</span> monitoring | <span class="nb">grep </s
 
 
 
-Overview
-
-Following our previous post about Prometheus and Thanos, let’s explore how to install and configure these tools using Helm charts. We’ll cover both single-cluster and multi-cluster setups.
+Installation Guide for Prometheus and Thanos
 
 
-  Prerequisites
+This guide provides detailed, step-by-step instructions for installing and configuring Prometheus and Thanos using Helm charts in Kubernetes environments. Learn how to set up a scalable monitoring infrastructure for both single-cluster and multi-cluster deployments with long-term metrics storage and unified querying capabilities.
+
+
+Introduction and Prerequisites
+
+
+  Before You Begin
+  This guide follows our previous post about Prometheus and Thanos, focusing on the practical implementation aspects. Before proceeding with the installation, ensure you have the following prerequisites in place:
   
-    Kubernetes cluster with storage provisioner configured
-    Object storage (AWS S3, GCP GCS, MinIO, Ceph, etc.)
-    Helm installed
-    kubectl configured
   
+    Kubernetes Cluster: Running cluster with proper networking configuration
+    Storage: Storage provisioner configured for persistent volumes
+    Object Storage: Access to S3, GCS, MinIO, or other compatible object storage for Thanos
+    Helm: Helm 3.x installed and configured
+    kubectl: Properly configured with access to your cluster
+    Namespace: A namespace for your monitoring stack (we&apos;ll use &quot;monitoring&quot; in this guide)
+  
+  
+  If you&apos;re setting up a multi-cluster configuration, ensure you have network connectivity between clusters and the proper DNS configuration in place.
+
+
 
 
 
 
 Installing Prometheus
 
-Prometheus examines the installation method using the kube-prometheus-stack chart and the prometheus-community chart.
 
-  kube-prometheus-stack
-  prometheus-community
+Prometheus can be installed using different Helm charts depending on your requirements. This section covers two popular approaches: using the prometheus-community chart for basic installations and kube-prometheus-stack for a more comprehensive monitoring solution with additional components.
 
 
-And the values file below is an example of installing only the components I need. Therefore, you just need to check values.yaml and add or remove the necessary components.
+Available Installation Methods
 
+
+  
+    graph TD
+      A[Prometheus Installation Methods] --&amp;gt; B[prometheus-community Chart]
+      A --&amp;gt; C[kube-prometheus-stack Chart]
+      
+      B --&amp;gt; D[Basic Prometheus installation]
+      B --&amp;gt; E[Customizable components]
+      B --&amp;gt; F[Lighter weight]
+      
+      C --&amp;gt; G[Complete monitoring solution]
+      C --&amp;gt; H[Includes Grafana, Alertmanager]
+      C --&amp;gt; I[Pre-configured alerts and dashboards]
+      C --&amp;gt; J[Uses Prometheus Operator CRDs]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ffcc80,stroke:#333,stroke-width:1px
+      style F fill:#ffcc80,stroke:#333,stroke-width:1px
+      style G fill:#ce93d8,stroke:#333,stroke-width:1px
+      style H fill:#ce93d8,stroke:#333,stroke-width:1px
+      style I fill:#ce93d8,stroke:#333,stroke-width:1px
+      style J fill:#ce93d8,stroke:#333,stroke-width:1px
+  
+
+
+
+  
+    
+      Chart
+      Description
+    
+    
+      prometheus-community
+      
+        
+          Basic Prometheus installation with core components
+          More granular control over individual components
+          Good for specific use cases with custom requirements
+          Lighter weight with less resource consumption
+        
+      
+    
+    
+      kube-prometheus-stack
+      
+        
+          Comprehensive monitoring solution using the Prometheus Operator
+          Includes Grafana, Alertmanager, and various exporters
+          Pre-configured alerts and dashboards for Kubernetes monitoring
+          Better integration with Thanos for scalable monitoring
+          Uses Custom Resource Definitions for declarative configuration
+        
+      
+    
+  
 
 
 Installing Prometheus CRDs
-# Add repository
+
+Before installing Prometheus with the operator-based approach, you need to install the required Custom Resource Definitions (CRDs):
+
+
+  Installing Required CRDs
+  Execute these commands to install the Prometheus Operator CRDs:
+
+
+# Add the Prometheus community repository
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
-# Install CRDs
+# Install CRDs in the monitoring namespace
 helm install prometheus-operator-crds -n monitoring prometheus-community/prometheus-operator-crds
 
-# Verify installation
+# Verify the installation
 kubectl get crd | grep monitoring
 
 
-Installing Prometheus Community Chart
 
-Create values file (values/somaz.yaml):
+  Why CRDs First?
+  Installing CRDs separately before the main chart ensures:
+  
+    Clean upgrades without CRD-related conflicts
+    Better management of CRD lifecycle
+    Prevention of accidental CRD deletion during chart uninstallation
+  
+
+
+Option 1: Installing Prometheus Community Chart
+
+
+  Configuring Prometheus Community Chart
+  Create a values file (values/somaz.yaml) with the following configuration:
+
+
 server:
   name: server
   image:
@@ -951,17 +1422,25 @@ prometheus-pushgateway:
     prometheus.io/probe: pushgateway
 
 
-Install Prometheus:
-# Install
-helm install prometheus-community . -n monitoring -f ./values/somaz.yaml
+
+  Installation Commands
+  Install Prometheus using these commands:
+
+
+# Install Prometheus
+helm install prometheus-community prometheus-community/prometheus -n monitoring -f ./values/somaz.yaml --create-namespace
 
 # Upgrade if needed
-helm upgrade prometheus-community . -n monitoring -f ./values/somaz.yaml
+helm upgrade prometheus-community prometheus-community/prometheus -n monitoring -f ./values/somaz.yaml
 
 
-Installing Kube-Prometheus-Stack
+Option 2: Installing Kube-Prometheus-Stack
 
-Create values file (values/somaz.yaml):
+
+  Configuring Kube-Prometheus-Stack
+  Create a values file (values/somaz.yaml) with this configuration for Thanos integration:
+
+
 alertmanager:
   enabled: true
   config:
@@ -1010,29 +1489,116 @@ prometheus:
       cluster: mgmt
 
 
-Install Kube-Prometheus-Stack:
-# Verify configuration
+
+  Key Configuration Points
+  This configuration:
+  
+    Enables the Thanos sidecar for long-term storage integration
+    References a secret (thanos-objstore) containing object storage configuration
+    Adds external labels to identify metrics from this cluster
+    Configures ingress for accessing Prometheus UI
+    Sets up persistent storage for metrics data
+  
+
+
+
+  Installation Commands
+  Install the Kube-Prometheus-Stack using these commands:
+
+
+# Verify the configuration
 helm lint --values ./values/somaz.yaml
 
-# Install
-helm install kube-prometheus-stack . -n monitoring -f ./values/somaz.yaml --create-namespace
+# Install the stack
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring -f ./values/somaz.yaml --create-namespace
 
 # Upgrade if needed
-helm upgrade kube-prometheus-stack . -n monitoring -f ./values/somaz.yaml
+helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring -f ./values/somaz.yaml
+
+
+
+  
+    sequenceDiagram
+        participant User as You
+        participant Helm as Helm
+        participant K8s as Kubernetes API
+        participant Operator as Prometheus Operator
+        participant Prometheus as Prometheus Pods
+        
+        User-&amp;gt;&amp;gt;Helm: helm install kube-prometheus-stack
+        Helm-&amp;gt;&amp;gt;K8s: Apply CRDs and resources
+        K8s-&amp;gt;&amp;gt;Operator: Create Operator Pod
+        Operator-&amp;gt;&amp;gt;K8s: Prometheus CR created
+        Operator-&amp;gt;&amp;gt;Prometheus: Create and configure Prometheus
+        Prometheus-&amp;gt;&amp;gt;User: Ready for monitoring
+  
+
+
+
+
+
+
+Thanos Object Storage Configuration
+
+
+Thanos requires object storage for long-term metrics retention. This section explains how to configure the object storage secret that both Prometheus and Thanos components will use.
+
+
+Creating the Object Storage Secret
+
+
+  Object Storage Configuration
+  Create a file named objstore.yml with your storage provider configuration:
+
+
+type: s3
+config:
+  bucket: thanos
+  endpoint: minio.storage.svc.cluster.local:9000
+  access_key: minioadmin
+  secret_key: minioadmin
+  insecure: true
+
+
+
+  Storage Provider Options
+  Thanos supports various object storage providers:
+  
+    AWS S3: For production environments in AWS
+    Google Cloud Storage: For GCP deployments
+    Azure Blob Storage: For Azure environments
+    MinIO: For on-premises or testing (as shown in example)
+    Others: Alibaba OSS, Tencent COS, OpenStack Swift, etc.
+  
+  Adjust the configuration according to your chosen provider.
+
+
+
+  Creating the Kubernetes Secret
+  Create a Kubernetes secret with your object storage configuration:
+
+
+# Create the secret in the monitoring namespace
+kubectl create secret generic thanos-objstore -n monitoring --from-file=objstore.yml
+
+
 
 
 
 
 Installing Thanos
 
-Thanos learns how to import data from an internal Prometheus Thanos Discovery Sidecar, how to import data from an external cluster’s Prometheus Thanos Discovery Sidecar, and how to integrate and manage it as a single Thanos.
 
-  bitnami/thanos
+Thanos extends Prometheus with long-term storage, high availability, and global query capabilities. This section covers deploying Thanos components using the Bitnami Helm chart for both single-cluster and multi-cluster scenarios.
 
 
-Internal Cluster Setup
+Single-Cluster Thanos Configuration
 
-Create values file (values/somaz.yaml):
+
+  Internal Cluster Setup
+  Create a values file (values/somaz.yaml) for a single-cluster Thanos deployment:
+
+
 global:
   defaultStorageClass: &quot;default&quot;
 
@@ -1075,13 +1641,46 @@ storegateway:
     size: 10Gi
 
 
-External Cluster Setup
 
-  clusterDomain: external-cluster.local
-  existingObjstoreSecret: thanos-objstore
+  Component Explanations
+  This configuration sets up the following Thanos components:
+  
+    Query: The frontend for querying metrics from both local Prometheus and object storage
+    Query Frontend: Provides advanced query optimization and caching
+    Compactor: Handles data compaction and downsampling in object storage
+    Store Gateway: Accesses historical metrics in object storage
+  
+  The stores configuration connects to your Prometheus Thanos sidecar using DNS service discovery.
 
 
-Create values file (values/somaz-externalcluster.yaml):
+
+  
+    graph TD
+      A[Prometheus + Thanos Sidecar] --&amp;gt;|Upload metrics| B[Object Storage]
+      A --&amp;gt;|Serve real-time metrics| C[Thanos Query]
+      D[Thanos Store Gateway] --&amp;gt;|Fetch historical data| B
+      D --&amp;gt;|Serve historical metrics| C
+      E[Thanos Compactor] --&amp;gt;|Compact &amp;amp; downsample| B
+      C --&amp;gt;|Serve metrics API| F[Thanos Query Frontend]
+      F --&amp;gt;|Expose UI &amp;amp; API| G[Users/Grafana]
+      
+      style A fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style B fill:#64b5f6,stroke:#333,stroke-width:1px
+      style C fill:#ffcc80,stroke:#333,stroke-width:1px
+      style D fill:#ce93d8,stroke:#333,stroke-width:1px
+      style E fill:#ef9a9a,stroke:#333,stroke-width:1px
+      style F fill:#9fa8da,stroke:#333,stroke-width:1px
+      style G fill:#f5f5f5,stroke:#333,stroke-width:1px
+  
+
+
+Multi-Cluster Thanos Configuration
+
+
+  External Cluster Setup
+  For external clusters, create a values file (values/somaz-externalcluster.yaml):
+
+
 query:
   enabled: true
   stores:
@@ -1095,12 +1694,9 @@ query:
         nginx.ingress.kubernetes.io/backend-protocol: &quot;GRPC&quot;
 
 
-Multi-cluster Setup
 
-Update main Thanos values to include external cluster:
-
-  clusterDomain: somaz-cluster.local
-  existingObjstoreSecret: thanos-objstore
+  Primary Cluster with Multi-Cluster Configuration
+  Update the main Thanos Query configuration to include the external cluster:
 
 
 query:
@@ -1109,35 +1705,198 @@ query:
     - dnssrv+_grpc._tcp.thanos-multicluster-query-grpc.monitoring.svc.somaz-cluster.local
 
 
-Install Thanos:
-# Verify configuration
+
+  Multi-Cluster Architecture
+  In this setup:
+  
+    Each cluster runs Prometheus with Thanos sidecar uploading to shared object storage
+    External clusters expose their Thanos Query endpoints via gRPC
+    The primary cluster&apos;s Thanos Query connects to both local and external endpoints
+    All metrics are deduplicated and unified in the primary Thanos Query Frontend
+  
+
+
+
+  
+    graph TD
+      subgraph &quot;Cluster 1 (Primary)&quot;
+        A1[Prometheus] --&amp;gt;|Upload| B[Object Storage]
+        A1 --&amp;gt;|Serve| C1[Thanos Query 1]
+        D1[Store Gateway] --&amp;gt;|Fetch| B
+        D1 --&amp;gt;|Serve| C1
+        C1 --&amp;gt;|Query| F[Query Frontend]
+      end
+      
+      subgraph &quot;Cluster 2 (External)&quot;
+        A2[Prometheus] --&amp;gt;|Upload| B
+        A2 --&amp;gt;|Serve| C2[Thanos Query 2]
+      end
+      
+      C1 -.-&amp;gt;|Connect| C2
+      F --&amp;gt;|Serve| G[Users/Grafana]
+      
+      style A1 fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style A2 fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style B fill:#64b5f6,stroke:#333,stroke-width:1px
+      style C1 fill:#ffcc80,stroke:#333,stroke-width:1px
+      style C2 fill:#ffcc80,stroke:#333,stroke-width:1px
+      style D1 fill:#ce93d8,stroke:#333,stroke-width:1px
+      style F fill:#9fa8da,stroke:#333,stroke-width:1px
+      style G fill:#f5f5f5,stroke:#333,stroke-width:1px
+  
+
+
+Installing Thanos Components
+
+
+  Installation Commands
+  Install Thanos using the Bitnami Helm chart:
+
+
+# Add the Bitnami repository
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+
+# Verify the configuration
 helm lint --values ./values/somaz.yaml
 
-# Install
-helm install thanos . -n monitoring -f ./values/somaz.yaml --create-namespace
+# Install Thanos
+helm install thanos bitnami/thanos -n monitoring -f ./values/somaz.yaml --create-namespace
 
 # Upgrade if needed
-helm upgrade thanos . -n monitoring -f ./values/somaz.yaml
+helm upgrade thanos bitnami/thanos -n monitoring -f ./values/somaz.yaml
 
 
-Debugging Tips
-# Check DNS resolution:
+
+
+
+
+Verification and Troubleshooting
+
+
+After installation, verify that all components are working correctly and troubleshoot any issues that may arise. This section provides guidance on common verification steps and troubleshooting techniques.
+
+
+Verifying the Installation
+
+
+  Check Components Status
+  Verify that all pods are running correctly:
+
+
+# Check Prometheus and related components
+kubectl get pods -n monitoring -l app=prometheus
+
+# Check Thanos components
+kubectl get pods -n monitoring -l app.kubernetes.io/name=thanos
+
+# Check service endpoints
+kubectl get svc -n monitoring
+
+
+DNS and Connectivity Troubleshooting
+
+
+  Testing DNS Resolution
+  Verify DNS resolution for service discovery:
+
+
+# Check DNS resolution for Thanos discovery endpoints
 kubectl run -it --rm --image=nicolaka/netshoot dns-test --restart=Never -- dig _grpc._tcp.kube-prometheus-stack-thanos-discovery.monitoring.svc.somaz-cluster.local
 
-
-# Verify endpoints:
+# Verify endpoints are registered
 kubectl get ep -n monitoring | grep thanos-discovery
 
 
 
+  Common Issues and Solutions
+  
+    DNS Resolution Failures: Ensure CoreDNS is working correctly and service names are accurate
+    Thanos Query Cannot Find Stores: Verify store endpoints and network connectivity
+    Object Storage Access Issues: Check credentials and endpoint configuration
+    No Metrics in Thanos Query: Verify Prometheus external labels and proper sidecar configuration
+    Ingress Connectivity Problems: Check ingress controller logs and annotations
+  
 
-Next Steps
 
-In our next post, we’ll explore setting up:
+Accessing User Interfaces
 
-  Loki with Promtail
-  Node Feature Discovery
-  Grafana dashboards for visualizing metrics and logs
+
+  Component UIs
+  Access the following UIs to verify your installation:
+  
+    Prometheus UI: http://prometheus.somaz.link
+    Thanos Query UI: http://thanos-query.somaz.link
+    Thanos Frontend UI: http://thanos.somaz.link
+  
+
+
+
+
+
+
+Next Steps and Advanced Topics
+
+
+Once your Prometheus and Thanos installation is complete and verified, you can expand your monitoring infrastructure with additional components and integrations.
+
+
+Upcoming Content
+
+
+  In Our Next Post
+  We&apos;ll explore additional monitoring capabilities including:
+  
+    Loki with Promtail: Logging solution that integrates with your monitoring stack
+    Node Feature Discovery: Enhancing Kubernetes node capabilities detection
+    Grafana Dashboards: Creating comprehensive visualization dashboards
+  
+
+
+Advanced Configuration Options
+
+
+  Fine-tuning Your Installation
+  Consider these advanced configurations for production environments:
+  
+    Setting up high availability for Prometheus and Thanos components
+    Configuring detailed alert rules and notification channels
+    Implementing retention policies and downsampling strategies
+    Adding custom exporters for application-specific metrics
+    Integrating with existing notification systems (PagerDuty, Slack, etc.)
+  
+
+
+
+
+
+
+Key Points
+
+
+  💡 Installation Summary
+  
+    
+      Installation Approach
+      - kube-prometheus-stack for comprehensive monitoring with Operator
+      - prometheus-community chart for lightweight, customizable setups
+      - Bitnami Thanos chart for long-term storage and multi-cluster capabilities
+    
+    
+      Key Components
+      - Prometheus with Thanos sidecar for metrics collection
+      - Object storage backend for long-term metrics retention
+      - Thanos Query for unified metric access
+      - Thanos Store Gateway for historical data access
+    
+    
+      Multi-Cluster Setup
+      - Shared object storage between clusters
+      - Federated query across cluster boundaries
+      - Centralized view of all metrics
+      - Seamless scaling as your infrastructure grows
+    
+  
 
 
 
@@ -1151,9 +1910,12 @@ References
   Thanos Storage Configuration
   Bitnami Thanos Chart
   Thanos Monitoring Guide
+  Thanos Query Documentation
+  Prometheus Operator User Guide
+  Multi-cluster Monitoring with Thanos
 
 ",
-            "wordcount": "1034",
+            "wordcount": "2535",
             "inLanguage": "en",
             "dateCreated": "2025-02-02/",
             "datePublished": "2025-02-02/",
