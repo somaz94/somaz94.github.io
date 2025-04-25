@@ -40,7 +40,7 @@
     <title>Understanding Helm Chart Template Syntax | somaz</title>
     <meta name="description" content="Learn about Helm Chart template syntax, including Go templating, values references, and common patterns">
     
-        <meta name="keywords" content="kubernetes, helm, helm-chart, template">
+        <meta name="keywords" content="kubernetes, helm, helm-chart, template, go-template, yaml">
     
 
     <!-- Social: Twitter -->
@@ -220,7 +220,7 @@ January 31, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>18 min to read</span>
                 </p>
                 <h1 class="post-title">Understanding Helm Chart Template Syntax</h1>
                 <p class="post-subtitle">A comprehensive guide to Helm Chart templating and best practices</p>
@@ -242,201 +242,679 @@ January 31, 2025
 
 <h2 id="overview">Overview</h2>
 
-<p>Helm Chart templates use a combination of YAML and Go templating to define configurations for Kubernetes resources. Let’s explore the key syntax patterns and their usage.</p>
+<p>Helm is the package manager for Kubernetes, enabling easy deployment and management of applications. At its core are Helm Charts - packages of pre-configured Kubernetes resources that can be customized through templating.</p>
+
+<p>This guide explores Helm Chart template syntax, from basic concepts to advanced techniques, helping you create flexible and maintainable charts for your Kubernetes applications.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>What Are Helm Chart Templates?</strong>
+  <p>Helm Chart templates are files that combine static YAML with dynamic templating directives to generate valid Kubernetes manifests. They allow charts to be customizable and reusable across different environments and configurations.</p>
+  <p>Key benefits of Helm templating include:</p>
+  <ul>
+    <li>Environment-specific configuration without changing chart files</li>
+    <li>Dynamic generation of resource names, labels, and other metadata</li>
+    <li>Conditionally including resources based on configuration values</li>
+    <li>Reusing common patterns across multiple resources</li>
+    <li>Parameterizing deployments for different scenarios</li>
+  </ul>
+</div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    
+    graph TD
+      A[values.yaml] --&gt; B[Template Engine]
+      C[Chart Templates] --&gt; B
+      D[Built-in Objects] --&gt; B
+      B --&gt; E[Rendered Kubernetes Manifests]
+      E --&gt; F[Kubernetes API]
+      
+      style A fill:#ffcc80,stroke:#333,stroke-width:1px
+      style B fill:#81c784,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ba68c8,stroke:#333,stroke-width:1px
+      style E fill:#4dd0e1,stroke:#333,stroke-width:1px
+      style F fill:#a1887f,stroke:#333,stroke-width:1px
+    
+  </div>
+</div>
 
 <p><br /></p>
 
-<h2 id="helm-chart-template-syntax">Helm Chart Template Syntax</h2>
+<h2 id="helm-chart-structure">Helm Chart Structure</h2>
 
-<h3 id="standard-yaml-syntax">Standard YAML Syntax</h3>
-<p>Basic YAML structure used in Helm charts:</p>
+<p>Before diving into templating, it’s important to understand the basic structure of a Helm chart:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mychart/
+  ├── Chart.yaml           # Metadata about the chart
+  ├── values.yaml          # Default configuration values
+  ├── templates/           # Template files
+  │   ├── deployment.yaml  # Kubernetes resources
+  │   ├── service.yaml
+  │   ├── _helpers.tpl     # Template helpers
+  │   └── ...
+  ├── charts/              # Dependencies (subchart)
+  └── README.md            # Documentation
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="template-language-fundamentals">Template Language Fundamentals</h2>
+
+<p>Helm uses Go templates as its templating language, which is extended with additional functions specific to Helm.</p>
+
+<h3 id="basic-syntax">Basic Syntax</h3>
+
+<p>Templates use double curly braces (<code class="language-plaintext highlighter-rouge">{{ }}</code>) to enclose template directives:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Empty curly braces (not useful, but valid syntax)</span>
+<span class="pi">{{</span> <span class="pi">}}</span>
+
+<span class="c1"># Basic template directive</span>
+<span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span>
+
+<span class="c1"># Placeholder pattern</span>
+<span class="pi">{{</span> <span class="nv">...</span> <span class="pi">}}</span>
+
+<span class="c1"># Access release information</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-config</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">myvalue</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.name</span> <span class="pi">}}</span>
+  <span class="na">version</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Chart.Name</span> <span class="pi">}}</span><span class="s">-{{ .Chart.Version }}</span>
+</code></pre></div></div>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Whitespace Management</strong>
+  <p>Helm templates can control whitespace with special syntax:</p>
+  <ul>
+    <li><code>{{- ... }}</code>: Removes whitespace before the directive</li>
+    <li><code>{{ ... -}}</code>: Removes whitespace after the directive</li>
+    <li><code>{{- ... -}}</code>: Removes whitespace on both sides</li>
+  </ul>
+  <p>This helps produce clean YAML without unnecessary blank lines or spaces.</p>
+</div>
+
+<h3 id="built-in-objects">Built-in Objects</h3>
+
+<p>Helm provides several built-in objects for access to chart data and runtime information:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Object</th>
+      <th style="width: 40%;">Description</th>
+      <th style="width: 40%;">Example Usage</th>
+    </tr>
+    <tr>
+      <td><code>.Values</code></td>
+      <td>Values from the values.yaml file and user-supplied values</td>
+      <td><code>{{ .Values.replicaCount }}</code></td>
+    </tr>
+    <tr>
+      <td><code>.Release</code></td>
+      <td>Information about the release (name, namespace, etc.)</td>
+      <td><code>{{ .Release.Name }}-database</code></td>
+    </tr>
+    <tr>
+      <td><code>.Chart</code></td>
+      <td>Contents of the Chart.yaml file</td>
+      <td><code>{{ .Chart.Version }}</code></td>
+    </tr>
+    <tr>
+      <td><code>.Files</code></td>
+      <td>Access to files in the chart</td>
+      <td><code>{{ .Files.Get "config.json" }}</code></td>
+    </tr>
+    <tr>
+      <td><code>.Template</code></td>
+      <td>Information about the current template</td>
+      <td><code>{{ .Template.Name }}</code></td>
+    </tr>
+    <tr>
+      <td><code>.Capabilities</code></td>
+      <td>Information about Kubernetes capabilities</td>
+      <td><code>{{ .Capabilities.KubeVersion }}</code></td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h2 id="working-with-values">Working with Values</h2>
+
+<p>Values can be defined in various places:</p>
+<ul>
+  <li>The chart’s <code class="language-plaintext highlighter-rouge">values.yaml</code> file (defaults)</li>
+  <li>Parent chart’s <code class="language-plaintext highlighter-rouge">values.yaml</code> (for subcharts)</li>
+  <li>Command-line with <code class="language-plaintext highlighter-rouge">--set</code> or <code class="language-plaintext highlighter-rouge">-f</code> options</li>
+</ul>
+
+<h3 id="accessing-values">Accessing Values</h3>
+
+<p>Values are accessed through the <code class="language-plaintext highlighter-rouge">.Values</code> object:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-deployment</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.replicaCount</span> <span class="pi">}}</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Chart.Name</span> <span class="pi">}}</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s2">"</span><span class="s">{{</span><span class="nv"> </span><span class="s">.Values.image.repository</span><span class="nv"> </span><span class="s">}}:{{</span><span class="nv"> </span><span class="s">.Values.image.tag</span><span class="nv"> </span><span class="s">}}"</span>
+        <span class="na">resources</span><span class="pi">:</span>
+          <span class="na">limits</span><span class="pi">:</span>
+            <span class="na">cpu</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.resources.limits.cpu</span> <span class="pi">}}</span>
+            <span class="na">memory</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.resources.limits.memory</span> <span class="pi">}}</span>
+</code></pre></div></div>
+
+<h3 id="default-values">Default Values</h3>
+
+<p>You can provide defaults for values that might not be defined:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Using default function</span>
+<span class="na">replicas</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.replicaCount | default 1</span> <span class="pi">}}</span>
+
+<span class="c1"># Using if/else</span>
+<span class="na">replicas</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">if .Values.replicaCount</span> <span class="pi">}}{{</span> <span class="nv">.Values.replicaCount</span> <span class="pi">}}{{</span> <span class="nv">else</span> <span class="pi">}}</span><span class="s">1{{ end }}</span>
+</code></pre></div></div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    
+    flowchart TD
+      A[Command Line Values] --&gt;|Override| B[Chart-Specific values.yaml]
+      C[Parent Chart Values] --&gt;|Override| B
+      B --&gt;|Default| D[Final Values]
+      D --&gt;|Available as| E[.Values Object]
+      
+      style A fill:#ffcc80,stroke:#333,stroke-width:1px
+      style B fill:#81c784,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ba68c8,stroke:#333,stroke-width:1px
+      style E fill:#4dd0e1,stroke:#333,stroke-width:1px
+    
+  </div>
+</div>
+
+<p><br /></p>
+
+<h2 id="control-structures">Control Structures</h2>
+
+<h3 id="conditionals">Conditionals</h3>
+
+<p>Conditionals allow you to include or exclude blocks of YAML based on values:</p>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">my-service</span>
-  <span class="na">labels</span><span class="pi">:</span>
-    <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
-</code></pre></div></div>
-
-<h3 id="go-templating-syntax">Go Templating Syntax</h3>
-<p>Uses <code class="language-plaintext highlighter-rouge">{{ ... }}</code> for dynamic values:</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">metadata</span><span class="pi">:</span>
   <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-service</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.service.type</span> <span class="pi">}}</span>
+  <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.service.port</span> <span class="pi">}}</span>
+      <span class="na">targetPort</span><span class="pi">:</span> <span class="s">http</span>
+      <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+  <span class="pi">{{</span><span class="nv">- if .Values.service.nodePort</span> <span class="pi">}}</span>
+      <span class="na">nodePort</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.service.nodePort</span> <span class="pi">}}</span>
+  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
 </code></pre></div></div>
 
-<div class="info-box info-box-default-not-check">
-  <strong>Key Template References</strong>
-  <ol>
-    <li>Values Reference (.Values)
-      <ul>
-        <li>Accesses values.yaml configurations</li>
-        <li>Example: <code>{{ .Values.replicaCount }}</code></li>
-      </ul>
-    </li>
-    <li>Release and Chart Metadata
-      <ul>
-        <li>.Release: Release information</li>
-        <li>.Chart: Chart metadata</li>
-        <li>Example: <code>{{ .Chart.Name }}-{{ .Chart.Version }}</code></li>
-      </ul>
-    </li>
-  </ol>
-</div>
+<h4 id="complex-conditionals">Complex Conditionals</h4>
 
-<h3 id="control-structures">Control Structures</h3>
-
-<h4 id="conditional-statements">Conditional Statements</h4>
-<ul>
-  <li>Conditional statements allow sections to be rendered according to specified conditions</li>
-</ul>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">{{</span><span class="nv">- if .Values.service.enabled</span> <span class="pi">}}</span>
-<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">{{</span><span class="nv">- if and .Values.metrics.enabled .Values.metrics.serviceMonitor.enabled</span> <span class="pi">}}</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">monitoring.coreos.com/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ServiceMonitor</span>
 <span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-service</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-metrics</span>
+  <span class="pi">{{</span><span class="nv">- if .Values.metrics.serviceMonitor.namespace</span> <span class="pi">}}</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.metrics.serviceMonitor.namespace</span> <span class="pi">}}</span>
+  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">endpoints</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="s">metrics</span>
+      <span class="na">interval</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.metrics.serviceMonitor.interval</span> <span class="pi">}}</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s">/metrics</span>
 <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
 </code></pre></div></div>
 
-<h4 id="loops-range">Loops (range)</h4>
-<ul>
-  <li>Loops allow sections to be rendered multiple times</li>
-</ul>
+<h3 id="loops-with-range">Loops with Range</h3>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">ports</span><span class="pi">:</span>
-<span class="pi">{{</span><span class="nv">- range .Values.ports</span> <span class="pi">}}</span>
-  <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.</span> <span class="pi">}}</span>
-<span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+<p>The <code class="language-plaintext highlighter-rouge">range</code> function iterates over lists or maps:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Iterating over a list</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">{{</span><span class="nv">- range .Values.containers</span> <span class="pi">}}</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.name</span> <span class="pi">}}</span>
+      <span class="na">image</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.image</span> <span class="pi">}}</span>
+      <span class="na">ports</span><span class="pi">:</span>
+      <span class="pi">{{</span><span class="nv">- range .ports</span> <span class="pi">}}</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.</span> <span class="pi">}}</span>
+      <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+
+<span class="c1"># Iterating over a map</span>
+<span class="na">env</span><span class="pi">:</span>
+  <span class="pi">{{</span><span class="nv">- range $key</span><span class="pi">,</span> <span class="nv">$val</span> <span class="pi">:</span><span class="nv">= .Values.env</span> <span class="pi">}}</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">$key | upper</span> <span class="pi">}}</span>
+      <span class="na">value</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">$val | quote</span> <span class="pi">}}</span>
+<span class="err">  </span><span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
 </code></pre></div></div>
-
-<h3 id="functions-and-operators">Functions and Operators</h3>
-
-<h4 id="default-values">Default Values</h4>
-<ul>
-  <li>default provides an alternative value if the value is not set.</li>
-</ul>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">replicas</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.replicaCount | default 1</span> <span class="pi">}}</span>
-</code></pre></div></div>
-
-<h4 id="pipeline-operators">Pipeline Operators</h4>
-<ul>
-  <li>Pipeline operators allow you to chain functions together</li>
-</ul>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">host</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.hostname | quote</span> <span class="pi">}}</span>
-</code></pre></div></div>
-
-<h5 id="use-examples-pipeline">Use Examples (pipeline)</h5>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">host</span><span class="pi">:</span> <span class="s2">"</span><span class="s">example.com"</span>
-</code></pre></div></div>
-
-<h4 id="yaml-conversion">YAML Conversion</h4>
-<ul>
-  <li>toYaml converts a value to YAML format</li>
-</ul>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">env</span><span class="pi">:</span>
-<span class="pi">{{</span> <span class="nv">.Values.envVars | toYaml | indent 4</span> <span class="pi">}}</span>
-</code></pre></div></div>
-
-<h5 id="use-examples-toyaml">Use Examples (toYaml)</h5>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">envVars</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">ENV_VAR1</span>
-    <span class="na">value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">value1"</span>
-  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">ENV_VAR2</span>
-    <span class="na">value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">value2"</span><span class="err">```</span>
-</code></pre></div></div>
-
-<h4 id="indentation-and-nesting-indent-nindent">Indentation and Nesting (indent, nindent)</h4>
 
 <div class="info-box info-box-default">
-  <strong>Indentation and Nesting (indent, nindent)</strong>
+  <strong>Range Loop Best Practices</strong>
   <ul>
-    <li>indent and nindent are used to add indentation to the output</li>
-    <li>indent: Add a specified number of spaces before each line of text without adding a line break at the beginning.</li>
-    <li>nindent: It's similar to indent, but the beginning includes a line break, which is useful for starting a new section within YAML.</li>
+    <li>Use meaningful variable names with <code>range $name, $value := .Values.something</code></li>
+    <li>Be careful with indentation - always test your templates</li>
+    <li>Remember to use <code></code> and <code></code> to control whitespace</li>
+    <li>When iterating over empty collections, nothing will be rendered</li>
   </ul>
 </div>
 
-<h5 id="use-examples-nindent">Use Examples (nindent)</h5>
+<p><br /></p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">metadata</span><span class="pi">:</span>
+<h2 id="template-functions">Template Functions</h2>
+
+<p>Helm provides a rich set of functions for transforming and manipulating values.</p>
+
+<h3 id="string-functions">String Functions</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Quote a string</span>
+<span class="na">annotations</span><span class="pi">:</span>
+  <span class="na">app.kubernetes.io/name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name | quote</span> <span class="pi">}}</span>
+
+<span class="c1"># Convert to upper case</span>
+<span class="na">label</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.label | upper</span> <span class="pi">}}</span>
+
+<span class="c1"># Truncate a string</span>
+<span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.serviceName | trunc 63</span> <span class="pi">}}</span>
+
+<span class="c1"># Replace parts of a string</span>
+<span class="na">path</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.path | replace "/" "-"</span> <span class="pi">}}</span>
+</code></pre></div></div>
+
+<h3 id="working-with-yaml">Working with YAML</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Convert a structure to YAML</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="pi">{{</span><span class="nv">- toYaml .Values.podAnnotations | nindent 4</span> <span class="pi">}}</span>
+
+<span class="c1"># Convert to JSON</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="pi">{{</span> <span class="nv">.Values.config | toJson | indent 4</span> <span class="pi">}}</span>
+</code></pre></div></div>
+
+<h3 id="math-functions">Math Functions</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Basic arithmetic</span>
+<span class="na">replicas</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">add .Values.replicaCount 1</span> <span class="pi">}}</span>
+<span class="na">timeout</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">mul .Values.baseTimeout 2</span> <span class="pi">}}</span>
+</code></pre></div></div>
+
+<h3 id="path-functions">Path Functions</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Check if a value exists</span>
+<span class="pi">{{</span><span class="nv">- if hasKey .Values "serviceAccount"</span> <span class="pi">}}</span>
+<span class="na">serviceAccountName</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.serviceAccount.name</span> <span class="pi">}}</span>
+<span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+
+<span class="c1"># Get a nested value with a default</span>
+<span class="na">timeout</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">get .Values.timeouts "http" | default 30</span> <span class="pi">}}</span>
+</code></pre></div></div>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Function Category</th>
+      <th style="width: 75%;">Examples</th>
+    </tr>
+    <tr>
+      <td>String</td>
+      <td><code>quote</code>, <code>upper</code>, <code>lower</code>, <code>title</code>, <code>trim</code>, <code>trimSuffix</code>, <code>trimPrefix</code>, <code>replace</code>, <code>trunc</code></td>
+    </tr>
+    <tr>
+      <td>Data Type</td>
+      <td><code>toYaml</code>, <code>toJson</code>, <code>fromYaml</code>, <code>fromJson</code>, <code>toString</code>, <code>toInt</code></td>
+    </tr>
+    <tr>
+      <td>Flow Control</td>
+      <td><code>default</code>, <code>if/else</code>, <code>and</code>, <code>or</code>, <code>not</code>, <code>eq</code>, <code>ne</code>, <code>lt</code>, <code>gt</code>, <code>le</code>, <code>ge</code></td>
+    </tr>
+    <tr>
+      <td>List/Map</td>
+      <td><code>list</code>, <code>dict</code>, <code>get</code>, <code>hasKey</code>, <code>keys</code>, <code>values</code>, <code>pluck</code>, <code>dig</code></td>
+    </tr>
+    <tr>
+      <td>Math</td>
+      <td><code>add</code>, <code>sub</code>, <code>mul</code>, <code>div</code>, <code>mod</code>, <code>floor</code>, <code>ceil</code>, <code>round</code></td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h2 id="named-templates-and-reusing-code">Named Templates and Reusing Code</h2>
+
+<p>Named templates allow you to define reusable chunks of template code. They’re typically defined in the <code class="language-plaintext highlighter-rouge">_helpers.tpl</code> file.</p>
+
+<h3 id="defining-a-template">Defining a Template</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">{{</span><span class="nv">/* Generate basic labels */</span><span class="pi">}}</span>
+<span class="pi">{{</span><span class="nv">- define "myapp.labels" -</span><span class="pi">}}</span>
+<span class="na">app.kubernetes.io/name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Chart.Name</span> <span class="pi">}}</span>
+<span class="na">app.kubernetes.io/instance</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span>
+<span class="na">app.kubernetes.io/version</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Chart.AppVersion | quote</span> <span class="pi">}}</span>
+<span class="na">app.kubernetes.io/managed-by</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Service</span> <span class="pi">}}</span>
+<span class="pi">{{</span><span class="nv">- end -</span><span class="pi">}}</span>
+</code></pre></div></div>
+
+<h3 id="using-a-template">Using a Template</h3>
+
+<p>To use a template, you can use the <code class="language-plaintext highlighter-rouge">include</code> or <code class="language-plaintext highlighter-rouge">template</code> functions:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Using include (recommended)</span>
+<span class="na">metadata</span><span class="pi">:</span>
   <span class="na">labels</span><span class="pi">:</span>
-    <span class="pi">{{</span><span class="nv">- include "mychart.labels" . | nindent 6</span> <span class="pi">}}</span>
-</code></pre></div></div>
-<ul>
-  <li>nindent 6 adds 6 spaces at the beginning of each line in the output and aligns within labels, starting with a line break.</li>
-</ul>
+    <span class="pi">{{</span><span class="nv">- include "myapp.labels" . | nindent 4</span> <span class="pi">}}</span>
 
-<h5 id="use-examples-indent">Use Examples (indent)</h5>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">env</span><span class="pi">:</span>
-<span class="pi">{{</span> <span class="nv">.Values.envVars | toYaml | indent 4</span> <span class="pi">}}</span>  
-</code></pre></div></div>
-<ul>
-  <li>Indent the YAML structure of .Values.envVars by 4 spaces.</li>
-</ul>
-
-<h4 id="include">Include</h4>
-<p>include is used to include a template</p>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">{{</span><span class="nv">- include "mychart.labels" . | nindent 4</span> <span class="pi">}}</span>
-</code></pre></div></div>
-<ul>
-  <li>Include the template mychart.labels and indent it by 4 spaces.</li>
-</ul>
-
-<h5 id="use-examples-include">Use Examples (include)</h5>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">metadata</span><span class="pi">:</span>
+<span class="c1"># Using template (doesn't support piping)</span>
+<span class="na">metadata</span><span class="pi">:</span>
   <span class="na">labels</span><span class="pi">:</span>
-    <span class="pi">{{</span><span class="nv">- include "mychart.labels" . | nindent 4</span> <span class="pi">}}</span>
+    <span class="pi">{{</span> <span class="nv">template "myapp.labels" .</span> <span class="pi">}}</span>
+</code></pre></div></div>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>include vs template</strong>
+  <p>Always prefer <code>include</code> over <code>template</code> for reusable code blocks. The key advantages of <code>include</code> are:</p>
+  <ul>
+    <li>It captures the output as a string that can be passed through functions like <code>indent</code></li>
+    <li>It allows for better whitespace control</li>
+    <li>It provides more flexibility in how the output is used</li>
+  </ul>
+</div>
+
+<h3 id="template-scope-and-the-dot">Template Scope and the Dot</h3>
+
+<p>When working with templates, the dot (<code class="language-plaintext highlighter-rouge">.</code>) represents the current scope. You can pass different scopes to templates:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Passing the root scope</span>
+<span class="pi">{{</span><span class="nv">- include "myapp.labels" .</span> <span class="pi">}}</span>
+
+<span class="c1"># Passing a specific value</span>
+<span class="pi">{{</span><span class="nv">- include "myapp.container" .Values.mainContainer</span> <span class="pi">}}</span>
+
+<span class="c1"># Passing multiple values using dict</span>
+<span class="pi">{{</span><span class="nv">- include "myapp.deployment" (dict "root" . "name" "frontend" "replicas" 3)</span> <span class="pi">}}</span>
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="template-definitions-and-usage">Template Definitions and Usage</h3>
-<ul>
-  <li>Helm allows you to define reusable templates within a chart using define and template. (e.g. <code class="language-plaintext highlighter-rouge">_helpers.tpl</code>)</li>
-</ul>
+<h2 id="advanced-techniques">Advanced Techniques</h2>
 
-<h4 id="defining-templates">Defining Templates</h4>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">{{</span><span class="nv">- define "mychart.labels" -</span><span class="pi">}}</span>
-<span class="na">app</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Chart.Name</span> <span class="pi">}}</span>
-<span class="na">release</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span>
+<h3 id="partials-and-template-composition">Partials and Template Composition</h3>
+
+<p>Break complex templates into smaller, manageable chunks:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">{{</span><span class="nv">- define "myapp.deployment" -</span><span class="pi">}}</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.name</span> <span class="pi">}}</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="pi">{{</span><span class="nv">- include "myapp.labels" .root | nindent 4</span> <span class="pi">}}</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.replicas</span> <span class="pi">}}</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="pi">{{</span><span class="nv">- include "myapp.selectorLabels" .root | nindent 6</span> <span class="pi">}}</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="pi">{{</span><span class="nv">- include "myapp.selectorLabels" .root | nindent 8</span> <span class="pi">}}</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="pi">{{</span><span class="nv">- include "myapp.podSpec" .root | nindent 6</span> <span class="pi">}}</span>
+<span class="pi">{{</span><span class="nv">- end -</span><span class="pi">}}</span>
+</code></pre></div></div>
+
+<h3 id="working-with-complex-data">Working with Complex Data</h3>
+
+<p>Handle complex data structures with powerful functions:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Using with to change the scope</span>
+<span class="pi">{{</span><span class="nv">- with .Values.serviceAccount</span> <span class="pi">}}</span>
+<span class="na">serviceAccountName</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.name</span> <span class="pi">}}</span>
+<span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+
+<span class="c1"># Creating temporary variables</span>
+<span class="pi">{{</span><span class="nv">- $fullName</span> <span class="pi">:</span><span class="nv">= include "myapp.fullname" . -</span><span class="pi">}}</span>
+<span class="pi">{{</span><span class="nv">- $servicePort</span> <span class="pi">:</span><span class="nv">= .Values.service.port -</span><span class="pi">}}</span>
+<span class="pi">{{</span><span class="nv">- range .Values.ingress.hosts</span> <span class="pi">}}</span>
+<span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.</span> <span class="pi">}}</span>
+  <span class="na">http</span><span class="pi">:</span>
+    <span class="na">paths</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+      <span class="na">backend</span><span class="pi">:</span>
+        <span class="na">serviceName</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">$fullName</span> <span class="pi">}}</span>
+        <span class="na">servicePort</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">$servicePort</span> <span class="pi">}}</span>
 <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
 </code></pre></div></div>
 
-<h4 id="using-templates">Using Templates</h4>
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">labels</span><span class="pi">:</span>
-    <span class="pi">{{</span> <span class="nv">include "mychart.labels" . | nindent 4</span> <span class="pi">}}</span>
+<h3 id="debugging-templates">Debugging Templates</h3>
+
+<p>Helm provides tools for debugging templates:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Print a value for debugging</span>
+<span class="pi">{{</span> <span class="nv">.Values.someValue | quote</span> <span class="pi">}}</span>
+<span class="pi">{{</span><span class="nv">/* The above line will be rendered in the output */</span><span class="pi">}}</span>
+
+<span class="c1"># Debug with special function</span>
+<span class="pi">{{</span> <span class="nv">.Values.complicated.structure | toYaml | debug</span> <span class="pi">}}</span>
+</code></pre></div></div>
+
+<p>Use Helm’s template validation and testing:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Validate templates without installing</span>
+helm template <span class="nt">-f</span> values.yaml /path/to/chart
+
+<span class="c"># See all generated manifests</span>
+helm <span class="nb">install</span> <span class="nt">--debug</span> <span class="nt">--dry-run</span> myrelease /path/to/chart
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="practical-example-deployment-template">Practical Example: Deployment Template</h3>
+<h2 id="practical-examples">Practical Examples</h2>
 
-<p>Here’s a comprehensive example of a deployment template:</p>
+<p>Let’s look at some common use cases for Helm templating:</p>
 
-<script src="https://gist.github.com/somaz94/84824acb8a79884cbb5f8882750f3df9.js"></script>
+<h3 id="deployment-with-conditional-configuration">Deployment with Conditional Configuration</h3>
 
-<h3 id="creating-imagepullsecret">Creating ImagePullSecret</h3>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    
+    flowchart TD
+      A[values.yaml] --&gt; B{Template Processing}
+      B --&gt;|If metrics enabled| C[ServiceMonitor Created]
+      B --&gt;|Always| D[Deployment Created]
+      B --&gt;|Always| E[Service Created]
+      B --&gt;|If ingress enabled| F[Ingress Created]
+      
+      style A fill:#ffcc80,stroke:#333,stroke-width:1px
+      style B fill:#81c784,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ba68c8,stroke:#333,stroke-width:1px
+      style E fill:#4dd0e1,stroke:#333,stroke-width:1px
+      style F fill:#a1887f,stroke:#333,stroke-width:1px
+    
+  </div>
+</div>
 
-<h4 id="helper-template-_helperstpl">Helper template <code class="language-plaintext highlighter-rouge">_helpers.tpl</code></h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "myapp.fullname" .</span> <span class="pi">}}</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="pi">{{</span><span class="nv">- include "myapp.labels" . | nindent 4</span> <span class="pi">}}</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.replicaCount</span> <span class="pi">}}</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="pi">{{</span><span class="nv">- include "myapp.selectorLabels" . | nindent 6</span> <span class="pi">}}</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="pi">{{</span><span class="nv">- include "myapp.selectorLabels" . | nindent 8</span> <span class="pi">}}</span>
+      <span class="pi">{{</span><span class="nv">- with .Values.podAnnotations</span> <span class="pi">}}</span>
+      <span class="na">annotations</span><span class="pi">:</span>
+        <span class="pi">{{</span><span class="nv">- toYaml . | nindent 8</span> <span class="pi">}}</span>
+      <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="pi">{{</span><span class="nv">- with .Values.imagePullSecrets</span> <span class="pi">}}</span>
+      <span class="na">imagePullSecrets</span><span class="pi">:</span>
+        <span class="pi">{{</span><span class="nv">- toYaml . | nindent 8</span> <span class="pi">}}</span>
+      <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+      <span class="na">containers</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Chart.Name</span> <span class="pi">}}</span>
+          <span class="na">image</span><span class="pi">:</span> <span class="s2">"</span><span class="s">{{</span><span class="nv"> </span><span class="s">.Values.image.repository</span><span class="nv"> </span><span class="s">}}:{{</span><span class="nv"> </span><span class="s">.Values.image.tag</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default</span><span class="nv"> </span><span class="s">.Chart.AppVersion</span><span class="nv"> </span><span class="s">}}"</span>
+          <span class="na">imagePullPolicy</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.image.pullPolicy</span> <span class="pi">}}</span>
+          <span class="pi">{{</span><span class="nv">- if .Values.command</span> <span class="pi">}}</span>
+          <span class="na">command</span><span class="pi">:</span>
+            <span class="pi">{{</span><span class="nv">- toYaml .Values.command | nindent 12</span> <span class="pi">}}</span>
+          <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+          <span class="na">ports</span><span class="pi">:</span>
+            <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">http</span>
+              <span class="na">containerPort</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.containerPort</span> <span class="pi">}}</span>
+              <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+          <span class="pi">{{</span><span class="nv">- if .Values.probes.enabled</span> <span class="pi">}}</span>
+          <span class="na">livenessProbe</span><span class="pi">:</span>
+            <span class="na">httpGet</span><span class="pi">:</span>
+              <span class="na">path</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.probes.liveness.path</span> <span class="pi">}}</span>
+              <span class="na">port</span><span class="pi">:</span> <span class="s">http</span>
+            <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.probes.liveness.initialDelaySeconds</span> <span class="pi">}}</span>
+            <span class="na">periodSeconds</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.probes.liveness.periodSeconds</span> <span class="pi">}}</span>
+          <span class="na">readinessProbe</span><span class="pi">:</span>
+            <span class="na">httpGet</span><span class="pi">:</span>
+              <span class="na">path</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.probes.readiness.path</span> <span class="pi">}}</span>
+              <span class="na">port</span><span class="pi">:</span> <span class="s">http</span>
+            <span class="na">initialDelaySeconds</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.probes.readiness.initialDelaySeconds</span> <span class="pi">}}</span>
+            <span class="na">periodSeconds</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.probes.readiness.periodSeconds</span> <span class="pi">}}</span>
+          <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+          <span class="na">resources</span><span class="pi">:</span>
+            <span class="pi">{{</span><span class="nv">- toYaml .Values.resources | nindent 12</span> <span class="pi">}}</span>
+          <span class="na">env</span><span class="pi">:</span>
+          <span class="pi">{{</span><span class="nv">- range $key</span><span class="pi">,</span> <span class="nv">$value</span> <span class="pi">:</span><span class="nv">= .Values.env</span> <span class="pi">}}</span>
+            <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">$key</span> <span class="pi">}}</span>
+              <span class="na">value</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">$value | quote</span> <span class="pi">}}</span>
+          <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+</code></pre></div></div>
 
-<script src="https://gist.github.com/somaz94/e5eea15954771724d14f0e7fc4d1c0cd.js"></script>
+<h3 id="secret-with-imagepullsecrets">Secret with ImagePullSecrets</h3>
+
+<p>The following example shows how to create Docker registry secrets dynamically:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">{{</span> <span class="nv">define "imagePullSecret"</span> <span class="pi">}}</span>
+<span class="pi">{{</span> <span class="nv">printf "</span><span class="pi">{</span><span class="nv">\"auths\"</span><span class="pi">:{</span><span class="nv">\"%s\"</span><span class="pi">:{</span><span class="nv">\"username\"</span><span class="pi">:</span><span class="nv">\"%s\"</span><span class="pi">,</span><span class="nv">\"password\"</span><span class="pi">:</span><span class="nv">\"%s\"</span><span class="pi">,</span><span class="nv">\"email\"</span><span class="pi">:</span><span class="nv">\"%s\"</span><span class="pi">,</span><span class="nv">\"auth\"</span><span class="pi">:</span><span class="nv">\"%s\"</span><span class="pi">}}}</span><span class="s2">"</span><span class="nv"> </span><span class="s">.Values.imageCredentials.registry</span><span class="nv"> </span><span class="s">.Values.imageCredentials.username</span><span class="nv"> </span><span class="s">.Values.imageCredentials.password</span><span class="nv"> </span><span class="s">.Values.imageCredentials.email</span><span class="nv"> </span><span class="s">(printf</span><span class="nv"> </span><span class="s">"</span><span class="err">%</span><span class="nv">s</span><span class="pi">:</span><span class="err">%</span><span class="nv">s" .Values.imageCredentials.username .Values.imageCredentials.password | b64enc) | b64enc</span> <span class="pi">}}</span>
+<span class="pi">{{</span> <span class="nv">end</span> <span class="pi">}}</span>
+
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-registry-secret</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="pi">{{</span><span class="nv">- include "myapp.labels" . | nindent 4</span> <span class="pi">}}</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">.dockerconfigjson</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">template "imagePullSecret" .</span> <span class="pi">}}</span>
+<span class="na">type</span><span class="pi">:</span> <span class="s">kubernetes.io/dockerconfigjson</span>
+</code></pre></div></div>
+
+<h3 id="configmap-with-file-content">ConfigMap with File Content</h3>
+
+<p>This example demonstrates loading configuration from a file:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "myapp.fullname" .</span> <span class="pi">}}</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="pi">{{</span><span class="nv">- include "myapp.labels" . | nindent 4</span> <span class="pi">}}</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="pi">{{</span><span class="nv">- if .Files.Glob "config/*.ini"</span> <span class="pi">}}</span>
+  <span class="pi">{{</span><span class="nv">- range $path</span><span class="pi">,</span> <span class="nv">$_</span> <span class="pi">:</span><span class="nv">= .Files.Glob "config/*.ini"</span> <span class="pi">}}</span>
+  <span class="pi">{{</span> <span class="nv">base $path</span> <span class="pi">}}</span><span class="err">:</span> <span class="pi">|-</span>
+    <span class="s">{{ $.Files.Get $path | nindent 4 }}</span>
+  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+  <span class="pi">{{</span><span class="nv">- range $key</span><span class="pi">,</span> <span class="nv">$val</span> <span class="pi">:</span><span class="nv">= .Values.config</span> <span class="pi">}}</span>
+  <span class="pi">{{</span> <span class="nv">$key</span> <span class="pi">}}</span><span class="err">:</span> <span class="pi">{{</span> <span class="nv">$val</span> <span class="pi">}}</span>
+  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
+</code></pre></div></div>
 
 <p><br /></p>
 
-<h4 id="secret-template">Secret template</h4>
+<h2 id="best-practices">Best Practices</h2>
 
-<script src="https://gist.github.com/somaz94/8ea12c748cf68b3242d8b0aab42b6f52.js"></script>
+<h3 id="structure-and-organization">Structure and Organization</h3>
+
+<ol>
+  <li><strong>Keep templates focused</strong>: Each template file should generally define a single Kubernetes resource.</li>
+  <li><strong>Use _helpers.tpl</strong>: Put all reusable template parts in this file for better organization.</li>
+  <li><strong>Consistent naming</strong>: Use consistent naming conventions for templates, values, and files.</li>
+  <li><strong>Comment your templates</strong>: Add comments to explain complex parts of your templates.</li>
+</ol>
+
+<h3 id="values-management">Values Management</h3>
+
+<ol>
+  <li><strong>Set sensible defaults</strong>: Provide default values that work out of the box.</li>
+  <li><strong>Validate values</strong>: Use conditionals to validate required values.</li>
+  <li><strong>Structure values logically</strong>: Organize values by component or functionality.</li>
+  <li><strong>Document values</strong>: Include comments in values.yaml explaining each value.</li>
+</ol>
+
+<h3 id="performance-and-maintenance">Performance and Maintenance</h3>
+
+<ol>
+  <li><strong>Limit template complexity</strong>: Break complex templates into smaller, reusable parts.</li>
+  <li><strong>Test templates</strong>: Use <code class="language-plaintext highlighter-rouge">helm lint</code> and <code class="language-plaintext highlighter-rouge">helm template</code> to validate your templates.</li>
+  <li><strong>Version chart components</strong>: Use proper versioning for your charts.</li>
+  <li><strong>Keep it DRY</strong>: Don’t repeat yourself - use named templates for repeated patterns.</li>
+</ol>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Tips for Debugging Templates</strong>
+  <ol>
+    <li>Use <code>helm lint</code> to check for syntax errors</li>
+    <li>Use <code>helm template --debug</code> to see the rendered output</li>
+    <li>Add temporary debug statements with <code>{{ .Values.something | toYaml }}</code></li>
+    <li>Check whitespace issues by looking at the actual rendered YAML</li>
+    <li>Start simple and gradually add complexity, testing at each step</li>
+  </ol>
+</div>
+
+<p><br /></p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Helm Chart templating is a powerful system that allows you to create flexible, reusable Kubernetes application packages. By mastering the syntax and patterns described in this guide, you can create charts that work across different environments and use cases, saving time and reducing configuration errors.</p>
+
+<p>Remember that good Helm Charts strike a balance between flexibility and simplicity - provide customization options where needed, but keep the default experience straightforward and well-documented.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Key Takeaways</strong>
+  <ul>
+    <li>Helm uses Go templating extended with Kubernetes-specific functions</li>
+    <li>Templates can access values from values.yaml, command line, and parent charts</li>
+    <li>Named templates promote code reuse and maintainability</li>
+    <li>Control structures like conditionals and loops enable dynamic configuration</li>
+    <li>Using the provided functions effectively can simplify complex transformations</li>
+    <li>Well-structured templates with proper whitespace management produce clean YAML</li>
+  </ul>
+</div>
 
 <p><br /></p>
 
@@ -445,8 +923,11 @@ January 31, 2025
 <h2 id="references">References</h2>
 <ul>
   <li><a href="https://helm.sh/docs/chart_best_practices/templates/">Helm Best Practices</a></li>
+  <li><a href="https://helm.sh/docs/chart_template_guide/">Helm Chart Template Guide</a></li>
   <li><a href="https://github.com/somaz94/helm-chart-template">Helm Chart Template Example</a></li>
   <li><a href="https://helm.sh/docs/howto/charts_tips_and_tricks/">Helm Tips and Tricks</a></li>
+  <li><a href="https://masterminds.github.io/sprig/">Sprig Function Documentation</a></li>
+  <li><a href="https://pkg.go.dev/text/template">Go Templates Documentation</a></li>
 </ul>
 
 
@@ -461,6 +942,15 @@ January 31, 2025
                     <ul>
                         
                         
+                        
+                            <li>
+                                <a href="/category/cs/os-cache-disk/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1744340260/os-cache-disk_jwhgck.png">
+                                    
+                                    <h3>OS Cache and Disk I/O - MySQL and Redis Performance Analysis</h3>
+                                </a>
+                            </li>
                         
                             <li>
                                 <a href="/category/network/ssh-tunneling/">
@@ -480,15 +970,6 @@ January 31, 2025
                                 </a>
                             </li>
                         
-                            <li>
-                                <a href="/category/network/cdn/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1740040649/cdn_m4mnj5.png">
-                                    
-                                    <h3>What is CDN? (Content Delivery Network)</h3>
-                                </a>
-                            </li>
-                        
                     </ul>
                 </aside>
             
@@ -497,7 +978,7 @@ January 31, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="18">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -539,7 +1020,7 @@ January 31, 2025
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn about Helm Chart template syntax, including Go templating, values references, and common patterns&quot;%20https://somaz.blog/category/kubernetes/helm-chart-template/%20via%20&#64;twitter_username&hashtags=kubernetes,helm,helm-chart,template"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn about Helm Chart template syntax, including Go templating, values references, and common patterns&quot;%20https://somaz.blog/category/kubernetes/helm-chart-template/%20via%20&#64;twitter_username&hashtags=kubernetes,helm,helm-chart,template,go-template,yaml"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -804,200 +1285,678 @@ January 31, 2025
 
 Overview
 
-Helm Chart templates use a combination of YAML and Go templating to define configurations for Kubernetes resources. Let’s explore the key syntax patterns and their usage.
+Helm is the package manager for Kubernetes, enabling easy deployment and management of applications. At its core are Helm Charts - packages of pre-configured Kubernetes resources that can be customized through templating.
+
+This guide explores Helm Chart template syntax, from basic concepts to advanced techniques, helping you create flexible and maintainable charts for your Kubernetes applications.
+
+
+  What Are Helm Chart Templates?
+  Helm Chart templates are files that combine static YAML with dynamic templating directives to generate valid Kubernetes manifests. They allow charts to be customizable and reusable across different environments and configurations.
+  Key benefits of Helm templating include:
+  
+    Environment-specific configuration without changing chart files
+    Dynamic generation of resource names, labels, and other metadata
+    Conditionally including resources based on configuration values
+    Reusing common patterns across multiple resources
+    Parameterizing deployments for different scenarios
+  
 
 
 
-Helm Chart Template Syntax
+  
+    
+    graph TD
+      A[values.yaml] --&amp;gt; B[Template Engine]
+      C[Chart Templates] --&amp;gt; B
+      D[Built-in Objects] --&amp;gt; B
+      B --&amp;gt; E[Rendered Kubernetes Manifests]
+      E --&amp;gt; F[Kubernetes API]
+      
+      style A fill:#ffcc80,stroke:#333,stroke-width:1px
+      style B fill:#81c784,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ba68c8,stroke:#333,stroke-width:1px
+      style E fill:#4dd0e1,stroke:#333,stroke-width:1px
+      style F fill:#a1887f,stroke:#333,stroke-width:1px
+    
+  
 
-Standard YAML Syntax
-Basic YAML structure used in Helm charts:
 
+
+
+Helm Chart Structure
+
+Before diving into templating, it’s important to understand the basic structure of a Helm chart:
+
+mychart/
+  ├── Chart.yaml           # Metadata about the chart
+  ├── values.yaml          # Default configuration values
+  ├── templates/           # Template files
+  │   ├── deployment.yaml  # Kubernetes resources
+  │   ├── service.yaml
+  │   ├── _helpers.tpl     # Template helpers
+  │   └── ...
+  ├── charts/              # Dependencies (subchart)
+  └── README.md            # Documentation
+
+
+
+
+Template Language Fundamentals
+
+Helm uses Go templates as its templating language, which is extended with additional functions specific to Helm.
+
+Basic Syntax
+
+Templates use double curly braces ({{ }}) to enclose template directives:
+
+# Empty curly braces (not useful, but valid syntax)
+{{ }}
+
+# Basic template directive
+{{ .Release.Name }}
+
+# Placeholder pattern
+{{ ... }}
+
+# Access release information
 apiVersion: v1
-kind: Service
+kind: ConfigMap
 metadata:
-  name: my-service
-  labels:
-    app: my-app
+  name: {{ .Release.Name }}-config
+data:
+  myvalue: {{ .Values.name }}
+  version: {{ .Chart.Name }}-{{ .Chart.Version }}
 
 
-Go Templating Syntax
-Uses {{ ... }} for dynamic values:
 
+  Whitespace Management
+  Helm templates can control whitespace with special syntax:
+  
+    {{- ... }}: Removes whitespace before the directive
+    {{ ... -}}: Removes whitespace after the directive
+    {{- ... -}}: Removes whitespace on both sides
+  
+  This helps produce clean YAML without unnecessary blank lines or spaces.
+
+
+Built-in Objects
+
+Helm provides several built-in objects for access to chart data and runtime information:
+
+
+  
+    
+      Object
+      Description
+      Example Usage
+    
+    
+      .Values
+      Values from the values.yaml file and user-supplied values
+      {{ .Values.replicaCount }}
+    
+    
+      .Release
+      Information about the release (name, namespace, etc.)
+      {{ .Release.Name }}-database
+    
+    
+      .Chart
+      Contents of the Chart.yaml file
+      {{ .Chart.Version }}
+    
+    
+      .Files
+      Access to files in the chart
+      {{ .Files.Get &quot;config.json&quot; }}
+    
+    
+      .Template
+      Information about the current template
+      {{ .Template.Name }}
+    
+    
+      .Capabilities
+      Information about Kubernetes capabilities
+      {{ .Capabilities.KubeVersion }}
+    
+  
+
+
+
+
+Working with Values
+
+Values can be defined in various places:
+
+  The chart’s values.yaml file (defaults)
+  Parent chart’s values.yaml (for subcharts)
+  Command-line with --set or -f options
+
+
+Accessing Values
+
+Values are accessed through the .Values object:
+
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-service
+  name: {{ .Release.Name }}-deployment
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: &quot;{{ .Values.image.repository }}:{{ .Values.image.tag }}&quot;
+        resources:
+          limits:
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
+
+
+Default Values
+
+You can provide defaults for values that might not be defined:
+
+# Using default function
+replicas: {{ .Values.replicaCount | default 1 }}
+
+# Using if/else
+replicas: {{ if .Values.replicaCount }}{{ .Values.replicaCount }}{{ else }}1{{ end }}
 
 
 
-  Key Template References
   
-    Values Reference (.Values)
-      
-        Accesses values.yaml configurations
-        Example: {{ .Values.replicaCount }}
-      
     
-    Release and Chart Metadata
+    flowchart TD
+      A[Command Line Values] --&amp;gt;|Override| B[Chart-Specific values.yaml]
+      C[Parent Chart Values] --&amp;gt;|Override| B
+      B --&amp;gt;|Default| D[Final Values]
+      D --&amp;gt;|Available as| E[.Values Object]
       
-        .Release: Release information
-        .Chart: Chart metadata
-        Example: {{ .Chart.Name }}-{{ .Chart.Version }}
-      
+      style A fill:#ffcc80,stroke:#333,stroke-width:1px
+      style B fill:#81c784,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ba68c8,stroke:#333,stroke-width:1px
+      style E fill:#4dd0e1,stroke:#333,stroke-width:1px
     
   
+
+
 
 
 Control Structures
 
-Conditional Statements
+Conditionals
 
-  Conditional statements allow sections to be rendered according to specified conditions
+Conditionals allow you to include or exclude blocks of YAML based on values:
 
-
-{{- if .Values.service.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Release.Name }}-service
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+  {{- if .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+  {{- end }}
+
+
+Complex Conditionals
+
+{{- if and .Values.metrics.enabled .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-metrics
+  {{- if .Values.metrics.serviceMonitor.namespace }}
+  namespace: {{ .Values.metrics.serviceMonitor.namespace }}
+  {{- end }}
+spec:
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+      path: /metrics
 {{- end }}
 
 
-Loops (range)
+Loops with Range
 
-  Loops allow sections to be rendered multiple times
+The range function iterates over lists or maps:
 
+# Iterating over a list
+spec:
+  containers:
+  {{- range .Values.containers }}
+    - name: {{ .name }}
+      image: {{ .image }}
+      ports:
+      {{- range .ports }}
+        - containerPort: {{ . }}
+      {{- end }}
+  {{- end }}
 
-ports:
-{{- range .Values.ports }}
-  - port: {{ . }}
-{{- end }}
-
-
-Functions and Operators
-
-Default Values
-
-  default provides an alternative value if the value is not set.
-
-
-replicas: {{ .Values.replicaCount | default 1 }}
-
-
-Pipeline Operators
-
-  Pipeline operators allow you to chain functions together
-
-
-host: {{ .Values.hostname | quote }}
-
-
-Use Examples (pipeline)
-
-host: &quot;example.com&quot;
-
-
-YAML Conversion
-
-  toYaml converts a value to YAML format
-
-
+# Iterating over a map
 env:
-{{ .Values.envVars | toYaml | indent 4 }}
+  {{- range $key, $val := .Values.env }}
+    - name: {{ $key | upper }}
+      value: {{ $val | quote }}
+  {{- end }}
 
 
-Use Examples (toYaml)
 
-envVars:
-  - name: ENV_VAR1
-    value: &quot;value1&quot;
-  - name: ENV_VAR2
-    value: &quot;value2&quot;```
-
-
-Indentation and Nesting (indent, nindent)
-
-
-  Indentation and Nesting (indent, nindent)
+  Range Loop Best Practices
   
-    indent and nindent are used to add indentation to the output
-    indent: Add a specified number of spaces before each line of text without adding a line break at the beginning.
-    nindent: It&apos;s similar to indent, but the beginning includes a line break, which is useful for starting a new section within YAML.
+    Use meaningful variable names with range $name, $value := .Values.something
+    Be careful with indentation - always test your templates
+    Remember to use  and  to control whitespace
+    When iterating over empty collections, nothing will be rendered
   
 
 
-Use Examples (nindent)
 
+
+Template Functions
+
+Helm provides a rich set of functions for transforming and manipulating values.
+
+String Functions
+
+# Quote a string
+annotations:
+  app.kubernetes.io/name: {{ .Release.Name | quote }}
+
+# Convert to upper case
+label: {{ .Values.label | upper }}
+
+# Truncate a string
+name: {{ .Values.serviceName | trunc 63 }}
+
+# Replace parts of a string
+path: {{ .Values.path | replace &quot;/&quot; &quot;-&quot; }}
+
+
+Working with YAML
+
+# Convert a structure to YAML
+data:
+  {{- toYaml .Values.podAnnotations | nindent 4 }}
+
+# Convert to JSON
+data:
+  {{ .Values.config | toJson | indent 4 }}
+
+
+Math Functions
+
+# Basic arithmetic
+replicas: {{ add .Values.replicaCount 1 }}
+timeout: {{ mul .Values.baseTimeout 2 }}
+
+
+Path Functions
+
+# Check if a value exists
+{{- if hasKey .Values &quot;serviceAccount&quot; }}
+serviceAccountName: {{ .Values.serviceAccount.name }}
+{{- end }}
+
+# Get a nested value with a default
+timeout: {{ get .Values.timeouts &quot;http&quot; | default 30 }}
+
+
+
+  
+    
+      Function Category
+      Examples
+    
+    
+      String
+      quote, upper, lower, title, trim, trimSuffix, trimPrefix, replace, trunc
+    
+    
+      Data Type
+      toYaml, toJson, fromYaml, fromJson, toString, toInt
+    
+    
+      Flow Control
+      default, if/else, and, or, not, eq, ne, lt, gt, le, ge
+    
+    
+      List/Map
+      list, dict, get, hasKey, keys, values, pluck, dig
+    
+    
+      Math
+      add, sub, mul, div, mod, floor, ceil, round
+    
+  
+
+
+
+
+Named Templates and Reusing Code
+
+Named templates allow you to define reusable chunks of template code. They’re typically defined in the _helpers.tpl file.
+
+Defining a Template
+
+{{/* Generate basic labels */}}
+{{- define &quot;myapp.labels&quot; -}}
+app.kubernetes.io/name: {{ .Chart.Name }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+
+Using a Template
+
+To use a template, you can use the include or template functions:
+
+# Using include (recommended)
 metadata:
   labels:
-    {{- include &quot;mychart.labels&quot; . | nindent 6 }}
+    {{- include &quot;myapp.labels&quot; . | nindent 4 }}
 
-
-  nindent 6 adds 6 spaces at the beginning of each line in the output and aligns within labels, starting with a line break.
-
-
-Use Examples (indent)
-
-env:
-{{ .Values.envVars | toYaml | indent 4 }}  
-
-
-  Indent the YAML structure of .Values.envVars by 4 spaces.
-
-
-Include
-include is used to include a template
-
-{{- include &quot;mychart.labels&quot; . | nindent 4 }}
-
-
-  Include the template mychart.labels and indent it by 4 spaces.
-
-
-Use Examples (include)
-
+# Using template (doesn&apos;t support piping)
 metadata:
   labels:
-    {{- include &quot;mychart.labels&quot; . | nindent 4 }}
+    {{ template &quot;myapp.labels&quot; . }}
+
+
+
+  include vs template
+  Always prefer include over template for reusable code blocks. The key advantages of include are:
+  
+    It captures the output as a string that can be passed through functions like indent
+    It allows for better whitespace control
+    It provides more flexibility in how the output is used
+  
+
+
+Template Scope and the Dot
+
+When working with templates, the dot (.) represents the current scope. You can pass different scopes to templates:
+
+# Passing the root scope
+{{- include &quot;myapp.labels&quot; . }}
+
+# Passing a specific value
+{{- include &quot;myapp.container&quot; .Values.mainContainer }}
+
+# Passing multiple values using dict
+{{- include &quot;myapp.deployment&quot; (dict &quot;root&quot; . &quot;name&quot; &quot;frontend&quot; &quot;replicas&quot; 3) }}
 
 
 
 
-Template Definitions and Usage
+Advanced Techniques
 
-  Helm allows you to define reusable templates within a chart using define and template. (e.g. _helpers.tpl)
+Partials and Template Composition
+
+Break complex templates into smaller, manageable chunks:
+
+{{- define &quot;myapp.deployment&quot; -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include &quot;myapp.labels&quot; .root | nindent 4 }}
+spec:
+  replicas: {{ .replicas }}
+  selector:
+    matchLabels:
+      {{- include &quot;myapp.selectorLabels&quot; .root | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include &quot;myapp.selectorLabels&quot; .root | nindent 8 }}
+    spec:
+      {{- include &quot;myapp.podSpec&quot; .root | nindent 6 }}
+{{- end -}}
 
 
-Defining Templates
-{{- define &quot;mychart.labels&quot; -}}
-app: {{ .Chart.Name }}
-release: {{ .Release.Name }}
+Working with Complex Data
+
+Handle complex data structures with powerful functions:
+
+# Using with to change the scope
+{{- with .Values.serviceAccount }}
+serviceAccountName: {{ .name }}
+{{- end }}
+
+# Creating temporary variables
+{{- $fullName := include &quot;myapp.fullname&quot; . -}}
+{{- $servicePort := .Values.service.port -}}
+{{- range .Values.ingress.hosts }}
+- host: {{ . }}
+  http:
+    paths:
+    - path: /
+      backend:
+        serviceName: {{ $fullName }}
+        servicePort: {{ $servicePort }}
 {{- end }}
 
 
-Using Templates
+Debugging Templates
+
+Helm provides tools for debugging templates:
+
+# Print a value for debugging
+{{ .Values.someValue | quote }}
+{{/* The above line will be rendered in the output */}}
+
+# Debug with special function
+{{ .Values.complicated.structure | toYaml | debug }}
+
+
+Use Helm’s template validation and testing:
+
+# Validate templates without installing
+helm template -f values.yaml /path/to/chart
+
+# See all generated manifests
+helm install --debug --dry-run myrelease /path/to/chart
+
+
+
+
+Practical Examples
+
+Let’s look at some common use cases for Helm templating:
+
+Deployment with Conditional Configuration
+
+
+  
+    
+    flowchart TD
+      A[values.yaml] --&amp;gt; B{Template Processing}
+      B --&amp;gt;|If metrics enabled| C[ServiceMonitor Created]
+      B --&amp;gt;|Always| D[Deployment Created]
+      B --&amp;gt;|Always| E[Service Created]
+      B --&amp;gt;|If ingress enabled| F[Ingress Created]
+      
+      style A fill:#ffcc80,stroke:#333,stroke-width:1px
+      style B fill:#81c784,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ba68c8,stroke:#333,stroke-width:1px
+      style E fill:#4dd0e1,stroke:#333,stroke-width:1px
+      style F fill:#a1887f,stroke:#333,stroke-width:1px
+    
+  
+
+
+apiVersion: apps/v1
+kind: Deployment
 metadata:
+  name: {{ include &quot;myapp.fullname&quot; . }}
   labels:
-    {{ include &quot;mychart.labels&quot; . | nindent 4 }}
+    {{- include &quot;myapp.labels&quot; . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include &quot;myapp.selectorLabels&quot; . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include &quot;myapp.selectorLabels&quot; . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: &quot;{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}&quot;
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.command }}
+          command:
+            {{- toYaml .Values.command | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          {{- if .Values.probes.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+          {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+          {{- end }}
+
+
+Secret with ImagePullSecrets
+
+The following example shows how to create Docker registry secrets dynamically:
+
+{{ define &quot;imagePullSecret&quot; }}
+{{ printf &quot;{\&quot;auths\&quot;:{\&quot;%s\&quot;:{\&quot;username\&quot;:\&quot;%s\&quot;,\&quot;password\&quot;:\&quot;%s\&quot;,\&quot;email\&quot;:\&quot;%s\&quot;,\&quot;auth\&quot;:\&quot;%s\&quot;}}}&quot; .Values.imageCredentials.registry .Values.imageCredentials.username .Values.imageCredentials.password .Values.imageCredentials.email (printf &quot;%s:%s&quot; .Values.imageCredentials.username .Values.imageCredentials.password | b64enc) | b64enc }}
+{{ end }}
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-registry-secret
+  labels:
+    {{- include &quot;myapp.labels&quot; . | nindent 4 }}
+data:
+  .dockerconfigjson: {{ template &quot;imagePullSecret&quot; . }}
+type: kubernetes.io/dockerconfigjson
+
+
+ConfigMap with File Content
+
+This example demonstrates loading configuration from a file:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include &quot;myapp.fullname&quot; . }}
+  labels:
+    {{- include &quot;myapp.labels&quot; . | nindent 4 }}
+data:
+  {{- if .Files.Glob &quot;config/*.ini&quot; }}
+  {{- range $path, $_ := .Files.Glob &quot;config/*.ini&quot; }}
+  {{ base $path }}: |-
+    {{ $.Files.Get $path | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- range $key, $val := .Values.config }}
+  {{ $key }}: {{ $val }}
+  {{- end }}
 
 
 
 
-Practical Example: Deployment Template
+Best Practices
 
-Here’s a comprehensive example of a deployment template:
-
-
-
-Creating ImagePullSecret
-
-Helper template _helpers.tpl
+Structure and Organization
 
 
+  Keep templates focused: Each template file should generally define a single Kubernetes resource.
+  Use _helpers.tpl: Put all reusable template parts in this file for better organization.
+  Consistent naming: Use consistent naming conventions for templates, values, and files.
+  Comment your templates: Add comments to explain complex parts of your templates.
+
+
+Values Management
+
+
+  Set sensible defaults: Provide default values that work out of the box.
+  Validate values: Use conditionals to validate required values.
+  Structure values logically: Organize values by component or functionality.
+  Document values: Include comments in values.yaml explaining each value.
+
+
+Performance and Maintenance
+
+
+  Limit template complexity: Break complex templates into smaller, reusable parts.
+  Test templates: Use helm lint and helm template to validate your templates.
+  Version chart components: Use proper versioning for your charts.
+  Keep it DRY: Don’t repeat yourself - use named templates for repeated patterns.
 
 
 
-Secret template
+  Tips for Debugging Templates
+  
+    Use helm lint to check for syntax errors
+    Use helm template --debug to see the rendered output
+    Add temporary debug statements with {{ .Values.something | toYaml }}
+    Check whitespace issues by looking at the actual rendered YAML
+    Start simple and gradually add complexity, testing at each step
+  
 
+
+
+
+Conclusion
+
+Helm Chart templating is a powerful system that allows you to create flexible, reusable Kubernetes application packages. By mastering the syntax and patterns described in this guide, you can create charts that work across different environments and use cases, saving time and reducing configuration errors.
+
+Remember that good Helm Charts strike a balance between flexibility and simplicity - provide customization options where needed, but keep the default experience straightforward and well-documented.
+
+
+  Key Takeaways
+  
+    Helm uses Go templating extended with Kubernetes-specific functions
+    Templates can access values from values.yaml, command line, and parent charts
+    Named templates promote code reuse and maintainability
+    Control structures like conditionals and loops enable dynamic configuration
+    Using the provided functions effectively can simplify complex transformations
+    Well-structured templates with proper whitespace management produce clean YAML
+  
 
 
 
@@ -1007,11 +1966,14 @@ Secret template
 References
 
   Helm Best Practices
+  Helm Chart Template Guide
   Helm Chart Template Example
   Helm Tips and Tricks
+  Sprig Function Documentation
+  Go Templates Documentation
 
 ",
-            "wordcount": "775",
+            "wordcount": "3332",
             "inLanguage": "en",
             "dateCreated": "2025-01-31/",
             "datePublished": "2025-01-31/",
@@ -1042,7 +2004,7 @@ References
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","helm","helm-chart","template"]
+            "keywords": ["kubernetes","helm","helm-chart","template","go-template","yaml"]
         }
         </script>
     </body>

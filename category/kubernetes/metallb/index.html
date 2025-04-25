@@ -40,7 +40,7 @@
     <title>MetalLB - Load Balancer for Bare Metal Kubernetes Clusters | somaz</title>
     <meta name="description" content="Learn about MetalLB, its operating modes, and how to implement it in bare metal Kubernetes clusters">
     
-        <meta name="keywords" content="kubernetes, metallb, loadbalancer, bare-metal">
+        <meta name="keywords" content="kubernetes, metallb, loadbalancer, bare-metal, networking, service">
     
 
     <!-- Social: Twitter -->
@@ -220,7 +220,7 @@ January 28, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>2 min to read</span>
+                    <span>16 min to read</span>
                 </p>
                 <h1 class="post-title">MetalLB - Load Balancer for Bare Metal Kubernetes Clusters</h1>
                 <p class="post-subtitle">A comprehensive guide to implementing MetalLB in bare metal environments</p>
@@ -244,118 +244,651 @@ January 28, 2025
 
 <h2 id="overview">Overview</h2>
 
-<p>While cloud platforms like AWS, GCP, and Azure provide built-in load balancers for Kubernetes clusters, bare metal environments require additional modules for load balancing functionality.</p>
+<p>In cloud environments (AWS, GCP, Azure), Kubernetes can leverage built-in cloud load balancers when you create a Service of type LoadBalancer. However, in bare metal environments, these cloud resources aren’t available, leaving the LoadBalancer service in a perpetual “pending” state.</p>
 
-<p>Today, we’ll explore MetalLB, an open-source solution that brings load balancer implementation to bare metal Kubernetes clusters.</p>
+<p>MetalLB solves this problem by providing a network load balancer implementation for Kubernetes clusters that don’t run on a cloud provider, effectively enabling the LoadBalancer service type in any environment.</p>
 
-<p><br /></p>
-
-<h3 id="-what-is-metallb">🔑 What is MetalLB?</h3>
-
-<blockquote>
-  <p>MetalLB (Metal Load Balancer) is designed to provide network load balancing functionality in environments where cloud providers’ load balancers aren’t available. <br /><br />It uses standard routing protocols to provide load balancer services:</p>
-</blockquote>
-
-<ul>
-  <li>ARP (IPv4)/NDP (IPv6) for Layer 2 mode</li>
-  <li>BGP for Layer 3 mode</li>
-  <li>Creates speaker pods as DaemonSets to propagate External IPs</li>
-</ul>
+<div class="info-box info-box-default-not-check">
+  <strong>The LoadBalancer Problem</strong>
+  <p>When you create a LoadBalancer service in Kubernetes, the cluster typically requests an external load balancer from the cloud provider. In bare metal environments, this request can't be fulfilled by default, resulting in:</p>
+  <p>MetalLB addresses this limitation by providing its own load balancer implementation that assigns real external IPs to these services.</p>
+</div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>kubectl get svc
+NAME          TYPE           CLUSTER-IP       EXTERNAL-IP   PORT<span class="o">(</span>S<span class="o">)</span>        AGE
+kubernetes    ClusterIP      10.96.0.1        &lt;none&gt;        443/TCP        10h
+myapp         LoadBalancer   10.106.247.153   &lt;pending&gt;     80:31122/TCP   10m
+</code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="operating-modes">Operating Modes</h3>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Client] --&gt;|Access Service| B{Cloud Environment?}
+      B --&gt;|Yes| C[Cloud Load Balancer]
+      B --&gt;|No| D[MetalLB]
+      C --&gt;|External IP| E[Kubernetes Service]
+      D --&gt;|External IP| E
+      E --&gt;|Routes Traffic| F[Pods]
+      
+      style A fill:#f9f9f9,stroke:#333,stroke-width:1px
+      style B fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style C fill:#e1f5fe,stroke:#333,stroke-width:1px
+      style D fill:#fff9c4,stroke:#333,stroke-width:1px,color:#d84315
+      style E fill:#e8f5e9,stroke:#333,stroke-width:1px
+      style F fill:#e8f5e9,stroke:#333,stroke-width:1px
+  </div>
+</div>
 
-<h4 id="layer-2-mode">Layer 2 Mode</h4>
-<ul>
-  <li>One speaker pod becomes the leader and handles service traffic</li>
-  <li>Uses host network mode (“NetworkMode”: “host”)</li>
-  <li>Leader broadcasts ownership of External IP using ARP (GARP)</li>
-  <li>Automatic failover if leader node fails</li>
-  <li>Uses Hashicorp’s memberlist for membership and failure detection</li>
-</ul>
+<p><br /></p>
+
+<h2 id="metallb-architecture">MetalLB Architecture</h2>
+
+<p>MetalLB consists of two main components that work together to provide load balancing functionality:</p>
+
+<ol>
+  <li><strong>Controller</strong>: A deployment that assigns IP addresses to LoadBalancer services</li>
+  <li><strong>Speaker</strong>: A DaemonSet that advertises the services using either Layer 2 (ARP/NDP) or BGP</li>
+</ol>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[MetalLB Controller] --&gt;|Watches| B[Kubernetes API]
+      B --&gt;|Service Events| A
+      A --&gt;|Allocates IPs from| C[Address Pools]
+      A --&gt;|Configures| D[MetalLB Speaker]
+      D --&gt;|Runs on| E[Each Node]
+      D --&gt;|Advertises Routes via| F{Mode?}
+      F --&gt;|Layer 2| G[ARP/NDP]
+      F --&gt;|BGP| H[BGP Protocol]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#c8e6c9,stroke:#333,stroke-width:1px
+      style C fill:#ffecb3,stroke:#333,stroke-width:1px
+      style D fill:#bbdefb,stroke:#333,stroke-width:1px
+      style E fill:#e1bee7,stroke:#333,stroke-width:1px
+      style F fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style G fill:#ffccbc,stroke:#333,stroke-width:1px
+      style H fill:#b3e5fc,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<h3 id="how-it-works">How It Works</h3>
+
+<ol>
+  <li>When a LoadBalancer service is created, the MetalLB controller assigns an IP address from a configured address pool</li>
+  <li>The speaker pods (running on each node) advertise the IP address using either Layer 2 or BGP mode</li>
+  <li>External traffic can now reach the service using the assigned external IP</li>
+  <li>Once traffic reaches a node, standard Kubernetes service routing directs it to the appropriate pods</li>
+</ol>
+
+<p><br /></p>
+
+<h2 id="operating-modes">Operating Modes</h2>
+
+<p>MetalLB supports two operating modes, each with distinct characteristics and use cases:</p>
+
+<h3 id="layer-2-mode-arpndp">Layer 2 Mode (ARP/NDP)</h3>
+
+<p>In Layer 2 mode, one speaker pod becomes the “leader” for each service and responds to ARP requests for the service’s IP address, making the node appear to be the machine that owns the service IP.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant Client
+      participant Router
+      participant Node1 as Kubernetes Node 1 (Leader)
+      participant Node2 as Kubernetes Node 2
+      
+      Note over Node1,Node2: MetalLB speakers elect a leader
+      Client-&gt;&gt;Router: Who has IP 192.168.1.240?
+      Router-&gt;&gt;Node1: Who has IP 192.168.1.240?
+      Router-&gt;&gt;Node2: Who has IP 192.168.1.240?
+      Node1-&gt;&gt;Router: I have 192.168.1.240 (MAC: AA:BB:CC:DD:EE:FF)
+      Router-&gt;&gt;Client: 192.168.1.240 is at AA:BB:CC:DD:EE:FF
+      Client-&gt;&gt;Node1: Traffic to 192.168.1.240
+  </div>
+</div>
 
 <div class="info-box info-box-default">
   <strong>Key Features of Layer 2 Mode:</strong>
   <ul>
-    <li>Simple configuration</li>
-    <li>No special network configuration required</li>
-    <li>Automatic failover</li>
-    <li>Single-node bottleneck for service traffic</li>
+    <li><strong>Simplicity</strong>: No special network equipment needed</li>
+    <li><strong>Compatibility</strong>: Works with any network configuration</li>
+    <li><strong>Automatic Failover</strong>: If the leader node fails, another node takes over</li>
+    <li><strong>Session Persistence</strong>: All traffic for a service goes to a single node</li>
+    <li><strong>Network Efficiency</strong>: Uses standard ARP/NDP protocols that all network equipment understands</li>
   </ul>
 </div>
 
-<h4 id="bgp-mode">BGP Mode</h4>
-<ul>
-  <li>Speaker pods run BGP to advertise service information</li>
-  <li>Supports IP address (32-bit) advertisement</li>
-  <li>Configurable BGP communities and local preferences</li>
-  <li>ECMP routing for load distribution</li>
-  <li>Typically uses 5-tuple based routing (protocol, source/destination IP, source/destination port)</li>
-</ul>
+<div class="info-box info-box-warning-not-check">
+  <strong>Limitations:</strong>
+  <ul>
+    <li><strong>Single Node Traffic</strong>: All external traffic for a service flows through a single node, which can become a bottleneck</li>
+    <li><strong>Disruptions During Failover</strong>: Brief connectivity disruption during leader failover</li>
+    <li><strong>No Traffic Distribution</strong>: Cannot distribute load across multiple entry points</li>
+  </ul>
+</div>
+
+<h3 id="bgp-mode">BGP Mode</h3>
+
+<p>In BGP mode, each speaker pod establishes BGP peering sessions with configured routers and advertises routes for service IPs.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant Client
+      participant Router as BGP Router
+      participant Node1 as Kubernetes Node 1
+      participant Node2 as Kubernetes Node 2
+      
+      Note over Node1,Node2: MetalLB speakers establish BGP sessions
+      Node1-&gt;&gt;Router: BGP: I can route to 192.168.1.240
+      Node2-&gt;&gt;Router: BGP: I can route to 192.168.1.240
+      
+      Note over Router: Router uses ECMP to distribute traffic
+      
+      Client-&gt;&gt;Router: Traffic to 192.168.1.240
+      Router-&gt;&gt;Node1: Some traffic to 192.168.1.240
+      Router-&gt;&gt;Node2: Some traffic to 192.168.1.240
+  </div>
+</div>
 
 <div class="info-box info-box-default">
   <strong>Key Features of BGP Mode:</strong>
   <ul>
-    <li>Better scalability with ECMP support</li>
-    <li>True load balancing across multiple nodes</li>
-    <li>More flexible routing options</li>
-    <li>Advanced traffic engineering capabilities</li>
-    <li>Better integration with existing network infrastructure</li>
+    <li><strong>True Load Balancing</strong>: Using ECMP (Equal-Cost Multi-Path), routers can distribute traffic across multiple nodes</li>
+    <li><strong>Scalability</strong>: Better performance for high-traffic services</li>
+    <li><strong>No Disruption on Node Failure</strong>: Traffic to remaining nodes continues uninterrupted</li>
+    <li><strong>Advanced Routing</strong>: Supports traffic engineering via BGP communities and local preferences</li>
+    <li><strong>Efficient Failover</strong>: Near-instant recovery from node failures</li>
   </ul>
+</div>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Requirements:</strong>
+  <ul>
+    <li><strong>BGP-capable Router</strong>: Requires routers that support BGP and ideally ECMP</li>
+    <li><strong>Network Expertise</strong>: More complex to set up and troubleshoot</li>
+    <li><strong>Configuration</strong>: Requires BGP peering setup on both MetalLB and router side</li>
+  </ul>
+</div>
+
+<h3 id="mode-comparison">Mode Comparison</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Feature</th>
+      <th style="width: 37.5%;">Layer 2 Mode</th>
+      <th style="width: 37.5%;">BGP Mode</th>
+    </tr>
+    <tr>
+      <td>Setup Complexity</td>
+      <td>Low - minimal configuration</td>
+      <td>Medium to High - requires BGP router configuration</td>
+    </tr>
+    <tr>
+      <td>Network Requirements</td>
+      <td>Standard Ethernet network</td>
+      <td>BGP-capable routers</td>
+    </tr>
+    <tr>
+      <td>Traffic Distribution</td>
+      <td>Single node handles all traffic for a service</td>
+      <td>Traffic can be distributed across multiple nodes</td>
+    </tr>
+    <tr>
+      <td>Failover Speed</td>
+      <td>Seconds (requires ARP cache refresh)</td>
+      <td>Milliseconds to seconds (BGP reconvergence)</td>
+    </tr>
+    <tr>
+      <td>Performance Ceiling</td>
+      <td>Limited by single node capacity</td>
+      <td>Can scale across multiple nodes</td>
+    </tr>
+    <tr>
+      <td>Protocol Used</td>
+      <td>ARP (IPv4) / NDP (IPv6)</td>
+      <td>Border Gateway Protocol</td>
+    </tr>
+  </table>
 </div>
 
 <p><br /></p>
 
+<h2 id="installation-and-configuration">Installation and Configuration</h2>
+
 <h3 id="prerequisites">Prerequisites</h3>
-<p>For IPVS mode, enable strictARP:</p>
 
-<script src="https://gist.github.com/somaz94/90217f39e157844a72f34ffc6847a35d.js"></script>
+<p>For optimal operation, especially when using kube-proxy in IPVS mode, enable strictARP:</p>
 
-<p><br /></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check the kube-proxy mode</span>
+kubectl get configmap <span class="nt">-n</span> kube-system kube-proxy <span class="nt">-o</span> yaml | <span class="nb">grep </span>mode
 
-<h3 id="install-with-helm">Install with Helm</h3>
+<span class="c"># If using IPVS mode, enable strictARP</span>
+kubectl get configmap <span class="nt">-n</span> kube-system kube-proxy <span class="nt">-o</span> yaml | <span class="se">\</span>
+<span class="nb">sed</span> <span class="s1">'s/strictARP: false/strictARP: true/'</span> | <span class="se">\</span>
+kubectl apply <span class="nt">-f</span> - <span class="nt">-n</span> kube-system
+</code></pre></div></div>
+
+<h3 id="installation-methods">Installation Methods</h3>
+
+<h4 id="method-1-install-with-helm-recommended">Method 1: Install with Helm (Recommended)</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add MetalLB helm repo</span>
 helm repo add metallb https://metallb.github.io/metallb
 
+<span class="c"># Update helm repositories</span>
+helm repo update
+
 <span class="c"># Install MetalLB</span>
 helm <span class="nb">install </span>metallb metallb/metallb <span class="nt">-n</span> metallb-system <span class="nt">--create-namespace</span>
+
+<span class="c"># Verify the installation</span>
+kubectl get pods <span class="nt">-n</span> metallb-system
 </code></pre></div></div>
 
-<p><br /></p>
+<h4 id="method-2-install-with-manifests">Method 2: Install with Manifests</h4>
 
-<h3 id="install-by-manifests">Install By Manifests</h3>
-<ul>
-  <li>Install via Manifest. However, it seems that the native of the file contains all the resources.</li>
-  <li>Therefore, it seems good to look at the github of MetalLB and install the necessary resources.</li>
-</ul>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install MetalLB</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install MetalLB components</span>
 kubectl apply <span class="nt">-f</span> https://raw.githubusercontent.com/metallb/metallb/main/config/manifests/metallb-native.yaml
+
+<span class="c"># Verify the installation</span>
+kubectl get pods <span class="nt">-n</span> metallb-system
+</code></pre></div></div>
+
+<h3 id="configuration">Configuration</h3>
+
+<p>MetalLB requires two key configurations:</p>
+
+<ol>
+  <li><strong>IPAddressPool</strong>: Defines the IP ranges that MetalLB can assign</li>
+  <li><strong>L2Advertisement or BGPAdvertisement</strong>: Defines how these IPs are advertised</li>
+</ol>
+
+<h4 id="layer-2-configuration-example">Layer 2 Configuration Example</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">IPAddressPool</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">first-pool</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">addresses</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">192.168.1.240-192.168.1.250</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">L2Advertisement</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">layer2-config</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ipAddressPools</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">first-pool</span>
+</code></pre></div></div>
+
+<h4 id="bgp-configuration-example">BGP Configuration Example</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">IPAddressPool</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">bgp-pool</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">addresses</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">192.168.10.0/24</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">BGPPeer</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">router-peer</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">myASN</span><span class="pi">:</span> <span class="m">64500</span>
+  <span class="na">peerASN</span><span class="pi">:</span> <span class="m">64501</span>
+  <span class="na">peerAddress</span><span class="pi">:</span> <span class="s">192.168.0.1</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">BGPAdvertisement</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">bgp-advert</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ipAddressPools</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">bgp-pool</span>
+</code></pre></div></div>
+
+<h3 id="complete-configuration-example">Complete Configuration Example</h3>
+
+<p>Here’s a complete example with address pools and both Layer 2 and BGP configuration:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">IPAddressPool</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">production-public-ips</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">addresses</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">192.168.1.240-192.168.1.250</span>
+  <span class="pi">-</span> <span class="s">192.168.10.0/24</span>
+  <span class="na">autoAssign</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">avoidBuggyIPs</span><span class="pi">:</span> <span class="no">true</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">L2Advertisement</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">layer2-prod</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ipAddressPools</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">production-public-ips</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">BGPPeer</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">router1</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">myASN</span><span class="pi">:</span> <span class="m">64500</span>
+  <span class="na">peerASN</span><span class="pi">:</span> <span class="m">64501</span>
+  <span class="na">peerAddress</span><span class="pi">:</span> <span class="s">192.168.0.1</span>
+  <span class="na">holdTime</span><span class="pi">:</span> <span class="s">120s</span>
+  <span class="na">keepaliveTime</span><span class="pi">:</span> <span class="s">30s</span>
+  <span class="na">routerID</span><span class="pi">:</span> <span class="s">192.168.0.100</span>
+  <span class="na">nodeSelectors</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">kubernetes.io/hostname</span><span class="pi">:</span> <span class="s">worker-1</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">BGPPeer</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">router2</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">myASN</span><span class="pi">:</span> <span class="m">64500</span>
+  <span class="na">peerASN</span><span class="pi">:</span> <span class="m">64501</span>
+  <span class="na">peerAddress</span><span class="pi">:</span> <span class="s">192.168.0.2</span>
+  <span class="na">holdTime</span><span class="pi">:</span> <span class="s">120s</span>
+  <span class="na">keepaliveTime</span><span class="pi">:</span> <span class="s">30s</span>
+  <span class="na">routerID</span><span class="pi">:</span> <span class="s">192.168.0.100</span>
+  <span class="na">nodeSelectors</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">kubernetes.io/hostname</span><span class="pi">:</span> <span class="s">worker-2</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">BGPAdvertisement</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">bgp-prod</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ipAddressPools</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">production-public-ips</span>
+  <span class="na">communities</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">64500:100</span>
+  <span class="na">localPref</span><span class="pi">:</span> <span class="m">100</span>
+  <span class="na">aggregationLength</span><span class="pi">:</span> <span class="m">32</span>
+</code></pre></div></div>
+
+<h3 id="applying-and-verifying-configuration">Applying and Verifying Configuration</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Apply configuration</span>
+kubectl apply <span class="nt">-f</span> metallb-config.yaml
+
+<span class="c"># Verify IPAddressPool configuration</span>
+kubectl describe ipaddresspool <span class="nt">-n</span> metallb-system
+
+<span class="c"># Verify L2Advertisement configuration</span>
+kubectl describe l2advertisement <span class="nt">-n</span> metallb-system
+
+<span class="c"># For BGP mode, verify BGP configuration</span>
+kubectl describe bgppeer <span class="nt">-n</span> metallb-system
+kubectl describe bgpadvertisement <span class="nt">-n</span> metallb-system
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h4 id="configure-metallb">Configure MetalLB</h4>
+<h2 id="testing-metallb">Testing MetalLB</h2>
 
-<script src="https://gist.github.com/somaz94/9b24edb14bff1b909b3275a04627b456.js"></script>
+<h3 id="deploy-a-test-application">Deploy a Test Application</h3>
 
-<h4 id="check-ipaddresspool">Check ipaddresspool</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check validatingwebhookconfigurations</span>
-kubectl get validatingwebhookconfigurations
-
-<span class="c"># Delete validatingwebhookconfigurations</span>
-kubectl delete validatingwebhookconfigurations  metallb-webhook-configuration
-
-<span class="c"># Check validatingwebhookconfigurations</span>
-kubectl get validatingwebhookconfigurations
-
-<span class="c"># Apply metallb-config.yaml</span>
-k apply <span class="nt">-f</span> metallb-config.yaml <span class="nt">-n</span> metallb-system
-
-<span class="c"># Check ipaddresspool</span>
-kubectl describe ipaddresspool.metallb.io <span class="nt">--namespace</span> metallb-system
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">nginx-test</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">nginx-test</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">nginx:1.21</span>
+        <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">http</span>
+          <span class="na">containerPort</span><span class="pi">:</span> <span class="m">80</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ports</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">http</span>
+    <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+    <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+    <span class="na">targetPort</span><span class="pi">:</span> <span class="m">80</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">nginx-test</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">LoadBalancer</span>
 </code></pre></div></div>
+
+<h3 id="verify-external-ip-assignment">Verify External IP Assignment</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check if the service received an external IP</span>
+kubectl get svc nginx-test
+
+<span class="c"># Expected output:</span>
+<span class="c"># NAME         TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)        AGE</span>
+<span class="c"># nginx-test   LoadBalancer   10.43.162.209   192.168.1.240    80:31621/TCP   10s</span>
+
+<span class="c"># Test connectivity</span>
+curl http://192.168.1.240
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="advanced-configuration">Advanced Configuration</h2>
+
+<h3 id="address-pool-options">Address Pool Options</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">IPAddressPool</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">advanced-pool</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">addresses</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">192.168.10.0/24</span>
+  <span class="pi">-</span> <span class="s">192.168.20.10-192.168.20.50</span>
+  <span class="na">autoAssign</span><span class="pi">:</span> <span class="no">true</span>  <span class="c1"># Whether to automatically assign from this pool (default: true)</span>
+  <span class="na">avoidBuggyIPs</span><span class="pi">:</span> <span class="no">true</span>  <span class="c1"># Avoid .0 and .255 addresses which can cause problems</span>
+</code></pre></div></div>
+
+<h3 id="bgp-options">BGP Options</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">BGPAdvertisement</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">advanced-bgp</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ipAddressPools</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">advanced-pool</span>
+  <span class="na">aggregationLength</span><span class="pi">:</span> <span class="m">32</span>  <span class="c1"># Advertise individual /32 routes</span>
+  <span class="na">localPref</span><span class="pi">:</span> <span class="m">100</span>  <span class="c1"># BGP local preference</span>
+  <span class="na">communities</span><span class="pi">:</span>  <span class="c1"># BGP communities to attach</span>
+  <span class="pi">-</span> <span class="s">65535:65282</span>  <span class="c1"># no-export community</span>
+  <span class="pi">-</span> <span class="s">64500:100</span>    <span class="c1"># Custom community</span>
+</code></pre></div></div>
+
+<h3 id="bfd-bidirectional-forwarding-detection-for-faster-failover">BFD (Bidirectional Forwarding Detection) for Faster Failover</h3>
+
+<p>For faster BGP failover, MetalLB supports BFD (available in newer versions):</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">BFDProfile</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">fast-failover</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">receiveInterval</span><span class="pi">:</span> <span class="s">300ms</span>
+  <span class="na">transmitInterval</span><span class="pi">:</span> <span class="s">300ms</span>
+  <span class="na">detectMultiplier</span><span class="pi">:</span> <span class="m">3</span>
+  <span class="na">echoInterval</span><span class="pi">:</span> <span class="s">50ms</span>
+  <span class="na">echoMode</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">passiveMode</span><span class="pi">:</span> <span class="no">false</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">metallb.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">BGPPeer</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">router-with-bfd</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">metallb-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">myASN</span><span class="pi">:</span> <span class="m">64500</span>
+  <span class="na">peerASN</span><span class="pi">:</span> <span class="m">64501</span>
+  <span class="na">peerAddress</span><span class="pi">:</span> <span class="s">192.168.0.1</span>
+  <span class="na">bfdProfile</span><span class="pi">:</span> <span class="s">fast-failover</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="common-issues">Common Issues</h3>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>LoadBalancer service stuck in pending</strong>
+  <ul>
+    <li>Check if MetalLB pods are running: <code>kubectl get pods -n metallb-system</code></li>
+    <li>Verify address pool configuration: <code>kubectl describe ipaddresspool -n metallb-system</code></li>
+    <li>Check for configuration errors in logs: <code>kubectl logs -n metallb-system -l app=metallb,component=controller</code></li>
+    <li>Ensure the IP range in the pool is available in your network</li>
+  </ul>
+</div>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Cannot reach service external IP</strong>
+  <ul>
+    <li>For Layer 2 mode, ensure the IP is in the same subnet as your nodes</li>
+    <li>Check speaker logs: <code>kubectl logs -n metallb-system -l app=metallb,component=speaker</code></li>
+    <li>Verify network connectivity between client and Kubernetes nodes</li>
+    <li>Test if firewall rules are blocking traffic</li>
+  </ul>
+</div>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>BGP issues</strong>
+  <ul>
+    <li>Verify BGP peering is established: <code>kubectl logs -n metallb-system -l app=metallb,component=speaker | grep "BGP session established"</code></li>
+    <li>Check BGPPeer configuration: <code>kubectl describe bgppeer -n metallb-system</code></li>
+    <li>Confirm ASN numbers and peer addresses are correct</li>
+    <li>Verify router configuration matches MetalLB settings</li>
+  </ul>
+</div>
+
+<h3 id="validating-configuration">Validating Configuration</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check controller and speaker pod status</span>
+kubectl get pods <span class="nt">-n</span> metallb-system
+
+<span class="c"># Check for events related to MetalLB</span>
+kubectl get events <span class="nt">-n</span> metallb-system
+
+<span class="c"># Check controller logs</span>
+kubectl logs <span class="nt">-n</span> metallb-system <span class="nt">-l</span> <span class="nv">app</span><span class="o">=</span>metallb,component<span class="o">=</span>controller
+
+<span class="c"># Check speaker logs</span>
+kubectl logs <span class="nt">-n</span> metallb-system <span class="nt">-l</span> <span class="nv">app</span><span class="o">=</span>metallb,component<span class="o">=</span>speaker
+
+<span class="c"># View address assignments</span>
+kubectl get services <span class="nt">--all-namespaces</span> <span class="nt">-o</span> wide | <span class="nb">grep </span>LoadBalancer
+</code></pre></div></div>
+
+<h3 id="debugging-commands">Debugging Commands</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># For Layer 2 mode, check ARP table on a client machine</span>
+arp <span class="nt">-a</span>
+
+<span class="c"># For BGP mode, check BGP sessions on the router</span>
+<span class="c"># Example for a Cisco router:</span>
+<span class="c"># show ip bgp summary</span>
+<span class="c"># show ip bgp neighbors</span>
+
+<span class="c"># Test connectivity to assigned IPs</span>
+ping &lt;external-ip&gt;
+curl http://&lt;external-ip&gt;
+
+<span class="c"># Check MetalLB speaker's internal state (newer versions)</span>
+kubectl <span class="nb">exec</span> <span class="nt">-n</span> metallb-system <span class="nt">-l</span> <span class="nv">app</span><span class="o">=</span>metallb,component<span class="o">=</span>speaker <span class="nt">--</span> mirror-status
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="best-practices">Best Practices</h2>
+
+<h3 id="security-considerations">Security Considerations</h3>
+
+<ol>
+  <li><strong>Network Policies</strong>: Implement Kubernetes network policies to control traffic to your exposed services</li>
+  <li><strong>Separate Network</strong>: Use a dedicated IP range for MetalLB that’s separate from your regular infrastructure</li>
+  <li><strong>RBAC</strong>: Ensure proper RBAC permissions for MetalLB components</li>
+  <li><strong>BGP Authentication</strong>: For BGP mode, implement MD5 authentication with your BGP peers when possible</li>
+</ol>
+
+<h3 id="performance-optimization">Performance Optimization</h3>
+
+<ol>
+  <li><strong>Choose the Right Mode</strong>: Use BGP mode for high-traffic services that need true load balancing</li>
+  <li><strong>Node Selection</strong>: For Layer 2 mode, use node annotations to influence leader election for optimal traffic distribution</li>
+  <li><strong>Bandwidth Consideration</strong>: Monitor node network usage when using Layer 2 mode as traffic concentration can lead to bottlenecks</li>
+  <li><strong>Resource Allocation</strong>: Ensure MetalLB components have adequate resources, especially in large clusters</li>
+</ol>
+
+<h3 id="deployment-recommendations">Deployment Recommendations</h3>
+
+<ol>
+  <li><strong>Use Helm</strong>: The Helm chart provides a more manageable way to install and upgrade MetalLB</li>
+  <li><strong>Multiple Address Pools</strong>: Define separate address pools for different environments or service types</li>
+  <li><strong>Start Small</strong>: Begin with Layer 2 mode for simplicity, then migrate to BGP if needed</li>
+  <li><strong>Regular Updates</strong>: Keep MetalLB updated to benefit from bug fixes and new features</li>
+  <li><strong>Monitoring</strong>: Implement monitoring for MetalLB components using Prometheus metrics</li>
+</ol>
+
+<p><br /></p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>MetalLB provides a robust solution for implementing LoadBalancer services in bare metal Kubernetes environments. By understanding the differences between Layer 2 and BGP modes, you can choose the approach that best fits your infrastructure requirements and operational capabilities.</p>
+
+<p>For small to medium deployments, Layer 2 mode offers simplicity and ease of setup. For larger, more complex environments where true load balancing is required, BGP mode provides the necessary flexibility and scalability.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Key Takeaways</strong>
+  <ul>
+    <li>MetalLB enables LoadBalancer services in bare metal Kubernetes clusters</li>
+    <li>Layer 2 mode is simpler but routes all service traffic through one node</li>
+    <li>BGP mode enables true load balancing but requires BGP-capable network equipment</li>
+    <li>Configuration involves defining address pools and advertisement methods</li>
+    <li>MetalLB integrates seamlessly with standard Kubernetes networking</li>
+  </ul>
+</div>
 
 <p><br /></p>
 
@@ -366,6 +899,9 @@ kubectl describe ipaddresspool.metallb.io <span class="nt">--namespace</span> me
   <li><a href="https://metallb.universe.tf/">MetalLB Official Documentation</a></li>
   <li><a href="https://github.com/metallb/metallb">GitHub Repository</a></li>
   <li><a href="https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer">Kubernetes Load Balancing</a></li>
+  <li><a href="https://metallb.universe.tf/configuration/">MetalLB Configuration Examples</a></li>
+  <li><a href="https://metallb.universe.tf/troubleshooting/">MetalLB Troubleshooting Guide</a></li>
+  <li><a href="https://metallb.universe.tf/concepts/bgp/">BGP Concepts and Configuration</a></li>
 </ul>
 
 
@@ -380,6 +916,15 @@ kubectl describe ipaddresspool.metallb.io <span class="nt">--namespace</span> me
                     <ul>
                         
                         
+                        
+                            <li>
+                                <a href="/category/cs/os-cache-disk/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1744340260/os-cache-disk_jwhgck.png">
+                                    
+                                    <h3>OS Cache and Disk I/O - MySQL and Redis Performance Analysis</h3>
+                                </a>
+                            </li>
                         
                             <li>
                                 <a href="/category/network/ssh-tunneling/">
@@ -399,15 +944,6 @@ kubectl describe ipaddresspool.metallb.io <span class="nt">--namespace</span> me
                                 </a>
                             </li>
                         
-                            <li>
-                                <a href="/category/network/cdn/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1740040649/cdn_m4mnj5.png">
-                                    
-                                    <h3>What is CDN? (Content Delivery Network)</h3>
-                                </a>
-                            </li>
-                        
                     </ul>
                 </aside>
             
@@ -416,7 +952,7 @@ kubectl describe ipaddresspool.metallb.io <span class="nt">--namespace</span> me
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="2">
+            <div class="time-bar" data-minutes="16">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -458,7 +994,7 @@ kubectl describe ipaddresspool.metallb.io <span class="nt">--namespace</span> me
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn about MetalLB, its operating modes, and how to implement it in bare metal Kubernetes clusters&quot;%20https://somaz.blog/category/kubernetes/metallb/%20via%20&#64;twitter_username&hashtags=kubernetes,metallb,loadbalancer,bare-metal"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn about MetalLB, its operating modes, and how to implement it in bare metal Kubernetes clusters&quot;%20https://somaz.blog/category/kubernetes/metallb/%20via%20&#64;twitter_username&hashtags=kubernetes,metallb,loadbalancer,bare-metal,networking,service"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -725,117 +1261,650 @@ kubectl describe ipaddresspool.metallb.io <span class="nt">--namespace</span> me
 
 Overview
 
-While cloud platforms like AWS, GCP, and Azure provide built-in load balancers for Kubernetes clusters, bare metal environments require additional modules for load balancing functionality.
+In cloud environments (AWS, GCP, Azure), Kubernetes can leverage built-in cloud load balancers when you create a Service of type LoadBalancer. However, in bare metal environments, these cloud resources aren’t available, leaving the LoadBalancer service in a perpetual “pending” state.
 
-Today, we’ll explore MetalLB, an open-source solution that brings load balancer implementation to bare metal Kubernetes clusters.
-
-
-
-🔑 What is MetalLB?
+MetalLB solves this problem by providing a network load balancer implementation for Kubernetes clusters that don’t run on a cloud provider, effectively enabling the LoadBalancer service type in any environment.
 
 
-  MetalLB (Metal Load Balancer) is designed to provide network load balancing functionality in environments where cloud providers’ load balancers aren’t available. It uses standard routing protocols to provide load balancer services:
+  The LoadBalancer Problem
+  When you create a LoadBalancer service in Kubernetes, the cluster typically requests an external load balancer from the cloud provider. In bare metal environments, this request can&apos;t be fulfilled by default, resulting in:
+  MetalLB addresses this limitation by providing its own load balancer implementation that assigns real external IPs to these services.
+
+$ kubectl get svc
+NAME          TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+kubernetes    ClusterIP      10.96.0.1        &amp;lt;none&amp;gt;        443/TCP        10h
+myapp         LoadBalancer   10.106.247.153   &amp;lt;pending&amp;gt;     80:31122/TCP   10m
 
 
 
-  ARP (IPv4)/NDP (IPv6) for Layer 2 mode
-  BGP for Layer 3 mode
-  Creates speaker pods as DaemonSets to propagate External IPs
+
+
+  
+    graph TD
+      A[Client] --&amp;gt;|Access Service| B{Cloud Environment?}
+      B --&amp;gt;|Yes| C[Cloud Load Balancer]
+      B --&amp;gt;|No| D[MetalLB]
+      C --&amp;gt;|External IP| E[Kubernetes Service]
+      D --&amp;gt;|External IP| E
+      E --&amp;gt;|Routes Traffic| F[Pods]
+      
+      style A fill:#f9f9f9,stroke:#333,stroke-width:1px
+      style B fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style C fill:#e1f5fe,stroke:#333,stroke-width:1px
+      style D fill:#fff9c4,stroke:#333,stroke-width:1px,color:#d84315
+      style E fill:#e8f5e9,stroke:#333,stroke-width:1px
+      style F fill:#e8f5e9,stroke:#333,stroke-width:1px
+  
+
+
+
+
+MetalLB Architecture
+
+MetalLB consists of two main components that work together to provide load balancing functionality:
+
+
+  Controller: A deployment that assigns IP addresses to LoadBalancer services
+  Speaker: A DaemonSet that advertises the services using either Layer 2 (ARP/NDP) or BGP
+
+
+
+  
+    graph TD
+      A[MetalLB Controller] --&amp;gt;|Watches| B[Kubernetes API]
+      B --&amp;gt;|Service Events| A
+      A --&amp;gt;|Allocates IPs from| C[Address Pools]
+      A --&amp;gt;|Configures| D[MetalLB Speaker]
+      D --&amp;gt;|Runs on| E[Each Node]
+      D --&amp;gt;|Advertises Routes via| F{Mode?}
+      F --&amp;gt;|Layer 2| G[ARP/NDP]
+      F --&amp;gt;|BGP| H[BGP Protocol]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#c8e6c9,stroke:#333,stroke-width:1px
+      style C fill:#ffecb3,stroke:#333,stroke-width:1px
+      style D fill:#bbdefb,stroke:#333,stroke-width:1px
+      style E fill:#e1bee7,stroke:#333,stroke-width:1px
+      style F fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style G fill:#ffccbc,stroke:#333,stroke-width:1px
+      style H fill:#b3e5fc,stroke:#333,stroke-width:1px
+  
+
+
+How It Works
+
+
+  When a LoadBalancer service is created, the MetalLB controller assigns an IP address from a configured address pool
+  The speaker pods (running on each node) advertise the IP address using either Layer 2 or BGP mode
+  External traffic can now reach the service using the assigned external IP
+  Once traffic reaches a node, standard Kubernetes service routing directs it to the appropriate pods
 
 
 
 
 Operating Modes
 
-Layer 2 Mode
+MetalLB supports two operating modes, each with distinct characteristics and use cases:
 
-  One speaker pod becomes the leader and handles service traffic
-  Uses host network mode (“NetworkMode”: “host”)
-  Leader broadcasts ownership of External IP using ARP (GARP)
-  Automatic failover if leader node fails
-  Uses Hashicorp’s memberlist for membership and failure detection
+Layer 2 Mode (ARP/NDP)
+
+In Layer 2 mode, one speaker pod becomes the “leader” for each service and responds to ARP requests for the service’s IP address, making the node appear to be the machine that owns the service IP.
+
+
+  
+    sequenceDiagram
+      participant Client
+      participant Router
+      participant Node1 as Kubernetes Node 1 (Leader)
+      participant Node2 as Kubernetes Node 2
+      
+      Note over Node1,Node2: MetalLB speakers elect a leader
+      Client-&amp;gt;&amp;gt;Router: Who has IP 192.168.1.240?
+      Router-&amp;gt;&amp;gt;Node1: Who has IP 192.168.1.240?
+      Router-&amp;gt;&amp;gt;Node2: Who has IP 192.168.1.240?
+      Node1-&amp;gt;&amp;gt;Router: I have 192.168.1.240 (MAC: AA:BB:CC:DD:EE:FF)
+      Router-&amp;gt;&amp;gt;Client: 192.168.1.240 is at AA:BB:CC:DD:EE:FF
+      Client-&amp;gt;&amp;gt;Node1: Traffic to 192.168.1.240
+  
 
 
 
   Key Features of Layer 2 Mode:
   
-    Simple configuration
-    No special network configuration required
-    Automatic failover
-    Single-node bottleneck for service traffic
+    Simplicity: No special network equipment needed
+    Compatibility: Works with any network configuration
+    Automatic Failover: If the leader node fails, another node takes over
+    Session Persistence: All traffic for a service goes to a single node
+    Network Efficiency: Uses standard ARP/NDP protocols that all network equipment understands
+  
+
+
+
+  Limitations:
+  
+    Single Node Traffic: All external traffic for a service flows through a single node, which can become a bottleneck
+    Disruptions During Failover: Brief connectivity disruption during leader failover
+    No Traffic Distribution: Cannot distribute load across multiple entry points
   
 
 
 BGP Mode
 
-  Speaker pods run BGP to advertise service information
-  Supports IP address (32-bit) advertisement
-  Configurable BGP communities and local preferences
-  ECMP routing for load distribution
-  Typically uses 5-tuple based routing (protocol, source/destination IP, source/destination port)
+In BGP mode, each speaker pod establishes BGP peering sessions with configured routers and advertises routes for service IPs.
+
+
+  
+    sequenceDiagram
+      participant Client
+      participant Router as BGP Router
+      participant Node1 as Kubernetes Node 1
+      participant Node2 as Kubernetes Node 2
+      
+      Note over Node1,Node2: MetalLB speakers establish BGP sessions
+      Node1-&amp;gt;&amp;gt;Router: BGP: I can route to 192.168.1.240
+      Node2-&amp;gt;&amp;gt;Router: BGP: I can route to 192.168.1.240
+      
+      Note over Router: Router uses ECMP to distribute traffic
+      
+      Client-&amp;gt;&amp;gt;Router: Traffic to 192.168.1.240
+      Router-&amp;gt;&amp;gt;Node1: Some traffic to 192.168.1.240
+      Router-&amp;gt;&amp;gt;Node2: Some traffic to 192.168.1.240
+  
 
 
 
   Key Features of BGP Mode:
   
-    Better scalability with ECMP support
-    True load balancing across multiple nodes
-    More flexible routing options
-    Advanced traffic engineering capabilities
-    Better integration with existing network infrastructure
+    True Load Balancing: Using ECMP (Equal-Cost Multi-Path), routers can distribute traffic across multiple nodes
+    Scalability: Better performance for high-traffic services
+    No Disruption on Node Failure: Traffic to remaining nodes continues uninterrupted
+    Advanced Routing: Supports traffic engineering via BGP communities and local preferences
+    Efficient Failover: Near-instant recovery from node failures
+  
+
+
+
+  Requirements:
+  
+    BGP-capable Router: Requires routers that support BGP and ideally ECMP
+    Network Expertise: More complex to set up and troubleshoot
+    Configuration: Requires BGP peering setup on both MetalLB and router side
+  
+
+
+Mode Comparison
+
+
+  
+    
+      Feature
+      Layer 2 Mode
+      BGP Mode
+    
+    
+      Setup Complexity
+      Low - minimal configuration
+      Medium to High - requires BGP router configuration
+    
+    
+      Network Requirements
+      Standard Ethernet network
+      BGP-capable routers
+    
+    
+      Traffic Distribution
+      Single node handles all traffic for a service
+      Traffic can be distributed across multiple nodes
+    
+    
+      Failover Speed
+      Seconds (requires ARP cache refresh)
+      Milliseconds to seconds (BGP reconvergence)
+    
+    
+      Performance Ceiling
+      Limited by single node capacity
+      Can scale across multiple nodes
+    
+    
+      Protocol Used
+      ARP (IPv4) / NDP (IPv6)
+      Border Gateway Protocol
+    
   
 
 
 
 
+Installation and Configuration
+
 Prerequisites
-For IPVS mode, enable strictARP:
+
+For optimal operation, especially when using kube-proxy in IPVS mode, enable strictARP:
+
+# Check the kube-proxy mode
+kubectl get configmap -n kube-system kube-proxy -o yaml | grep mode
+
+# If using IPVS mode, enable strictARP
+kubectl get configmap -n kube-system kube-proxy -o yaml | \
+sed &apos;s/strictARP: false/strictARP: true/&apos; | \
+kubectl apply -f - -n kube-system
 
 
+Installation Methods
 
+Method 1: Install with Helm (Recommended)
 
-
-Install with Helm
 # Add MetalLB helm repo
 helm repo add metallb https://metallb.github.io/metallb
+
+# Update helm repositories
+helm repo update
 
 # Install MetalLB
 helm install metallb metallb/metallb -n metallb-system --create-namespace
 
+# Verify the installation
+kubectl get pods -n metallb-system
 
 
+Method 2: Install with Manifests
 
-Install By Manifests
-
-  Install via Manifest. However, it seems that the native of the file contains all the resources.
-  Therefore, it seems good to look at the github of MetalLB and install the necessary resources.
-
-
-# Install MetalLB
+# Install MetalLB components
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/main/config/manifests/metallb-native.yaml
 
+# Verify the installation
+kubectl get pods -n metallb-system
+
+
+Configuration
+
+MetalLB requires two key configurations:
+
+
+  IPAddressPool: Defines the IP ranges that MetalLB can assign
+  L2Advertisement or BGPAdvertisement: Defines how these IPs are advertised
+
+
+Layer 2 Configuration Example
+
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.1.240-192.168.1.250
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: layer2-config
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - first-pool
+
+
+BGP Configuration Example
+
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: bgp-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.10.0/24
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPPeer
+metadata:
+  name: router-peer
+  namespace: metallb-system
+spec:
+  myASN: 64500
+  peerASN: 64501
+  peerAddress: 192.168.0.1
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: bgp-advert
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - bgp-pool
+
+
+Complete Configuration Example
+
+Here’s a complete example with address pools and both Layer 2 and BGP configuration:
+
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: production-public-ips
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.1.240-192.168.1.250
+  - 192.168.10.0/24
+  autoAssign: true
+  avoidBuggyIPs: true
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: layer2-prod
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - production-public-ips
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPPeer
+metadata:
+  name: router1
+  namespace: metallb-system
+spec:
+  myASN: 64500
+  peerASN: 64501
+  peerAddress: 192.168.0.1
+  holdTime: 120s
+  keepaliveTime: 30s
+  routerID: 192.168.0.100
+  nodeSelectors:
+  - matchLabels:
+      kubernetes.io/hostname: worker-1
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPPeer
+metadata:
+  name: router2
+  namespace: metallb-system
+spec:
+  myASN: 64500
+  peerASN: 64501
+  peerAddress: 192.168.0.2
+  holdTime: 120s
+  keepaliveTime: 30s
+  routerID: 192.168.0.100
+  nodeSelectors:
+  - matchLabels:
+      kubernetes.io/hostname: worker-2
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: bgp-prod
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - production-public-ips
+  communities:
+  - 64500:100
+  localPref: 100
+  aggregationLength: 32
+
+
+Applying and Verifying Configuration
+
+# Apply configuration
+kubectl apply -f metallb-config.yaml
+
+# Verify IPAddressPool configuration
+kubectl describe ipaddresspool -n metallb-system
+
+# Verify L2Advertisement configuration
+kubectl describe l2advertisement -n metallb-system
+
+# For BGP mode, verify BGP configuration
+kubectl describe bgppeer -n metallb-system
+kubectl describe bgpadvertisement -n metallb-system
 
 
 
-Configure MetalLB
+
+Testing MetalLB
+
+Deploy a Test Application
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-test
+spec:
+  selector:
+    matchLabels:
+      app: nginx-test
+  template:
+    metadata:
+      labels:
+        app: nginx-test
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - name: http
+          containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-test
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: nginx-test
+  type: LoadBalancer
+
+
+Verify External IP Assignment
+
+# Check if the service received an external IP
+kubectl get svc nginx-test
+
+# Expected output:
+# NAME         TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)        AGE
+# nginx-test   LoadBalancer   10.43.162.209   192.168.1.240    80:31621/TCP   10s
+
+# Test connectivity
+curl http://192.168.1.240
 
 
 
-Check ipaddresspool
-# Check validatingwebhookconfigurations
-kubectl get validatingwebhookconfigurations
 
-# Delete validatingwebhookconfigurations
-kubectl delete validatingwebhookconfigurations  metallb-webhook-configuration
+Advanced Configuration
 
-# Check validatingwebhookconfigurations
-kubectl get validatingwebhookconfigurations
+Address Pool Options
 
-# Apply metallb-config.yaml
-k apply -f metallb-config.yaml -n metallb-system
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: advanced-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.10.0/24
+  - 192.168.20.10-192.168.20.50
+  autoAssign: true  # Whether to automatically assign from this pool (default: true)
+  avoidBuggyIPs: true  # Avoid .0 and .255 addresses which can cause problems
 
-# Check ipaddresspool
-kubectl describe ipaddresspool.metallb.io --namespace metallb-system
+
+BGP Options
+
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: advanced-bgp
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - advanced-pool
+  aggregationLength: 32  # Advertise individual /32 routes
+  localPref: 100  # BGP local preference
+  communities:  # BGP communities to attach
+  - 65535:65282  # no-export community
+  - 64500:100    # Custom community
+
+
+BFD (Bidirectional Forwarding Detection) for Faster Failover
+
+For faster BGP failover, MetalLB supports BFD (available in newer versions):
+
+apiVersion: metallb.io/v1beta1
+kind: BFDProfile
+metadata:
+  name: fast-failover
+  namespace: metallb-system
+spec:
+  receiveInterval: 300ms
+  transmitInterval: 300ms
+  detectMultiplier: 3
+  echoInterval: 50ms
+  echoMode: true
+  passiveMode: false
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPPeer
+metadata:
+  name: router-with-bfd
+  namespace: metallb-system
+spec:
+  myASN: 64500
+  peerASN: 64501
+  peerAddress: 192.168.0.1
+  bfdProfile: fast-failover
+
+
+
+
+Troubleshooting
+
+Common Issues
+
+
+  LoadBalancer service stuck in pending
+  
+    Check if MetalLB pods are running: kubectl get pods -n metallb-system
+    Verify address pool configuration: kubectl describe ipaddresspool -n metallb-system
+    Check for configuration errors in logs: kubectl logs -n metallb-system -l app=metallb,component=controller
+    Ensure the IP range in the pool is available in your network
+  
+
+
+
+  Cannot reach service external IP
+  
+    For Layer 2 mode, ensure the IP is in the same subnet as your nodes
+    Check speaker logs: kubectl logs -n metallb-system -l app=metallb,component=speaker
+    Verify network connectivity between client and Kubernetes nodes
+    Test if firewall rules are blocking traffic
+  
+
+
+
+  BGP issues
+  
+    Verify BGP peering is established: kubectl logs -n metallb-system -l app=metallb,component=speaker | grep &quot;BGP session established&quot;
+    Check BGPPeer configuration: kubectl describe bgppeer -n metallb-system
+    Confirm ASN numbers and peer addresses are correct
+    Verify router configuration matches MetalLB settings
+  
+
+
+Validating Configuration
+
+# Check controller and speaker pod status
+kubectl get pods -n metallb-system
+
+# Check for events related to MetalLB
+kubectl get events -n metallb-system
+
+# Check controller logs
+kubectl logs -n metallb-system -l app=metallb,component=controller
+
+# Check speaker logs
+kubectl logs -n metallb-system -l app=metallb,component=speaker
+
+# View address assignments
+kubectl get services --all-namespaces -o wide | grep LoadBalancer
+
+
+Debugging Commands
+
+# For Layer 2 mode, check ARP table on a client machine
+arp -a
+
+# For BGP mode, check BGP sessions on the router
+# Example for a Cisco router:
+# show ip bgp summary
+# show ip bgp neighbors
+
+# Test connectivity to assigned IPs
+ping &amp;lt;external-ip&amp;gt;
+curl http://&amp;lt;external-ip&amp;gt;
+
+# Check MetalLB speaker&apos;s internal state (newer versions)
+kubectl exec -n metallb-system -l app=metallb,component=speaker -- mirror-status
+
+
+
+
+Best Practices
+
+Security Considerations
+
+
+  Network Policies: Implement Kubernetes network policies to control traffic to your exposed services
+  Separate Network: Use a dedicated IP range for MetalLB that’s separate from your regular infrastructure
+  RBAC: Ensure proper RBAC permissions for MetalLB components
+  BGP Authentication: For BGP mode, implement MD5 authentication with your BGP peers when possible
+
+
+Performance Optimization
+
+
+  Choose the Right Mode: Use BGP mode for high-traffic services that need true load balancing
+  Node Selection: For Layer 2 mode, use node annotations to influence leader election for optimal traffic distribution
+  Bandwidth Consideration: Monitor node network usage when using Layer 2 mode as traffic concentration can lead to bottlenecks
+  Resource Allocation: Ensure MetalLB components have adequate resources, especially in large clusters
+
+
+Deployment Recommendations
+
+
+  Use Helm: The Helm chart provides a more manageable way to install and upgrade MetalLB
+  Multiple Address Pools: Define separate address pools for different environments or service types
+  Start Small: Begin with Layer 2 mode for simplicity, then migrate to BGP if needed
+  Regular Updates: Keep MetalLB updated to benefit from bug fixes and new features
+  Monitoring: Implement monitoring for MetalLB components using Prometheus metrics
+
+
+
+
+Conclusion
+
+MetalLB provides a robust solution for implementing LoadBalancer services in bare metal Kubernetes environments. By understanding the differences between Layer 2 and BGP modes, you can choose the approach that best fits your infrastructure requirements and operational capabilities.
+
+For small to medium deployments, Layer 2 mode offers simplicity and ease of setup. For larger, more complex environments where true load balancing is required, BGP mode provides the necessary flexibility and scalability.
+
+
+  Key Takeaways
+  
+    MetalLB enables LoadBalancer services in bare metal Kubernetes clusters
+    Layer 2 mode is simpler but routes all service traffic through one node
+    BGP mode enables true load balancing but requires BGP-capable network equipment
+    Configuration involves defining address pools and advertisement methods
+    MetalLB integrates seamlessly with standard Kubernetes networking
+  
 
 
 
@@ -847,9 +1916,12 @@ References
   MetalLB Official Documentation
   GitHub Repository
   Kubernetes Load Balancing
+  MetalLB Configuration Examples
+  MetalLB Troubleshooting Guide
+  BGP Concepts and Configuration
 
 ",
-            "wordcount": "446",
+            "wordcount": "2895",
             "inLanguage": "en",
             "dateCreated": "2025-01-28/",
             "datePublished": "2025-01-28/",
@@ -880,7 +1952,7 @@ References
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","metallb","loadbalancer","bare-metal"]
+            "keywords": ["kubernetes","metallb","loadbalancer","bare-metal","networking","service"]
         }
         </script>
     </body>

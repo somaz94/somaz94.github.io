@@ -37,16 +37,16 @@
         mermaid.initialize({ startOnLoad: true });
     </script>
 
-    <title>Installing Kubernetes with Kubespray and Adding Worker Nodes(2024V.) | somaz</title>
-    <meta name="description" content="Learn how to install Kubernetes using Kubespray and scale worker nodes">
+    <title>Installing Kubernetes with Kubespray and Adding Worker Nodes (2024V.) | somaz</title>
+    <meta name="description" content="Learn how to install Kubernetes using Kubespray and scale worker nodes with this step-by-step tutorial">
     
-        <meta name="keywords" content="kubernetes, kubespray, ansible, gcp">
+        <meta name="keywords" content="kubernetes, kubespray, ansible, gcp, installation, cluster-management">
     
 
     <!-- Social: Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Installing Kubernetes with Kubespray and Adding Worker Nodes(2024V.) | somaz">
-    <meta name="twitter:description" content="Learn how to install Kubernetes using Kubespray and scale worker nodes">
+    <meta name="twitter:title" content="Installing Kubernetes with Kubespray and Adding Worker Nodes (2024V.) | somaz">
+    <meta name="twitter:description" content="Learn how to install Kubernetes using Kubespray and scale worker nodes with this step-by-step tutorial">
 
     
         <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1737697968/kubespray_uyug5r.png">
@@ -58,9 +58,9 @@
 
     <!-- Social: Facebook / Open Graph -->
     <meta property="og:url" content="https://somaz.blog/category/kubernetes/kubernetes-install-kubespray/">
-    <meta property="og:title" content="Installing Kubernetes with Kubespray and Adding Worker Nodes(2024V.) | somaz">
+    <meta property="og:title" content="Installing Kubernetes with Kubespray and Adding Worker Nodes (2024V.) | somaz">
     <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1737697968/kubespray_uyug5r.png">
-    <meta property="og:description" content="Learn how to install Kubernetes using Kubespray and scale worker nodes">
+    <meta property="og:description" content="Learn how to install Kubernetes using Kubespray and scale worker nodes with this step-by-step tutorial">
     <meta property="og:site_name" content="Somaz Tech Blog">
 
     <!-- Favicon -->
@@ -220,9 +220,9 @@ January 24, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>15 min to read</span>
                 </p>
-                <h1 class="post-title">Installing Kubernetes with Kubespray and Adding Worker Nodes(2024V.)</h1>
+                <h1 class="post-title">Installing Kubernetes with Kubespray and Adding Worker Nodes (2024V.)</h1>
                 <p class="post-subtitle">A comprehensive guide to setting up Kubernetes using Kubespray on GCP</p>
 
                 
@@ -244,41 +244,124 @@ January 24, 2025
 
 <h2 id="overview">Overview</h2>
 
-<p>This guide demonstrates how to install Kubernetes using Kubespray and add worker nodes to the cluster. We’ll be using Google Cloud Platform (GCP) for our infrastructure.</p>
+<p>Kubespray is a powerful tool that combines the flexibility of Ansible with the robustness of Kubernetes, enabling the deployment of production-ready Kubernetes clusters on various infrastructures. This guide provides detailed instructions for installing a Kubernetes cluster using Kubespray on Google Cloud Platform (GCP) and demonstrates how to add worker nodes to scale your cluster.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>What is Kubespray?</strong>
+  <p>Kubespray is a composition of <a href="https://www.ansible.com/" target="_blank">Ansible</a> playbooks, inventory, provisioning tools, and domain knowledge for deploying a production-ready Kubernetes cluster. It allows for highly customizable deployments and supports multiple cloud providers, bare metal installations, and virtualized environments.</p>
+  <p>Key features include:</p>
+  <ul>
+    <li>Composable attributes</li>
+    <li>Multiple network plugin support (Calico, Flannel, Cilium, etc.)</li>
+    <li>HA cluster setup</li>
+    <li>Configurable addons</li>
+    <li>Support for most popular Linux distributions</li>
+  </ul>
+</div>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Kubespray Repository] --&gt; B[Ansible Playbooks]
+      B --&gt; C[Kubernetes Components]
+      C --&gt; D[Control Plane Setup]
+      C --&gt; E[Node Setup]
+      C --&gt; F[Networking]
+      C --&gt; G[Add-ons]
+      
+      D --&gt; H[API Server]
+      D --&gt; I[Controller Manager]
+      D --&gt; J[Scheduler]
+      D --&gt; K[etcd]
+      
+      E --&gt; L[kubelet]
+      E --&gt; M[kube-proxy]
+      
+      F --&gt; N[Network Plugin]
+      F --&gt; O[Service Networking]
+      
+      G --&gt; P[DNS]
+      G --&gt; Q[Dashboard]
+      G --&gt; R[Metrics Server]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#90caf9,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#42a5f5,stroke:#333,stroke-width:1px
+      style E fill:#42a5f5,stroke:#333,stroke-width:1px
+      style F fill:#42a5f5,stroke:#333,stroke-width:1px
+      style G fill:#42a5f5,stroke:#333,stroke-width:1px
+  </div>
+</div>
 
 <p><br /></p>
 
-<h3 id="system-configuration">System Configuration</h3>
+<h2 id="system-configuration">System Configuration</h2>
 
-<h4 id="environment-details">Environment Details</h4>
-<ul>
-  <li>OS: Ubuntu 20.04 LTS (Focal)</li>
-  <li>Cloud Provider: Google Compute Engine</li>
-</ul>
+<h3 id="environment-details">Environment Details</h3>
 
-<h4 id="node-specifications">Node Specifications</h4>
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Component</th>
+      <th style="width: 70%;">Specification</th>
+    </tr>
+    <tr>
+      <td>Operating System</td>
+      <td>Ubuntu 20.04 LTS (Focal)</td>
+    </tr>
+    <tr>
+      <td>Cloud Provider</td>
+      <td>Google Compute Engine (GCP)</td>
+    </tr>
+    <tr>
+      <td>Kubernetes Version</td>
+      <td>v1.28.6 (deployed by Kubespray)</td>
+    </tr>
+    <tr>
+      <td>CNI Plugin</td>
+      <td>Calico (default)</td>
+    </tr>
+    <tr>
+      <td>Container Runtime</td>
+      <td>containerd</td>
+    </tr>
+    <tr>
+      <td>Python Version</td>
+      <td>3.10.13</td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="node-specifications">Node Specifications</h3>
 
 <div class="info-box info-box-default">
   <strong>Control Plane Node</strong>
   <ul>
-    <li>Hostname: test-server</li>
-    <li>IP: 10.77.101.62</li>
-    <li>CPU: 2 cores</li>
-    <li>Memory: 8096MB</li>
+    <li><strong>Hostname:</strong> test-server</li>
+    <li><strong>IP:</strong> 10.77.101.62</li>
+    <li><strong>CPU:</strong> 2 cores</li>
+    <li><strong>Memory:</strong> 8096MB</li>
+    <li><strong>Role:</strong> Control Plane + etcd</li>
   </ul>
 </div>
 
 <div class="info-box info-box-default">
   <strong>Worker Nodes</strong>
   <ul>
-    <li>test-server-agent: 10.77.101.57 (2 CPU, 8096MB RAM)</li>
-    <li>test-server-agent2: 10.77.101.200 (2 CPU, 8096MB RAM)</li>
+    <li><strong>Node 1:</strong> test-server-agent (10.77.101.57, 2 CPU, 8096MB RAM)</li>
+    <li><strong>Node 2:</strong> test-server-agent2 (10.77.101.200, 2 CPU, 8096MB RAM)</li>
+    <li><strong>Role:</strong> Worker nodes running application workloads</li>
   </ul>
 </div>
 
 <p><br /></p>
 
-<h3 id="infrastructure-setup">Infrastructure Setup</h3>
+<h2 id="infrastructure-setup">Infrastructure Setup</h2>
+
+<h3 id="infrastructure-as-code-iac">Infrastructure as Code (IaC)</h3>
+
+<p>We use Terraform to provision our GCP infrastructure. Here are the key resources:</p>
 
 <h4 id="control-plane-node-configuration">Control Plane Node Configuration</h4>
 <div class="language-hcl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">resource</span> <span class="s2">"google_compute_address"</span> <span class="s2">"test_server_ip"</span> <span class="p">{</span>
@@ -304,6 +387,22 @@ January 24, 2025
       <span class="nx">nat_ip</span> <span class="p">=</span> <span class="nx">google_compute_address</span><span class="err">.</span><span class="nx">test_server_ip</span><span class="err">.</span><span class="nx">address</span>
     <span class="p">}</span>
   <span class="p">}</span>
+  
+  <span class="c1"># Recommended metadata for Kubernetes nodes</span>
+  <span class="nx">metadata</span> <span class="p">=</span> <span class="p">{</span>
+    <span class="s2">"startup-script"</span> <span class="p">=</span> <span class="o">&lt;&lt;-</span><span class="no">EOF</span><span class="sh">
+      #!/bin/bash
+      swapoff -a
+      sed -i '/swap/d' /etc/fstab
+      
+      # Set system parameters for Kubernetes
+      cat &gt; /etc/sysctl.d/99-kubernetes.conf &lt;&lt;EOF2
+      net.bridge.bridge-nf-call-iptables = 1
+      net.ipv4.ip_forward = 1
+      EOF2
+      sysctl --system
+</span><span class="no">    EOF
+</span>  <span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div></div>
 
@@ -331,23 +430,55 @@ January 24, 2025
       <span class="nx">nat_ip</span> <span class="p">=</span> <span class="nx">google_compute_address</span><span class="err">.</span><span class="nx">test_server_agent_ip</span><span class="err">.</span><span class="nx">address</span>
     <span class="p">}</span>
   <span class="p">}</span>
+  
+  <span class="c1"># Same startup script as control plane for Kubernetes prerequisites</span>
+  <span class="nx">metadata</span> <span class="p">=</span> <span class="p">{</span>
+    <span class="s2">"startup-script"</span> <span class="p">=</span> <span class="o">&lt;&lt;-</span><span class="no">EOF</span><span class="sh">
+      #!/bin/bash
+      swapoff -a
+      sed -i '/swap/d' /etc/fstab
+      
+      # Set system parameters for Kubernetes
+      cat &gt; /etc/sysctl.d/99-kubernetes.conf &lt;&lt;EOF2
+      net.bridge.bridge-nf-call-iptables = 1
+      net.ipv4.ip_forward = 1
+      EOF2
+      sysctl --system
+</span><span class="no">    EOF
+</span>  <span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="prerequisites">Prerequisites</h3>
+<h2 id="prerequisites">Prerequisites</h2>
+
+<p>Before starting the Kubespray installation, you need to prepare your environment.</p>
+
+<h3 id="system-requirements">System Requirements</h3>
+
+<ul>
+  <li><strong>Operating System</strong>: Ubuntu 20.04 or other supported Linux distributions</li>
+  <li><strong>SSH Access</strong>: Between the deployment host and all nodes</li>
+  <li><strong>Python</strong>: Version 3.9+ (we’ll use 3.10)</li>
+  <li><strong>Ansible</strong>: Will be installed by the setup process</li>
+  <li><strong>Git</strong>: For cloning the Kubespray repository</li>
+  <li><strong>sudo privileges</strong>: On all nodes</li>
+</ul>
+
+<h3 id="node-preparation">Node Preparation</h3>
 
 <h4 id="ssh-key-setup">SSH Key Setup</h4>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generate SSH key if needed</span>
-ssh-keygen
+ssh-keygen <span class="nt">-t</span> rsa <span class="nt">-b</span> 4096 <span class="nt">-C</span> <span class="s2">"kubespray-deployment"</span>
 
-<span class="c"># Copy SSH key to worker nodes</span>
-ssh-copy-id somaz@10.77.101.57
-ssh-copy-id somaz@10.77.101.200
+<span class="c"># Copy SSH key to all nodes</span>
+ssh-copy-id somaz@10.77.101.62  <span class="c"># Control plane</span>
+ssh-copy-id somaz@10.77.101.57  <span class="c"># Worker 1</span>
+ssh-copy-id somaz@10.77.101.200 <span class="c"># Worker 2</span>
 
-<span class="c"># Update /etc/hosts</span>
-<span class="nb">cat</span> <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh"> &gt;&gt; /etc/hosts
+<span class="c"># Update /etc/hosts for easier node access</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh"> | sudo tee -a /etc/hosts
 10.77.101.62 test-server
 10.77.101.57 test-server-agent
 10.77.101.200 test-server-agent2
@@ -355,7 +486,10 @@ ssh-copy-id somaz@10.77.101.200
 </span></code></pre></div></div>
 
 <h4 id="package-installation">Package Installation</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install Python 3.10</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update package lists</span>
+<span class="nb">sudo </span>apt-get update
+
+<span class="c"># Install Python 3.10</span>
 <span class="nb">sudo </span>add-apt-repository ppa:deadsnakes/ppa
 <span class="nb">sudo </span>apt-get <span class="nt">-y</span> update
 <span class="nb">sudo </span>apt <span class="nb">install</span> <span class="nt">-y</span> python3.10 python3-pip git python3.10-venv
@@ -364,23 +498,78 @@ ssh-copy-id somaz@10.77.101.200
 python3.10 <span class="nt">--version</span>  <span class="c"># Should show Python 3.10.13</span>
 </code></pre></div></div>
 
+<h4 id="system-configuration-1">System Configuration</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Disable swap (required for Kubernetes)</span>
+<span class="nb">sudo </span>swapoff <span class="nt">-a</span>
+<span class="nb">sudo sed</span> <span class="nt">-i</span> <span class="s1">'/swap/d'</span> /etc/fstab
+
+<span class="c"># Load required kernel modules</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh"> | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+</span><span class="no">EOF
+
+</span><span class="nb">sudo </span>modprobe overlay
+<span class="nb">sudo </span>modprobe br_netfilter
+
+<span class="c"># Configure kernel parameters</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh"> | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+</span><span class="no">EOF
+
+</span><span class="nb">sudo </span>sysctl <span class="nt">--system</span>
+</code></pre></div></div>
+
 <p><br /></p>
 
-<h3 id="kubespray-deployment">Kubespray Deployment</h3>
+<h2 id="kubespray-deployment-process">Kubespray Deployment Process</h2>
 
-<h4 id="1-clone-repository-and-setup-environment">1. Clone Repository and Setup Environment</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/kubernetes-sigs/kubespray.git
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant Admin as Operator
+      participant Deploy as Deployment Host
+      participant CP as Control Plane
+      participant Worker as Worker Nodes
+      
+      Admin-&gt;&gt;Deploy: Clone Kubespray repository
+      Admin-&gt;&gt;Deploy: Setup Python virtual environment
+      Admin-&gt;&gt;Deploy: Install dependencies
+      Admin-&gt;&gt;Deploy: Configure inventory
+      Deploy-&gt;&gt;CP: Check SSH connectivity
+      Deploy-&gt;&gt;Worker: Check SSH connectivity
+      Admin-&gt;&gt;Deploy: Run Ansible playbook
+      Deploy-&gt;&gt;CP: Install control plane components
+      Deploy-&gt;&gt;Worker: Install worker components
+      Deploy-&gt;&gt;CP: Initialize cluster
+      Deploy-&gt;&gt;Worker: Join nodes to cluster
+      CP-&gt;&gt;Worker: Establish cluster communication
+      Admin-&gt;&gt;CP: Configure kubectl
+      Admin-&gt;&gt;CP: Verify cluster status
+  </div>
+</div>
 
+<h3 id="1-clone-repository-and-setup-environment">1. Clone Repository and Setup Environment</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone the Kubespray repository</span>
+git clone https://github.com/kubernetes-sigs/kubespray.git
+
+<span class="c"># Setup virtual environment</span>
 <span class="nv">VENVDIR</span><span class="o">=</span>kubespray-venv
 <span class="nv">KUBESPRAYDIR</span><span class="o">=</span>kubespray
 python3.10 <span class="nt">-m</span> venv <span class="nv">$VENVDIR</span>
 <span class="nb">source</span> <span class="nv">$VENVDIR</span>/bin/activate
 <span class="nb">cd</span> <span class="nv">$KUBESPRAYDIR</span>
 
+<span class="c"># Install dependencies</span>
 pip <span class="nb">install</span> <span class="nt">-U</span> <span class="nt">-r</span> requirements.txt
+
+<span class="c"># Check Ansible version</span>
+ansible <span class="nt">--version</span>
 </code></pre></div></div>
 
-<h4 id="2-prepare-ansible-inventory">2. Prepare Ansible Inventory</h4>
+<h3 id="2-prepare-ansible-inventory">2. Prepare Ansible Inventory</h3>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Copy sample inventory</span>
 <span class="nb">cp</span> <span class="nt">-rfp</span> inventory/sample inventory/somaz-cluster
 
@@ -389,66 +578,132 @@ pip <span class="nb">install</span> <span class="nt">-U</span> <span class="nt">
 <span class="nv">CONFIG_FILE</span><span class="o">=</span>inventory/somaz-cluster/hosts.yaml python3 contrib/inventory_builder/inventory.py <span class="k">${</span><span class="nv">IPS</span><span class="p">[@]</span><span class="k">}</span>
 </code></pre></div></div>
 
-<h4 id="3-configure-inventory">3. Configure Inventory</h4>
+<h3 id="3-configure-inventory">3. Configure Inventory</h3>
+
+<p>The inventory generator creates a basic configuration, but we’ll make additional adjustments for our setup.</p>
+
 <div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># inventory/somaz-cluster/inventory.ini
 </span><span class="nn">[all]</span>
 <span class="err">test-server</span> <span class="py">ansible_host</span><span class="p">=</span><span class="s">10.77.101.62  ip=10.77.101.62</span>
 <span class="err">test-server-agent</span> <span class="py">ansible_host</span><span class="p">=</span><span class="s">10.77.101.57  ip=10.77.101.57</span>
 
-<span class="nn">[kube_control_plane]</span>
+<span class="c"># Control plane node(s)
+</span><span class="nn">[kube_control_plane]</span>
 <span class="err">test-server</span>
 
-<span class="nn">[etcd]</span>
+<span class="c"># etcd cluster member(s)
+</span><span class="nn">[etcd]</span>
 <span class="err">test-server</span>
 
-<span class="nn">[kube_node]</span>
+<span class="c"># Kubernetes worker node(s)
+</span><span class="nn">[kube_node]</span>
 <span class="err">test-server-agent</span>
 
-<span class="nn">[k8s_cluster:children]</span>
+<span class="c"># All groups with assigned roles
+</span><span class="nn">[k8s_cluster:children]</span>
 <span class="err">kube_control_plane</span>
 <span class="err">kube_node</span>
 <span class="err">calico_rr</span>
 </code></pre></div></div>
 
-<h4 id="4-verify-ansible-connectivity">4. Verify Ansible Connectivity</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ansible all <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini <span class="nt">-m</span> ping
+<h4 id="advanced-inventory-configuration-optional">Advanced Inventory Configuration (Optional)</h4>
 
-<span class="c"># Optional: Update apt cache</span>
+<p>You can further customize your deployment by editing these additional files:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Edit group variables for all nodes</span>
+vim inventory/somaz-cluster/group_vars/all/all.yml
+
+<span class="c"># Customize Kubernetes-specific parameters</span>
+vim inventory/somaz-cluster/group_vars/k8s_cluster/k8s-cluster.yml
+
+<span class="c"># Configure network plugin options</span>
+vim inventory/somaz-cluster/group_vars/k8s_cluster/k8s-net-<span class="k">*</span>.yml
+</code></pre></div></div>
+
+<p>Common customizations:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">kube_version</code>: Specify Kubernetes version (default is 1.28.6 as of this writing)</li>
+  <li><code class="language-plaintext highlighter-rouge">kube_network_plugin</code>: Choose network plugin (calico, flannel, cilium, etc.)</li>
+  <li><code class="language-plaintext highlighter-rouge">etcd_deployment_type</code>: etcd deployment method (host or docker-based)</li>
+  <li><code class="language-plaintext highlighter-rouge">container_manager</code>: Choose containerd or docker (containerd is recommended)</li>
+</ul>
+
+<h3 id="4-verify-ansible-connectivity">4. Verify Ansible Connectivity</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Test connection to all nodes</span>
+ansible all <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini <span class="nt">-m</span> ping
+
+<span class="c"># Optional: Update apt cache on all nodes</span>
 ansible all <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini <span class="nt">-m</span> apt <span class="nt">-a</span> <span class="s1">'update_cache=yes'</span> <span class="nt">--become</span>
 </code></pre></div></div>
 
-<h4 id="5-run-playbook">5. Run Playbook</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini cluster.yml <span class="nt">--become</span>
+<h3 id="5-run-playbook">5. Run Playbook</h3>
+
+<p>Now we’re ready to deploy the Kubernetes cluster using Kubespray’s Ansible playbooks.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Deploy the cluster (this will take 15-30 minutes)</span>
+ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini cluster.yml <span class="nt">--become</span>
 </code></pre></div></div>
 
-<h4 id="6-configure-kubectl">6. Configure kubectl</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir</span> ~/.kube
-<span class="nb">sudo cp</span> /etc/kubernetes/admin.conf ~/.kube/config
-<span class="nb">sudo chown</span> <span class="nv">$USER</span>:<span class="nv">$USER</span> ~/.kube/config
+<div class="info-box info-box-warning-not-check">
+  <strong>Important:</strong>
+  <p>The cluster deployment can take 15-30 minutes depending on your internet connection speed and server performance. During the deployment process, Ansible will:</p>
+  <ul>
+    <li>Install container runtime (containerd by default)</li>
+    <li>Deploy etcd cluster</li>
+    <li>Install Kubernetes components (kubeadm, kubelet, kubectl)</li>
+    <li>Initialize the Kubernetes control plane</li>
+    <li>Join worker nodes to the cluster</li>
+    <li>Deploy network plugins and add-ons</li>
+  </ul>
+  <p>Be patient and monitor the output for any errors. Most issues can be resolved by looking at the Ansible error messages.</p>
+</div>
 
-<span class="c"># Setup kubectl autocomplete</span>
+<h3 id="6-configure-kubectl">6. Configure kubectl</h3>
+
+<p>After successful deployment, you need to configure kubectl to interact with your new cluster.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create kubectl config directory</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> ~/.kube
+
+<span class="c"># Copy admin configuration</span>
+<span class="nb">sudo cp</span> /etc/kubernetes/admin.conf ~/.kube/config
+<span class="nb">sudo chown</span> <span class="si">$(</span><span class="nb">id</span> <span class="nt">-u</span><span class="si">)</span>:<span class="si">$(</span><span class="nb">id</span> <span class="nt">-g</span><span class="si">)</span> ~/.kube/config
+
+<span class="c"># Setup kubectl autocomplete (optional but recommended)</span>
 <span class="nb">echo</span> <span class="s1">'# kubectl completion and alias'</span> <span class="o">&gt;&gt;</span> ~/.bashrc
 <span class="nb">echo</span> <span class="s1">'source &lt;(kubectl completion bash)'</span> <span class="o">&gt;&gt;</span> ~/.bashrc
 <span class="nb">echo</span> <span class="s1">'alias k=kubectl'</span> <span class="o">&gt;&gt;</span> ~/.bashrc
 <span class="nb">echo</span> <span class="s1">'complete -F __start_kubectl k'</span> <span class="o">&gt;&gt;</span> ~/.bashrc
 <span class="nb">source</span> ~/.bashrc
+
+<span class="c"># Test kubectl</span>
+kubectl get nodes
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="adding-worker-node">Adding Worker Node</h3>
+<h2 id="adding-worker-nodes">Adding Worker Nodes</h2>
 
-<h4 id="1-update-inventory">1. Update Inventory</h4>
+<p>One of the key advantages of Kubernetes is its scalability. Let’s add another worker node to our cluster.</p>
+
+<h3 id="1-update-inventory">1. Update Inventory</h3>
+
+<p>First, we need to update our Ansible inventory to include the new worker node.</p>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add new node to IPS array</span>
 <span class="nb">declare</span> <span class="nt">-a</span> <span class="nv">IPS</span><span class="o">=(</span>10.77.101.62 10.77.101.57 10.77.101.200<span class="o">)</span>
 <span class="nv">CONFIG_FILE</span><span class="o">=</span>inventory/somaz-cluster/hosts.yaml python3 contrib/inventory_builder/inventory.py <span class="k">${</span><span class="nv">IPS</span><span class="p">[@]</span><span class="k">}</span>
 </code></pre></div></div>
 
-<h4 id="2-modify-inventoryini">2. Modify inventory.ini</h4>
-<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[all]</span>
+<h3 id="2-modify-inventoryini">2. Modify inventory.ini</h3>
+
+<p>After using the inventory builder, it’s good to check and make sure the new node was properly added to the correct groups.</p>
+
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># inventory/somaz-cluster/inventory.ini
+</span><span class="nn">[all]</span>
 <span class="err">test-server</span> <span class="py">ansible_host</span><span class="p">=</span><span class="s">10.77.101.62  ip=10.77.101.62</span>
 <span class="err">test-server-agent</span> <span class="py">ansible_host</span><span class="p">=</span><span class="s">10.77.101.57  ip=10.77.101.57</span>
-<span class="err">test-server2-agent</span> <span class="py">ansible_host</span><span class="p">=</span><span class="s">10.77.101.200  ip=10.77.101.200</span>
+<span class="err">test-server-agent2</span> <span class="py">ansible_host</span><span class="p">=</span><span class="s">10.77.101.200  ip=10.77.101.200</span>
 
 <span class="nn">[kube_control_plane]</span>
 <span class="err">test-server</span>
@@ -458,36 +713,240 @@ ansible all <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini <sp
 
 <span class="nn">[kube_node]</span>
 <span class="err">test-server-agent</span>
-<span class="err">test-server2-agent</span>
+<span class="err">test-server-agent2</span>  <span class="c"># Make sure the new node is in the kube_node group
+</span></code></pre></div></div>
+
+<h3 id="3-run-scale-playbook">3. Run Scale Playbook</h3>
+
+<p>Kubespray includes a special <code class="language-plaintext highlighter-rouge">scale.yml</code> playbook specifically for adding new worker nodes without affecting the existing cluster.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add new nodes to the cluster</span>
+ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini scale.yml <span class="nt">--become</span>
 </code></pre></div></div>
 
-<h4 id="3-run-scale-playbook">3. Run Scale Playbook</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini scale.yml <span class="nt">--become</span>
+<div class="info-box info-box-success-not-check">
+  <strong>Tip:</strong>
+  <p>The <code>scale.yml</code> playbook is designed to only operate on new nodes, which makes it much faster than running the full <code>cluster.yml</code> playbook. It will install the necessary Kubernetes components on the new node and join it to the existing cluster.</p>
+</div>
+
+<h3 id="scaling-down-removing-nodes">Scaling Down (Removing Nodes)</h3>
+
+<p>If you need to remove a node from the cluster, Kubespray also provides a removal playbook:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># To remove nodes, first update your inventory to reflect the desired state</span>
+<span class="c"># Then run the remove-node playbook</span>
+ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini remove-node.yml <span class="nt">-e</span> <span class="nv">node</span><span class="o">=</span>test-server-agent2 <span class="nt">--become</span>
 </code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="-verification">✅ Verification</h3>
+<h2 id="verification-and-monitoring">Verification and Monitoring</h2>
 
-<h4 id="check-cluster-status">Check Cluster Status</h4>
+<h3 id="verify-cluster-status">Verify Cluster Status</h3>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check nodes</span>
 kubectl get nodes <span class="nt">-o</span> wide
-NAME                 STATUS   ROLES           AGE   VERSION   INTERNAL-IP     
-test-server          Ready    control-plane   21m   v1.28.6   10.77.101.62    
-test-server-agent    Ready    &lt;none&gt;          20m   v1.28.6   10.77.101.57    
-test-server2-agent   Ready    &lt;none&gt;          65s   v1.28.6   10.77.101.200   
+NAME                 STATUS   ROLES           AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION     CONTAINER-RUNTIME
+test-server          Ready    control-plane   21m   v1.28.6   10.77.101.62    &lt;none&gt;        Ubuntu 20.04.6 LTS   5.15.0-1053-gcp    containerd://1.7.1
+test-server-agent    Ready    &lt;none&gt;          20m   v1.28.6   10.77.101.57    &lt;none&gt;        Ubuntu 20.04.6 LTS   5.15.0-1053-gcp    containerd://1.7.1
+test-server-agent2   Ready    &lt;none&gt;          65s   v1.28.6   10.77.101.200   &lt;none&gt;        Ubuntu 20.04.6 LTS   5.15.0-1053-gcp    containerd://1.7.1
 
-<span class="c"># Check system pods</span>
+<span class="c"># Check system namespace</span>
 kubectl get po <span class="nt">-n</span> kube-system
+NAME                                          READY   STATUS    RESTARTS   AGE
+calico-kube-controllers-76475c5546-vb58b      1/1     Running   0          20m
+calico-node-hvx95                             1/1     Running   0          20m
+calico-node-lq4tg                             1/1     Running   0          20m
+calico-node-vftnr                             1/1     Running   0          1m
+coredns-77f7cc69db-ctvk6                      1/1     Running   0          19m
+coredns-77f7cc69db-h4bbx                      1/1     Running   0          19m
+dns-autoscaler-5b576d9b75-pvbwj               1/1     Running   0          19m
+kube-apiserver-test-server                    1/1     Running   0          21m
+kube-controller-manager-test-server           1/1     Running   0          21m
+kube-proxy-5n5tq                              1/1     Running   0          20m
+kube-proxy-lx25t                              1/1     Running   0          1m
+kube-proxy-s6x8h                              1/1     Running   0          20m
+kube-scheduler-test-server                    1/1     Running   0          21m
+kubernetes-dashboard-787dd78ffd-jl8bd         1/1     Running   0          19m
+metrics-server-67df99fc7d-p8nzk               1/1     Running   0          19m
+nginx-proxy-test-server-agent                 1/1     Running   0          20m
+nginx-proxy-test-server-agent2                1/1     Running   0          1m
+nodelocaldns-fwl5r                            1/1     Running   0          19m
+nodelocaldns-hkvk2                            1/1     Running   0          1m
+nodelocaldns-szfj6                            1/1     Running   0          19m
+</code></pre></div></div>
+
+<h3 id="monitoring-cluster-components">Monitoring Cluster Components</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check etcd health</span>
+kubectl <span class="nt">-n</span> kube-system <span class="nb">exec</span> <span class="nt">-it</span> etcd-test-server <span class="nt">--</span> etcdctl <span class="nt">--endpoints</span><span class="o">=</span>https://127.0.0.1:2379 <span class="se">\</span>
+  <span class="nt">--cacert</span><span class="o">=</span>/etc/ssl/etcd/ssl/ca.pem <span class="se">\</span>
+  <span class="nt">--cert</span><span class="o">=</span>/etc/ssl/etcd/ssl/admin-test-server.pem <span class="se">\</span>
+  <span class="nt">--key</span><span class="o">=</span>/etc/ssl/etcd/ssl/admin-test-server-key.pem <span class="se">\</span>
+  endpoint health
+
+<span class="c"># Check component status</span>
+kubectl get componentstatuses
+
+<span class="c"># View detailed node information</span>
+kubectl describe node test-server
 </code></pre></div></div>
 
 <p><br /></p>
+
+<h2 id="cluster-maintenance">Cluster Maintenance</h2>
+
+<h3 id="upgrading-the-cluster">Upgrading the Cluster</h3>
+
+<p>Kubespray makes it easy to upgrade your Kubernetes cluster to newer versions.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update Kubespray repository</span>
+<span class="nb">cd</span> <span class="nv">$KUBESPRAYDIR</span>
+git fetch <span class="nt">--all</span>
+git checkout &lt;desired_version_tag&gt;
+
+<span class="c"># Update dependencies</span>
+pip <span class="nb">install</span> <span class="nt">-U</span> <span class="nt">-r</span> requirements.txt
+
+<span class="c"># Update inventory parameters for the new version</span>
+<span class="c"># Edit inventory/somaz-cluster/group_vars/k8s_cluster/k8s-cluster.yml</span>
+<span class="c"># Set kube_version to the desired version</span>
+
+<span class="c"># Run the upgrade playbook</span>
+ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/group_vars/all/all.yml upgrade-cluster.yml <span class="nt">--become</span>
+</code></pre></div></div>
+
+<h3 id="backup-and-restore">Backup and Restore</h3>
+
+<p>It’s crucial to back up your etcd data regularly:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Backup etcd data</span>
+ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini etcd_backup.yml <span class="nt">--become</span>
+
+<span class="c"># This creates a backup in /tmp/etcd_backup on the etcd host(s)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="common-issues-and-solutions">Common Issues and Solutions</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Issue</th>
+      <th style="width: 30%;">Cause</th>
+      <th style="width: 40%;">Solution</th>
+    </tr>
+    <tr>
+      <td>SSH connection failures</td>
+      <td>SSH keys not properly set up</td>
+      <td>Verify SSH keys with <code>ssh-copy-id</code> and test connections manually</td>
+    </tr>
+    <tr>
+      <td>Python dependencies errors</td>
+      <td>Incompatible Python version or packages</td>
+      <td>Use the recommended Python version and ensure the virtual environment is activated</td>
+    </tr>
+    <tr>
+      <td>Network plugin failures</td>
+      <td>Network configuration issues</td>
+      <td>Check node connectivity and firewall rules; verify pods in <code>kube-system</code> namespace</td>
+    </tr>
+    <tr>
+      <td>Node NotReady status</td>
+      <td>kubelet not running properly</td>
+      <td>Check <code>systemctl status kubelet</code> and kubelet logs</td>
+    </tr>
+    <tr>
+      <td>etcd cluster issues</td>
+      <td>etcd member communication problems</td>
+      <td>Verify etcd health with <code>etcdctl endpoint health</code> and check etcd logs</td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="kubespray-debug-tips">Kubespray Debug Tips</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Run Ansible in verbose mode for detailed output</span>
+ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini cluster.yml <span class="nt">--become</span> <span class="nt">-vvv</span>
+
+<span class="c"># Check logs on nodes</span>
+ansible all <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini <span class="nt">-m</span> shell <span class="nt">-a</span> <span class="s2">"journalctl -xeu kubelet"</span> <span class="nt">--become</span>
+
+<span class="c"># Reset the cluster to start fresh</span>
+ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini reset.yml <span class="nt">--become</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="advanced-configuration">Advanced Configuration</h2>
+
+<h3 id="customizing-the-deployment">Customizing the Deployment</h3>
+
+<p>Kubespray offers extensive customization options through the Ansible inventory. Here are some common customizations:</p>
+
+<h4 id="high-availability-setup">High Availability Setup</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># For HA setup, add multiple control plane nodes in inventory</span>
+
+<span class="c1"># Then in group_vars/all/all.yml</span>
+<span class="na">loadbalancer_apiserver</span><span class="pi">:</span>
+  <span class="na">address</span><span class="pi">:</span> <span class="s">&lt;VIP address&gt;</span>
+  <span class="na">port</span><span class="pi">:</span> <span class="m">6443</span>
+</code></pre></div></div>
+
+<h4 id="custom-network-configuration">Custom Network Configuration</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># In group_vars/k8s_cluster/k8s-net-calico.yml (for Calico)</span>
+<span class="na">calico_ipip_mode</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Always"</span>
+<span class="na">calico_vxlan_mode</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Never"</span>
+<span class="na">calico_network_backend</span><span class="pi">:</span> <span class="s2">"</span><span class="s">bird"</span>
+
+<span class="c1"># Pod CIDR customization</span>
+<span class="na">kube_pods_subnet</span><span class="pi">:</span> <span class="s">10.233.64.0/18</span>
+
+<span class="c1"># Service CIDR customization</span>
+<span class="na">kube_service_addresses</span><span class="pi">:</span> <span class="s">10.233.0.0/18</span>
+</code></pre></div></div>
+
+<h4 id="add-on-configuration">Add-on Configuration</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># In group_vars/k8s_cluster/addons.yml</span>
+<span class="na">dashboard_enabled</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">metrics_server_enabled</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">ingress_nginx_enabled</span><span class="pi">:</span> <span class="no">true</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>You have successfully deployed a Kubernetes cluster using Kubespray and added a worker node to scale your infrastructure. This flexible deployment method allows you to create a production-ready Kubernetes environment on various infrastructures, including cloud providers like GCP and on-premises environments.</p>
+
+<p>Kubespray strikes a balance between the simplicity of kubeadm and the flexibility of full custom deployments, making it an excellent choice for teams that need a customizable yet standardized Kubernetes setup.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Next Steps</strong>
+  <p>Now that your Kubernetes cluster is up and running, consider:</p>
+  <ul>
+    <li>Setting up persistent storage with CSI drivers</li>
+    <li>Implementing proper networking with an Ingress Controller</li>
+    <li>Configuring monitoring with Prometheus and Grafana</li>
+    <li>Establishing proper backup procedures for the cluster</li>
+    <li>Setting up CI/CD pipelines for your applications</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
 
 <h2 id="references">References</h2>
 <ul>
   <li><a href="https://github.com/kubernetes-sigs/kubespray">Kubespray GitHub Repository</a></li>
   <li><a href="https://kubespray.io/">Kubespray Documentation</a></li>
   <li><a href="https://docs.ansible.com/">Ansible Documentation</a></li>
+  <li><a href="https://kubernetes.io/docs/">Kubernetes Documentation</a></li>
+  <li><a href="https://cloud.google.com/docs">Google Cloud Platform Documentation</a></li>
+  <li><a href="https://docs.tigera.io/calico/latest/getting-started/">Calico Networking Documentation</a></li>
 </ul>
 
 
@@ -502,6 +961,15 @@ kubectl get po <span class="nt">-n</span> kube-system
                     <ul>
                         
                         
+                        
+                            <li>
+                                <a href="/category/cs/os-cache-disk/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1744340260/os-cache-disk_jwhgck.png">
+                                    
+                                    <h3>OS Cache and Disk I/O - MySQL and Redis Performance Analysis</h3>
+                                </a>
+                            </li>
                         
                             <li>
                                 <a href="/category/network/ssh-tunneling/">
@@ -521,15 +989,6 @@ kubectl get po <span class="nt">-n</span> kube-system
                                 </a>
                             </li>
                         
-                            <li>
-                                <a href="/category/network/cdn/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1740040649/cdn_m4mnj5.png">
-                                    
-                                    <h3>What is CDN? (Content Delivery Network)</h3>
-                                </a>
-                            </li>
-                        
                     </ul>
                 </aside>
             
@@ -538,7 +997,7 @@ kubectl get po <span class="nt">-n</span> kube-system
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="15">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -580,7 +1039,7 @@ kubectl get po <span class="nt">-n</span> kube-system
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn how to install Kubernetes using Kubespray and scale worker nodes&quot;%20https://somaz.blog/category/kubernetes/kubernetes-install-kubespray/%20via%20&#64;twitter_username&hashtags=kubernetes,kubespray,ansible,gcp"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn how to install Kubernetes using Kubespray and scale worker nodes with this step-by-step tutorial&quot;%20https://somaz.blog/category/kubernetes/kubernetes-install-kubespray/%20via%20&#64;twitter_username&hashtags=kubernetes,kubespray,ansible,gcp,installation,cluster-management"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -834,9 +1293,9 @@ kubectl get po <span class="nt">-n</span> kube-system
         {
             "@context": "http://schema.org",
             "@type": "BlogPosting",
-            "name": "Installing Kubernetes with Kubespray and Adding Worker Nodes(2024V.)",
+            "name": "Installing Kubernetes with Kubespray and Adding Worker Nodes (2024V.)",
             "headline": "A comprehensive guide to setting up Kubernetes using Kubespray on GCP",
-            "description": "Learn how to install Kubernetes using Kubespray and scale worker nodes",
+            "description": "Learn how to install Kubernetes using Kubespray and scale worker nodes with this step-by-step tutorial",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1737697968/kubespray_uyug5r.png",
             "url": "https://somaz.blog/category/kubernetes/kubernetes-install-kubespray/",
             "articleBody": "Image Reference link
@@ -847,7 +1306,55 @@ kubectl get po <span class="nt">-n</span> kube-system
 
 Overview
 
-This guide demonstrates how to install Kubernetes using Kubespray and add worker nodes to the cluster. We’ll be using Google Cloud Platform (GCP) for our infrastructure.
+Kubespray is a powerful tool that combines the flexibility of Ansible with the robustness of Kubernetes, enabling the deployment of production-ready Kubernetes clusters on various infrastructures. This guide provides detailed instructions for installing a Kubernetes cluster using Kubespray on Google Cloud Platform (GCP) and demonstrates how to add worker nodes to scale your cluster.
+
+
+  What is Kubespray?
+  Kubespray is a composition of Ansible playbooks, inventory, provisioning tools, and domain knowledge for deploying a production-ready Kubernetes cluster. It allows for highly customizable deployments and supports multiple cloud providers, bare metal installations, and virtualized environments.
+  Key features include:
+  
+    Composable attributes
+    Multiple network plugin support (Calico, Flannel, Cilium, etc.)
+    HA cluster setup
+    Configurable addons
+    Support for most popular Linux distributions
+  
+
+
+
+  
+    graph TD
+      A[Kubespray Repository] --&amp;gt; B[Ansible Playbooks]
+      B --&amp;gt; C[Kubernetes Components]
+      C --&amp;gt; D[Control Plane Setup]
+      C --&amp;gt; E[Node Setup]
+      C --&amp;gt; F[Networking]
+      C --&amp;gt; G[Add-ons]
+      
+      D --&amp;gt; H[API Server]
+      D --&amp;gt; I[Controller Manager]
+      D --&amp;gt; J[Scheduler]
+      D --&amp;gt; K[etcd]
+      
+      E --&amp;gt; L[kubelet]
+      E --&amp;gt; M[kube-proxy]
+      
+      F --&amp;gt; N[Network Plugin]
+      F --&amp;gt; O[Service Networking]
+      
+      G --&amp;gt; P[DNS]
+      G --&amp;gt; Q[Dashboard]
+      G --&amp;gt; R[Metrics Server]
+      
+      style A fill:#bbdefb,stroke:#333,stroke-width:1px
+      style B fill:#90caf9,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#42a5f5,stroke:#333,stroke-width:1px
+      style E fill:#42a5f5,stroke:#333,stroke-width:1px
+      style F fill:#42a5f5,stroke:#333,stroke-width:1px
+      style G fill:#42a5f5,stroke:#333,stroke-width:1px
+  
+
 
 
 
@@ -855,8 +1362,37 @@ System Configuration
 
 Environment Details
 
-  OS: Ubuntu 20.04 LTS (Focal)
-  Cloud Provider: Google Compute Engine
+
+  
+    
+      Component
+      Specification
+    
+    
+      Operating System
+      Ubuntu 20.04 LTS (Focal)
+    
+    
+      Cloud Provider
+      Google Compute Engine (GCP)
+    
+    
+      Kubernetes Version
+      v1.28.6 (deployed by Kubespray)
+    
+    
+      CNI Plugin
+      Calico (default)
+    
+    
+      Container Runtime
+      containerd
+    
+    
+      Python Version
+      3.10.13
+    
+  
 
 
 Node Specifications
@@ -868,20 +1404,26 @@ Node Specifications
     IP: 10.77.101.62
     CPU: 2 cores
     Memory: 8096MB
+    Role: Control Plane + etcd
   
 
 
 
   Worker Nodes
   
-    test-server-agent: 10.77.101.57 (2 CPU, 8096MB RAM)
-    test-server-agent2: 10.77.101.200 (2 CPU, 8096MB RAM)
+    Node 1: test-server-agent (10.77.101.57, 2 CPU, 8096MB RAM)
+    Node 2: test-server-agent2 (10.77.101.200, 2 CPU, 8096MB RAM)
+    Role: Worker nodes running application workloads
   
 
 
 
 
 Infrastructure Setup
+
+Infrastructure as Code (IaC)
+
+We use Terraform to provision our GCP infrastructure. Here are the key resources:
 
 Control Plane Node Configuration
 resource &quot;google_compute_address&quot; &quot;test_server_ip&quot; {
@@ -906,6 +1448,22 @@ resource &quot;google_compute_instance&quot; &quot;test_server&quot; {
     access_config {
       nat_ip = google_compute_address.test_server_ip.address
     }
+  }
+  
+  # Recommended metadata for Kubernetes nodes
+  metadata = {
+    &quot;startup-script&quot; = &amp;lt;&amp;lt;-EOF
+      #!/bin/bash
+      swapoff -a
+      sed -i &apos;/swap/d&apos; /etc/fstab
+      
+      # Set system parameters for Kubernetes
+      cat &amp;gt; /etc/sysctl.d/99-kubernetes.conf &amp;lt;&amp;lt;EOF2
+      net.bridge.bridge-nf-call-iptables = 1
+      net.ipv4.ip_forward = 1
+      EOF2
+      sysctl --system
+    EOF
   }
 }
 
@@ -934,6 +1492,22 @@ resource &quot;google_compute_instance&quot; &quot;test_server_agent&quot; {
       nat_ip = google_compute_address.test_server_agent_ip.address
     }
   }
+  
+  # Same startup script as control plane for Kubernetes prerequisites
+  metadata = {
+    &quot;startup-script&quot; = &amp;lt;&amp;lt;-EOF
+      #!/bin/bash
+      swapoff -a
+      sed -i &apos;/swap/d&apos; /etc/fstab
+      
+      # Set system parameters for Kubernetes
+      cat &amp;gt; /etc/sysctl.d/99-kubernetes.conf &amp;lt;&amp;lt;EOF2
+      net.bridge.bridge-nf-call-iptables = 1
+      net.ipv4.ip_forward = 1
+      EOF2
+      sysctl --system
+    EOF
+  }
 }
 
 
@@ -941,16 +1515,32 @@ resource &quot;google_compute_instance&quot; &quot;test_server_agent&quot; {
 
 Prerequisites
 
+Before starting the Kubespray installation, you need to prepare your environment.
+
+System Requirements
+
+
+  Operating System: Ubuntu 20.04 or other supported Linux distributions
+  SSH Access: Between the deployment host and all nodes
+  Python: Version 3.9+ (we’ll use 3.10)
+  Ansible: Will be installed by the setup process
+  Git: For cloning the Kubespray repository
+  sudo privileges: On all nodes
+
+
+Node Preparation
+
 SSH Key Setup
 # Generate SSH key if needed
-ssh-keygen
+ssh-keygen -t rsa -b 4096 -C &quot;kubespray-deployment&quot;
 
-# Copy SSH key to worker nodes
-ssh-copy-id somaz@10.77.101.57
-ssh-copy-id somaz@10.77.101.200
+# Copy SSH key to all nodes
+ssh-copy-id somaz@10.77.101.62  # Control plane
+ssh-copy-id somaz@10.77.101.57  # Worker 1
+ssh-copy-id somaz@10.77.101.200 # Worker 2
 
-# Update /etc/hosts
-cat &amp;lt;&amp;lt; EOF &amp;gt;&amp;gt; /etc/hosts
+# Update /etc/hosts for easier node access
+cat &amp;lt;&amp;lt; EOF | sudo tee -a /etc/hosts
 10.77.101.62 test-server
 10.77.101.57 test-server-agent
 10.77.101.200 test-server-agent2
@@ -958,6 +1548,9 @@ EOF
 
 
 Package Installation
+# Update package lists
+sudo apt-get update
+
 # Install Python 3.10
 sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt-get -y update
@@ -967,20 +1560,75 @@ sudo apt install -y python3.10 python3-pip git python3.10-venv
 python3.10 --version  # Should show Python 3.10.13
 
 
+System Configuration
+# Disable swap (required for Kubernetes)
+sudo swapoff -a
+sudo sed -i &apos;/swap/d&apos; /etc/fstab
+
+# Load required kernel modules
+cat &amp;lt;&amp;lt; EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# Configure kernel parameters
+cat &amp;lt;&amp;lt; EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+sudo sysctl --system
 
 
-Kubespray Deployment
+
+
+Kubespray Deployment Process
+
+
+  
+    sequenceDiagram
+      participant Admin as Operator
+      participant Deploy as Deployment Host
+      participant CP as Control Plane
+      participant Worker as Worker Nodes
+      
+      Admin-&amp;gt;&amp;gt;Deploy: Clone Kubespray repository
+      Admin-&amp;gt;&amp;gt;Deploy: Setup Python virtual environment
+      Admin-&amp;gt;&amp;gt;Deploy: Install dependencies
+      Admin-&amp;gt;&amp;gt;Deploy: Configure inventory
+      Deploy-&amp;gt;&amp;gt;CP: Check SSH connectivity
+      Deploy-&amp;gt;&amp;gt;Worker: Check SSH connectivity
+      Admin-&amp;gt;&amp;gt;Deploy: Run Ansible playbook
+      Deploy-&amp;gt;&amp;gt;CP: Install control plane components
+      Deploy-&amp;gt;&amp;gt;Worker: Install worker components
+      Deploy-&amp;gt;&amp;gt;CP: Initialize cluster
+      Deploy-&amp;gt;&amp;gt;Worker: Join nodes to cluster
+      CP-&amp;gt;&amp;gt;Worker: Establish cluster communication
+      Admin-&amp;gt;&amp;gt;CP: Configure kubectl
+      Admin-&amp;gt;&amp;gt;CP: Verify cluster status
+  
+
 
 1. Clone Repository and Setup Environment
+# Clone the Kubespray repository
 git clone https://github.com/kubernetes-sigs/kubespray.git
 
+# Setup virtual environment
 VENVDIR=kubespray-venv
 KUBESPRAYDIR=kubespray
 python3.10 -m venv $VENVDIR
 source $VENVDIR/bin/activate
 cd $KUBESPRAYDIR
 
+# Install dependencies
 pip install -U -r requirements.txt
+
+# Check Ansible version
+ansible --version
 
 
 2. Prepare Ansible Inventory
@@ -993,65 +1641,131 @@ CONFIG_FILE=inventory/somaz-cluster/hosts.yaml python3 contrib/inventory_builder
 
 
 3. Configure Inventory
+
+The inventory generator creates a basic configuration, but we’ll make additional adjustments for our setup.
+
 # inventory/somaz-cluster/inventory.ini
 [all]
 test-server ansible_host=10.77.101.62  ip=10.77.101.62
 test-server-agent ansible_host=10.77.101.57  ip=10.77.101.57
 
+# Control plane node(s)
 [kube_control_plane]
 test-server
 
+# etcd cluster member(s)
 [etcd]
 test-server
 
+# Kubernetes worker node(s)
 [kube_node]
 test-server-agent
 
+# All groups with assigned roles
 [k8s_cluster:children]
 kube_control_plane
 kube_node
 calico_rr
 
 
+Advanced Inventory Configuration (Optional)
+
+You can further customize your deployment by editing these additional files:
+
+# Edit group variables for all nodes
+vim inventory/somaz-cluster/group_vars/all/all.yml
+
+# Customize Kubernetes-specific parameters
+vim inventory/somaz-cluster/group_vars/k8s_cluster/k8s-cluster.yml
+
+# Configure network plugin options
+vim inventory/somaz-cluster/group_vars/k8s_cluster/k8s-net-*.yml
+
+
+Common customizations:
+
+  kube_version: Specify Kubernetes version (default is 1.28.6 as of this writing)
+  kube_network_plugin: Choose network plugin (calico, flannel, cilium, etc.)
+  etcd_deployment_type: etcd deployment method (host or docker-based)
+  container_manager: Choose containerd or docker (containerd is recommended)
+
+
 4. Verify Ansible Connectivity
+# Test connection to all nodes
 ansible all -i inventory/somaz-cluster/inventory.ini -m ping
 
-# Optional: Update apt cache
+# Optional: Update apt cache on all nodes
 ansible all -i inventory/somaz-cluster/inventory.ini -m apt -a &apos;update_cache=yes&apos; --become
 
 
 5. Run Playbook
+
+Now we’re ready to deploy the Kubernetes cluster using Kubespray’s Ansible playbooks.
+
+# Deploy the cluster (this will take 15-30 minutes)
 ansible-playbook -i inventory/somaz-cluster/inventory.ini cluster.yml --become
 
 
-6. Configure kubectl
-mkdir ~/.kube
-sudo cp /etc/kubernetes/admin.conf ~/.kube/config
-sudo chown $USER:$USER ~/.kube/config
 
-# Setup kubectl autocomplete
+  Important:
+  The cluster deployment can take 15-30 minutes depending on your internet connection speed and server performance. During the deployment process, Ansible will:
+  
+    Install container runtime (containerd by default)
+    Deploy etcd cluster
+    Install Kubernetes components (kubeadm, kubelet, kubectl)
+    Initialize the Kubernetes control plane
+    Join worker nodes to the cluster
+    Deploy network plugins and add-ons
+  
+  Be patient and monitor the output for any errors. Most issues can be resolved by looking at the Ansible error messages.
+
+
+6. Configure kubectl
+
+After successful deployment, you need to configure kubectl to interact with your new cluster.
+
+# Create kubectl config directory
+mkdir -p ~/.kube
+
+# Copy admin configuration
+sudo cp /etc/kubernetes/admin.conf ~/.kube/config
+sudo chown $(id -u):$(id -g) ~/.kube/config
+
+# Setup kubectl autocomplete (optional but recommended)
 echo &apos;# kubectl completion and alias&apos; &amp;gt;&amp;gt; ~/.bashrc
 echo &apos;source &amp;lt;(kubectl completion bash)&apos; &amp;gt;&amp;gt; ~/.bashrc
 echo &apos;alias k=kubectl&apos; &amp;gt;&amp;gt; ~/.bashrc
 echo &apos;complete -F __start_kubectl k&apos; &amp;gt;&amp;gt; ~/.bashrc
 source ~/.bashrc
 
+# Test kubectl
+kubectl get nodes
 
 
 
-Adding Worker Node
+
+Adding Worker Nodes
+
+One of the key advantages of Kubernetes is its scalability. Let’s add another worker node to our cluster.
 
 1. Update Inventory
+
+First, we need to update our Ansible inventory to include the new worker node.
+
 # Add new node to IPS array
 declare -a IPS=(10.77.101.62 10.77.101.57 10.77.101.200)
 CONFIG_FILE=inventory/somaz-cluster/hosts.yaml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
 
 
 2. Modify inventory.ini
+
+After using the inventory builder, it’s good to check and make sure the new node was properly added to the correct groups.
+
+# inventory/somaz-cluster/inventory.ini
 [all]
 test-server ansible_host=10.77.101.62  ip=10.77.101.62
 test-server-agent ansible_host=10.77.101.57  ip=10.77.101.57
-test-server2-agent ansible_host=10.77.101.200  ip=10.77.101.200
+test-server-agent2 ansible_host=10.77.101.200  ip=10.77.101.200
 
 [kube_control_plane]
 test-server
@@ -1061,27 +1775,228 @@ test-server
 
 [kube_node]
 test-server-agent
-test-server2-agent
+test-server-agent2  # Make sure the new node is in the kube_node group
 
 
 3. Run Scale Playbook
+
+Kubespray includes a special scale.yml playbook specifically for adding new worker nodes without affecting the existing cluster.
+
+# Add new nodes to the cluster
 ansible-playbook -i inventory/somaz-cluster/inventory.ini scale.yml --become
 
 
 
+  Tip:
+  The scale.yml playbook is designed to only operate on new nodes, which makes it much faster than running the full cluster.yml playbook. It will install the necessary Kubernetes components on the new node and join it to the existing cluster.
 
-✅ Verification
 
-Check Cluster Status
+Scaling Down (Removing Nodes)
+
+If you need to remove a node from the cluster, Kubespray also provides a removal playbook:
+
+# To remove nodes, first update your inventory to reflect the desired state
+# Then run the remove-node playbook
+ansible-playbook -i inventory/somaz-cluster/inventory.ini remove-node.yml -e node=test-server-agent2 --become
+
+
+
+
+Verification and Monitoring
+
+Verify Cluster Status
 # Check nodes
 kubectl get nodes -o wide
-NAME                 STATUS   ROLES           AGE   VERSION   INTERNAL-IP     
-test-server          Ready    control-plane   21m   v1.28.6   10.77.101.62    
-test-server-agent    Ready    &amp;lt;none&amp;gt;          20m   v1.28.6   10.77.101.57    
-test-server2-agent   Ready    &amp;lt;none&amp;gt;          65s   v1.28.6   10.77.101.200   
+NAME                 STATUS   ROLES           AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION     CONTAINER-RUNTIME
+test-server          Ready    control-plane   21m   v1.28.6   10.77.101.62    &amp;lt;none&amp;gt;        Ubuntu 20.04.6 LTS   5.15.0-1053-gcp    containerd://1.7.1
+test-server-agent    Ready    &amp;lt;none&amp;gt;          20m   v1.28.6   10.77.101.57    &amp;lt;none&amp;gt;        Ubuntu 20.04.6 LTS   5.15.0-1053-gcp    containerd://1.7.1
+test-server-agent2   Ready    &amp;lt;none&amp;gt;          65s   v1.28.6   10.77.101.200   &amp;lt;none&amp;gt;        Ubuntu 20.04.6 LTS   5.15.0-1053-gcp    containerd://1.7.1
 
-# Check system pods
+# Check system namespace
 kubectl get po -n kube-system
+NAME                                          READY   STATUS    RESTARTS   AGE
+calico-kube-controllers-76475c5546-vb58b      1/1     Running   0          20m
+calico-node-hvx95                             1/1     Running   0          20m
+calico-node-lq4tg                             1/1     Running   0          20m
+calico-node-vftnr                             1/1     Running   0          1m
+coredns-77f7cc69db-ctvk6                      1/1     Running   0          19m
+coredns-77f7cc69db-h4bbx                      1/1     Running   0          19m
+dns-autoscaler-5b576d9b75-pvbwj               1/1     Running   0          19m
+kube-apiserver-test-server                    1/1     Running   0          21m
+kube-controller-manager-test-server           1/1     Running   0          21m
+kube-proxy-5n5tq                              1/1     Running   0          20m
+kube-proxy-lx25t                              1/1     Running   0          1m
+kube-proxy-s6x8h                              1/1     Running   0          20m
+kube-scheduler-test-server                    1/1     Running   0          21m
+kubernetes-dashboard-787dd78ffd-jl8bd         1/1     Running   0          19m
+metrics-server-67df99fc7d-p8nzk               1/1     Running   0          19m
+nginx-proxy-test-server-agent                 1/1     Running   0          20m
+nginx-proxy-test-server-agent2                1/1     Running   0          1m
+nodelocaldns-fwl5r                            1/1     Running   0          19m
+nodelocaldns-hkvk2                            1/1     Running   0          1m
+nodelocaldns-szfj6                            1/1     Running   0          19m
+
+
+Monitoring Cluster Components
+
+# Check etcd health
+kubectl -n kube-system exec -it etcd-test-server -- etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/ssl/etcd/ssl/ca.pem \
+  --cert=/etc/ssl/etcd/ssl/admin-test-server.pem \
+  --key=/etc/ssl/etcd/ssl/admin-test-server-key.pem \
+  endpoint health
+
+# Check component status
+kubectl get componentstatuses
+
+# View detailed node information
+kubectl describe node test-server
+
+
+
+
+Cluster Maintenance
+
+Upgrading the Cluster
+
+Kubespray makes it easy to upgrade your Kubernetes cluster to newer versions.
+
+# Update Kubespray repository
+cd $KUBESPRAYDIR
+git fetch --all
+git checkout &amp;lt;desired_version_tag&amp;gt;
+
+# Update dependencies
+pip install -U -r requirements.txt
+
+# Update inventory parameters for the new version
+# Edit inventory/somaz-cluster/group_vars/k8s_cluster/k8s-cluster.yml
+# Set kube_version to the desired version
+
+# Run the upgrade playbook
+ansible-playbook -i inventory/somaz-cluster/group_vars/all/all.yml upgrade-cluster.yml --become
+
+
+Backup and Restore
+
+It’s crucial to back up your etcd data regularly:
+
+# Backup etcd data
+ansible-playbook -i inventory/somaz-cluster/inventory.ini etcd_backup.yml --become
+
+# This creates a backup in /tmp/etcd_backup on the etcd host(s)
+
+
+
+
+Troubleshooting
+
+Common Issues and Solutions
+
+
+  
+    
+      Issue
+      Cause
+      Solution
+    
+    
+      SSH connection failures
+      SSH keys not properly set up
+      Verify SSH keys with ssh-copy-id and test connections manually
+    
+    
+      Python dependencies errors
+      Incompatible Python version or packages
+      Use the recommended Python version and ensure the virtual environment is activated
+    
+    
+      Network plugin failures
+      Network configuration issues
+      Check node connectivity and firewall rules; verify pods in kube-system namespace
+    
+    
+      Node NotReady status
+      kubelet not running properly
+      Check systemctl status kubelet and kubelet logs
+    
+    
+      etcd cluster issues
+      etcd member communication problems
+      Verify etcd health with etcdctl endpoint health and check etcd logs
+    
+  
+
+
+Kubespray Debug Tips
+
+# Run Ansible in verbose mode for detailed output
+ansible-playbook -i inventory/somaz-cluster/inventory.ini cluster.yml --become -vvv
+
+# Check logs on nodes
+ansible all -i inventory/somaz-cluster/inventory.ini -m shell -a &quot;journalctl -xeu kubelet&quot; --become
+
+# Reset the cluster to start fresh
+ansible-playbook -i inventory/somaz-cluster/inventory.ini reset.yml --become
+
+
+
+
+Advanced Configuration
+
+Customizing the Deployment
+
+Kubespray offers extensive customization options through the Ansible inventory. Here are some common customizations:
+
+High Availability Setup
+# For HA setup, add multiple control plane nodes in inventory
+
+# Then in group_vars/all/all.yml
+loadbalancer_apiserver:
+  address: &amp;lt;VIP address&amp;gt;
+  port: 6443
+
+
+Custom Network Configuration
+# In group_vars/k8s_cluster/k8s-net-calico.yml (for Calico)
+calico_ipip_mode: &quot;Always&quot;
+calico_vxlan_mode: &quot;Never&quot;
+calico_network_backend: &quot;bird&quot;
+
+# Pod CIDR customization
+kube_pods_subnet: 10.233.64.0/18
+
+# Service CIDR customization
+kube_service_addresses: 10.233.0.0/18
+
+
+Add-on Configuration
+# In group_vars/k8s_cluster/addons.yml
+dashboard_enabled: true
+metrics_server_enabled: true
+ingress_nginx_enabled: true
+
+
+
+
+Conclusion
+
+You have successfully deployed a Kubernetes cluster using Kubespray and added a worker node to scale your infrastructure. This flexible deployment method allows you to create a production-ready Kubernetes environment on various infrastructures, including cloud providers like GCP and on-premises environments.
+
+Kubespray strikes a balance between the simplicity of kubeadm and the flexibility of full custom deployments, making it an excellent choice for teams that need a customizable yet standardized Kubernetes setup.
+
+
+  Next Steps
+  Now that your Kubernetes cluster is up and running, consider:
+  
+    Setting up persistent storage with CSI drivers
+    Implementing proper networking with an Ingress Controller
+    Configuring monitoring with Prometheus and Grafana
+    Establishing proper backup procedures for the cluster
+    Setting up CI/CD pipelines for your applications
+  
+
+
 
 
 
@@ -1091,9 +2006,12 @@ References
   Kubespray GitHub Repository
   Kubespray Documentation
   Ansible Documentation
+  Kubernetes Documentation
+  Google Cloud Platform Documentation
+  Calico Networking Documentation
 
 ",
-            "wordcount": "887",
+            "wordcount": "2851",
             "inLanguage": "en",
             "dateCreated": "2025-01-24/",
             "datePublished": "2025-01-24/",
@@ -1124,7 +2042,7 @@ References
             "mainEntityOfPage": "True",
             "genre": "KUBERNETES",
             "articleSection": "KUBERNETES",
-            "keywords": ["kubernetes","kubespray","ansible","gcp"]
+            "keywords": ["kubernetes","kubespray","ansible","gcp","installation","cluster-management"]
         }
         </script>
     </body>

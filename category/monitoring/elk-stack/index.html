@@ -220,7 +220,7 @@ January 17, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>3 min to read</span>
+                    <span>10 min to read</span>
                 </p>
                 <h1 class="post-title">ELK Stack Implementation Guide</h1>
                 <p class="post-subtitle">Learn how to implement ELK Stack (Elasticsearch, Logstash, Kibana) for log management and analysis.</p>
@@ -240,115 +240,370 @@ January 17, 2025
 
 <hr />
 
-<h2 id="overview">Overview</h2>
-<p>This guide explores the implementation of ELK Stack (Elasticsearch, Logstash, Kibana) for log collection, processing, and analysis.</p>
+<h2 id="what-is-elk-stack">What is ELK Stack?</h2>
 
-<h3 id="what-is-elk-stack">What is ELK Stack?</h3>
-<blockquote>
-  <p>ELK Stack combines three main components: Elasticsearch, Logstash, and Kibana. Recently, EFK Stack (with Fluentd) has also become popular as a lighter alternative.</p>
-</blockquote>
+<div class="info-box info-box-modern">
+The ELK Stack is a powerful log management and analytics solution that combines three open-source tools: Elasticsearch for search and analytics, Logstash for data processing, and Kibana for visualization. Together, they provide a comprehensive platform for collecting, processing, storing, and visualizing data from diverse sources, enabling efficient monitoring, troubleshooting, and insights extraction.
+</div>
 
-<p><br /></p>
+<h3 id="overview-of-components">Overview of Components</h3>
 
-<hr />
-<h3 id="architectureelk-stack">Architecture(ELK Stack)</h3>
-
-<h4 id="log-pipeline">Log Pipeline:</h4>
-
-<p><img src="/assets/svg/elk-stack/log-pipeline.svg" alt="Log Pipeline" /></p>
-
-<h4 id="metric-pipeline">Metric Pipeline:</h4>
-
-<p><img src="/assets/svg/elk-stack/metric-pipeline.svg" alt="Metric Pipeline" /></p>
-
-<h4 id="apm-pipeline">APM Pipeline:</h4>
-
-<p><img src="/assets/svg/elk-stack/apm-pipeline.svg" alt="APM Pipeline" /></p>
-
-<h4 id="efk-stack-log-pipeline">EFK Stack Log Pipeline:</h4>
-
-<p><img src="/assets/svg/elk-stack/efk-stack-log-pipeline.svg" alt="EFK Stack Log Pipeline" /></p>
-
-<hr />
-
-<h3 id="-key-components">🧩 Key Components</h3>
-
-<h4 id="elasticsearch">Elasticsearch</h4>
-<ul>
-  <li>Search engine for storing and searching log data</li>
-  <li>RESTful engine for distributed search and analytics</li>
-</ul>
-
-<h4 id="logstash">Logstash</h4>
-<ul>
-  <li>Data processing pipeline for log collection and transformation</li>
-  <li>Supports various input sources and output destinations</li>
-  <li>Data filtering and transformation capabilities</li>
-</ul>
-
-<h4 id="kibana">Kibana</h4>
-<ul>
-  <li>Data visualization and analysis tool</li>
-  <li>Dashboard creation and management</li>
-  <li>Log search and analysis interface</li>
-</ul>
-
-<h4 id="filebeat">Filebeat</h4>
-<ul>
-  <li>Log file collector</li>
-  <li>Lightweight log shipping agent</li>
-  <li>Minimal server resource usage</li>
-</ul>
+<div class="info-box info-box-default-not-check">
+  <strong>Core Components</strong>
+  <p>The ELK Stack consists of three primary components, each serving a distinct purpose in the log management pipeline:</p>
+  
+  <ul>
+    <li><strong>Elasticsearch</strong>: A distributed, RESTful search and analytics engine capable of storing and searching vast volumes of data quickly</li>
+    <li><strong>Logstash</strong>: A server-side data processing pipeline that ingests data from multiple sources, transforms it, and sends it to Elasticsearch</li>
+    <li><strong>Kibana</strong>: A visualization layer that provides charts, graphs, and dashboards for exploring, visualizing, and analyzing data stored in Elasticsearch</li>
+  </ul>
+  
+  <p>Additional components often used with the ELK Stack:</p>
+  <ul>
+    <li><strong>Beats</strong>: Lightweight data shippers that send data from edge machines to Logstash or Elasticsearch</li>
+    <li><strong>Filebeat</strong>: Specifically designed for forwarding and centralizing log data</li>
+    <li><strong>Metricbeat</strong>: Collects metrics from system and services</li>
+  </ul>
+  
+  <p>The term "Elastic Stack" is now often used to refer to the expanded ecosystem that includes Beats and other extensions.</p>
+</div>
 
 <p><br /></p>
 
 <hr />
 
-<h3 id="implementation-guide">Implementation Guide</h3>
+<h2 id="architecture">Architecture</h2>
 
-<h4 id="installation-overview">Installation Overview</h4>
-<p>We used the Helm Chart that was archived on May 16, 2023, and installed it in Single Mode for our internal development server.</p>
+<h3 id="log-pipeline">Log Pipeline</h3>
 
-<h4 id="installation-methods">Installation Methods</h4>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Log Sources] --&gt; B[Filebeat]
+      B --&gt; C[Logstash]
+      C --&gt; D[Elasticsearch]
+      D --&gt; E[Kibana]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+  </div>
+</div>
 
-<p>1️⃣ <strong>Using Archived Helm Charts</strong></p>
+<h3 id="metric-pipeline">Metric Pipeline</h3>
 
-<p>Reference repository</p>
-<ul>
-  <li>https://github.com/elastic/helm-charts</li>
-</ul>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Metric Sources] --&gt; B[Metricbeat]
+      B --&gt; D[Elasticsearch]
+      D --&gt; E[Kibana]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+  </div>
+</div>
 
-<p>Implementation reference</p>
-<ul>
-  <li>https://github.com/somaz94/helm-chart-template/tree/main/k8s-service/monitoring/elk-stack</li>
-</ul>
+<h3 id="apm-pipeline">APM Pipeline</h3>
 
-<p>2️⃣ <strong>Using Latest Version (ECK Operator)</strong></p>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Application] --&gt; B[APM Agent]
+      B --&gt; C[APM Server]
+      C --&gt; D[Elasticsearch]
+      D --&gt; E[Kibana]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+  </div>
+</div>
 
-<p>For the latest version, use the ECK operator:</p>
-<ul>
-  <li>https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-operator</li>
-  <li>https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html</li>
-</ul>
+<h3 id="efk-stack-log-pipeline">EFK Stack Log Pipeline</h3>
+<p>The EFK Stack replaces Logstash with Fluentd for a lighter, more resource-efficient implementation:</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Log Sources] --&gt; B[Filebeat]
+      B --&gt; C[Fluentd]
+      C --&gt; D[Elasticsearch]
+      D --&gt; E[Kibana]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="key-components-in-detail">Key Components in Detail</h2>
+
+<h3 id="elasticsearch">Elasticsearch</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Aspect</th>
+      <th style="width: 80%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Purpose</strong></td>
+      <td>Distributed search and analytics engine for storing, searching, and analyzing large volumes of data</td>
+    </tr>
+    <tr>
+      <td><strong>Architecture</strong></td>
+      <td>RESTful, distributed, horizontally scalable with support for clustering</td>
+    </tr>
+    <tr>
+      <td><strong>Data Storage</strong></td>
+      <td>Document-oriented database that stores complex data structures as JSON documents</td>
+    </tr>
+    <tr>
+      <td><strong>Indexing</strong></td>
+      <td>Uses inverted indices for fast full-text search capabilities</td>
+    </tr>
+    <tr>
+      <td><strong>Scalability</strong></td>
+      <td>Scales horizontally by adding more nodes to the cluster</td>
+    </tr>
+    <tr>
+      <td><strong>Key Features</strong></td>
+      <td>
+        - Near real-time search<br />
+        - Distributed architecture for high availability<br />
+        - Multi-tenancy capabilities<br />
+        - Full-text search with powerful query DSL<br />
+        - Aggregations for data analysis
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="logstash">Logstash</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Aspect</th>
+      <th style="width: 80%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Purpose</strong></td>
+      <td>Data collection and processing pipeline that ingests data from multiple sources, transforms it, and sends it to Elasticsearch</td>
+    </tr>
+    <tr>
+      <td><strong>Architecture</strong></td>
+      <td>Three-stage pipeline: inputs → filters → outputs</td>
+    </tr>
+    <tr>
+      <td><strong>Inputs</strong></td>
+      <td>Supports various input sources: logs, metrics, web applications, data stores, and AWS services</td>
+    </tr>
+    <tr>
+      <td><strong>Filters</strong></td>
+      <td>Powerful processing capabilities for parsing, transforming, and enriching data</td>
+    </tr>
+    <tr>
+      <td><strong>Outputs</strong></td>
+      <td>Can route data to multiple destinations, including Elasticsearch, files, and external services</td>
+    </tr>
+    <tr>
+      <td><strong>Key Features</strong></td>
+      <td>
+        - Extensive plugin ecosystem<br />
+        - Grok pattern matching for unstructured data parsing<br />
+        - Data enrichment capabilities<br />
+        - Conditional processing logic<br />
+        - Buffer management for handling load spikes
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="kibana">Kibana</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Aspect</th>
+      <th style="width: 80%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Purpose</strong></td>
+      <td>Data visualization and exploration tool for Elasticsearch data</td>
+    </tr>
+    <tr>
+      <td><strong>Architecture</strong></td>
+      <td>Browser-based interface that communicates directly with Elasticsearch</td>
+    </tr>
+    <tr>
+      <td><strong>Visualizations</strong></td>
+      <td>Wide range of visualization types: charts, graphs, tables, maps, and more</td>
+    </tr>
+    <tr>
+      <td><strong>Dashboards</strong></td>
+      <td>Combines multiple visualizations into comprehensive dashboards</td>
+    </tr>
+    <tr>
+      <td><strong>Search</strong></td>
+      <td>Powerful search interface for exploring and filtering data in Elasticsearch</td>
+    </tr>
+    <tr>
+      <td><strong>Key Features</strong></td>
+      <td>
+        - Discover interface for log exploration<br />
+        - Dashboard creation and sharing<br />
+        - Canvas for creating custom presentations<br />
+        - Machine Learning capabilities<br />
+        - Lens for drag-and-drop visualizations
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 id="filebeat">Filebeat</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Aspect</th>
+      <th style="width: 80%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Purpose</strong></td>
+      <td>Lightweight log shipper for forwarding and centralizing log data</td>
+    </tr>
+    <tr>
+      <td><strong>Architecture</strong></td>
+      <td>Agent-based, installed on servers to collect and forward log files</td>
+    </tr>
+    <tr>
+      <td><strong>Resource Usage</strong></td>
+      <td>Minimal CPU and memory footprint compared to Logstash</td>
+    </tr>
+    <tr>
+      <td><strong>Reliability</strong></td>
+      <td>Guarantees at-least-once delivery with internal queuing and backpressure handling</td>
+    </tr>
+    <tr>
+      <td><strong>Key Features</strong></td>
+      <td>
+        - Handles log rotation and truncation<br />
+        - Maintains file state to resume after restarts<br />
+        - Supports various input types and formats<br />
+        - Built-in modules for common log formats<br />
+        - Can send directly to Elasticsearch or via Logstash
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="implementation-guide">Implementation Guide</h2>
+
+<div class="info-box info-box-modern">
+This section provides a step-by-step guide for implementing the ELK Stack in a Kubernetes environment using Helm charts, with configurations optimized for efficient log collection and analysis.
+</div>
+
+<h3 id="installation-methods">Installation Methods</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Two Implementation Approaches</strong>
+  <p>The ELK Stack can be deployed in Kubernetes using either of these methods:</p>
+  
+  <p><strong>1️⃣ Using Archived Helm Charts</strong></p>
+  <ul>
+    <li>Uses the Elastic Helm Charts repository that was archived on May 16, 2023</li>
+    <li>Simpler to configure for basic use cases</li>
+    <li>Ideal for internal development servers or testing environments</li>
+    <li>Reference repository: <a href="https://github.com/elastic/helm-charts">https://github.com/elastic/helm-charts</a></li>
+    <li>Implementation reference: <a href="https://github.com/somaz94/helm-chart-template/tree/main/k8s-service/monitoring/elk-stack">https://github.com/somaz94/helm-chart-template/tree/main/k8s-service/monitoring/elk-stack</a></li>
+  </ul>
+  
+  <p><strong>2️⃣ Using Latest Version (ECK Operator)</strong></p>
+  <ul>
+    <li>Uses the Elastic Cloud on Kubernetes (ECK) operator</li>
+    <li>More powerful and feature-rich</li>
+    <li>Better for production environments</li>
+    <li>Supports newer Elastic Stack features</li>
+    <li>Implementation guides:
+      <ul>
+        <li><a href="https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-operator">https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-operator</a></li>
+        <li><a href="https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html">https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html</a></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Choose Installation Method]
+      A --&gt; B[Archived Helm Charts]
+      A --&gt; C[ECK Operator]
+      
+      B --&gt; D[1. Install Elasticsearch]
+      D --&gt; E[2. Install Kibana]
+      E --&gt; F[3. Install Logstash]
+      F --&gt; G[4. Install Filebeat]
+      
+      C --&gt; H[1. Install ECK Operator]
+      H --&gt; I[2. Create Elasticsearch CR]
+      I --&gt; J[3. Create Kibana CR]
+      J --&gt; K[4. Create Beats/Logstash CRs]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#ffcc80,stroke:#333,stroke-width:1px
+      style D fill:#64b5f6,stroke:#333,stroke-width:1px
+      style E fill:#64b5f6,stroke:#333,stroke-width:1px
+      style F fill:#64b5f6,stroke:#333,stroke-width:1px
+      style G fill:#64b5f6,stroke:#333,stroke-width:1px
+      style H fill:#ce93d8,stroke:#333,stroke-width:1px
+      style I fill:#ce93d8,stroke:#333,stroke-width:1px
+      style J fill:#ce93d8,stroke:#333,stroke-width:1px
+      style K fill:#ce93d8,stroke:#333,stroke-width:1px
+  </div>
+</div>
 
 <p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1736932058/elk_login_gmm9yl.png" alt="elk_login" /></p>
 
-<p><br /></p>
+<h3 id="installation-order">Installation Order</h3>
 
-<hr />
+<p>For proper dependency management, install components in this sequence:</p>
 
-<h4 id="installation-order">Installation Order</h4>
-<p>Install components in the following order:</p>
 <ol>
-  <li>Elasticsearch</li>
-  <li>Kibana</li>
-  <li>Logstash</li>
-  <li>Filebeat</li>
+  <li><strong>Elasticsearch</strong> - The core data store that must be available first</li>
+  <li><strong>Kibana</strong> - Requires Elasticsearch to be running</li>
+  <li><strong>Logstash</strong> - Needs to connect to Elasticsearch</li>
+  <li><strong>Filebeat</strong> - Can ship logs to either Logstash or Elasticsearch</li>
 </ol>
 
-<h4 id="configuration-examples">Configuration Examples</h4>
+<h3 id="configuration-examples">Configuration Examples</h3>
 
-<p>filebeat-values.yaml</p>
+<div class="info-box info-box-default">
+  <strong>Configuration Files</strong>
+  <p>Here are key configuration examples for the ELK Stack components:</p>
+</div>
+
+<h4 id="filebeat-configuration">Filebeat Configuration</h4>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">filebeatConfig</span><span class="pi">:</span>
   <span class="na">filebeat.yml</span><span class="pi">:</span> <span class="pi">|</span>
     <span class="s">filebeat.inputs:</span>
@@ -381,7 +636,8 @@ January 17, 2025
               <span class="s">}</span>
 </code></pre></div></div>
 
-<p><code class="language-plaintext highlighter-rouge">logstash-values.yaml</code></p>
+<h4 id="logstash-configuration">Logstash Configuration</h4>
+
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">logstashPipeline</span><span class="pi">:</span>
   <span class="na">logstash.conf</span><span class="pi">:</span> <span class="pi">|</span>
     <span class="s">input {</span>
@@ -411,8 +667,14 @@ January 17, 2025
     <span class="s">}</span>
 </code></pre></div></div>
 
-<h4 id="verification">Verification</h4>
-<p>After setup, verify the installation:</p>
+<h3 id="verification-process">Verification Process</h3>
+
+<div class="info-box info-box-default">
+  <strong>Post-Installation Verification</strong>
+  <p>After setting up the ELK Stack, verify the installation with these steps:</p>
+</div>
+
+<h4 id="check-elasticsearch-indices">Check Elasticsearch Indices</h4>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check Elasticsearch indices</span>
 curl <span class="nt">-k</span> <span class="nt">-u</span> <span class="s2">"elastic:password"</span> <span class="s2">"http://elasticsearch.somaz.link/_cat/indices?v"</span>
@@ -423,57 +685,127 @@ yellow open   .kibana-event-log-8.5.1-000002 0YwfADLHQryK5bYlBpBm5Q   1   1     
 yellow open   dev-somaz-app                  9zip7n0sdfasdfsadfsdfsdaf 1   1      24161            0      6.5mb          6.5mb
 </code></pre></div></div>
 
-<p>And if Kibana creates a discover that fits the index, it can be checked as follows.
-<img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1736932284/elk_discover_uhvrkc.png" alt="elk_discover" /></p>
+<h4 id="verify-in-kibana">Verify in Kibana</h4>
+
+<p>Create a Discover view in Kibana that matches your index pattern to visualize the collected logs:</p>
+
+<p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1736932284/elk_discover_uhvrkc.png" alt="elk_discover" /></p>
 
 <p><br /></p>
 
 <hr />
 
-<h4 id="️-important-considerations">⚠️ Important Considerations</h4>
+<h2 id="important-considerations">Important Considerations</h2>
 
-<ol>
-  <li><strong>Elasticsearch Health Status</strong>
-    <ul>
-      <li>Single node clusters can operate safely with yellow status</li>
-      <li>Green status is recommended for multiple node clusters
-        <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># multiple node cluster will be green</span>
-<span class="na">clusterHealthCheckParams</span><span class="pi">:</span> <span class="s2">"</span><span class="s">wait_for_status=green&amp;timeout=1s"</span>
-<span class="c1"># single node cluster will be yellow</span>
-<span class="na">clusterHealthCheckParams</span><span class="pi">:</span> <span class="s2">"</span><span class="s">wait_for_status=yellow&amp;timeout=1s"</span>
-</code></pre></div>        </div>
-      </li>
-    </ul>
-  </li>
-  <li><strong>Kibana-Elasticsearch Dependency</strong>
-    <ul>
-      <li>Kibana is completely dependent on Elasticsearch</li>
-      <li>Kibana becomes inaccessible if Elasticsearch fails</li>
-    </ul>
-  </li>
-  <li><strong>Filebeat Load Management</strong>
-    <ul>
-      <li>Full log collection can cause significant load</li>
-      <li>Recommend collecting logs from specific pods only</li>
-    </ul>
-  </li>
-  <li><strong>Operator Installation</strong>
-    <ul>
-      <li>When using the operator, carefully analyze eck-operator-crds</li>
-      <li>Follow official documentation for operator setup</li>
-    </ul>
-  </li>
-</ol>
+<div class="info-box info-box-success-not-check">
+  <strong>⚠️ Key Operational Guidelines</strong>
+  <p>Be mindful of these critical factors when operating an ELK Stack:</p>
+</div>
+
+<h3 id="elasticsearch-health-status">Elasticsearch Health Status</h3>
+
+<div class="info-box info-box-default">
+  <p>The cluster health status is a key indicator of your Elasticsearch setup:</p>
+  <ul>
+    <li><strong>Green</strong>: All primary and replica shards are allocated</li>
+    <li><strong>Yellow</strong>: All primary shards are allocated, but some replica shards are not</li>
+    <li><strong>Red</strong>: Some primary shards are not allocated, data is unavailable</li>
+  </ul>
+  
+  <p>Configuration examples:</p>
+  <pre>
+  # For multiple node clusters (aim for green status)
+  clusterHealthCheckParams: "wait_for_status=green&amp;timeout=1s"
+  
+  # For single node clusters (yellow is normal and acceptable)
+  clusterHealthCheckParams: "wait_for_status=yellow&amp;timeout=1s"
+  </pre>
+  
+  <p>Note: Single node clusters will typically have yellow status because replicas cannot be allocated on the same node as their primary shards.</p>
+</div>
+
+<h3 id="component-dependencies">Component Dependencies</h3>
+
+<div class="info-box info-box-default">
+  <strong>Kibana-Elasticsearch Dependency</strong>
+  <ul>
+    <li>Kibana is completely dependent on Elasticsearch for all operations</li>
+    <li>If Elasticsearch becomes unavailable, Kibana will be inaccessible</li>
+    <li>Always monitor Elasticsearch health to ensure Kibana availability</li>
+    <li>Consider implementing Elasticsearch high availability for critical environments</li>
+  </ul>
+</div>
+
+<h3 id="filebeat-performance-management">Filebeat Performance Management</h3>
+
+<div class="info-box info-box-default">
+  <strong>Filebeat Load Considerations</strong>
+  <ul>
+    <li>Full log collection across all pods can cause significant system load</li>
+    <li>Use selective log collection by targeting specific pods when possible</li>
+    <li>Configure appropriate harvester limits to avoid excessive resource consumption</li>
+    <li>Implement log rotation policies to prevent excessive disk usage</li>
+    <li>Consider using multiline settings for application logs that span multiple lines</li>
+  </ul>
+</div>
+
+<h3 id="operator-installation-best-practices">Operator Installation Best Practices</h3>
+
+<div class="info-box info-box-default">
+  <strong>ECK Operator Guidance</strong>
+  <ul>
+    <li>Carefully analyze the eck-operator-crds before installation</li>
+    <li>Follow the official documentation for proper operator setup</li>
+    <li>Be aware of RBAC requirements for the operator</li>
+    <li>Consider namespace isolation for multi-tenant environments</li>
+    <li>Plan upgrade paths carefully as operator upgrades may impact existing resources</li>
+  </ul>
+</div>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="reference">Reference</h2>
+<h2 id="key-points">Key Points</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>💡 ELK Stack Implementation Summary</strong>
+  <ul>
+    <li>
+      <strong>Core Components</strong><br />
+      - Elasticsearch: Distributed search and analytics engine<br />
+      - Logstash: Data collection and processing pipeline<br />
+      - Kibana: Data visualization and exploration platform<br />
+      - Filebeat: Lightweight log shipper
+    </li>
+    <li>
+      <strong>Installation Approaches</strong><br />
+      - Archived Helm Charts: Simpler for development environments<br />
+      - ECK Operator: More powerful for production deployments<br />
+      - Follow proper component installation order
+    </li>
+    <li>
+      <strong>Operational Considerations</strong><br />
+      - Monitor Elasticsearch health status<br />
+      - Manage Filebeat load to prevent performance issues<br />
+      - Understand component dependencies<br />
+      - Implement proper security measures
+    </li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
 <ul>
   <li><a href="https://github.com/elastic/helm-charts">Elastic Helm Charts</a></li>
   <li><a href="https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html">ECK Operator Guide</a></li>
   <li><a href="https://www.elastic.co/guide/index.html">Elastic Stack Documentation</a></li>
+  <li><a href="https://www.elastic.co/guide/en/beats/filebeat/current/index.html">Filebeat Documentation</a></li>
+  <li><a href="https://www.elastic.co/guide/en/logstash/current/index.html">Logstash Documentation</a></li>
+  <li><a href="https://www.elastic.co/guide/en/kibana/current/index.html">Kibana Documentation</a></li>
 </ul>
 
 
@@ -488,6 +820,15 @@ yellow open   dev-somaz-app                  9zip7n0sdfasdfsadfsdfsdaf 1   1    
                     <ul>
                         
                         
+                        
+                            <li>
+                                <a href="/category/cs/os-cache-disk/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1744340260/os-cache-disk_jwhgck.png">
+                                    
+                                    <h3>OS Cache and Disk I/O - MySQL and Redis Performance Analysis</h3>
+                                </a>
+                            </li>
                         
                             <li>
                                 <a href="/category/network/ssh-tunneling/">
@@ -507,15 +848,6 @@ yellow open   dev-somaz-app                  9zip7n0sdfasdfsadfsdfsdaf 1   1    
                                 </a>
                             </li>
                         
-                            <li>
-                                <a href="/category/network/cdn/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1740040649/cdn_m4mnj5.png">
-                                    
-                                    <h3>What is CDN? (Content Delivery Network)</h3>
-                                </a>
-                            </li>
-                        
                     </ul>
                 </aside>
             
@@ -524,7 +856,7 @@ yellow open   dev-somaz-app                  9zip7n0sdfasdfsadfsdfsdaf 1   1    
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="3">
+            <div class="time-bar" data-minutes="10">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -550,7 +882,7 @@ yellow open   dev-somaz-app                  9zip7n0sdfasdfsadfsdfsdaf 1   1    
                 <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737445540/xargs_w2mhg6.png">
             
         </div>
-        <h3 class="title">xargs Command with Examples</h3>
+        <h3 class="title">Understanding xargs - Powerful Command-Line Utility for Argument Processing</h3>
     </a>
 </div>
 
@@ -829,64 +1161,275 @@ yellow open   dev-somaz-app                  9zip7n0sdfasdfsadfsdfsdaf 1   1    
 
 
 
-Overview
-This guide explores the implementation of ELK Stack (Elasticsearch, Logstash, Kibana) for log collection, processing, and analysis.
-
 What is ELK Stack?
 
-  ELK Stack combines three main components: Elasticsearch, Logstash, and Kibana. Recently, EFK Stack (with Fluentd) has also become popular as a lighter alternative.
+
+The ELK Stack is a powerful log management and analytics solution that combines three open-source tools: Elasticsearch for search and analytics, Logstash for data processing, and Kibana for visualization. Together, they provide a comprehensive platform for collecting, processing, storing, and visualizing data from diverse sources, enabling efficient monitoring, troubleshooting, and insights extraction.
+
+
+Overview of Components
+
+
+  Core Components
+  The ELK Stack consists of three primary components, each serving a distinct purpose in the log management pipeline:
+  
+  
+    Elasticsearch: A distributed, RESTful search and analytics engine capable of storing and searching vast volumes of data quickly
+    Logstash: A server-side data processing pipeline that ingests data from multiple sources, transforms it, and sends it to Elasticsearch
+    Kibana: A visualization layer that provides charts, graphs, and dashboards for exploring, visualizing, and analyzing data stored in Elasticsearch
+  
+  
+  Additional components often used with the ELK Stack:
+  
+    Beats: Lightweight data shippers that send data from edge machines to Logstash or Elasticsearch
+    Filebeat: Specifically designed for forwarding and centralizing log data
+    Metricbeat: Collects metrics from system and services
+  
+  
+  The term &quot;Elastic Stack&quot; is now often used to refer to the expanded ecosystem that includes Beats and other extensions.
 
 
 
 
 
-Architecture(ELK Stack)
 
-Log Pipeline:
+Architecture
 
-
-
-Metric Pipeline:
+Log Pipeline
 
 
+  
+    graph LR
+      A[Log Sources] --&amp;gt; B[Filebeat]
+      B --&amp;gt; C[Logstash]
+      C --&amp;gt; D[Elasticsearch]
+      D --&amp;gt; E[Kibana]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+  
 
-APM Pipeline:
+
+Metric Pipeline
+
+
+  
+    graph LR
+      A[Metric Sources] --&amp;gt; B[Metricbeat]
+      B --&amp;gt; D[Elasticsearch]
+      D --&amp;gt; E[Kibana]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+  
+
+
+APM Pipeline
+
+
+  
+    graph LR
+      A[Application] --&amp;gt; B[APM Agent]
+      B --&amp;gt; C[APM Server]
+      C --&amp;gt; D[Elasticsearch]
+      D --&amp;gt; E[Kibana]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+  
+
+
+EFK Stack Log Pipeline
+The EFK Stack replaces Logstash with Fluentd for a lighter, more resource-efficient implementation:
+
+
+  
+    graph LR
+      A[Log Sources] --&amp;gt; B[Filebeat]
+      B --&amp;gt; C[Fluentd]
+      C --&amp;gt; D[Elasticsearch]
+      D --&amp;gt; E[Kibana]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#64b5f6,stroke:#333,stroke-width:1px
+      style D fill:#ffcc80,stroke:#333,stroke-width:1px
+      style E fill:#ce93d8,stroke:#333,stroke-width:1px
+  
 
 
 
-EFK Stack Log Pipeline:
 
 
 
-
-
-🧩 Key Components
+Key Components in Detail
 
 Elasticsearch
 
-  Search engine for storing and searching log data
-  RESTful engine for distributed search and analytics
+
+  
+    
+      Aspect
+      Description
+    
+    
+      Purpose
+      Distributed search and analytics engine for storing, searching, and analyzing large volumes of data
+    
+    
+      Architecture
+      RESTful, distributed, horizontally scalable with support for clustering
+    
+    
+      Data Storage
+      Document-oriented database that stores complex data structures as JSON documents
+    
+    
+      Indexing
+      Uses inverted indices for fast full-text search capabilities
+    
+    
+      Scalability
+      Scales horizontally by adding more nodes to the cluster
+    
+    
+      Key Features
+      
+        - Near real-time search
+        - Distributed architecture for high availability
+        - Multi-tenancy capabilities
+        - Full-text search with powerful query DSL
+        - Aggregations for data analysis
+      
+    
+  
 
 
 Logstash
 
-  Data processing pipeline for log collection and transformation
-  Supports various input sources and output destinations
-  Data filtering and transformation capabilities
+
+  
+    
+      Aspect
+      Description
+    
+    
+      Purpose
+      Data collection and processing pipeline that ingests data from multiple sources, transforms it, and sends it to Elasticsearch
+    
+    
+      Architecture
+      Three-stage pipeline: inputs → filters → outputs
+    
+    
+      Inputs
+      Supports various input sources: logs, metrics, web applications, data stores, and AWS services
+    
+    
+      Filters
+      Powerful processing capabilities for parsing, transforming, and enriching data
+    
+    
+      Outputs
+      Can route data to multiple destinations, including Elasticsearch, files, and external services
+    
+    
+      Key Features
+      
+        - Extensive plugin ecosystem
+        - Grok pattern matching for unstructured data parsing
+        - Data enrichment capabilities
+        - Conditional processing logic
+        - Buffer management for handling load spikes
+      
+    
+  
 
 
 Kibana
 
-  Data visualization and analysis tool
-  Dashboard creation and management
-  Log search and analysis interface
+
+  
+    
+      Aspect
+      Description
+    
+    
+      Purpose
+      Data visualization and exploration tool for Elasticsearch data
+    
+    
+      Architecture
+      Browser-based interface that communicates directly with Elasticsearch
+    
+    
+      Visualizations
+      Wide range of visualization types: charts, graphs, tables, maps, and more
+    
+    
+      Dashboards
+      Combines multiple visualizations into comprehensive dashboards
+    
+    
+      Search
+      Powerful search interface for exploring and filtering data in Elasticsearch
+    
+    
+      Key Features
+      
+        - Discover interface for log exploration
+        - Dashboard creation and sharing
+        - Canvas for creating custom presentations
+        - Machine Learning capabilities
+        - Lens for drag-and-drop visualizations
+      
+    
+  
 
 
 Filebeat
 
-  Log file collector
-  Lightweight log shipping agent
-  Minimal server resource usage
+
+  
+    
+      Aspect
+      Description
+    
+    
+      Purpose
+      Lightweight log shipper for forwarding and centralizing log data
+    
+    
+      Architecture
+      Agent-based, installed on servers to collect and forward log files
+    
+    
+      Resource Usage
+      Minimal CPU and memory footprint compared to Logstash
+    
+    
+      Reliability
+      Guarantees at-least-once delivery with internal queuing and backpressure handling
+    
+    
+      Key Features
+      
+        - Handles log rotation and truncation
+        - Maintains file state to resume after restarts
+        - Supports various input types and formats
+        - Built-in modules for common log formats
+        - Can send directly to Elasticsearch or via Logstash
+      
+    
+  
 
 
 
@@ -895,49 +1438,93 @@ Filebeat
 
 Implementation Guide
 
-Installation Overview
-We used the Helm Chart that was archived on May 16, 2023, and installed it in Single Mode for our internal development server.
+
+This section provides a step-by-step guide for implementing the ELK Stack in a Kubernetes environment using Helm charts, with configurations optimized for efficient log collection and analysis.
+
 
 Installation Methods
 
-1️⃣ Using Archived Helm Charts
 
-Reference repository
+  Two Implementation Approaches
+  The ELK Stack can be deployed in Kubernetes using either of these methods:
+  
+  1️⃣ Using Archived Helm Charts
+  
+    Uses the Elastic Helm Charts repository that was archived on May 16, 2023
+    Simpler to configure for basic use cases
+    Ideal for internal development servers or testing environments
+    Reference repository: https://github.com/elastic/helm-charts
+    Implementation reference: https://github.com/somaz94/helm-chart-template/tree/main/k8s-service/monitoring/elk-stack
+  
+  
+  2️⃣ Using Latest Version (ECK Operator)
+  
+    Uses the Elastic Cloud on Kubernetes (ECK) operator
+    More powerful and feature-rich
+    Better for production environments
+    Supports newer Elastic Stack features
+    Implementation guides:
+      
+        https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-operator
+        https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html
+      
+    
+  
 
-  https://github.com/elastic/helm-charts
 
 
-Implementation reference
-
-  https://github.com/somaz94/helm-chart-template/tree/main/k8s-service/monitoring/elk-stack
-
-
-2️⃣ Using Latest Version (ECK Operator)
-
-For the latest version, use the ECK operator:
-
-  https://github.com/elastic/cloud-on-k8s/tree/main/deploy/eck-operator
-  https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-install-helm.html
-
-
-
-
+  
+    graph TD
+      A[Choose Installation Method]
+      A --&amp;gt; B[Archived Helm Charts]
+      A --&amp;gt; C[ECK Operator]
+      
+      B --&amp;gt; D[1. Install Elasticsearch]
+      D --&amp;gt; E[2. Install Kibana]
+      E --&amp;gt; F[3. Install Logstash]
+      F --&amp;gt; G[4. Install Filebeat]
+      
+      C --&amp;gt; H[1. Install ECK Operator]
+      H --&amp;gt; I[2. Create Elasticsearch CR]
+      I --&amp;gt; J[3. Create Kibana CR]
+      J --&amp;gt; K[4. Create Beats/Logstash CRs]
+      
+      style A fill:#f5f5f5,stroke:#333,stroke-width:1px
+      style B fill:#a5d6a7,stroke:#333,stroke-width:1px
+      style C fill:#ffcc80,stroke:#333,stroke-width:1px
+      style D fill:#64b5f6,stroke:#333,stroke-width:1px
+      style E fill:#64b5f6,stroke:#333,stroke-width:1px
+      style F fill:#64b5f6,stroke:#333,stroke-width:1px
+      style G fill:#64b5f6,stroke:#333,stroke-width:1px
+      style H fill:#ce93d8,stroke:#333,stroke-width:1px
+      style I fill:#ce93d8,stroke:#333,stroke-width:1px
+      style J fill:#ce93d8,stroke:#333,stroke-width:1px
+      style K fill:#ce93d8,stroke:#333,stroke-width:1px
+  
 
 
 
 
 Installation Order
-Install components in the following order:
 
-  Elasticsearch
-  Kibana
-  Logstash
-  Filebeat
+For proper dependency management, install components in this sequence:
+
+
+  Elasticsearch - The core data store that must be available first
+  Kibana - Requires Elasticsearch to be running
+  Logstash - Needs to connect to Elasticsearch
+  Filebeat - Can ship logs to either Logstash or Elasticsearch
 
 
 Configuration Examples
 
-filebeat-values.yaml
+
+  Configuration Files
+  Here are key configuration examples for the ELK Stack components:
+
+
+Filebeat Configuration
+
 filebeatConfig:
   filebeat.yml: |
     filebeat.inputs:
@@ -970,7 +1557,8 @@ filebeatConfig:
               }
 
 
-logstash-values.yaml
+Logstash Configuration
+
 logstashPipeline:
   logstash.conf: |
     input {
@@ -1000,8 +1588,14 @@ logstashPipeline:
     }
 
 
-Verification
-After setup, verify the installation:
+Verification Process
+
+
+  Post-Installation Verification
+  After setting up the ELK Stack, verify the installation with these steps:
+
+
+Check Elasticsearch Indices
 
 # Check Elasticsearch indices
 curl -k -u &quot;elastic:password&quot; &quot;http://elasticsearch.somaz.link/_cat/indices?v&quot;
@@ -1012,60 +1606,130 @@ yellow open   .kibana-event-log-8.5.1-000002 0YwfADLHQryK5bYlBpBm5Q   1   1     
 yellow open   dev-somaz-app                  9zip7n0sdfasdfsadfsdfsdaf 1   1      24161            0      6.5mb          6.5mb
 
 
-And if Kibana creates a discover that fits the index, it can be checked as follows.
+Verify in Kibana
+
+Create a Discover view in Kibana that matches your index pattern to visualize the collected logs:
 
 
 
 
 
 
-⚠️ Important Considerations
+
+Important Considerations
 
 
-  Elasticsearch Health Status
-    
-      Single node clusters can operate safely with yellow status
-      Green status is recommended for multiple node clusters
-        # multiple node cluster will be green
-clusterHealthCheckParams: &quot;wait_for_status=green&amp;amp;timeout=1s&quot;
-# single node cluster will be yellow
-clusterHealthCheckParams: &quot;wait_for_status=yellow&amp;amp;timeout=1s&quot;
-        
-      
-    
+  ⚠️ Key Operational Guidelines
+  Be mindful of these critical factors when operating an ELK Stack:
+
+
+Elasticsearch Health Status
+
+
+  The cluster health status is a key indicator of your Elasticsearch setup:
   
+    Green: All primary and replica shards are allocated
+    Yellow: All primary shards are allocated, but some replica shards are not
+    Red: Some primary shards are not allocated, data is unavailable
+  
+  
+  Configuration examples:
+  
+  # For multiple node clusters (aim for green status)
+  clusterHealthCheckParams: &quot;wait_for_status=green&amp;amp;timeout=1s&quot;
+  
+  # For single node clusters (yellow is normal and acceptable)
+  clusterHealthCheckParams: &quot;wait_for_status=yellow&amp;amp;timeout=1s&quot;
+  
+  
+  Note: Single node clusters will typically have yellow status because replicas cannot be allocated on the same node as their primary shards.
+
+
+Component Dependencies
+
+
   Kibana-Elasticsearch Dependency
-    
-      Kibana is completely dependent on Elasticsearch
-      Kibana becomes inaccessible if Elasticsearch fails
-    
   
-  Filebeat Load Management
-    
-      Full log collection can cause significant load
-      Recommend collecting logs from specific pods only
-    
-  
-  Operator Installation
-    
-      When using the operator, carefully analyze eck-operator-crds
-      Follow official documentation for operator setup
-    
+    Kibana is completely dependent on Elasticsearch for all operations
+    If Elasticsearch becomes unavailable, Kibana will be inaccessible
+    Always monitor Elasticsearch health to ensure Kibana availability
+    Consider implementing Elasticsearch high availability for critical environments
   
 
 
+Filebeat Performance Management
+
+
+  Filebeat Load Considerations
+  
+    Full log collection across all pods can cause significant system load
+    Use selective log collection by targeting specific pods when possible
+    Configure appropriate harvester limits to avoid excessive resource consumption
+    Implement log rotation policies to prevent excessive disk usage
+    Consider using multiline settings for application logs that span multiple lines
+  
+
+
+Operator Installation Best Practices
+
+
+  ECK Operator Guidance
+  
+    Carefully analyze the eck-operator-crds before installation
+    Follow the official documentation for proper operator setup
+    Be aware of RBAC requirements for the operator
+    Consider namespace isolation for multi-tenant environments
+    Plan upgrade paths carefully as operator upgrades may impact existing resources
+  
 
 
 
 
-Reference
+
+
+Key Points
+
+
+  💡 ELK Stack Implementation Summary
+  
+    
+      Core Components
+      - Elasticsearch: Distributed search and analytics engine
+      - Logstash: Data collection and processing pipeline
+      - Kibana: Data visualization and exploration platform
+      - Filebeat: Lightweight log shipper
+    
+    
+      Installation Approaches
+      - Archived Helm Charts: Simpler for development environments
+      - ECK Operator: More powerful for production deployments
+      - Follow proper component installation order
+    
+    
+      Operational Considerations
+      - Monitor Elasticsearch health status
+      - Manage Filebeat load to prevent performance issues
+      - Understand component dependencies
+      - Implement proper security measures
+    
+  
+
+
+
+
+
+
+References
 
   Elastic Helm Charts
   ECK Operator Guide
   Elastic Stack Documentation
+  Filebeat Documentation
+  Logstash Documentation
+  Kibana Documentation
 
 ",
-            "wordcount": "716",
+            "wordcount": "1938",
             "inLanguage": "en",
             "dateCreated": "2025-01-17/",
             "datePublished": "2025-01-17/",
