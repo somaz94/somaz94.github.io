@@ -220,7 +220,7 @@ January 25, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>10 min to read</span>
+                    <span>17 min to read</span>
                 </p>
                 <h1 class="post-title">Installing and Configuring HashiCorp Vault on Kubernetes</h1>
                 <p class="post-subtitle">A step-by-step guide to deploying Vault on Kind cluster</p>
@@ -240,16 +240,52 @@ January 25, 2025
 
 <hr />
 
-<h2 id="overview">Overview</h2>
+<h2 id="understanding-hashicorp-vault-on-kubernetes">Understanding HashiCorp Vault on Kubernetes</h2>
 
-<p>Following our previous post about Vault concepts, we’ll now explore how to install and configure Vault on a Kubernetes cluster using Kind. We’ll cover the complete setup process, including initialization, unsealing, and basic configuration.</p>
+<div class="info-box info-box-modern">
+HashiCorp Vault is a secrets management tool that provides a secure way to store and access sensitive data. Deploying Vault on Kubernetes combines the power of a leading secrets management solution with the flexibility of container orchestration, enabling dynamic secrets delivery to applications in a cloud-native environment.
+</div>
 
 <p><br /></p>
 
-<h3 id="prerequisites">Prerequisites</h3>
+<h3 id="prerequisites-and-environment-setup">Prerequisites and Environment Setup</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Before You Begin</strong>
+  <p>To successfully complete this guide, you'll need:</p>
+  <ul>
+    <li><strong>Kind</strong>: A tool for running Kubernetes clusters locally using Docker containers</li>
+    <li><strong>kubectl</strong>: The Kubernetes command-line tool</li>
+    <li><strong>Helm</strong>: The package manager for Kubernetes</li>
+    <li><strong>jq</strong>: A lightweight command-line JSON processor</li>
+  </ul>
+  <p>Make sure all these tools are installed on your system before proceeding.</p>
+</div>
 
 <h4 id="setting-up-kind-cluster">Setting up Kind Cluster</h4>
-<p>Create a Kind cluster with port forwarding for Vault (30000):</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Component</th>
+      <th style="width: 70%;">Purpose</th>
+    </tr>
+    <tr>
+      <td><strong>Control Plane</strong></td>
+      <td>Hosts the Kubernetes API server and manages the cluster state</td>
+    </tr>
+    <tr>
+      <td><strong>Worker Nodes (2)</strong></td>
+      <td>Run application workloads and provide compute resources</td>
+    </tr>
+    <tr>
+      <td><strong>Port Forwarding</strong></td>
+      <td>Exposes Vault UI on port 30000 for external access</td>
+    </tr>
+  </table>
+</div>
+
+<p>Create a Kind cluster with port forwarding for Vault UI access:</p>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># cluster-3nodes.yaml</span>
 <span class="na">kind</span><span class="pi">:</span> <span class="s">Cluster</span>
@@ -274,43 +310,108 @@ kubectl get nodes
 
 <p><br /></p>
 
-<h3 id="-vault-initialization-concepts">🔐 Vault Initialization Concepts</h3>
+<h3 id="vault-architecture-and-concepts">Vault Architecture and Concepts</h3>
 
-<blockquote>
-  <p>Before installation, it’s important to understand Vault’s initialization process. <br /><br />In an HA environment with Raft storage backend, initialization generates two critical pieces:</p>
-</blockquote>
+<div class="info-box info-box-modern">
+Before installation, it's important to understand Vault's initialization process and how it manages secrets. A properly configured Vault deployment follows security best practices, including initialization, unsealing, and authentication.
+</div>
 
-<h4 id="1-unseal-keys">1. Unseal Keys</h4>
-<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
-  </span><span class="nl">"unseal_keys_b64"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
-    </span><span class="s2">"xxxxx"</span><span class="w">
-  </span><span class="p">],</span><span class="w">
-  </span><span class="nl">"unseal_shares"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"unseal_threshold"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></code></pre></div></div>
-<ul>
-  <li>Used to unlock Vault</li>
-  <li>Can be split into multiple shares</li>
-  <li>Required for unsealing after restarts</li>
-</ul>
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Vault Deployment] --&gt; B[Installation]
+      A --&gt; C[Initialization]
+      A --&gt; D[Unsealing]
+      A --&gt; E[Configuration]
 
-<h4 id="2-root-token">2. Root Token</h4>
-<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
-  </span><span class="nl">"root_token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"hvs.xxxx"</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></code></pre></div></div>
-<ul>
-  <li>Master access key</li>
-  <li>Provides full access to Vault</li>
-  <li>Should be securely stored</li>
-</ul>
+      B --&gt; B1[Helm Repository]
+      B --&gt; B2[HA Setup]
+      B --&gt; B3[Storage Backend]
+
+      C --&gt; C1[Unseal Keys]
+      C --&gt; C2[Root Token]
+
+      D --&gt; D1[Raft Join]
+      D --&gt; D2[Unseal Process]
+
+      E --&gt; E1[Secret Engines]
+      E --&gt; E2[Auth Methods]
+      E --&gt; E3[Policies]
+
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  </div>
+</div>
+
+<h4 id="vault-initialization-process">Vault Initialization Process</h4>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Critical Security Components</strong>
+  <p>Vault initialization generates two critical security elements:</p>
+  <ul>
+    <li><strong>Unseal Keys</strong>: Used to unlock Vault's encrypted data</li>
+    <li><strong>Root Token</strong>: Provides initial administrative access</li>
+  </ul>
+  <p>In production environments, these should be securely distributed among trusted operators. For this guide, we use a simplified setup with a single unseal key.</p>
+</div>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Component</th>
+      <th style="width: 35%;">Description</th>
+      <th style="width: 40%;">Security Implications</th>
+    </tr>
+    <tr>
+      <td><strong>Unseal Keys</strong></td>
+      <td>
+        <ul>
+          <li>Base64-encoded keys used for unsealing</li>
+          <li>Can be split into multiple shares (Shamir's Secret Sharing)</li>
+          <li>Required number (threshold) needed to unseal</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Protects data at rest encryption key</li>
+          <li>Loss of keys means permanent data loss</li>
+          <li>Compromise of threshold keys compromises all secrets</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Root Token</strong></td>
+      <td>
+        <ul>
+          <li>Initial super-admin token</li>
+          <li>Format: "hvs.xxxx"</li>
+          <li>Has unrestricted access to all paths</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Should be revoked after creating restricted admin users</li>
+          <li>Compromise grants complete access to Vault</li>
+          <li>Should be securely stored if needed for recovery</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
 
 <p><br /></p>
 
-<h3 id="-installing-vault">📦 Installing Vault</h3>
+<h3 id="installing-vault-on-kubernetes">Installing Vault on Kubernetes</h3>
 
-<h4 id="1-add-helm-repository">1. Add Helm Repository</h4>
+<div class="info-box info-box-modern">
+We'll install Vault using Helm, configuring it with high availability (HA) and Raft storage backend for resilience. This deployment creates a three-node Vault cluster to provide redundancy and fault tolerance.
+</div>
+
+<h4 id="adding-the-hashicorp-helm-repository">Adding the HashiCorp Helm Repository</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add HashiCorp helm repo</span>
 helm repo add hashicorp https://helm.releases.hashicorp.com
 helm repo update
@@ -319,16 +420,25 @@ helm repo update
 helm repo list
 </code></pre></div></div>
 
-<h4 id="2-install-vault">2. Install Vault</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install with HA configuration</span>
-helm <span class="nb">install </span>vault hashicorp/vault <span class="se">\</span>
-    <span class="nt">--set</span><span class="o">=</span><span class="s1">'server.ha.enabled=true'</span> <span class="se">\</span>
-    <span class="nt">--set</span><span class="o">=</span><span class="s1">'server.ha.raft.enabled=true'</span> <span class="se">\</span>
-    <span class="nt">--namespace</span> vault <span class="se">\</span>
-    <span class="nt">--create-namespace</span>
-</code></pre></div></div>
+<h4 id="installing-vault-with-ha-configuration">Installing Vault with HA Configuration</h4>
 
-<h4 id="3-verify-installation">3. Verify Installation</h4>
+<script src="https://gist.github.com/somaz94/5e5d9d2fda06665aead713f9199145d6.js"></script>
+
+<p><br /></p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>High Availability Configuration</strong>
+  <p>This installation uses the following key configurations:</p>
+  <ul>
+    <li><strong>HA Mode</strong>: Enables redundant Vault servers for failover</li>
+    <li><strong>Raft Storage</strong>: Integrated storage backend that replicates data across nodes</li>
+    <li><strong>Dedicated Namespace</strong>: Isolates Vault resources for better security and management</li>
+  </ul>
+  <p>After installation, all Vault pods will start in an uninitialized, sealed state.</p>
+</div>
+
+<h4 id="verifying-the-installation">Verifying the Installation</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl get pods <span class="nt">-n</span> vault
 NAME                                    READY   STATUS    RESTARTS   AGE
 vault-0                                 0/1     Running   0          82s
@@ -337,25 +447,63 @@ vault-2                                 0/1     Running   0          82s
 vault-agent-injector-7f7f68d457-kqlsh   1/1     Running   0          83s
 </code></pre></div></div>
 
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[Client] --&gt; B[Vault Agent Injector]
+      B --&gt; C[Vault Server Cluster]
+      C --- D[vault-0]
+      C --- E[vault-1]
+      C --- F[vault-2]
+      
+      D --- G[Raft Storage]
+      E --- G
+      F --- G
+      
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ffcc80
+      style F stroke:#333,stroke-width:1px,fill:#ffcc80
+      style G stroke:#333,stroke-width:1px,fill:#ce93d8
+  </div>
+</div>
+
 <p><br /></p>
 
 <h3 id="initializing-and-unsealing-vault">Initializing and Unsealing Vault</h3>
 
-<h4 id="1-initialize-vault">1. Initialize Vault</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Initialize with single key share</span>
-kubectl <span class="nb">exec </span>vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault operator init <span class="se">\</span>
-    <span class="nt">-key-shares</span><span class="o">=</span>1 <span class="se">\</span>
-    <span class="nt">-key-threshold</span><span class="o">=</span>1 <span class="se">\</span>
-    <span class="nt">-format</span><span class="o">=</span>json <span class="o">&gt;</span> cluster-keys.json
-</code></pre></div></div>
+<div class="info-box info-box-modern">
+Initialization is a one-time process that generates the encryption keys used to protect data. After initialization, Vault starts in a sealed state and must be unsealed before it can process requests.
+</div>
 
-<h4 id="2-capture-keys">2. Capture Keys</h4>
+<h4 id="initializing-the-vault-cluster">Initializing the Vault Cluster</h4>
+
+<script src="https://gist.github.com/somaz94/7212a13efcdb620c885f775bf5bcf875.js"></script>
+
+<p><br /></p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>⚠️ Production Security Note</strong>
+  <p>For this demo, we're using a single unseal key (key-shares=1, key-threshold=1). In production environments, you should:</p>
+  <ul>
+    <li>Use multiple key shares (typically 5)</li>
+    <li>Set a threshold requiring multiple operators (typically 3)</li>
+    <li>Distribute keys to different trusted individuals</li>
+    <li>Consider using auto-unseal with a cloud KMS for automated operations</li>
+  </ul>
+</div>
+
+<h4 id="extracting-the-keys-for-unsealing">Extracting the Keys for Unsealing</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Store unseal key and root token</span>
 <span class="nv">VAULT_UNSEAL_KEY</span><span class="o">=</span><span class="si">$(</span><span class="nb">cat </span>cluster-keys.json | jq <span class="nt">-r</span> <span class="s2">".unseal_keys_b64[]"</span><span class="si">)</span>
 <span class="nv">CLUSTER_ROOT_TOKEN</span><span class="o">=</span><span class="si">$(</span><span class="nb">cat </span>cluster-keys.json | jq <span class="nt">-r</span> <span class="s2">".root_token"</span><span class="si">)</span>
 </code></pre></div></div>
 
-<h4 id="3-unseal-vault-nodes">3. Unseal Vault Nodes</h4>
+<h4 id="unsealing-the-vault-cluster">Unsealing the Vault Cluster</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Unseal vault-0</span>
 kubectl <span class="nb">exec </span>vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault operator unseal <span class="nv">$VAULT_UNSEAL_KEY</span>
 
@@ -368,37 +516,88 @@ kubectl <span class="nb">exec </span>vault-2 <span class="nt">-n</span> vault <s
 kubectl <span class="nb">exec </span>vault-2 <span class="nt">-n</span> vault <span class="nt">--</span> vault operator unseal <span class="nv">$VAULT_UNSEAL_KEY</span>
 </code></pre></div></div>
 
+<div class="info-box info-box-default-not-check">
+  <strong>Understanding the Unsealing Process</strong>
+  <p>The unsealing process involves:</p>
+  <ul>
+    <li><strong>Raft Join</strong>: Secondary nodes connect to the primary node</li>
+    <li><strong>Unsealing</strong>: Providing the unseal key to decrypt the master key</li>
+    <li><strong>Cluster Formation</strong>: Nodes form a cohesive HA cluster</li>
+  </ul>
+  <p>After unsealing, Vault can process requests and serve secrets.</p>
+</div>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant Admin
+      participant Vault0 as Vault-0
+      participant Vault1 as Vault-1
+      participant Vault2 as Vault-2
+      
+      Admin-&gt;&gt;Vault0: Initialize
+      Vault0--&gt;&gt;Admin: Unseal Keys + Root Token
+      
+      Admin-&gt;&gt;Vault0: Unseal
+      Vault0--&gt;&gt;Vault0: Decrypt Master Key
+      
+      Admin-&gt;&gt;Vault1: Join Raft (vault-0)
+      Admin-&gt;&gt;Vault1: Unseal
+      Vault1--&gt;&gt;Vault1: Decrypt Master Key
+      
+      Admin-&gt;&gt;Vault2: Join Raft (vault-0)
+      Admin-&gt;&gt;Vault2: Unseal
+      Vault2--&gt;&gt;Vault2: Decrypt Master Key
+      
+      Vault0-&gt;&gt;Vault1: Replicate Data
+      Vault0-&gt;&gt;Vault2: Replicate Data
+  </div>
+</div>
+
 <p><br /></p>
 
-<h3 id="accessing-vault-ui">Accessing Vault UI</h3>
+<h3 id="accessing-the-vault-ui">Accessing the Vault UI</h3>
 
-<h4 id="1-configure-nodeport-service">1. Configure NodePort Service</h4>
+<div class="info-box info-box-modern">
+Vault provides a web-based UI for managing secrets, policies, and authentication methods. We'll configure a NodePort service to make the UI accessible from outside the cluster.
+</div>
+
+<h4 id="configuring-nodeport-service">Configuring NodePort Service</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl patch svc vault <span class="nt">-n</span> vault <span class="nt">-p</span> <span class="s1">'{"spec": {"type": "NodePort", "ports": [{"nodePort": 30000, "port": 8200, "protocol": "TCP"}]}}'</span>
 </code></pre></div></div>
 
-<h4 id="2-access-ui">2. Access UI</h4>
+<h4 id="accessing-ui-with-root-token">Accessing UI with Root Token</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">CLUSTER_ROOT_TOKEN</span><span class="o">=</span><span class="si">$(</span><span class="nb">cat </span>cluster-keys.json | jq <span class="nt">-r</span> <span class="s2">".root_token"</span><span class="si">)</span>
 
 <span class="nb">echo</span> <span class="nv">$CLUSTER_ROOT_TOKEN</span>
 hvs.bOXica9b3vWqfBaiZWfASOC1
 </code></pre></div></div>
-<ul>
-  <li>Open browser: <code class="language-plaintext highlighter-rouge">http://&lt;node-ip&gt;:30000</code></li>
-  <li>Login using root token
-<img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737705692/vault-web-console_qbv90l.png" alt="Vault Web Console" style="width: 300%;" /></li>
-</ul>
 
-<p>create a user and access it with that user.</p>
+<div class="info-box info-box-default-not-check">
+  <strong>UI Access and Authentication</strong>
+  <p>The Vault UI is now accessible at:</p>
+  <ul>
+    <li><strong>URL</strong>: http://localhost:30000 (if running locally)</li>
+    <li><strong>Authentication</strong>: Use the root token for initial login</li>
+    <li><strong>Security Note</strong>: In production, configure TLS and restrict access</li>
+  </ul>
+</div>
+
+<p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737705692/vault-web-console_qbv90l.png" alt="Vault Web Console" style="width: 100%;" /></p>
+
+<p><br /></p>
+
+<h4 id="creating-a-regular-user">Creating a Regular User</h4>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl <span class="nb">exec</span> <span class="nt">--stdin</span><span class="o">=</span><span class="nb">true</span> <span class="nt">--tty</span><span class="o">=</span><span class="nb">true </span>vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> /bin/sh
 
-<span class="c"># activate userpass</span>
+<span class="c"># activate userpass authentication</span>
 vault auth <span class="nb">enable </span>userpass
 
-<span class="c"># create user example</span>
-vault write auth/userpass/users/&lt;username&gt; <span class="nv">password</span><span class="o">=</span>&lt;password&gt; <span class="nv">policies</span><span class="o">=</span>&lt;policies&gt;
-
 <span class="c"># create user</span>
-vault write auth/userpass/users/somaz <span class="nv">password</span><span class="o">=</span>&lt;password&gt;
+vault write auth/userpass/users/somaz <span class="nv">password</span><span class="o">=</span>&lt;password&gt; <span class="nv">policies</span><span class="o">=</span>&lt;policies&gt;
 
 <span class="c"># login with user</span>
 vault login <span class="nt">-method</span><span class="o">=</span>userpass <span class="nv">username</span><span class="o">=</span>somaz <span class="nv">password</span><span class="o">=</span>&lt;password&gt;
@@ -406,23 +605,81 @@ vault login <span class="nt">-method</span><span class="o">=</span>userpass <spa
 
 <p><br /></p>
 
-<h3 id="basic-secret-management">Basic Secret Management</h3>
+<h3 id="configuring-vault-secret-engines">Configuring Vault Secret Engines</h3>
 
-<h4 id="1-enable-kv-secrets-engine">1. Enable KV Secrets Engine</h4>
-<ul>
-  <li>The kv-v2 engine is a key-vaule engine. It is usually used to use ID/PW or all key-value values.</li>
-</ul>
+<div class="info-box info-box-modern">
+Secret engines are components within Vault that store, generate, or encrypt data. Vault treats these engines as a virtual filesystem, where each engine is mounted at a specific path and provides access to secrets through that path.
+</div>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Enable KV version 2</span>
-kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault secrets <span class="nb">enable</span> <span class="nt">-path</span><span class="o">=</span>secret kv-v2
+<h4 id="enabling-the-kv-secrets-engine">Enabling the KV Secrets Engine</h4>
 
-<span class="c"># Create a secret</span>
-kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault kv put secret/devdb/config <span class="se">\</span>
-    <span class="nv">username</span><span class="o">=</span><span class="s1">'somaz'</span> <span class="se">\</span>
-    <span class="nv">password</span><span class="o">=</span><span class="s1">'somazpassword'</span>
-</code></pre></div></div>
+<div class="info-box info-box-default-not-check">
+  <strong>Understanding KV Secrets Engine</strong>
+  <p>The Key-Value (KV) secrets engine is one of the most commonly used engines in Vault:</p>
+  <ul>
+    <li><strong>Version 2 (KV-v2)</strong>: Provides versioning, metadata, and soft delete capabilities</li>
+    <li><strong>Path-Based Access</strong>: Secrets are organized in a hierarchical structure</li>
+    <li><strong>Use Cases</strong>: Ideal for storing configuration data, API keys, passwords, and other static secrets</li>
+  </ul>
+  <p>We'll mount the KV-v2 engine at the "secret/" path, which is a common convention.</p>
+</div>
 
-<h4 id="2-create-policies">2. Create Policies</h4>
+<p><br /></p>
+
+<script src="https://gist.github.com/somaz94/48921e5eb52e33014751da6db8289384.js"></script>
+
+<p><br /></p>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Vault Secret Engines] --&gt; B[KV v2]
+      A --&gt; C[Database]
+      A --&gt; D[PKI]
+      A --&gt; E[Transit]
+      
+      B --&gt; B1[secret/devdb/config]
+      B --&gt; B2[Other KV Secrets]
+      
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="implementing-access-control-with-policies">Implementing Access Control with Policies</h3>
+
+<div class="info-box info-box-modern">
+Policies in Vault define the capabilities (permissions) a token has for accessing specific paths. They follow the principle of least privilege, allowing precise control over who can access what within Vault.
+</div>
+
+<h4 id="creating-a-read-only-policy">Creating a Read-Only Policy</h4>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Policy Element</th>
+      <th style="width: 70%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Path</strong></td>
+      <td>Specifies the secret path this policy applies to</td>
+    </tr>
+    <tr>
+      <td><strong>Capabilities</strong></td>
+      <td>Defines allowed operations (create, read, update, delete, list, deny)</td>
+    </tr>
+    <tr>
+      <td><strong>Scope</strong></td>
+      <td>Limited to the specific path and does not extend to sub-paths unless specified</td>
+    </tr>
+  </table>
+</div>
+
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create read-only policy</span>
 kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault policy write devdb - <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
 path "secret/data/devdb/config" {
@@ -431,224 +688,370 @@ path "secret/data/devdb/config" {
 </span><span class="no">EOF
 </span></code></pre></div></div>
 
-<h4 id="3-configure-kubernetes-authentication">3. Configure Kubernetes Authentication</h4>
-<blockquote>
-  <p>The initial root token is a user who is authorized to perform all tasks on all paths.<br /><br /> Web applications only need the ability to read secrets defined in a single path.<br /><br /> This application must authenticate and receive tokens with limited access.</p>
-</blockquote>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Enable Kubernetes auth</span>
-kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault auth <span class="nb">enable </span>kubernetes
-
-<span class="c"># Configure Kubernetes auth</span>
-kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault write auth/kubernetes/config <span class="se">\</span>
-    <span class="nv">kubernetes_host</span><span class="o">=</span><span class="s2">"https://</span><span class="nv">$KUBERNETES_PORT_443_TCP_ADDR</span><span class="s2">:443"</span>
-</code></pre></div></div>
-<ul>
-  <li>Vault allows service tokens from all clients in the Kubernetes cluster.</li>
-  <li>During authentication, Vault queries the token review Kubernetes endpoint to verify that the service account token is valid.</li>
-  <li>Configure the Kubernetes authentication method to use the location of the Kubernetes API.</li>
-  <li>When querying the token review API, it automatically uses Pod’s own ID to authenticate it to Kubernetes.</li>
-</ul>
-
-<h4 id="4-create-a-policy-that-enables-vault-devdb-example">4. Create a policy that enables Vault devdb (example)</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># create policy</span>
-vault policy write devdb - <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
-path "secret/data/devdb/config" {
-  capabilities = ["read"]
-}
-</span><span class="no">EOF
-
-</span><span class="c"># list policy</span>
-vault policy list
-default
-devdb
-root
-
-<span class="c"># read policy</span>
-vault policy <span class="nb">read </span>devdb
-path <span class="s2">"secret/data/devdb/config"</span> <span class="o">{</span>
-  capabilities <span class="o">=</span> <span class="o">[</span><span class="s2">"read"</span><span class="o">]</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<h4 id="5-creates-a-kubernetes-authentication-role">5. Creates a Kubernetes authentication role.</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vault write auth/kubernetes/role/db-app <span class="se">\\</span>
-        <span class="nv">bound_service_account_names</span><span class="o">=</span>somaz-app <span class="se">\\</span>
-        <span class="nv">bound_service_account_namespaces</span><span class="o">=</span>somaz <span class="se">\\</span>
-        <span class="nv">policies</span><span class="o">=</span>devdb <span class="se">\\</span>
-        <span class="nv">ttl</span><span class="o">=</span>24h
-
-<span class="c"># read role</span>
-vault <span class="nb">read </span>auth/kubernetes/role/db-app
-</code></pre></div></div>
+<div class="info-box info-box-warning-not-check">
+  <strong>Policy Best Practices</strong>
+  <p>When designing policies, consider these guidelines:</p>
+  <ul>
+    <li><strong>Least Privilege</strong>: Grant only the minimum permissions needed</li>
+    <li><strong>Path Specificity</strong>: Be as specific as possible with paths</li>
+    <li><strong>Policy Granularity</strong>: Create focused policies that can be combined</li>
+    <li><strong>Naming Conventions</strong>: Use clear, consistent naming patterns</li>
+  </ul>
+  <p>Well-designed policies are crucial for maintaining security while enabling accessibility.</p>
+</div>
 
 <p><br /></p>
 
-<h3 id="deploy-web-application">Deploy Web Application</h3>
+<h3 id="integrating-with-kubernetes-authentication">Integrating with Kubernetes Authentication</h3>
 
-<h4 id="1-create-a-kubernetes-service-account-and-namespace">1. Create a Kubernetes service account and Namespace</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># create namespace</span>
+<div class="info-box info-box-modern">
+Vault's Kubernetes authentication method enables pods to authenticate with Vault using their Kubernetes service account tokens. This allows for a secure, automated authentication flow without managing additional credentials.
+</div>
+
+<h4 id="configuring-kubernetes-authentication">Configuring Kubernetes Authentication</h4>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant Pod as Application Pod
+      participant SA as Service Account
+      participant K8s as Kubernetes API
+      participant Vault
+      
+      Pod-&gt;&gt;Vault: Auth with SA token
+      Vault-&gt;&gt;K8s: Validate token
+      K8s--&gt;&gt;Vault: Token valid, confirm SA/NS
+      Vault-&gt;&gt;Vault: Check role bindings
+      Vault--&gt;&gt;Pod: Issue limited Vault token
+  </div>
+</div>
+
+<p><br /></p>
+
+<script src="https://gist.github.com/somaz94/1ddf6b767bcc310f427f1d3d674c7dd2.js"></script>
+
+<p><br /></p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Understanding the Authentication Flow</strong>
+  <p>The Kubernetes authentication process works as follows:</p>
+  <ul>
+    <li><strong>Token Verification</strong>: Vault validates the service account token with Kubernetes API</li>
+    <li><strong>Role Binding</strong>: Vault checks if the service account is allowed to assume the requested role</li>
+    <li><strong>Policy Application</strong>: If authorized, Vault issues a token with policies attached to that role</li>
+    <li><strong>Automatic Renewal</strong>: Vault Agent can automatically renew the token before expiration</li>
+  </ul>
+  <p>This mechanism provides secure, identity-based access without sharing long-lived credentials.</p>
+</div>
+
+<h4 id="creating-authentication-roles">Creating Authentication Roles</h4>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Parameter</th>
+      <th style="width: 70%;">Purpose</th>
+    </tr>
+    <tr>
+      <td><strong>bound_service_account_names</strong></td>
+      <td>Specifies which service accounts can authenticate</td>
+    </tr>
+    <tr>
+      <td><strong>bound_service_account_namespaces</strong></td>
+      <td>Limits authentication to pods in specific namespaces</td>
+    </tr>
+    <tr>
+      <td><strong>policies</strong></td>
+      <td>Policies to attach to tokens issued by this role</td>
+    </tr>
+    <tr>
+      <td><strong>ttl</strong></td>
+      <td>Maximum lifetime of tokens issued by this role</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<script src="https://gist.github.com/somaz94/882f9a73132420a9d0c79bbf516f0578.js"></script>
+
+<p><br /></p>
+
+<h3 id="deploying-applications-with-vault-integration">Deploying Applications with Vault Integration</h3>
+
+<div class="info-box info-box-modern">
+The Vault Agent Injector automatically injects secrets into pods at runtime. This approach eliminates the need to store secrets in ConfigMaps, environment variables, or the application code itself.
+</div>
+
+<h4 id="preparing-the-kubernetes-environment">Preparing the Kubernetes Environment</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create namespace</span>
 kubectl create namespace somaz
 
-<span class="c"># create service account</span>
+<span class="c"># Create service account</span>
 kubectl create serviceaccount somaz-app <span class="nt">-n</span> somaz
 </code></pre></div></div>
 
-<h4 id="2-deploy-the-web-application">2. Deploy the Web Application</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># create yaml file</span>
-<span class="nb">cat</span> <span class="o">&gt;</span> devsomazapp.yaml <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: devsomazapp
-  labels:
-    app: devsomazapp
-  annotations:
-    vault.hashicorp.com/agent-inject: "true"
-    vault.hashicorp.com/role: "db-app"
-    vault.hashicorp.com/agent-inject-secret-credentials.txt: "secret/data/devdb/config"
-spec:
-  serviceAccountName: somaz-app
-  containers:
-    - name: devsomazapp
-      image: jweissig/app:0.0.1
-</span><span class="no">EOF
+<h4 id="deploying-a-pod-with-vault-integration">Deploying a Pod with Vault Integration</h4>
 
-</span><span class="c"># create pod</span>
-k apply <span class="nt">-f</span> devsomazapp.yaml <span class="nt">-n</span> somaz
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Pod Creation] --&gt; B[Admission Controller]
+      B --&gt; C[Vault Agent Injector]
+      C --&gt; D[Pod Mutation]
+      D --&gt; E[Add Init Container]
+      D --&gt; F[Add Agent Container]
+      E --&gt; G[Fetch Secrets]
+      G --&gt; H[Write to Volume]
+      F --&gt; I[Auto Renew Tokens]
+      
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+      style F stroke:#333,stroke-width:1px,fill:#ce93d8
+      style G stroke:#333,stroke-width:1px,fill:#81c784
+      style H stroke:#333,stroke-width:1px,fill:#81c784
+      style I stroke:#333,stroke-width:1px,fill:#81c784
+  </div>
+</div>
 
-<span class="c"># read secret</span>
-k <span class="nb">exec</span> <span class="nt">--stdin</span><span class="o">=</span><span class="nb">true</span> <span class="nt">--tty</span><span class="o">=</span><span class="nb">true </span>devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz <span class="nt">--</span> <span class="nb">cat</span> /vault/secrets/credentials.txt
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Application Pod with Vault annotations</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">devsomazapp</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">devsomazapp</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">vault.hashicorp.com/agent-inject</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+    <span class="na">vault.hashicorp.com/role</span><span class="pi">:</span> <span class="s2">"</span><span class="s">db-app"</span>
+    <span class="na">vault.hashicorp.com/agent-inject-secret-credentials.txt</span><span class="pi">:</span> <span class="s2">"</span><span class="s">secret/data/devdb/config"</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">serviceAccountName</span><span class="pi">:</span> <span class="s">somaz-app</span>
+  <span class="na">containers</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">devsomazapp</span>
+      <span class="na">image</span><span class="pi">:</span> <span class="s">jweissig/app:0.0.1</span>
 </code></pre></div></div>
 
-<h4 id="3-form-of-an-annotation">3. Form of an Annotation</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vault.hashicorp.com/agent-inject-secret-&lt;unique-name&gt;: /path/to/secret
+<div class="info-box info-box-default-not-check">
+  <strong>Understanding Vault Annotations</strong>
+  <p>The annotations in the pod specification control how Vault Agent injects secrets:</p>
+  <ul>
+    <li><strong>agent-inject</strong>: Enables the injection feature</li>
+    <li><strong>role</strong>: Specifies which Vault role to authenticate as</li>
+    <li><strong>agent-inject-secret-[filename]</strong>: Defines which secret to inject and where</li>
+    <li><strong>agent-inject-template-[filename]</strong> (optional): Provides a template for formatting the secret</li>
+  </ul>
+  <p>When the pod is created, the Vault Agent Injector automatically adds the necessary containers to fetch and manage secrets.</p>
+</div>
+
+<h4 id="deploying-and-verifying">Deploying and Verifying</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Apply the pod definition</span>
+kubectl apply <span class="nt">-f</span> devsomazapp.yaml <span class="nt">-n</span> somaz
+
+<span class="c"># Check the secret has been injected</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz <span class="nt">--</span> <span class="nb">cat</span> /vault/secrets/credentials.txt
 </code></pre></div></div>
 
 <p><br /></p>
 
-<p>If more than one Secret is designated as a policy, it should be set as follows.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vault.hashicorp.com/agent-inject-secret-devdb: secret/data/devdb/config
-vault.hashicorp.com/agent-inject-secret-qadb: secret/data/qadb/config
-vault.hashicorp.com/role: <span class="s1">'devdb-app'</span>
-</code></pre></div></div>
+<h3 id="working-with-multiple-secrets">Working with Multiple Secrets</h3>
+
+<div class="info-box info-box-modern">
+Applications often need access to multiple secrets. Vault makes it easy to inject multiple secrets into the same pod, each with its own path and access controls.
+</div>
+
+<h4 id="adding-another-secret">Adding Another Secret</h4>
+
+<script src="https://gist.github.com/somaz94/e780facb6ac2b6e59b5d3d9cbe3b9786.js"></script>
 
 <p><br /></p>
 
-<p>Test Right Now.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># connect pod</span>
-kubectl <span class="nb">exec</span> <span class="nt">--stdin</span><span class="o">=</span><span class="nb">true</span> <span class="nt">--tty</span><span class="o">=</span><span class="nb">true </span>vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> /bin/sh
+<h4 id="updating-the-pod-definition">Updating the Pod Definition</h4>
 
-<span class="c"># create secret</span>
-vault kv put secret/qadb/config <span class="nv">username</span><span class="o">=</span><span class="s1">'qasomaz'</span> <span class="nv">password</span><span class="o">=</span><span class="s1">'&lt;password&gt;'</span>
-
-<span class="c"># create policy</span>
-vault policy write qadb - <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
-path "secret/data/qadb/config" {
-  capabilities = ["read"]
-}
-</span><span class="no">EOF
-
-</span><span class="c"># create role</span>
-vault write auth/kubernetes/role/db-app <span class="se">\\</span>
-        <span class="nv">bound_service_account_names</span><span class="o">=</span>somaz-app <span class="se">\\</span>
-        <span class="nv">bound_service_account_namespaces</span><span class="o">=</span>somaz <span class="se">\\</span>
-        <span class="nv">policies</span><span class="o">=</span>devdb,qadb <span class="se">\\</span>
-        <span class="nv">ttl</span><span class="o">=</span>24h
-
-<span class="c"># read role</span>
-vault <span class="nb">read </span>auth/kubernetes/role/db-app
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Updated pod with multiple secrets</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">devsomazapp</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">devsomazapp</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">vault.hashicorp.com/agent-inject</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+    <span class="na">vault.hashicorp.com/role</span><span class="pi">:</span> <span class="s2">"</span><span class="s">db-app"</span>
+    <span class="na">vault.hashicorp.com/agent-inject-secret-devdb.txt</span><span class="pi">:</span> <span class="s2">"</span><span class="s">secret/data/devdb/config"</span>
+    <span class="na">vault.hashicorp.com/agent-inject-secret-qadb.txt</span><span class="pi">:</span> <span class="s2">"</span><span class="s">secret/data/qadb/config"</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">serviceAccountName</span><span class="pi">:</span> <span class="s">somaz-app</span>
+  <span class="na">containers</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">devsomazapp</span>
+      <span class="na">image</span><span class="pi">:</span> <span class="s">jweissig/app:0.0.1</span>
 </code></pre></div></div>
 
-<h4 id="4-change-the-web-application-yaml-file-and-verify">4. Change the Web Application yaml file and verify</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># create yaml file</span>
-<span class="nb">cat</span> <span class="o">&gt;</span> devsomazapp.yaml <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: devsomazapp
-  labels:
-    app: devsomazapp
-  annotations:
-    vault.hashicorp.com/agent-inject: "true"
-    vault.hashicorp.com/role: "db-app"
-    vault.hashicorp.com/agent-inject-secret-devdb.txt: "secret/data/devdb/config"
-    vault.hashicorp.com/agent-inject-secret-qadb.txt: "secret/data/qadb/config"
-spec:
-  serviceAccountName: somaz-app
-  containers:
-    - name: devsomazapp
-      image: jweissig/app:0.0.1
-</span><span class="no">EOF
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Secret Path</th>
+      <th style="width: 30%;">Mount Location</th>
+      <th style="width: 40%;">Content</th>
+    </tr>
+    <tr>
+      <td><strong>secret/data/devdb/config</strong></td>
+      <td>/vault/secrets/devdb.txt</td>
+      <td>Development database credentials</td>
+    </tr>
+    <tr>
+      <td><strong>secret/data/qadb/config</strong></td>
+      <td>/vault/secrets/qadb.txt</td>
+      <td>QA database credentials</td>
+    </tr>
+  </table>
+</div>
 
-</span><span class="c"># create pod</span>
-k apply <span class="nt">-f</span> devsomazapp.yaml <span class="nt">-n</span> somaz
+<h4 id="verifying-multiple-secrets">Verifying Multiple Secrets</h4>
 
-<span class="c"># restart pod</span>
-k delete po <span class="nt">-n</span> somaz devsomazapp
-k apply <span class="nt">-f</span> devsomazapp.yaml <span class="nt">-n</span> somaz
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Recreate the pod with updated annotations</span>
+kubectl delete pod devsomazapp <span class="nt">-n</span> somaz
+kubectl apply <span class="nt">-f</span> devsomazapp.yaml <span class="nt">-n</span> somaz
 
-<span class="c"># read secret</span>
-k <span class="nb">exec</span> <span class="nt">--stdin</span><span class="o">=</span><span class="nb">true</span> <span class="nt">--tty</span><span class="o">=</span><span class="nb">true </span>devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz <span class="nt">--</span> <span class="nb">ls</span> /vault/secrets/
+<span class="c"># Check for injected secrets</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz <span class="nt">--</span> <span class="nb">ls</span> /vault/secrets/
 devdb.txt  qadb.txt
 
-<span class="c"># read secret devdb</span>
-k <span class="nb">exec</span> <span class="nt">--stdin</span><span class="o">=</span><span class="nb">true</span> <span class="nt">--tty</span><span class="o">=</span><span class="nb">true </span>devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz <span class="nt">--</span> <span class="nb">cat</span> /vault/secrets/devdb.txt
-
-<span class="c"># read secret qadb</span>
-k <span class="nb">exec</span> <span class="nt">--stdin</span><span class="o">=</span><span class="nb">true</span> <span class="nt">--tty</span><span class="o">=</span><span class="nb">true </span>devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz <span class="nt">--</span> <span class="nb">cat</span> /vault/secrets/qadb.txt
+<span class="c"># View the content of each secret</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz <span class="nt">--</span> <span class="nb">cat</span> /vault/secrets/devdb.txt
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz <span class="nt">--</span> <span class="nb">cat</span> /vault/secrets/qadb.txt
 </code></pre></div></div>
 
 <p><br /></p>
 
-<p>Check the connection log.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>k logs devsomazapp <span class="nt">-c</span> devsomazapp <span class="nt">-n</span> somaz
-</code></pre></div></div>
+<h3 id="managing-user-permissions">Managing User Permissions</h3>
 
-<p><br /></p>
+<div class="info-box info-box-modern">
+Beyond service accounts, Vault also supports human users with different levels of access. Proper user management is critical for maintaining security while enabling administrative tasks.
+</div>
 
-<h3 id="setting-user-policy">Setting User Policy</h3>
+<h4 id="understanding-user-policies">Understanding User Policies</h4>
 
-<p>If you check the policy using Root Token on the web, you can see it all.
-<img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737706479/vault-web-root_lracgk.png" alt="Vault Web Root" style="width: 300%;" /></p>
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      A[Vault Policies] --&gt; B[Root]
+      A --&gt; C[Admin]
+      A --&gt; D[DevDB]
+      A --&gt; E[QADB]
+      
+      B --&gt; B1[All Paths]
+      C --&gt; C1[Limited Admin]
+      D --&gt; D1[Dev Secrets]
+      E --&gt; E1[QA Secrets]
+      
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  </div>
+</div>
 
-<p><br /></p>
+<div class="info-box info-box-warning-not-check">
+  <strong>Root Token Security</strong>
+  <p>The root token has unlimited access to all Vault resources. For security reasons:</p>
+  <ul>
+    <li><strong>Avoid Regular Use</strong>: Don't use the root token for daily operations</li>
+    <li><strong>Create Admin Users</strong>: Set up users with appropriate permissions</li>
+    <li><strong>Revoke After Setup</strong>: Consider revoking the root token after initial setup</li>
+    <li><strong>Regenerate When Needed</strong>: Root tokens can be recreated with unseal keys if needed</li>
+  </ul>
+  <p>Using properly scoped tokens reduces the risk of accidental or malicious damage.</p>
+</div>
 
-<p>I can’t see anything when I connect to the user called Somaz.
-<img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737706576/vault-web-somaz_ddgcos.png" alt="Vault Web Somaz" style="width: 300%;" /></p>
+<h4 id="creating-an-admin-policy">Creating an Admin Policy</h4>
 
-<p><br /></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Login with root token</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault login <span class="nv">$CLUSTER_ROOT_TOKEN</span>
 
-<p>Log in with the CLI to check.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vault login <span class="nt">-method</span><span class="o">=</span>userpass <span class="nv">username</span><span class="o">=</span>somaz <span class="nv">password</span><span class="o">=</span>&lt;password&gt;
-
-vault token lookup
-</code></pre></div></div>
-
-<p><br /></p>
-
-<p>Create and assign policies.</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># root로 로그인</span>
-vault login hvs.bOXica9b3vWqfBaiZWfASOC1
-
-<span class="c"># 정책 생성</span>
-vault policy write admin - <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
+<span class="c"># Create admin policy</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault policy write admin - <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh">
 path "*" {
   capabilities = ["create", "read", "update", "delete", "list", "sudo"]
 }
 </span><span class="no">EOF
 
-</span>vault write auth/userpass/users/somaz <span class="nv">policies</span><span class="o">=</span>devdb <span class="nv">policies</span><span class="o">=</span>admin
+</span><span class="c"># Assign admin policy to a user</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault write auth/userpass/users/somaz <span class="nv">policies</span><span class="o">=</span>admin
 
-vault <span class="nb">read </span>auth/userpass/users/somaz
+<span class="c"># Verify user policies</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> vault-0 <span class="nt">-n</span> vault <span class="nt">--</span> vault <span class="nb">read </span>auth/userpass/users/somaz
 </code></pre></div></div>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Policy Name</th>
+      <th style="width: 20%;">Scope</th>
+      <th style="width: 50%;">Typical User</th>
+    </tr>
+    <tr>
+      <td><strong>root</strong></td>
+      <td>Unlimited access</td>
+      <td>Initial setup only, emergency access</td>
+    </tr>
+    <tr>
+      <td><strong>admin</strong></td>
+      <td>Full system control</td>
+      <td>Vault administrators</td>
+    </tr>
+    <tr>
+      <td><strong>devdb</strong></td>
+      <td>Read dev secrets</td>
+      <td>Development applications</td>
+    </tr>
+    <tr>
+      <td><strong>qadb</strong></td>
+      <td>Read QA secrets</td>
+      <td>QA applications</td>
+    </tr>
+  </table>
+</div>
 
 <p><br /></p>
 
-<p>I can see it well. I gave you all the authority.
-<img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1737706725/vault-web-somaz-ok_xd8c5j.png" alt="Vault Web Somaz" style="width: 300%;" /></p>
+<h3 id="key-points-and-best-practices">Key Points and Best Practices</h3>
+
+<div class="info-box info-box-success-not-check">
+  <strong>💡 Vault Security Essentials</strong>
+  <ul>
+    <li>
+      <strong>Initialization and Unsealing</strong><br />
+      - Store unseal keys securely and separately<br />
+      - Consider using auto-unseal for production<br />
+      - Revoke the root token after initial configuration
+    </li>
+    <li>
+      <strong>Authentication and Authorization</strong><br />
+      - Use the Kubernetes auth method for applications<br />
+      - Implement fine-grained policies following least privilege<br />
+      - Prefer short-lived tokens with automatic renewal
+    </li>
+    <li>
+      <strong>Secret Injection</strong><br />
+      - Use the Vault Agent Injector for Kubernetes integration<br />
+      - Template secrets to match application requirements<br />
+      - Implement secret rotation for sensitive credentials
+    </li>
+    <li>
+      <strong>Operational Readiness</strong><br />
+      - Set up monitoring and alerting for Vault status<br />
+      - Configure regular backups of Vault data<br />
+      - Implement proper audit logging
+    </li>
+  </ul>
+</div>
 
 <p><br /></p>
 
@@ -660,6 +1063,8 @@ vault <span class="nb">read </span>auth/userpass/users/somaz
   <li><a href="https://github.com/hashicorp/vault-helm">Vault Helm Chart</a></li>
   <li><a href="https://developer.hashicorp.com/vault/tutorials/kubernetes/kubernetes-google-cloud-gke">Vault on GKE Guide</a></li>
   <li><a href="https://developer.hashicorp.com/vault/docs/concepts/policies">Vault Policy Documentation</a></li>
+  <li><a href="https://developer.hashicorp.com/vault/docs/platform/k8s/injector">Vault Agent Injector Documentation</a></li>
+  <li><a href="https://developer.hashicorp.com/vault/docs/auth">Vault Authentication Methods</a></li>
 </ul>
 
 
@@ -710,7 +1115,7 @@ vault <span class="nb">read </span>auth/userpass/users/somaz
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="10">
+            <div class="time-bar" data-minutes="17">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1015,16 +1420,52 @@ vault <span class="nb">read </span>auth/userpass/users/somaz
 
 
 
-Overview
-
-Following our previous post about Vault concepts, we’ll now explore how to install and configure Vault on a Kubernetes cluster using Kind. We’ll cover the complete setup process, including initialization, unsealing, and basic configuration.
+Understanding HashiCorp Vault on Kubernetes
 
 
+HashiCorp Vault is a secrets management tool that provides a secure way to store and access sensitive data. Deploying Vault on Kubernetes combines the power of a leading secrets management solution with the flexibility of container orchestration, enabling dynamic secrets delivery to applications in a cloud-native environment.
 
-Prerequisites
+
+
+
+Prerequisites and Environment Setup
+
+
+  Before You Begin
+  To successfully complete this guide, you&apos;ll need:
+  
+    Kind: A tool for running Kubernetes clusters locally using Docker containers
+    kubectl: The Kubernetes command-line tool
+    Helm: The package manager for Kubernetes
+    jq: A lightweight command-line JSON processor
+  
+  Make sure all these tools are installed on your system before proceeding.
+
 
 Setting up Kind Cluster
-Create a Kind cluster with port forwarding for Vault (30000):
+
+
+  
+    
+      Component
+      Purpose
+    
+    
+      Control Plane
+      Hosts the Kubernetes API server and manages the cluster state
+    
+    
+      Worker Nodes (2)
+      Run application workloads and provide compute resources
+    
+    
+      Port Forwarding
+      Exposes Vault UI on port 30000 for external access
+    
+  
+
+
+Create a Kind cluster with port forwarding for Vault UI access:
 
 # cluster-3nodes.yaml
 kind: Cluster
@@ -1049,43 +1490,108 @@ kubectl get nodes
 
 
 
-🔐 Vault Initialization Concepts
+Vault Architecture and Concepts
 
 
-  Before installation, it’s important to understand Vault’s initialization process. In an HA environment with Raft storage backend, initialization generates two critical pieces:
-
-
-1. Unseal Keys
-{
-  &quot;unseal_keys_b64&quot;: [
-    &quot;xxxxx&quot;
-  ],
-  &quot;unseal_shares&quot;: 1,
-  &quot;unseal_threshold&quot;: 1
-}
-
-
-  Used to unlock Vault
-  Can be split into multiple shares
-  Required for unsealing after restarts
-
-
-2. Root Token
-{
-  &quot;root_token&quot;: &quot;hvs.xxxx&quot;
-}
-
-
-  Master access key
-  Provides full access to Vault
-  Should be securely stored
+Before installation, it&apos;s important to understand Vault&apos;s initialization process and how it manages secrets. A properly configured Vault deployment follows security best practices, including initialization, unsealing, and authentication.
 
 
 
+  
+    graph TD
+      A[Vault Deployment] --&amp;gt; B[Installation]
+      A --&amp;gt; C[Initialization]
+      A --&amp;gt; D[Unsealing]
+      A --&amp;gt; E[Configuration]
 
-📦 Installing Vault
+      B --&amp;gt; B1[Helm Repository]
+      B --&amp;gt; B2[HA Setup]
+      B --&amp;gt; B3[Storage Backend]
 
-1. Add Helm Repository
+      C --&amp;gt; C1[Unseal Keys]
+      C --&amp;gt; C2[Root Token]
+
+      D --&amp;gt; D1[Raft Join]
+      D --&amp;gt; D2[Unseal Process]
+
+      E --&amp;gt; E1[Secret Engines]
+      E --&amp;gt; E2[Auth Methods]
+      E --&amp;gt; E3[Policies]
+
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  
+
+
+Vault Initialization Process
+
+
+  Critical Security Components
+  Vault initialization generates two critical security elements:
+  
+    Unseal Keys: Used to unlock Vault&apos;s encrypted data
+    Root Token: Provides initial administrative access
+  
+  In production environments, these should be securely distributed among trusted operators. For this guide, we use a simplified setup with a single unseal key.
+
+
+
+  
+    
+      Component
+      Description
+      Security Implications
+    
+    
+      Unseal Keys
+      
+        
+          Base64-encoded keys used for unsealing
+          Can be split into multiple shares (Shamir&apos;s Secret Sharing)
+          Required number (threshold) needed to unseal
+        
+      
+      
+        
+          Protects data at rest encryption key
+          Loss of keys means permanent data loss
+          Compromise of threshold keys compromises all secrets
+        
+      
+    
+    
+      Root Token
+      
+        
+          Initial super-admin token
+          Format: &quot;hvs.xxxx&quot;
+          Has unrestricted access to all paths
+        
+      
+      
+        
+          Should be revoked after creating restricted admin users
+          Compromise grants complete access to Vault
+          Should be securely stored if needed for recovery
+        
+      
+    
+  
+
+
+
+
+Installing Vault on Kubernetes
+
+
+We&apos;ll install Vault using Helm, configuring it with high availability (HA) and Raft storage backend for resilience. This deployment creates a three-node Vault cluster to provide redundancy and fault tolerance.
+
+
+Adding the HashiCorp Helm Repository
+
 # Add HashiCorp helm repo
 helm repo add hashicorp https://helm.releases.hashicorp.com
 helm repo update
@@ -1094,16 +1600,25 @@ helm repo update
 helm repo list
 
 
-2. Install Vault
-# Install with HA configuration
-helm install vault hashicorp/vault \
-    --set=&apos;server.ha.enabled=true&apos; \
-    --set=&apos;server.ha.raft.enabled=true&apos; \
-    --namespace vault \
-    --create-namespace
+Installing Vault with HA Configuration
 
 
-3. Verify Installation
+
+
+
+
+  High Availability Configuration
+  This installation uses the following key configurations:
+  
+    HA Mode: Enables redundant Vault servers for failover
+    Raft Storage: Integrated storage backend that replicates data across nodes
+    Dedicated Namespace: Isolates Vault resources for better security and management
+  
+  After installation, all Vault pods will start in an uninitialized, sealed state.
+
+
+Verifying the Installation
+
 kubectl get pods -n vault
 NAME                                    READY   STATUS    RESTARTS   AGE
 vault-0                                 0/1     Running   0          82s
@@ -1113,24 +1628,62 @@ vault-agent-injector-7f7f68d457-kqlsh   1/1     Running   0          83s
 
 
 
+  
+    graph LR
+      A[Client] --&amp;gt; B[Vault Agent Injector]
+      B --&amp;gt; C[Vault Server Cluster]
+      C --- D[vault-0]
+      C --- E[vault-1]
+      C --- F[vault-2]
+      
+      D --- G[Raft Storage]
+      E --- G
+      F --- G
+      
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ffcc80
+      style F stroke:#333,stroke-width:1px,fill:#ffcc80
+      style G stroke:#333,stroke-width:1px,fill:#ce93d8
+  
+
+
+
 
 Initializing and Unsealing Vault
 
-1. Initialize Vault
-# Initialize with single key share
-kubectl exec vault-0 -n vault -- vault operator init \
-    -key-shares=1 \
-    -key-threshold=1 \
-    -format=json &amp;gt; cluster-keys.json
+
+Initialization is a one-time process that generates the encryption keys used to protect data. After initialization, Vault starts in a sealed state and must be unsealed before it can process requests.
 
 
-2. Capture Keys
+Initializing the Vault Cluster
+
+
+
+
+
+
+  ⚠️ Production Security Note
+  For this demo, we&apos;re using a single unseal key (key-shares=1, key-threshold=1). In production environments, you should:
+  
+    Use multiple key shares (typically 5)
+    Set a threshold requiring multiple operators (typically 3)
+    Distribute keys to different trusted individuals
+    Consider using auto-unseal with a cloud KMS for automated operations
+  
+
+
+Extracting the Keys for Unsealing
+
 # Store unseal key and root token
 VAULT_UNSEAL_KEY=$(cat cluster-keys.json | jq -r &quot;.unseal_keys_b64[]&quot;)
 CLUSTER_ROOT_TOKEN=$(cat cluster-keys.json | jq -r &quot;.root_token&quot;)
 
 
-3. Unseal Vault Nodes
+Unsealing the Vault Cluster
+
 # Unseal vault-0
 kubectl exec vault-0 -n vault -- vault operator unseal $VAULT_UNSEAL_KEY
 
@@ -1144,36 +1697,87 @@ kubectl exec vault-2 -n vault -- vault operator unseal $VAULT_UNSEAL_KEY
 
 
 
+  Understanding the Unsealing Process
+  The unsealing process involves:
+  
+    Raft Join: Secondary nodes connect to the primary node
+    Unsealing: Providing the unseal key to decrypt the master key
+    Cluster Formation: Nodes form a cohesive HA cluster
+  
+  After unsealing, Vault can process requests and serve secrets.
 
-Accessing Vault UI
 
-1. Configure NodePort Service
+
+  
+    sequenceDiagram
+      participant Admin
+      participant Vault0 as Vault-0
+      participant Vault1 as Vault-1
+      participant Vault2 as Vault-2
+      
+      Admin-&amp;gt;&amp;gt;Vault0: Initialize
+      Vault0--&amp;gt;&amp;gt;Admin: Unseal Keys + Root Token
+      
+      Admin-&amp;gt;&amp;gt;Vault0: Unseal
+      Vault0--&amp;gt;&amp;gt;Vault0: Decrypt Master Key
+      
+      Admin-&amp;gt;&amp;gt;Vault1: Join Raft (vault-0)
+      Admin-&amp;gt;&amp;gt;Vault1: Unseal
+      Vault1--&amp;gt;&amp;gt;Vault1: Decrypt Master Key
+      
+      Admin-&amp;gt;&amp;gt;Vault2: Join Raft (vault-0)
+      Admin-&amp;gt;&amp;gt;Vault2: Unseal
+      Vault2--&amp;gt;&amp;gt;Vault2: Decrypt Master Key
+      
+      Vault0-&amp;gt;&amp;gt;Vault1: Replicate Data
+      Vault0-&amp;gt;&amp;gt;Vault2: Replicate Data
+  
+
+
+
+
+Accessing the Vault UI
+
+
+Vault provides a web-based UI for managing secrets, policies, and authentication methods. We&apos;ll configure a NodePort service to make the UI accessible from outside the cluster.
+
+
+Configuring NodePort Service
+
 kubectl patch svc vault -n vault -p &apos;{&quot;spec&quot;: {&quot;type&quot;: &quot;NodePort&quot;, &quot;ports&quot;: [{&quot;nodePort&quot;: 30000, &quot;port&quot;: 8200, &quot;protocol&quot;: &quot;TCP&quot;}]}}&apos;
 
 
-2. Access UI
+Accessing UI with Root Token
+
 CLUSTER_ROOT_TOKEN=$(cat cluster-keys.json | jq -r &quot;.root_token&quot;)
 
 echo $CLUSTER_ROOT_TOKEN
 hvs.bOXica9b3vWqfBaiZWfASOC1
 
 
-  Open browser: http://&amp;lt;node-ip&amp;gt;:30000
-  Login using root token
+
+  UI Access and Authentication
+  The Vault UI is now accessible at:
+  
+    URL: http://localhost:30000 (if running locally)
+    Authentication: Use the root token for initial login
+    Security Note: In production, configure TLS and restrict access
+  
 
 
 
-create a user and access it with that user.
+
+
+
+Creating a Regular User
+
 kubectl exec --stdin=true --tty=true vault-0 -n vault -- /bin/sh
 
-# activate userpass
+# activate userpass authentication
 vault auth enable userpass
 
-# create user example
-vault write auth/userpass/users/&amp;lt;username&amp;gt; password=&amp;lt;password&amp;gt; policies=&amp;lt;policies&amp;gt;
-
 # create user
-vault write auth/userpass/users/somaz password=&amp;lt;password&amp;gt;
+vault write auth/userpass/users/somaz password=&amp;lt;password&amp;gt; policies=&amp;lt;policies&amp;gt;
 
 # login with user
 vault login -method=userpass username=somaz password=&amp;lt;password&amp;gt;
@@ -1181,23 +1785,81 @@ vault login -method=userpass username=somaz password=&amp;lt;password&amp;gt;
 
 
 
-Basic Secret Management
-
-1. Enable KV Secrets Engine
-
-  The kv-v2 engine is a key-vaule engine. It is usually used to use ID/PW or all key-value values.
+Configuring Vault Secret Engines
 
 
-# Enable KV version 2
-kubectl exec -it vault-0 -n vault -- vault secrets enable -path=secret kv-v2
-
-# Create a secret
-kubectl exec -it vault-0 -n vault -- vault kv put secret/devdb/config \
-    username=&apos;somaz&apos; \
-    password=&apos;somazpassword&apos;
+Secret engines are components within Vault that store, generate, or encrypt data. Vault treats these engines as a virtual filesystem, where each engine is mounted at a specific path and provides access to secrets through that path.
 
 
-2. Create Policies
+Enabling the KV Secrets Engine
+
+
+  Understanding KV Secrets Engine
+  The Key-Value (KV) secrets engine is one of the most commonly used engines in Vault:
+  
+    Version 2 (KV-v2): Provides versioning, metadata, and soft delete capabilities
+    Path-Based Access: Secrets are organized in a hierarchical structure
+    Use Cases: Ideal for storing configuration data, API keys, passwords, and other static secrets
+  
+  We&apos;ll mount the KV-v2 engine at the &quot;secret/&quot; path, which is a common convention.
+
+
+
+
+
+
+
+
+
+  
+    graph TD
+      A[Vault Secret Engines] --&amp;gt; B[KV v2]
+      A --&amp;gt; C[Database]
+      A --&amp;gt; D[PKI]
+      A --&amp;gt; E[Transit]
+      
+      B --&amp;gt; B1[secret/devdb/config]
+      B --&amp;gt; B2[Other KV Secrets]
+      
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  
+
+
+
+
+Implementing Access Control with Policies
+
+
+Policies in Vault define the capabilities (permissions) a token has for accessing specific paths. They follow the principle of least privilege, allowing precise control over who can access what within Vault.
+
+
+Creating a Read-Only Policy
+
+
+  
+    
+      Policy Element
+      Description
+    
+    
+      Path
+      Specifies the secret path this policy applies to
+    
+    
+      Capabilities
+      Defines allowed operations (create, read, update, delete, list, deny)
+    
+    
+      Scope
+      Limited to the specific path and does not extend to sub-paths unless specified
+    
+  
+
+
 # Create read-only policy
 kubectl exec -it vault-0 -n vault -- vault policy write devdb - &amp;lt;&amp;lt;EOF
 path &quot;secret/data/devdb/config&quot; {
@@ -1206,73 +1868,137 @@ path &quot;secret/data/devdb/config&quot; {
 EOF
 
 
-3. Configure Kubernetes Authentication
 
-  The initial root token is a user who is authorized to perform all tasks on all paths. Web applications only need the ability to read secrets defined in a single path. This application must authenticate and receive tokens with limited access.
-
-
-# Enable Kubernetes auth
-kubectl exec -it vault-0 -n vault -- vault auth enable kubernetes
-
-# Configure Kubernetes auth
-kubectl exec -it vault-0 -n vault -- vault write auth/kubernetes/config \
-    kubernetes_host=&quot;https://$KUBERNETES_PORT_443_TCP_ADDR:443&quot;
-
-
-  Vault allows service tokens from all clients in the Kubernetes cluster.
-  During authentication, Vault queries the token review Kubernetes endpoint to verify that the service account token is valid.
-  Configure the Kubernetes authentication method to use the location of the Kubernetes API.
-  When querying the token review API, it automatically uses Pod’s own ID to authenticate it to Kubernetes.
-
-
-4. Create a policy that enables Vault devdb (example)
-# create policy
-vault policy write devdb - &amp;lt;&amp;lt;EOF
-path &quot;secret/data/devdb/config&quot; {
-  capabilities = [&quot;read&quot;]
-}
-EOF
-
-# list policy
-vault policy list
-default
-devdb
-root
-
-# read policy
-vault policy read devdb
-path &quot;secret/data/devdb/config&quot; {
-  capabilities = [&quot;read&quot;]
-}
-
-
-5. Creates a Kubernetes authentication role.
-vault write auth/kubernetes/role/db-app \\
-        bound_service_account_names=somaz-app \\
-        bound_service_account_namespaces=somaz \\
-        policies=devdb \\
-        ttl=24h
-
-# read role
-vault read auth/kubernetes/role/db-app
+  Policy Best Practices
+  When designing policies, consider these guidelines:
+  
+    Least Privilege: Grant only the minimum permissions needed
+    Path Specificity: Be as specific as possible with paths
+    Policy Granularity: Create focused policies that can be combined
+    Naming Conventions: Use clear, consistent naming patterns
+  
+  Well-designed policies are crucial for maintaining security while enabling accessibility.
 
 
 
 
-Deploy Web Application
+Integrating with Kubernetes Authentication
 
-1. Create a Kubernetes service account and Namespace
-# create namespace
+
+Vault&apos;s Kubernetes authentication method enables pods to authenticate with Vault using their Kubernetes service account tokens. This allows for a secure, automated authentication flow without managing additional credentials.
+
+
+Configuring Kubernetes Authentication
+
+
+  
+    sequenceDiagram
+      participant Pod as Application Pod
+      participant SA as Service Account
+      participant K8s as Kubernetes API
+      participant Vault
+      
+      Pod-&amp;gt;&amp;gt;Vault: Auth with SA token
+      Vault-&amp;gt;&amp;gt;K8s: Validate token
+      K8s--&amp;gt;&amp;gt;Vault: Token valid, confirm SA/NS
+      Vault-&amp;gt;&amp;gt;Vault: Check role bindings
+      Vault--&amp;gt;&amp;gt;Pod: Issue limited Vault token
+  
+
+
+
+
+
+
+
+
+
+  Understanding the Authentication Flow
+  The Kubernetes authentication process works as follows:
+  
+    Token Verification: Vault validates the service account token with Kubernetes API
+    Role Binding: Vault checks if the service account is allowed to assume the requested role
+    Policy Application: If authorized, Vault issues a token with policies attached to that role
+    Automatic Renewal: Vault Agent can automatically renew the token before expiration
+  
+  This mechanism provides secure, identity-based access without sharing long-lived credentials.
+
+
+Creating Authentication Roles
+
+
+  
+    
+      Parameter
+      Purpose
+    
+    
+      bound_service_account_names
+      Specifies which service accounts can authenticate
+    
+    
+      bound_service_account_namespaces
+      Limits authentication to pods in specific namespaces
+    
+    
+      policies
+      Policies to attach to tokens issued by this role
+    
+    
+      ttl
+      Maximum lifetime of tokens issued by this role
+    
+  
+
+
+
+
+
+
+
+
+Deploying Applications with Vault Integration
+
+
+The Vault Agent Injector automatically injects secrets into pods at runtime. This approach eliminates the need to store secrets in ConfigMaps, environment variables, or the application code itself.
+
+
+Preparing the Kubernetes Environment
+
+# Create namespace
 kubectl create namespace somaz
 
-# create service account
+# Create service account
 kubectl create serviceaccount somaz-app -n somaz
 
 
-2. Deploy the Web Application
-# create yaml file
-cat &amp;gt; devsomazapp.yaml &amp;lt;&amp;lt;EOF
----
+Deploying a Pod with Vault Integration
+
+
+  
+    graph TD
+      A[Pod Creation] --&amp;gt; B[Admission Controller]
+      B --&amp;gt; C[Vault Agent Injector]
+      C --&amp;gt; D[Pod Mutation]
+      D --&amp;gt; E[Add Init Container]
+      D --&amp;gt; F[Add Agent Container]
+      E --&amp;gt; G[Fetch Secrets]
+      G --&amp;gt; H[Write to Volume]
+      F --&amp;gt; I[Auto Renew Tokens]
+      
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+      style F stroke:#333,stroke-width:1px,fill:#ce93d8
+      style G stroke:#333,stroke-width:1px,fill:#81c784
+      style H stroke:#333,stroke-width:1px,fill:#81c784
+      style I stroke:#333,stroke-width:1px,fill:#81c784
+  
+
+
+# Application Pod with Vault annotations
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1288,58 +2014,46 @@ spec:
   containers:
     - name: devsomazapp
       image: jweissig/app:0.0.1
-EOF
-
-# create pod
-k apply -f devsomazapp.yaml -n somaz
-
-# read secret
-k exec --stdin=true --tty=true devsomazapp -c devsomazapp -n somaz -- cat /vault/secrets/credentials.txt
-
-
-3. Form of an Annotation
-vault.hashicorp.com/agent-inject-secret-&amp;lt;unique-name&amp;gt;: /path/to/secret
 
 
 
-
-If more than one Secret is designated as a policy, it should be set as follows.
-vault.hashicorp.com/agent-inject-secret-devdb: secret/data/devdb/config
-vault.hashicorp.com/agent-inject-secret-qadb: secret/data/qadb/config
-vault.hashicorp.com/role: &apos;devdb-app&apos;
-
-
-
-
-Test Right Now.
-# connect pod
-kubectl exec --stdin=true --tty=true vault-0 -n vault -- /bin/sh
-
-# create secret
-vault kv put secret/qadb/config username=&apos;qasomaz&apos; password=&apos;&amp;lt;password&amp;gt;&apos;
-
-# create policy
-vault policy write qadb - &amp;lt;&amp;lt;EOF
-path &quot;secret/data/qadb/config&quot; {
-  capabilities = [&quot;read&quot;]
-}
-EOF
-
-# create role
-vault write auth/kubernetes/role/db-app \\
-        bound_service_account_names=somaz-app \\
-        bound_service_account_namespaces=somaz \\
-        policies=devdb,qadb \\
-        ttl=24h
-
-# read role
-vault read auth/kubernetes/role/db-app
+  Understanding Vault Annotations
+  The annotations in the pod specification control how Vault Agent injects secrets:
+  
+    agent-inject: Enables the injection feature
+    role: Specifies which Vault role to authenticate as
+    agent-inject-secret-[filename]: Defines which secret to inject and where
+    agent-inject-template-[filename] (optional): Provides a template for formatting the secret
+  
+  When the pod is created, the Vault Agent Injector automatically adds the necessary containers to fetch and manage secrets.
 
 
-4. Change the Web Application yaml file and verify
-# create yaml file
-cat &amp;gt; devsomazapp.yaml &amp;lt;&amp;lt;EOF
----
+Deploying and Verifying
+
+# Apply the pod definition
+kubectl apply -f devsomazapp.yaml -n somaz
+
+# Check the secret has been injected
+kubectl exec -it devsomazapp -c devsomazapp -n somaz -- cat /vault/secrets/credentials.txt
+
+
+
+
+Working with Multiple Secrets
+
+
+Applications often need access to multiple secrets. Vault makes it easy to inject multiple secrets into the same pod, each with its own path and access controls.
+
+
+Adding Another Secret
+
+
+
+
+
+Updating the Pod Definition
+
+# Updated pod with multiple secrets
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1356,73 +2070,167 @@ spec:
   containers:
     - name: devsomazapp
       image: jweissig/app:0.0.1
-EOF
 
-# create pod
-k apply -f devsomazapp.yaml -n somaz
 
-# restart pod
-k delete po -n somaz devsomazapp
-k apply -f devsomazapp.yaml -n somaz
 
-# read secret
-k exec --stdin=true --tty=true devsomazapp -c devsomazapp -n somaz -- ls /vault/secrets/
+  
+    
+      Secret Path
+      Mount Location
+      Content
+    
+    
+      secret/data/devdb/config
+      /vault/secrets/devdb.txt
+      Development database credentials
+    
+    
+      secret/data/qadb/config
+      /vault/secrets/qadb.txt
+      QA database credentials
+    
+  
+
+
+Verifying Multiple Secrets
+
+# Recreate the pod with updated annotations
+kubectl delete pod devsomazapp -n somaz
+kubectl apply -f devsomazapp.yaml -n somaz
+
+# Check for injected secrets
+kubectl exec -it devsomazapp -c devsomazapp -n somaz -- ls /vault/secrets/
 devdb.txt  qadb.txt
 
-# read secret devdb
-k exec --stdin=true --tty=true devsomazapp -c devsomazapp -n somaz -- cat /vault/secrets/devdb.txt
-
-# read secret qadb
-k exec --stdin=true --tty=true devsomazapp -c devsomazapp -n somaz -- cat /vault/secrets/qadb.txt
+# View the content of each secret
+kubectl exec -it devsomazapp -c devsomazapp -n somaz -- cat /vault/secrets/devdb.txt
+kubectl exec -it devsomazapp -c devsomazapp -n somaz -- cat /vault/secrets/qadb.txt
 
 
 
 
-Check the connection log.
-k logs devsomazapp -c devsomazapp -n somaz
+Managing User Permissions
+
+
+Beyond service accounts, Vault also supports human users with different levels of access. Proper user management is critical for maintaining security while enabling administrative tasks.
+
+
+Understanding User Policies
+
+
+  
+    graph TD
+      A[Vault Policies] --&amp;gt; B[Root]
+      A --&amp;gt; C[Admin]
+      A --&amp;gt; D[DevDB]
+      A --&amp;gt; E[QADB]
+      
+      B --&amp;gt; B1[All Paths]
+      C --&amp;gt; C1[Limited Admin]
+      D --&amp;gt; D1[Dev Secrets]
+      E --&amp;gt; E1[QA Secrets]
+      
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  
 
 
 
-
-Setting User Policy
-
-If you check the policy using Root Token on the web, you can see it all.
-
-
-
-
-I can’t see anything when I connect to the user called Somaz.
-
-
+  Root Token Security
+  The root token has unlimited access to all Vault resources. For security reasons:
+  
+    Avoid Regular Use: Don&apos;t use the root token for daily operations
+    Create Admin Users: Set up users with appropriate permissions
+    Revoke After Setup: Consider revoking the root token after initial setup
+    Regenerate When Needed: Root tokens can be recreated with unseal keys if needed
+  
+  Using properly scoped tokens reduces the risk of accidental or malicious damage.
 
 
-Log in with the CLI to check.
-vault login -method=userpass username=somaz password=&amp;lt;password&amp;gt;
+Creating an Admin Policy
 
-vault token lookup
+# Login with root token
+kubectl exec -it vault-0 -n vault -- vault login $CLUSTER_ROOT_TOKEN
 
-
-
-
-Create and assign policies.
-# root로 로그인
-vault login hvs.bOXica9b3vWqfBaiZWfASOC1
-
-# 정책 생성
-vault policy write admin - &amp;lt;&amp;lt;EOF
+# Create admin policy
+kubectl exec -it vault-0 -n vault -- vault policy write admin - &amp;lt;&amp;lt;EOF
 path &quot;*&quot; {
   capabilities = [&quot;create&quot;, &quot;read&quot;, &quot;update&quot;, &quot;delete&quot;, &quot;list&quot;, &quot;sudo&quot;]
 }
 EOF
 
-vault write auth/userpass/users/somaz policies=devdb policies=admin
+# Assign admin policy to a user
+kubectl exec -it vault-0 -n vault -- vault write auth/userpass/users/somaz policies=admin
 
-vault read auth/userpass/users/somaz
+# Verify user policies
+kubectl exec -it vault-0 -n vault -- vault read auth/userpass/users/somaz
+
+
+
+  
+    
+      Policy Name
+      Scope
+      Typical User
+    
+    
+      root
+      Unlimited access
+      Initial setup only, emergency access
+    
+    
+      admin
+      Full system control
+      Vault administrators
+    
+    
+      devdb
+      Read dev secrets
+      Development applications
+    
+    
+      qadb
+      Read QA secrets
+      QA applications
+    
+  
 
 
 
 
-I can see it well. I gave you all the authority.
+Key Points and Best Practices
+
+
+  💡 Vault Security Essentials
+  
+    
+      Initialization and Unsealing
+      - Store unseal keys securely and separately
+      - Consider using auto-unseal for production
+      - Revoke the root token after initial configuration
+    
+    
+      Authentication and Authorization
+      - Use the Kubernetes auth method for applications
+      - Implement fine-grained policies following least privilege
+      - Prefer short-lived tokens with automatic renewal
+    
+    
+      Secret Injection
+      - Use the Vault Agent Injector for Kubernetes integration
+      - Template secrets to match application requirements
+      - Implement secret rotation for sensitive credentials
+    
+    
+      Operational Readiness
+      - Set up monitoring and alerting for Vault status
+      - Configure regular backups of Vault data
+      - Implement proper audit logging
+    
+  
 
 
 
@@ -1435,9 +2243,11 @@ References
   Vault Helm Chart
   Vault on GKE Guide
   Vault Policy Documentation
+  Vault Agent Injector Documentation
+  Vault Authentication Methods
 
 ",
-            "wordcount": "1833",
+            "wordcount": "3151",
             "inLanguage": "en",
             "dateCreated": "2025-01-25/",
             "datePublished": "2025-01-25/",
