@@ -220,7 +220,7 @@ January 26, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>8 min to read</span>
+                    <span>5 min to read</span>
                 </p>
                 <h1 class="post-title">Docker Layers - A Deep Dive into Dockerfile Build Principles</h1>
                 <p class="post-subtitle">Exploring Docker image layers and build optimization techniques</p>
@@ -239,8 +239,6 @@ January 26, 2025
                 <p><a href="https://docs.docker.com/build/cache/">Image Reference link</a></p>
 
 <p><br /></p>
-
-<hr />
 
 <hr />
 
@@ -305,11 +303,8 @@ January 26, 2025
   </ul>
 </div>
 
-<p><strong>Example Dockerfile:</strong></p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>RUN apt-get update
-COPY <span class="nb">.</span> /app
-ENV <span class="nv">PORT</span><span class="o">=</span>8080
-</code></pre></div></div>
+<p><strong>Example Dockerfile:</strong>
+<script src="https://gist.github.com/somaz94/037c41f44a94840da0756231727cac47.js"></script></p>
 
 <p><br /></p>
 
@@ -386,18 +381,7 @@ dive my-image:latest
 
 <p>Caching is a key feature of Docker layers:</p>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Good caching practice</span>
-<span class="k">COPY</span><span class="s"> package.json package-lock.json ./</span>
-<span class="k">RUN </span>npm <span class="nb">install</span>
-<span class="k">COPY</span><span class="s"> . .</span>
-</code></pre></div></div>
-
-<p>vs</p>
-
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Poor caching practice</span>
-<span class="k">COPY</span><span class="s"> . .</span>
-<span class="k">RUN </span>npm <span class="nb">install</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/ae51c16a9342d73dfc0dc7368562d90b.js"></script>
 
 <h4 id="understanding-cache-invalidation">Understanding Cache Invalidation</h4>
 
@@ -408,18 +392,9 @@ dive my-image:latest
   <li>Earlier layers that subsequent layers depend on change</li>
 </ol>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Layer 1 - Cached unless package.json changes</span>
-<span class="k">COPY</span><span class="s"> package.json .</span>
+<script src="https://gist.github.com/somaz94/b17366401076c6e3279ca3fa6dfd7393.js"></script>
 
-<span class="c"># Layer 2 - Cached unless Layer 1 changes or the command changes</span>
-<span class="k">RUN </span>npm <span class="nb">install</span>
-
-<span class="c"># Layer 3 - Cached unless source files change</span>
-<span class="k">COPY</span><span class="s"> . .</span>
-
-<span class="c"># Layer 4 - Cached unless Layer 3 changes or the command changes</span>
-<span class="k">RUN </span>npm run build
-</code></pre></div></div>
+<p><br /></p>
 
 <h3 id="advanced-caching-strategies">Advanced Caching Strategies</h3>
 
@@ -459,13 +434,10 @@ coverage
 <h3 id="examples">Examples</h3>
 
 <h4 id="1-standard-dockerfile">1. Standard Dockerfile</h4>
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> ubuntu:18.04</span>
-<span class="k">RUN </span>apt-get update <span class="o">&amp;&amp;</span> apt-get <span class="nb">install</span> <span class="nt">-y</span> python3
-<span class="k">COPY</span><span class="s"> . /app</span>
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-<span class="k">RUN </span>pip3 <span class="nb">install</span> <span class="nt">-r</span> requirements.txt
-<span class="k">CMD</span><span class="s"> ["python3", "app.py"]</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/883f2e37d7349fb77a12c3bf9a76849a.js"></script>
+
+<p><br /></p>
+
 <p>Layer breakdown:</p>
 <ol>
   <li>Ubuntu base image</li>
@@ -476,16 +448,9 @@ coverage
 </ol>
 
 <h4 id="2-multi-stage-build">2. Multi-Stage Build</h4>
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Build stage</span>
-<span class="k">FROM</span><span class="w"> </span><span class="s">node:12</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="s">build</span>
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-<span class="k">COPY</span><span class="s"> . .</span>
-<span class="k">RUN </span>npm <span class="nb">install</span> <span class="o">&amp;&amp;</span> npm run build
+<script src="https://gist.github.com/somaz94/c1257a1e2a5beec77731ebbe8b76f84f.js"></script>
 
-<span class="c"># Production stage</span>
-<span class="k">FROM</span><span class="s"> nginx:alpine</span>
-<span class="k">COPY</span><span class="s"> --from=build /app/build /usr/share/nginx/html</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <p>Benefits:</p>
 <ul>
@@ -521,133 +486,35 @@ coverage
 
 <h4 id="before-optimization">Before Optimization:</h4>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> ubuntu:18.04</span>
+<script src="https://gist.github.com/somaz94/3c88a5f995732aa8b794a4c1ee7d9ec9.js"></script>
 
-<span class="c"># Install dependencies (creates a large layer)</span>
-<span class="k">RUN </span>apt-get update
-<span class="k">RUN </span>apt-get <span class="nb">install</span> <span class="nt">-y</span> python3
-<span class="k">RUN </span>apt-get <span class="nb">install</span> <span class="nt">-y</span> python3-pip
-
-<span class="c"># Copy application (invalidates cache on any file change)</span>
-<span class="k">COPY</span><span class="s"> . /app</span>
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Install Python dependencies</span>
-<span class="k">RUN </span>pip3 <span class="nb">install</span> <span class="nt">-r</span> requirements.txt
-
-<span class="k">CMD</span><span class="s"> ["python3", "app.py"]</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <h4 id="after-optimization">After Optimization:</h4>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">FROM</span><span class="s"> python:3.9-slim</span>
+<script src="https://gist.github.com/somaz94/563507a4b1876d656cdb533697365db7.js"></script>
 
-<span class="c"># Set working directory</span>
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy and install dependencies (better caching)</span>
-<span class="k">COPY</span><span class="s"> requirements.txt .</span>
-<span class="k">RUN </span>pip3 <span class="nb">install</span> <span class="nt">--no-cache-dir</span> <span class="nt">-r</span> requirements.txt
-
-<span class="c"># Copy application code</span>
-<span class="k">COPY</span><span class="s"> . .</span>
-
-<span class="c"># Run application</span>
-<span class="k">CMD</span><span class="s"> ["python3", "app.py"]</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <p>Further optimized with multi-stage build:</p>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Build stage</span>
-<span class="k">FROM</span><span class="w"> </span><span class="s">python:3.9-slim</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">builder</span>
+<script src="https://gist.github.com/somaz94/a10a91c1f4cd733d9f543a0631b39297.js"></script>
 
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Install dependencies</span>
-<span class="k">COPY</span><span class="s"> requirements.txt .</span>
-<span class="k">RUN </span>pip3 <span class="nb">install</span> <span class="nt">--no-cache-dir</span> <span class="nt">-r</span> requirements.txt
-
-<span class="c"># Production stage</span>
-<span class="k">FROM</span><span class="s"> python:3.9-slim</span>
-
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy only necessary files from builder</span>
-<span class="k">COPY</span><span class="s"> --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages</span>
-<span class="k">COPY</span><span class="s"> . .</span>
-
-<span class="c"># Run application</span>
-<span class="k">CMD</span><span class="s"> ["python3", "app.py"]</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <h3 id="real-world-examples">Real-World Examples</h3>
 
 <h4 id="1-nodejs-application">1. Node.js Application</h4>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Build stage</span>
-<span class="k">FROM</span><span class="w"> </span><span class="s">node:16-alpine</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">build</span>
+<script src="https://gist.github.com/somaz94/cf66e12b486c7088c7639c66231ccd60.js"></script>
 
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy package files and install dependencies</span>
-<span class="k">COPY</span><span class="s"> package*.json ./</span>
-<span class="k">RUN </span>npm ci <span class="nt">--only</span><span class="o">=</span>production
-
-<span class="c"># Copy application code</span>
-<span class="k">COPY</span><span class="s"> . .</span>
-
-<span class="c"># Build application</span>
-<span class="k">RUN </span>npm run build
-
-<span class="c"># Production stage</span>
-<span class="k">FROM</span><span class="s"> node:16-alpine</span>
-
-<span class="c"># Set environment variables</span>
-<span class="k">ENV</span><span class="s"> NODE_ENV=production</span>
-
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy built application from build stage</span>
-<span class="k">COPY</span><span class="s"> --from=build /app/node_modules ./node_modules</span>
-<span class="k">COPY</span><span class="s"> --from=build /app/dist ./dist</span>
-<span class="k">COPY</span><span class="s"> package*.json ./</span>
-
-<span class="c"># Expose port</span>
-<span class="k">EXPOSE</span><span class="s"> 3000</span>
-
-<span class="c"># Run application</span>
-<span class="k">CMD</span><span class="s"> ["npm", "start"]</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <h4 id="2-java-spring-boot-application">2. Java Spring Boot Application</h4>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Build stage</span>
-<span class="k">FROM</span><span class="w"> </span><span class="s">maven:3.8-openjdk-11</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">build</span>
+<script src="https://gist.github.com/somaz94/34bf6f337913af532622ffc04f091cec.js"></script>
 
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy pom.xml and download dependencies (better caching)</span>
-<span class="k">COPY</span><span class="s"> pom.xml .</span>
-<span class="k">RUN </span>mvn dependency:go-offline
-
-<span class="c"># Copy source code and build</span>
-<span class="k">COPY</span><span class="s"> src ./src</span>
-<span class="k">RUN </span>mvn package <span class="nt">-DskipTests</span>
-
-<span class="c"># Production stage</span>
-<span class="k">FROM</span><span class="s"> openjdk:11-jre-slim</span>
-
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy built JAR file</span>
-<span class="k">COPY</span><span class="s"> --from=build /app/target/*.jar app.jar</span>
-
-<span class="c"># Expose port</span>
-<span class="k">EXPOSE</span><span class="s"> 8080</span>
-
-<span class="c"># Run application</span>
-<span class="k">ENTRYPOINT</span><span class="s"> ["java", "-jar", "app.jar"]</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <h3 id="layer-debugging-and-analysis">Layer Debugging and Analysis</h3>
 
@@ -737,7 +604,7 @@ docker save my-image:latest | <span class="nb">tar</span> <span class="nt">-xC</
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="8">
+            <div class="time-bar" data-minutes="5">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1044,8 +911,6 @@ docker save my-image:latest | <span class="nb">tar</span> <span class="nt">-xC</
 
 
 
-
-
 Overview
 
 Following our previous discussion about Dockerfiles, today we’ll explore Docker layers and build principles in depth. Understanding these concepts is crucial for creating efficient and maintainable Docker images.
@@ -1108,9 +973,6 @@ Layer Operation
 
 
 Example Dockerfile:
-RUN apt-get update
-COPY . /app
-ENV PORT=8080
 
 
 
@@ -1188,17 +1050,6 @@ Layer Caching
 
 Caching is a key feature of Docker layers:
 
-# Good caching practice
-COPY package.json package-lock.json ./
-RUN npm install
-COPY . .
-
-
-vs
-
-# Poor caching practice
-COPY . .
-RUN npm install
 
 
 Understanding Cache Invalidation
@@ -1210,17 +1061,8 @@ Cache is invalidated when:
   Earlier layers that subsequent layers depend on change
 
 
-# Layer 1 - Cached unless package.json changes
-COPY package.json .
 
-# Layer 2 - Cached unless Layer 1 changes or the command changes
-RUN npm install
 
-# Layer 3 - Cached unless source files change
-COPY . .
-
-# Layer 4 - Cached unless Layer 3 changes or the command changes
-RUN npm run build
 
 
 Advanced Caching Strategies
@@ -1261,12 +1103,9 @@ coverage
 Examples
 
 1. Standard Dockerfile
-FROM ubuntu:18.04
-RUN apt-get update &amp;amp;&amp;amp; apt-get install -y python3
-COPY . /app
-WORKDIR /app
-RUN pip3 install -r requirements.txt
-CMD [&quot;python3&quot;, &quot;app.py&quot;]
+
+
+
 
 Layer breakdown:
 
@@ -1278,15 +1117,8 @@ Layer breakdown:
 
 
 2. Multi-Stage Build
-# Build stage
-FROM node:12 as build
-WORKDIR /app
-COPY . .
-RUN npm install &amp;amp;&amp;amp; npm run build
 
-# Production stage
-FROM nginx:alpine
-COPY --from=build /app/build /usr/share/nginx/html
+
 
 
 Benefits:
@@ -1323,132 +1155,34 @@ Minimizing Image Size:
 
 Before Optimization:
 
-FROM ubuntu:18.04
 
-# Install dependencies (creates a large layer)
-RUN apt-get update
-RUN apt-get install -y python3
-RUN apt-get install -y python3-pip
 
-# Copy application (invalidates cache on any file change)
-COPY . /app
-WORKDIR /app
-
-# Install Python dependencies
-RUN pip3 install -r requirements.txt
-
-CMD [&quot;python3&quot;, &quot;app.py&quot;]
 
 
 After Optimization:
 
-FROM python:3.9-slim
 
-# Set working directory
-WORKDIR /app
 
-# Copy and install dependencies (better caching)
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Run application
-CMD [&quot;python3&quot;, &quot;app.py&quot;]
 
 
 Further optimized with multi-stage build:
 
-# Build stage
-FROM python:3.9-slim AS builder
 
-WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# Production stage
-FROM python:3.9-slim
-
-WORKDIR /app
-
-# Copy only necessary files from builder
-COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
-COPY . .
-
-# Run application
-CMD [&quot;python3&quot;, &quot;app.py&quot;]
 
 
 Real-World Examples
 
 1. Node.js Application
 
-# Build stage
-FROM node:16-alpine AS build
 
-WORKDIR /app
 
-# Copy package files and install dependencies
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy application code
-COPY . .
-
-# Build application
-RUN npm run build
-
-# Production stage
-FROM node:16-alpine
-
-# Set environment variables
-ENV NODE_ENV=production
-
-WORKDIR /app
-
-# Copy built application from build stage
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY package*.json ./
-
-# Expose port
-EXPOSE 3000
-
-# Run application
-CMD [&quot;npm&quot;, &quot;start&quot;]
 
 
 2. Java Spring Boot Application
 
-# Build stage
-FROM maven:3.8-openjdk-11 AS build
 
-WORKDIR /app
 
-# Copy pom.xml and download dependencies (better caching)
-COPY pom.xml .
-RUN mvn dependency:go-offline
-
-# Copy source code and build
-COPY src ./src
-RUN mvn package -DskipTests
-
-# Production stage
-FROM openjdk:11-jre-slim
-
-WORKDIR /app
-
-# Copy built JAR file
-COPY --from=build /app/target/*.jar app.jar
-
-# Expose port
-EXPOSE 8080
-
-# Run application
-ENTRYPOINT [&quot;java&quot;, &quot;-jar&quot;, &quot;app.jar&quot;]
 
 
 Layer Debugging and Analysis
@@ -1491,7 +1225,7 @@ du -sh /tmp/*/layer.tar | sort -hr
   Dive Tool for Image Analysis
 
 ",
-            "wordcount": "1616",
+            "wordcount": "974",
             "inLanguage": "en",
             "dateCreated": "2025-01-26/",
             "datePublished": "2025-01-26/",
