@@ -220,7 +220,7 @@ January 27, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>10 min to read</span>
+                    <span>7 min to read</span>
                 </p>
                 <h1 class="post-title">Dockerfile Security Best Practices and Hadolint Usage Guide</h1>
                 <p class="post-subtitle">Implementing security best practices in your Dockerfiles</p>
@@ -545,125 +545,21 @@ hadolint <span class="nt">--format</span> sarif Dockerfile <span class="o">&gt;<
 
 <h4 id="1-python-application-with-security-best-practices">1. Python Application with Security Best Practices</h4>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Dockerfile</span>
-<span class="k">FROM</span><span class="w"> </span><span class="s">python:3.9-slim-bullseye</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="s">builder</span>
+<script src="https://gist.github.com/somaz94/7470420377800afa12371026492291b2.js"></script>
 
-<span class="c"># Add non-root user</span>
-<span class="k">RUN </span>groupadd <span class="nt">-r</span> appuser <span class="o">&amp;&amp;</span> useradd <span class="nt">-r</span> <span class="nt">-g</span> appuser appuser
-
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy just requirements first for better caching</span>
-<span class="k">COPY</span><span class="s"> requirements.txt .</span>
-
-<span class="c"># Install dependencies</span>
-<span class="k">RUN </span>pip <span class="nb">install</span> <span class="nt">--no-cache-dir</span> <span class="nt">--user</span> <span class="nt">-r</span> requirements.txt
-
-<span class="c"># Second stage</span>
-<span class="k">FROM</span><span class="s"> python:3.9-slim-bullseye</span>
-
-<span class="c"># Install security updates and clean up</span>
-<span class="k">RUN </span>apt-get update <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    apt-get upgrade <span class="nt">-y</span> <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    apt-get <span class="nb">install</span> <span class="nt">-y</span> <span class="nt">--no-install-recommends</span> tini <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    apt-get clean <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    <span class="nb">rm</span> <span class="nt">-rf</span> /var/lib/apt/lists/<span class="k">*</span>
-
-<span class="c"># Copy from builder</span>
-<span class="k">COPY</span><span class="s"> --from=builder /root/.local /root/.local</span>
-<span class="k">COPY</span><span class="s"> --from=builder --chown=appuser:appuser /app /app</span>
-
-<span class="c"># Ensure Python packages are in PATH</span>
-<span class="k">ENV</span><span class="s"> PATH=/root/.local/bin:$PATH</span>
-
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy application code</span>
-<span class="k">COPY</span><span class="s"> --chown=appuser:appuser . .</span>
-
-<span class="c"># Use non-root user</span>
-<span class="k">USER</span><span class="s"> appuser</span>
-
-<span class="c"># Use tini as entrypoint for proper signal handling</span>
-<span class="k">ENTRYPOINT</span><span class="s"> ["/usr/bin/tini", "--"]</span>
-
-<span class="c"># Healthcheck</span>
-<span class="k">HEALTHCHECK</span><span class="s"> --interval=30s --timeout=3s \</span>
-  CMD python -c "import requests; requests.get('http://localhost:8000/health')"
-
-# Run the application
-<span class="k">CMD</span><span class="s"> ["python", "app.py"]</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <h4 id="2-improved-nodejs-example-with-security-focus">2. Improved Node.js Example with Security Focus</h4>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Build stage</span>
-<span class="k">FROM</span><span class="w"> </span><span class="s">node:16-alpine</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">builder</span>
+<script src="https://gist.github.com/somaz94/5db8641f4d5faf4afa22aef6fc66f0e3.js"></script>
 
-<span class="c"># Set working directory</span>
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy package files</span>
-<span class="k">COPY</span><span class="s"> package*.json ./</span>
-
-<span class="c"># Install dependencies</span>
-<span class="k">RUN </span>npm ci <span class="nt">--only</span><span class="o">=</span>production
-
-<span class="c"># Copy application code</span>
-<span class="k">COPY</span><span class="s"> . .</span>
-
-<span class="c"># Run security check</span>
-<span class="k">RUN </span>npm audit <span class="nt">--production</span>
-
-<span class="c"># Build application</span>
-<span class="k">RUN </span>npm run build
-
-<span class="c"># Production stage</span>
-<span class="k">FROM</span><span class="s"> node:16-alpine</span>
-
-<span class="c"># Set environment variables</span>
-<span class="k">ENV</span><span class="s"> NODE_ENV=production</span>
-
-<span class="c"># Install minimal dependencies and security updates</span>
-<span class="k">RUN </span>apk <span class="nt">--no-cache</span> upgrade <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    apk add <span class="nt">--no-cache</span> dumb-init
-
-<span class="c"># Add non-root user</span>
-<span class="k">RUN </span>addgroup <span class="nt">-S</span> appgroup <span class="o">&amp;&amp;</span> adduser <span class="nt">-S</span> appuser <span class="nt">-G</span> appgroup
-
-<span class="c"># Set working directory</span>
-<span class="k">WORKDIR</span><span class="s"> /app</span>
-
-<span class="c"># Copy only necessary files from build stage</span>
-<span class="k">COPY</span><span class="s"> --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules</span>
-<span class="k">COPY</span><span class="s"> --from=builder --chown=appuser:appgroup /app/dist ./dist</span>
-<span class="k">COPY</span><span class="s"> --from=builder --chown=appuser:appgroup /app/package.json ./</span>
-
-<span class="c"># Use non-root user</span>
-<span class="k">USER</span><span class="s"> appuser</span>
-
-<span class="c"># Use dumb-init as entrypoint for proper signal handling</span>
-<span class="k">ENTRYPOINT</span><span class="s"> ["dumb-init", "--"]</span>
-
-<span class="c"># Healthcheck</span>
-<span class="k">HEALTHCHECK</span><span class="s"> --interval=30s --timeout=3s \</span>
-  CMD wget -q -O - http://localhost:3000/health || exit 1
-
-<span class="c"># Start application</span>
-<span class="k">CMD</span><span class="s"> ["node", "dist/index.js"]</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <h3 id="integrating-with-container-scanning">Integrating with Container Scanning</h3>
 
 <p>To enhance your Docker security, combine Hadolint with container scanning tools:</p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Example using Trivy</span>
-docker run <span class="nt">--rm</span> <span class="nt">-v</span> /var/run/docker.sock:/var/run/docker.sock <span class="se">\</span>
-  <span class="nt">-v</span> <span class="nv">$HOME</span>/.cache:/root/.cache aquasec/trivy image my-image:latest
-
-<span class="c"># Example using Clair</span>
-docker run <span class="nt">--rm</span> <span class="nt">-p</span> 5432:5432 <span class="nt">-p</span> 6060:6060 quay.io/coreos/clair:latest
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/cfd64312a158029b8b70fc056be4575e.js"></script>
 
 <p>GitHub Actions example with both Hadolint and Trivy:</p>
 
@@ -774,7 +670,7 @@ docker run <span class="nt">--rm</span> <span class="nt">-p</span> 5432:5432 <sp
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="10">
+            <div class="time-bar" data-minutes="7">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1384,124 +1280,20 @@ Real-World Examples
 
 1. Python Application with Security Best Practices
 
-# Dockerfile
-FROM python:3.9-slim-bullseye as builder
 
-# Add non-root user
-RUN groupadd -r appuser &amp;amp;&amp;amp; useradd -r -g appuser appuser
 
-WORKDIR /app
-
-# Copy just requirements first for better caching
-COPY requirements.txt .
-
-# Install dependencies
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-# Second stage
-FROM python:3.9-slim-bullseye
-
-# Install security updates and clean up
-RUN apt-get update &amp;amp;&amp;amp; \
-    apt-get upgrade -y &amp;amp;&amp;amp; \
-    apt-get install -y --no-install-recommends tini &amp;amp;&amp;amp; \
-    apt-get clean &amp;amp;&amp;amp; \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy from builder
-COPY --from=builder /root/.local /root/.local
-COPY --from=builder --chown=appuser:appuser /app /app
-
-# Ensure Python packages are in PATH
-ENV PATH=/root/.local/bin:$PATH
-
-WORKDIR /app
-
-# Copy application code
-COPY --chown=appuser:appuser . .
-
-# Use non-root user
-USER appuser
-
-# Use tini as entrypoint for proper signal handling
-ENTRYPOINT [&quot;/usr/bin/tini&quot;, &quot;--&quot;]
-
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD python -c &quot;import requests; requests.get(&apos;http://localhost:8000/health&apos;)&quot;
-
-# Run the application
-CMD [&quot;python&quot;, &quot;app.py&quot;]
 
 
 2. Improved Node.js Example with Security Focus
 
-# Build stage
-FROM node:16-alpine AS builder
 
-# Set working directory
-WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy application code
-COPY . .
-
-# Run security check
-RUN npm audit --production
-
-# Build application
-RUN npm run build
-
-# Production stage
-FROM node:16-alpine
-
-# Set environment variables
-ENV NODE_ENV=production
-
-# Install minimal dependencies and security updates
-RUN apk --no-cache upgrade &amp;amp;&amp;amp; \
-    apk add --no-cache dumb-init
-
-# Add non-root user
-RUN addgroup -S appgroup &amp;amp;&amp;amp; adduser -S appuser -G appgroup
-
-# Set working directory
-WORKDIR /app
-
-# Copy only necessary files from build stage
-COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
-COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
-COPY --from=builder --chown=appuser:appgroup /app/package.json ./
-
-# Use non-root user
-USER appuser
-
-# Use dumb-init as entrypoint for proper signal handling
-ENTRYPOINT [&quot;dumb-init&quot;, &quot;--&quot;]
-
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD wget -q -O - http://localhost:3000/health || exit 1
-
-# Start application
-CMD [&quot;node&quot;, &quot;dist/index.js&quot;]
 
 
 Integrating with Container Scanning
 
 To enhance your Docker security, combine Hadolint with container scanning tools:
 
-# Example using Trivy
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-  -v $HOME/.cache:/root/.cache aquasec/trivy image my-image:latest
-
-# Example using Clair
-docker run --rm -p 5432:5432 -p 6060:6060 quay.io/coreos/clair:latest
 
 
 GitHub Actions example with both Hadolint and Trivy:
@@ -1565,7 +1357,7 @@ References
   Trivy Image Scanner
 
 ",
-            "wordcount": "1876",
+            "wordcount": "1387",
             "inLanguage": "en",
             "dateCreated": "2025-01-27/",
             "datePublished": "2025-01-27/",
