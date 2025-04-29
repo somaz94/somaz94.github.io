@@ -220,7 +220,7 @@ March 7, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>13 min to read</span>
+                    <span>11 min to read</span>
                 </p>
                 <h1 class="post-title">Setting up ArgoCD SSO with GCP OAuth</h1>
                 <p class="post-subtitle">A comprehensive guide to implementing ArgoCD SSO with GCP OAuth</p>
@@ -312,12 +312,10 @@ March 7, 2025
 
 <h4 id="cli-method">CLI Method</h4>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gcloud config <span class="nb">set </span>project <span class="o">[</span>YOUR_PROJECT_ID]
-gcloud alpha iam oauth-clients create <span class="se">\</span>
-  <span class="nt">--project</span><span class="o">=[</span>YOUR_PROJECT_ID] <span class="se">\</span>
-  <span class="nt">--display-name</span><span class="o">=</span><span class="s2">"My OAuth Client"</span> <span class="se">\</span>
-  <span class="nt">--redirect-uris</span><span class="o">=</span><span class="s2">"https://[YOUR_ARGOCD_SERVER_URL]/auth/callback"</span>
-</code></pre></div></div>
+<p><br /></p>
+
+<script src="https://gist.github.com/somaz94/c677a076dc0f3cd275f2bdef6a5fac74.js"></script>
+
 <p><br /></p>
 
 <h3 id="2-update-argocd-configuration">2. Update ArgoCD Configuration</h3>
@@ -458,15 +456,11 @@ k get secrets <span class="nt">-n</span> argocd argocd-secret <span class="nt">-
 
 <p>To create this secret manually:</p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Convert your client secret to base64</span>
-<span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"YOUR-CLIENT-SECRET"</span> | <span class="nb">base64</span>
+<p><br /></p>
 
-<span class="c"># Create the secret</span>
-kubectl create secret generic argocd-secret <span class="se">\</span>
-  <span class="nt">--namespace</span> argocd <span class="se">\</span>
-  <span class="nt">--from-literal</span><span class="o">=</span>dex.google.clientSecret<span class="o">=</span>YOUR-BASE64-ENCODED-SECRET <span class="se">\</span>
-  <span class="nt">--dry-run</span><span class="o">=</span>client <span class="nt">-o</span> yaml | kubectl apply <span class="nt">-f</span> -
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/1b7bbc9d6a31b0433c7db1ba26525902.js"></script>
+
+<p><br /></p>
 
 <h3 id="4-restart-argocd-components">4. Restart ArgoCD Components</h3>
 
@@ -702,52 +696,11 @@ curl localhost:5558/metrics | <span class="nb">grep </span>dex
 
 <p>Here’s a script to automate the configuration:</p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="nb">set</span> <span class="nt">-e</span>
+<p><br /></p>
 
-<span class="c"># Variables</span>
-<span class="nv">NAMESPACE</span><span class="o">=</span><span class="s2">"argocd"</span>
-<span class="nv">ARGOCD_URL</span><span class="o">=</span><span class="s2">"https://argocd.somaz.link"</span>
-<span class="nv">CLIENT_ID</span><span class="o">=</span><span class="s2">"your-client-id"</span>
-<span class="nv">CLIENT_SECRET</span><span class="o">=</span><span class="s2">"your-client-secret"</span>
+<script src="https://gist.github.com/somaz94/085f618e570c7d84018eb50e0b229193.js"></script>
 
-<span class="c"># Create argocd-cm ConfigMap with Google SSO</span>
-<span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: </span><span class="k">${</span><span class="nv">NAMESPACE</span><span class="k">}</span><span class="sh">
-data:
-  url: </span><span class="k">${</span><span class="nv">ARGOCD_URL</span><span class="k">}</span><span class="sh">
-  dex.config: |
-    connectors:
-      - type: oidc
-        id: google
-        name: Google
-        config:
-          issuer: https://accounts.google.com
-          clientID: </span><span class="k">${</span><span class="nv">CLIENT_ID</span><span class="k">}</span><span class="sh">
-          clientSecret: </span><span class="se">\$</span><span class="sh">dex.google.clientSecret
-          redirectURI: </span><span class="k">${</span><span class="nv">ARGOCD_URL</span><span class="k">}</span><span class="sh">/api/dex/callback
-          hostedDomains:
-            - example.com
-</span><span class="no">EOF
-
-</span><span class="c"># Encode the client secret</span>
-<span class="nv">ENCODED_SECRET</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"</span><span class="k">${</span><span class="nv">CLIENT_SECRET</span><span class="k">}</span><span class="s2">"</span> | <span class="nb">base64</span><span class="si">)</span>
-
-<span class="c"># Update argocd-secret with Google client secret</span>
-kubectl patch secret argocd-secret <span class="nt">-n</span> <span class="k">${</span><span class="nv">NAMESPACE</span><span class="k">}</span> <span class="nt">--type</span><span class="o">=</span><span class="s1">'json'</span> <span class="nt">-p</span><span class="o">=</span><span class="s2">"[
-  {</span><span class="se">\"</span><span class="s2">op</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="s2">add</span><span class="se">\"</span><span class="s2">, </span><span class="se">\"</span><span class="s2">path</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="s2">/data/dex.google.clientSecret</span><span class="se">\"</span><span class="s2">, </span><span class="se">\"</span><span class="s2">value</span><span class="se">\"</span><span class="s2">: </span><span class="se">\"</span><span class="k">${</span><span class="nv">ENCODED_SECRET</span><span class="k">}</span><span class="se">\"</span><span class="s2">}
-]"</span>
-
-<span class="c"># Restart components</span>
-kubectl rollout restart deployment argocd-server <span class="nt">-n</span> <span class="k">${</span><span class="nv">NAMESPACE</span><span class="k">}</span>
-kubectl rollout restart deployment argocd-dex-server <span class="nt">-n</span> <span class="k">${</span><span class="nv">NAMESPACE</span><span class="k">}</span>
-
-<span class="nb">echo</span> <span class="s2">"Google SSO configuration applied. Please allow a few minutes for pods to restart."</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <h3 id="authentication-processes">Authentication Processes</h3>
 <ul>
@@ -845,7 +798,7 @@ kubectl rollout restart deployment argocd-dex-server <span class="nt">-n</span> 
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="13">
+            <div class="time-bar" data-minutes="11">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1222,11 +1175,9 @@ Gxxxx-oxxxxxxxxxxxxxxxxxxxxxxxx
 
 CLI Method
 
-gcloud config set project [YOUR_PROJECT_ID]
-gcloud alpha iam oauth-clients create \
-  --project=[YOUR_PROJECT_ID] \
-  --display-name=&quot;My OAuth Client&quot; \
-  --redirect-uris=&quot;https://[YOUR_ARGOCD_SERVER_URL]/auth/callback&quot;
+
+
+
 
 
 
@@ -1368,14 +1319,10 @@ data:
 
 To create this secret manually:
 
-# Convert your client secret to base64
-echo -n &quot;YOUR-CLIENT-SECRET&quot; | base64
 
-# Create the secret
-kubectl create secret generic argocd-secret \
-  --namespace argocd \
-  --from-literal=dex.google.clientSecret=YOUR-BASE64-ENCODED-SECRET \
-  --dry-run=client -o yaml | kubectl apply -f -
+
+
+
 
 
 4. Restart ArgoCD Components
@@ -1612,51 +1559,10 @@ Setup Script
 
 Here’s a script to automate the configuration:
 
-#!/bin/bash
-set -e
 
-# Variables
-NAMESPACE=&quot;argocd&quot;
-ARGOCD_URL=&quot;https://argocd.somaz.link&quot;
-CLIENT_ID=&quot;your-client-id&quot;
-CLIENT_SECRET=&quot;your-client-secret&quot;
 
-# Create argocd-cm ConfigMap with Google SSO
-cat &amp;lt;&amp;lt;EOF | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: ${NAMESPACE}
-data:
-  url: ${ARGOCD_URL}
-  dex.config: |
-    connectors:
-      - type: oidc
-        id: google
-        name: Google
-        config:
-          issuer: https://accounts.google.com
-          clientID: ${CLIENT_ID}
-          clientSecret: \$dex.google.clientSecret
-          redirectURI: ${ARGOCD_URL}/api/dex/callback
-          hostedDomains:
-            - example.com
-EOF
 
-# Encode the client secret
-ENCODED_SECRET=$(echo -n &quot;${CLIENT_SECRET}&quot; | base64)
 
-# Update argocd-secret with Google client secret
-kubectl patch secret argocd-secret -n ${NAMESPACE} --type=&apos;json&apos; -p=&quot;[
-  {\&quot;op\&quot;: \&quot;add\&quot;, \&quot;path\&quot;: \&quot;/data/dex.google.clientSecret\&quot;, \&quot;value\&quot;: \&quot;${ENCODED_SECRET}\&quot;}
-]&quot;
-
-# Restart components
-kubectl rollout restart deployment argocd-server -n ${NAMESPACE}
-kubectl rollout restart deployment argocd-dex-server -n ${NAMESPACE}
-
-echo &quot;Google SSO configuration applied. Please allow a few minutes for pods to restart.&quot;
 
 
 Authentication Processes
@@ -1707,7 +1613,7 @@ References
   Kubernetes Ingress with TLS
 
 ",
-            "wordcount": "2393",
+            "wordcount": "2089",
             "inLanguage": "en",
             "dateCreated": "2025-03-07/",
             "datePublished": "2025-03-07/",
