@@ -220,7 +220,7 @@ April 24, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>29 min to read</span>
+                    <span>27 min to read</span>
                 </p>
                 <h1 class="post-title">OS Cache and Disk I/O - MySQL and Redis Performance Analysis</h1>
                 <p class="post-subtitle">Understanding the impact of operating system caches on database performance</p>
@@ -326,53 +326,11 @@ April 24, 2025
 
 <p>This process is transparent to applications, which simply make standard file I/O calls without needing to know about the cache.</p>
 
-<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// This simple C code demonstrates how the OS transparently caches file reads</span>
-<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
-#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
-#include</span> <span class="cpf">&lt;time.h&gt;</span><span class="cp">
-</span>
-<span class="kt">void</span> <span class="nf">measure_read_time</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">filename</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">FILE</span><span class="o">*</span> <span class="n">file</span><span class="p">;</span>
-    <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="mi">4096</span><span class="p">];</span>
-    <span class="kt">clock_t</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">;</span>
-    <span class="kt">double</span> <span class="n">time_spent</span><span class="p">;</span>
-    <span class="kt">size_t</span> <span class="n">bytes_read</span><span class="p">;</span>
-    
-    <span class="c1">// First read (likely uncached)</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">"First read (likely from disk):</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-    <span class="n">start</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
-    <span class="n">file</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">"rb"</span><span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">file</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">while</span> <span class="p">((</span><span class="n">bytes_read</span> <span class="o">=</span> <span class="n">fread</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buffer</span><span class="p">),</span> <span class="n">file</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-            <span class="c1">// Just read the file, doing nothing with the data</span>
-        <span class="p">}</span>
-        <span class="n">fclose</span><span class="p">(</span><span class="n">file</span><span class="p">);</span>
-    <span class="p">}</span>
-    <span class="n">end</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
-    <span class="n">time_spent</span> <span class="o">=</span> <span class="p">(</span><span class="kt">double</span><span class="p">)(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">CLOCKS_PER_SEC</span><span class="p">;</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">"Time: %f seconds</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">time_spent</span><span class="p">);</span>
-    
-    <span class="c1">// Second read (likely cached)</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">"Second read (likely from cache):</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
-    <span class="n">start</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
-    <span class="n">file</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">"rb"</span><span class="p">);</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">file</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">while</span> <span class="p">((</span><span class="n">bytes_read</span> <span class="o">=</span> <span class="n">fread</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buffer</span><span class="p">),</span> <span class="n">file</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-            <span class="c1">// Just read the file, doing nothing with the data</span>
-        <span class="p">}</span>
-        <span class="n">fclose</span><span class="p">(</span><span class="n">file</span><span class="p">);</span>
-    <span class="p">}</span>
-    <span class="n">end</span> <span class="o">=</span> <span class="n">clock</span><span class="p">();</span>
-    <span class="n">time_spent</span> <span class="o">=</span> <span class="p">(</span><span class="kt">double</span><span class="p">)(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">CLOCKS_PER_SEC</span><span class="p">;</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">"Time: %f seconds</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">time_spent</span><span class="p">);</span>
-<span class="p">}</span>
+<p><br /></p>
 
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="c1">// Replace with a file that exists on your system (ideally 100MB+ for clear results)</span>
-    <span class="n">measure_read_time</span><span class="p">(</span><span class="s">"/path/to/large/file"</span><span class="p">);</span>
-    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/2b7a89acaccb4361f631d6f478615e5f.js"></script>
+
+<p><br /></p>
 
 <h3 id="page-cache-management-in-linux">Page Cache Management in Linux</h3>
 
@@ -1312,7 +1270,7 @@ mount <span class="nt">-o</span> <span class="nv">size</span><span class="o">=</
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="29">
+            <div class="time-bar" data-minutes="27">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1703,52 +1661,10 @@ When an application reads a file, the operating system follows these steps:
 
 This process is transparent to applications, which simply make standard file I/O calls without needing to know about the cache.
 
-// This simple C code demonstrates how the OS transparently caches file reads
-#include &amp;lt;stdio.h&amp;gt;
-#include &amp;lt;stdlib.h&amp;gt;
-#include &amp;lt;time.h&amp;gt;
 
-void measure_read_time(const char* filename) {
-    FILE* file;
-    char buffer[4096];
-    clock_t start, end;
-    double time_spent;
-    size_t bytes_read;
-    
-    // First read (likely uncached)
-    printf(&quot;First read (likely from disk):\n&quot;);
-    start = clock();
-    file = fopen(filename, &quot;rb&quot;);
-    if (file) {
-        while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) &amp;gt; 0) {
-            // Just read the file, doing nothing with the data
-        }
-        fclose(file);
-    }
-    end = clock();
-    time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-    printf(&quot;Time: %f seconds\n&quot;, time_spent);
-    
-    // Second read (likely cached)
-    printf(&quot;Second read (likely from cache):\n&quot;);
-    start = clock();
-    file = fopen(filename, &quot;rb&quot;);
-    if (file) {
-        while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) &amp;gt; 0) {
-            // Just read the file, doing nothing with the data
-        }
-        fclose(file);
-    }
-    end = clock();
-    time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-    printf(&quot;Time: %f seconds\n&quot;, time_spent);
-}
 
-int main() {
-    // Replace with a file that exists on your system (ideally 100MB+ for clear results)
-    measure_read_time(&quot;/path/to/large/file&quot;);
-    return 0;
-}
+
+
 
 
 Page Cache Management in Linux
@@ -2641,7 +2557,7 @@ References
   Amazon AWS: Optimizing MySQL Performance
 
 ",
-            "wordcount": "5275",
+            "wordcount": "4902",
             "inLanguage": "en",
             "dateCreated": "2025-04-24/",
             "datePublished": "2025-04-24/",
