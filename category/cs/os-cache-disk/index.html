@@ -220,7 +220,7 @@ April 24, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>26 min to read</span>
+                    <span>25 min to read</span>
                 </p>
                 <h1 class="post-title">OS Cache and Disk I/O - MySQL and Redis Performance Analysis</h1>
                 <p class="post-subtitle">Understanding the impact of operating system caches on database performance</p>
@@ -263,7 +263,7 @@ April 24, 2025
 
 <div style="width: 100%; margin: auto; margin-top: 20px;">
   <div class="mermaid">
-    graph TD
+    graph LR
       A[Application] --&gt; B[System Call Interface]
       B --&gt; C{Cache Hit?}
       C --&gt;|Yes| D[Read from Page Cache]
@@ -633,7 +633,7 @@ fio <span class="nt">--name</span><span class="o">=</span>cached_read <span clas
 
 <div style="width: 100%; margin: auto; margin-top: 20px;">
   <div class="mermaid">
-    graph TD
+    graph LR
       A[SQL Query] --&gt; B[MySQL Query Cache]
       B --&gt;|Cache Miss| C[InnoDB Buffer Pool]
       C --&gt;|Cache Miss| D[OS Page Cache]
@@ -656,13 +656,11 @@ fio <span class="nt">--name</span><span class="o">=</span>cached_read <span clas
   <li>When the buffer pool is full, least recently used (LRU) pages are evicted</li>
 </ol>
 
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Check buffer pool size and settings</span>
-<span class="k">SHOW</span> <span class="n">VARIABLES</span> <span class="k">LIKE</span> <span class="s1">'innodb_buffer_pool%'</span><span class="p">;</span>
+<p><br /></p>
 
-<span class="c1">-- Monitor buffer pool usage</span>
-<span class="k">SHOW</span> <span class="n">ENGINE</span> <span class="n">INNODB</span> <span class="n">STATUS</span><span class="err">\</span><span class="k">G</span>
-<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">information_schema</span><span class="p">.</span><span class="n">INNODB_BUFFER_POOL_STATS</span><span class="p">;</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/845e147af2842189bde8932be0b829fb.js"></script>
+
+<p><br /></p>
 
 <h3 id="os-cache-role-in-mysql-performance">OS Cache Role in MySQL Performance</h3>
 
@@ -679,12 +677,11 @@ fio <span class="nt">--name</span><span class="o">=</span>cached_read <span clas
 
 <p>Monitoring disk read operations helps understand how your MySQL instance is utilizing caches:</p>
 
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Check buffer pool hit rate</span>
-<span class="k">SELECT</span>
-  <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">variable_value</span> <span class="k">FROM</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">global_status</span> <span class="k">WHERE</span> <span class="n">variable_name</span> <span class="o">=</span> <span class="s1">'Innodb_buffer_pool_reads'</span><span class="p">)</span> <span class="o">/</span> 
-   <span class="p">(</span><span class="k">SELECT</span> <span class="n">variable_value</span> <span class="k">FROM</span> <span class="n">performance_schema</span><span class="p">.</span><span class="n">global_status</span> <span class="k">WHERE</span> <span class="n">variable_name</span> <span class="o">=</span> <span class="s1">'Innodb_buffer_pool_read_requests'</span><span class="p">))</span>
-   <span class="o">*</span> <span class="mi">100</span> <span class="k">AS</span> <span class="n">buffer_pool_hit_ratio</span><span class="p">;</span>
-</code></pre></div></div>
+<p><br /></p>
+
+<script src="https://gist.github.com/somaz94/834f82b22efc5235d5892cae6b26fc5b.js"></script>
+
+<p><br /></p>
 
 <p>A high hit ratio (&gt;99%) suggests effective buffer pool usage, but doesn’t give the full picture of OS cache usage.</p>
 
@@ -1016,13 +1013,11 @@ vmstat 1
 
 <p><strong>MySQL Cache Monitoring:</strong></p>
 
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Monitor buffer pool efficiency</span>
-<span class="k">SELECT</span>
-  <span class="p">(</span><span class="k">SELECT</span> <span class="n">variable_value</span> <span class="k">FROM</span> <span class="n">information_schema</span><span class="p">.</span><span class="n">global_status</span> <span class="k">WHERE</span> <span class="n">variable_name</span> <span class="o">=</span> <span class="s1">'Innodb_buffer_pool_read_requests'</span><span class="p">)</span> <span class="k">AS</span> <span class="n">read_requests</span><span class="p">,</span>
-  <span class="p">(</span><span class="k">SELECT</span> <span class="n">variable_value</span> <span class="k">FROM</span> <span class="n">information_schema</span><span class="p">.</span><span class="n">global_status</span> <span class="k">WHERE</span> <span class="n">variable_name</span> <span class="o">=</span> <span class="s1">'Innodb_buffer_pool_reads'</span><span class="p">)</span> <span class="k">AS</span> <span class="n">disk_reads</span><span class="p">,</span>
-  <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">((</span><span class="k">SELECT</span> <span class="n">variable_value</span> <span class="k">FROM</span> <span class="n">information_schema</span><span class="p">.</span><span class="n">global_status</span> <span class="k">WHERE</span> <span class="n">variable_name</span> <span class="o">=</span> <span class="s1">'Innodb_buffer_pool_reads'</span><span class="p">)</span> <span class="o">/</span>
-        <span class="p">(</span><span class="k">SELECT</span> <span class="n">variable_value</span> <span class="k">FROM</span> <span class="n">information_schema</span><span class="p">.</span><span class="n">global_status</span> <span class="k">WHERE</span> <span class="n">variable_name</span> <span class="o">=</span> <span class="s1">'Innodb_buffer_pool_read_requests'</span><span class="p">)))</span> <span class="o">*</span> <span class="mi">100</span> <span class="k">AS</span> <span class="n">hit_ratio</span><span class="p">;</span>
-</code></pre></div></div>
+<p><br /></p>
+
+<script src="https://gist.github.com/somaz94/1ed422de9d3f44106dae182f5cf90648.js"></script>
+
+<p><br /></p>
 
 <p><strong>Redis Cache Monitoring:</strong></p>
 
@@ -1262,7 +1257,7 @@ mount <span class="nt">-o</span> <span class="nv">size</span><span class="o">=</
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="26">
+            <div class="time-bar" data-minutes="25">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1590,7 +1585,7 @@ The operating system cache is a memory management mechanism that improves I/O pe
 
 
   
-    graph TD
+    graph LR
       A[Application] --&amp;gt; B[System Call Interface]
       B --&amp;gt; C{Cache Hit?}
       C --&amp;gt;|Yes| D[Read from Page Cache]
@@ -1960,7 +1955,7 @@ MySQL’s InnoDB storage engine implements a buffer pool that caches frequently 
 
 
   
-    graph TD
+    graph LR
       A[SQL Query] --&amp;gt; B[MySQL Query Cache]
       B --&amp;gt;|Cache Miss| C[InnoDB Buffer Pool]
       C --&amp;gt;|Cache Miss| D[OS Page Cache]
@@ -1983,12 +1978,10 @@ The InnoDB buffer pool is MySQL’s memory area for caching table and index data
   When the buffer pool is full, least recently used (LRU) pages are evicted
 
 
--- Check buffer pool size and settings
-SHOW VARIABLES LIKE &apos;innodb_buffer_pool%&apos;;
 
--- Monitor buffer pool usage
-SHOW ENGINE INNODB STATUS\G
-SELECT * FROM information_schema.INNODB_BUFFER_POOL_STATS;
+
+
+
 
 
 OS Cache Role in MySQL Performance
@@ -2006,11 +1999,10 @@ Disk Read Metrics Analysis
 
 Monitoring disk read operations helps understand how your MySQL instance is utilizing caches:
 
--- Check buffer pool hit rate
-SELECT
-  (1 - (SELECT variable_value FROM performance_schema.global_status WHERE variable_name = &apos;Innodb_buffer_pool_reads&apos;) / 
-   (SELECT variable_value FROM performance_schema.global_status WHERE variable_name = &apos;Innodb_buffer_pool_read_requests&apos;))
-   * 100 AS buffer_pool_hit_ratio;
+
+
+
+
 
 
 A high hit ratio (&amp;gt;99%) suggests effective buffer pool usage, but doesn’t give the full picture of OS cache usage.
@@ -2343,12 +2335,10 @@ vmstat 1
 
 MySQL Cache Monitoring:
 
--- Monitor buffer pool efficiency
-SELECT
-  (SELECT variable_value FROM information_schema.global_status WHERE variable_name = &apos;Innodb_buffer_pool_read_requests&apos;) AS read_requests,
-  (SELECT variable_value FROM information_schema.global_status WHERE variable_name = &apos;Innodb_buffer_pool_reads&apos;) AS disk_reads,
-  (1 - ((SELECT variable_value FROM information_schema.global_status WHERE variable_name = &apos;Innodb_buffer_pool_reads&apos;) /
-        (SELECT variable_value FROM information_schema.global_status WHERE variable_name = &apos;Innodb_buffer_pool_read_requests&apos;))) * 100 AS hit_ratio;
+
+
+
+
 
 
 Redis Cache Monitoring:
@@ -2541,7 +2531,7 @@ References
   Amazon AWS: Optimizing MySQL Performance
 
 ",
-            "wordcount": "4821",
+            "wordcount": "4601",
             "inLanguage": "en",
             "dateCreated": "2025-04-24/",
             "datePublished": "2025-04-24/",
