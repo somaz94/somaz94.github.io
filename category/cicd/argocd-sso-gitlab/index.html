@@ -220,7 +220,7 @@ March 14, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>12 min to read</span>
+                    <span>10 min to read</span>
                 </p>
                 <h1 class="post-title">Setting up ArgoCD SSO with GitLab</h1>
                 <p class="post-subtitle">A comprehensive guide to implementing ArgoCD SSO with GitLab</p>
@@ -683,76 +683,11 @@ kubectl get secret argocd-secret <span class="nt">-n</span> argocd <span class="
 
 <p>Here’s a script to automate GitLab SSO configuration:</p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="nb">set</span> <span class="nt">-e</span>
+<p><br /></p>
 
-<span class="c"># Variables</span>
-<span class="nv">NAMESPACE</span><span class="o">=</span><span class="s2">"argocd"</span>
-<span class="nv">ARGOCD_URL</span><span class="o">=</span><span class="s2">"https://argocd.your-domain.com"</span>
-<span class="nv">GITLAB_URL</span><span class="o">=</span><span class="s2">"https://gitlab.your-domain.com"</span>
-<span class="nv">GITLAB_CLIENT_ID</span><span class="o">=</span><span class="s2">"your-client-id"</span>
-<span class="nv">GITLAB_CLIENT_SECRET</span><span class="o">=</span><span class="s2">"your-client-secret"</span>
-<span class="nv">GITLAB_GROUP</span><span class="o">=</span><span class="s2">"your-gitlab-group"</span>
+<script src="https://gist.github.com/somaz94/b5487f8330420a3e37e42e35795af295.js"></script>
 
-<span class="c"># Backup existing configurations</span>
-kubectl get cm argocd-cm <span class="nt">-n</span> <span class="nv">$NAMESPACE</span> <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-cm-backup.yaml
-kubectl get cm argocd-rbac-cm <span class="nt">-n</span> <span class="nv">$NAMESPACE</span> <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-rbac-cm-backup.yaml
-kubectl get secret argocd-secret <span class="nt">-n</span> <span class="nv">$NAMESPACE</span> <span class="nt">-o</span> yaml <span class="o">&gt;</span> argocd-secret-backup.yaml
-
-<span class="c"># Update argocd-cm ConfigMap</span>
-<span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: </span><span class="nv">$NAMESPACE</span><span class="sh">
-data:
-  url: </span><span class="nv">$ARGOCD_URL</span><span class="sh">
-  dex.config: |
-    connectors:
-      - type: gitlab
-        id: gitlab
-        name: GitLab
-        config:
-          baseURL: </span><span class="nv">$GITLAB_URL</span><span class="sh">
-          clientID: </span><span class="nv">$GITLAB_CLIENT_ID</span><span class="sh">
-          clientSecret: </span><span class="se">\$</span><span class="sh">dex.gitlab.clientSecret
-          redirectURI: </span><span class="nv">$ARGOCD_URL</span><span class="sh">/api/dex/callback
-          groups:
-            - </span><span class="nv">$GITLAB_GROUP</span><span class="sh">
-</span><span class="no">EOF
-
-</span><span class="c"># Update argocd-rbac-cm ConfigMap</span>
-<span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-rbac-cm
-  namespace: </span><span class="nv">$NAMESPACE</span><span class="sh">
-data:
-  policy.csv: |
-    p, role:org-admin, applications, *, */*, allow
-    p, role:org-admin, clusters, get, *, allow
-    p, role:org-admin, repositories, *, *, allow
-    p, role:org-admin, projects, get, *, allow
-    p, role:org-admin, logs, get, *, allow
-    p, role:org-admin, exec, create, */*, allow
-    
-    g, gitlab:</span><span class="nv">$GITLAB_GROUP</span><span class="sh">, role:org-admin
-  policy.default: role:readonly
-  scopes: "[groups, email]"
-</span><span class="no">EOF
-
-</span><span class="c"># Update GitLab client secret</span>
-<span class="nv">GITLAB_SECRET_BASE64</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$GITLAB_CLIENT_SECRET</span><span class="s2">"</span> | <span class="nb">base64</span><span class="si">)</span>
-kubectl patch secret argocd-secret <span class="nt">-n</span> <span class="nv">$NAMESPACE</span> <span class="nt">--type</span><span class="o">=</span>json <span class="nt">-p</span><span class="o">=</span><span class="s1">'[{"op": "add", "path": "/data/dex.gitlab.clientSecret", "value":"'</span><span class="nv">$GITLAB_SECRET_BASE64</span><span class="s1">'"}]'</span>
-
-<span class="c"># Restart components</span>
-kubectl rollout restart deployment argocd-server <span class="nt">-n</span> <span class="nv">$NAMESPACE</span>
-kubectl rollout restart deployment argocd-dex-server <span class="nt">-n</span> <span class="nv">$NAMESPACE</span>
-
-<span class="nb">echo</span> <span class="s2">"GitLab SSO configuration completed. Please wait for pods to restart."</span>
-</code></pre></div></div>
+<p><br /></p>
 
 <h3 id="authentication-processes">Authentication Processes</h3>
 <ul>
@@ -847,7 +782,7 @@ kubectl rollout restart deployment argocd-dex-server <span class="nt">-n</span> 
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="12">
+            <div class="time-bar" data-minutes="10">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1595,75 +1530,10 @@ Automation Script
 
 Here’s a script to automate GitLab SSO configuration:
 
-#!/bin/bash
-set -e
 
-# Variables
-NAMESPACE=&quot;argocd&quot;
-ARGOCD_URL=&quot;https://argocd.your-domain.com&quot;
-GITLAB_URL=&quot;https://gitlab.your-domain.com&quot;
-GITLAB_CLIENT_ID=&quot;your-client-id&quot;
-GITLAB_CLIENT_SECRET=&quot;your-client-secret&quot;
-GITLAB_GROUP=&quot;your-gitlab-group&quot;
 
-# Backup existing configurations
-kubectl get cm argocd-cm -n $NAMESPACE -o yaml &amp;gt; argocd-cm-backup.yaml
-kubectl get cm argocd-rbac-cm -n $NAMESPACE -o yaml &amp;gt; argocd-rbac-cm-backup.yaml
-kubectl get secret argocd-secret -n $NAMESPACE -o yaml &amp;gt; argocd-secret-backup.yaml
 
-# Update argocd-cm ConfigMap
-cat &amp;lt;&amp;lt;EOF | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: $NAMESPACE
-data:
-  url: $ARGOCD_URL
-  dex.config: |
-    connectors:
-      - type: gitlab
-        id: gitlab
-        name: GitLab
-        config:
-          baseURL: $GITLAB_URL
-          clientID: $GITLAB_CLIENT_ID
-          clientSecret: \$dex.gitlab.clientSecret
-          redirectURI: $ARGOCD_URL/api/dex/callback
-          groups:
-            - $GITLAB_GROUP
-EOF
 
-# Update argocd-rbac-cm ConfigMap
-cat &amp;lt;&amp;lt;EOF | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-rbac-cm
-  namespace: $NAMESPACE
-data:
-  policy.csv: |
-    p, role:org-admin, applications, *, */*, allow
-    p, role:org-admin, clusters, get, *, allow
-    p, role:org-admin, repositories, *, *, allow
-    p, role:org-admin, projects, get, *, allow
-    p, role:org-admin, logs, get, *, allow
-    p, role:org-admin, exec, create, */*, allow
-    
-    g, gitlab:$GITLAB_GROUP, role:org-admin
-  policy.default: role:readonly
-  scopes: &quot;[groups, email]&quot;
-EOF
-
-# Update GitLab client secret
-GITLAB_SECRET_BASE64=$(echo -n &quot;$GITLAB_CLIENT_SECRET&quot; | base64)
-kubectl patch secret argocd-secret -n $NAMESPACE --type=json -p=&apos;[{&quot;op&quot;: &quot;add&quot;, &quot;path&quot;: &quot;/data/dex.gitlab.clientSecret&quot;, &quot;value&quot;:&quot;&apos;$GITLAB_SECRET_BASE64&apos;&quot;}]&apos;
-
-# Restart components
-kubectl rollout restart deployment argocd-server -n $NAMESPACE
-kubectl rollout restart deployment argocd-dex-server -n $NAMESPACE
-
-echo &quot;GitLab SSO configuration completed. Please wait for pods to restart.&quot;
 
 
 Authentication Processes
@@ -1711,7 +1581,7 @@ References
   Kubernetes Secret Management
 
 ",
-            "wordcount": "2223",
+            "wordcount": "1923",
             "inLanguage": "en",
             "dateCreated": "2025-03-14/",
             "datePublished": "2025-03-14/",
