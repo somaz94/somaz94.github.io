@@ -220,7 +220,7 @@ February 11, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>19 min to read</span>
+                    <span>17 min to read</span>
                 </p>
                 <h1 class="post-title">Building ETL Pipeline with BigQuery and Dataflow</h1>
                 <p class="post-subtitle">A comprehensive guide to data ETL process using GCP services</p>
@@ -621,23 +621,9 @@ gcloud services <span class="nb">enable </span>sheets.googleapis.com
 
 <h4 id="2-set-up-service-accounts-and-permissions">2. Set Up Service Accounts and Permissions</h4>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create service account for BigQuery operations</span>
-gcloud iam service-accounts create bigquery-sa <span class="se">\</span>
-    <span class="nt">--display-name</span><span class="o">=</span><span class="s2">"BigQuery Service Account"</span>
+<script src="https://gist.github.com/somaz94/32601974b92d4731068b44b8a82622e6.js"></script>
 
-<span class="c"># Grant necessary permissions</span>
-gcloud projects add-iam-policy-binding <span class="nv">$PROJECT_ID</span> <span class="se">\</span>
-    <span class="nt">--member</span><span class="o">=</span><span class="s2">"serviceAccount:bigquery-sa@</span><span class="nv">$PROJECT_ID</span><span class="s2">.iam.gserviceaccount.com"</span> <span class="se">\</span>
-    <span class="nt">--role</span><span class="o">=</span><span class="s2">"roles/bigquery.dataEditor"</span>
-
-gcloud projects add-iam-policy-binding <span class="nv">$PROJECT_ID</span> <span class="se">\</span>
-    <span class="nt">--member</span><span class="o">=</span><span class="s2">"serviceAccount:bigquery-sa@</span><span class="nv">$PROJECT_ID</span><span class="s2">.iam.gserviceaccount.com"</span> <span class="se">\</span>
-    <span class="nt">--role</span><span class="o">=</span><span class="s2">"roles/bigquery.jobUser"</span>
-
-<span class="c"># Create and download key for the service account</span>
-gcloud iam service-accounts keys create bigquery.json <span class="se">\</span>
-    <span class="nt">--iam-account</span><span class="o">=</span>bigquery-sa@<span class="nv">$PROJECT_ID</span>.iam.gserviceaccount.com
-</code></pre></div></div>
+<p><br /></p>
 
 <h4 id="3-create-bigquery-dataset-and-tables">3. Create BigQuery Dataset and Tables</h4>
 
@@ -645,9 +631,7 @@ gcloud iam service-accounts keys create bigquery.json <span class="se">\</span>
 bq mk <span class="nt">--dataset</span> <span class="nv">$PROJECT_ID</span>:analytics_data
 
 <span class="c"># Create table with schema</span>
-bq mk <span class="nt">--table</span> <span class="se">\</span>
-    <span class="nv">$PROJECT_ID</span>:analytics_data.mongodb_data <span class="se">\</span>
-    _id:STRING,name:STRING,value:FLOAT,timestamp:TIMESTAMP
+bq mk <span class="nt">--table</span> <span class="nv">$PROJECT_ID</span>:analytics_data.mongodb_data _id:STRING,name:STRING,value:FLOAT,timestamp:TIMESTAMP
 </code></pre></div></div>
 
 <h4 id="4-set-up-cloud-storage-for-function-code">4. Set Up Cloud Storage for Function Code</h4>
@@ -658,86 +642,19 @@ gsutil mb <span class="nt">-l</span> us-central1 gs://<span class="nv">$PROJECT_
 
 <h4 id="5-prepare-and-deploy-mongodb-to-bigquery-function">5. Prepare and Deploy MongoDB to BigQuery Function</h4>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create function directory and files</span>
-<span class="nb">mkdir</span> <span class="nt">-p</span> mongodb-to-bigquery
-<span class="nb">cd </span>mongodb-to-bigquery
+<script src="https://gist.github.com/somaz94/d721800187c601d94862ce2d004a5d4e.js"></script>
 
-<span class="c"># Create requirements.txt</span>
-<span class="nb">cat</span> <span class="o">&gt;</span> requirements.txt <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
-pymongo==4.3.3
-google-cloud-bigquery==3.9.0
-</span><span class="no">EOF
-
-</span><span class="c"># Create main.py with the function code</span>
-<span class="c"># (Use the MongoDB to BigQuery function code from above)</span>
-
-<span class="c"># Zip the function code</span>
-zip <span class="nt">-r</span> mongodb-to-bigquery.zip main.py requirements.txt
-
-<span class="c"># Upload to Cloud Storage</span>
-gsutil <span class="nb">cp </span>mongodb-to-bigquery.zip gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>/
-
-<span class="c"># Deploy the function</span>
-gcloud functions deploy mongodb-to-bigquery <span class="se">\</span>
-    <span class="nt">--runtime</span> python39 <span class="se">\</span>
-    <span class="nt">--trigger-http</span> <span class="se">\</span>
-    <span class="nt">--allow-unauthenticated</span> <span class="se">\</span>
-    <span class="nt">--entry-point</span><span class="o">=</span>mongodb_to_bigquery <span class="se">\</span>
-    <span class="nt">--source</span><span class="o">=</span>gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>/mongodb-to-bigquery.zip <span class="se">\</span>
-    <span class="nt">--set-env-vars</span><span class="o">=</span><span class="nv">MONGODB_URI</span><span class="o">=</span>mongodb+srv://username:password@cluster.mongodb.net,MONGODB_DB<span class="o">=</span>your_database,MONGODB_COLLECTION<span class="o">=</span>your_collection,BIGQUERY_PROJECT<span class="o">=</span><span class="nv">$PROJECT_ID</span>,BIGQUERY_DATASET<span class="o">=</span>analytics_data,BIGQUERY_TABLE<span class="o">=</span>mongodb_data
-</code></pre></div></div>
+<p><br /></p>
 
 <h4 id="6-prepare-and-deploy-bigquery-to-google-sheets-function">6. Prepare and Deploy BigQuery to Google Sheets Function</h4>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create function directory and files</span>
-<span class="nb">mkdir</span> <span class="nt">-p</span> bigquery-to-sheets
-<span class="nb">cd </span>bigquery-to-sheets
+<script src="https://gist.github.com/somaz94/f9d4f7bf20eeba87983cc7b0d478097b.js"></script>
 
-<span class="c"># Create requirements.txt</span>
-<span class="nb">cat</span> <span class="o">&gt;</span> requirements.txt <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
-google-cloud-bigquery==3.9.0
-gspread==5.7.2
-google-auth==2.16.2
-</span><span class="no">EOF
-
-</span><span class="c"># Copy the service account key</span>
-<span class="nb">cp</span> ../bigquery.json <span class="nb">.</span>
-
-<span class="c"># Create main.py with the function code</span>
-<span class="c"># (Use the BigQuery to Google Sheets function code from above)</span>
-
-<span class="c"># Zip the function code</span>
-zip <span class="nt">-r</span> bigquery-to-sheets.zip main.py requirements.txt bigquery.json
-
-<span class="c"># Upload to Cloud Storage</span>
-gsutil <span class="nb">cp </span>bigquery-to-sheets.zip gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>/
-
-<span class="c"># Deploy the function</span>
-gcloud functions deploy bigquery-to-sheets <span class="se">\</span>
-    <span class="nt">--runtime</span> python39 <span class="se">\</span>
-    <span class="nt">--trigger-http</span> <span class="se">\</span>
-    <span class="nt">--allow-unauthenticated</span> <span class="se">\</span>
-    <span class="nt">--entry-point</span><span class="o">=</span>bigquery_to_sheets <span class="se">\</span>
-    <span class="nt">--source</span><span class="o">=</span>gs://<span class="nv">$PROJECT_ID</span><span class="nt">-functions</span>/bigquery-to-sheets.zip <span class="se">\</span>
-    <span class="nt">--set-env-vars</span><span class="o">=</span><span class="nv">BIGQUERY_PROJECT</span><span class="o">=</span><span class="nv">$PROJECT_ID</span>,BIGQUERY_DATASET<span class="o">=</span>analytics_data,BIGQUERY_TABLE<span class="o">=</span>mongodb_data,SHEET_ID<span class="o">=</span>your-sheet-id,SHEET_NAME<span class="o">=</span>Sheet1
-</code></pre></div></div>
+<p><br /></p>
 
 <h4 id="7-set-up-cloud-scheduler-jobs">7. Set Up Cloud Scheduler Jobs</h4>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create scheduler for MongoDB to BigQuery (runs daily at 1 AM)</span>
-gcloud scheduler <span class="nb">jobs </span>create http mongodb-to-bigquery-job <span class="se">\</span>
-    <span class="nt">--schedule</span><span class="o">=</span><span class="s2">"0 1 * * *"</span> <span class="se">\</span>
-    <span class="nt">--uri</span><span class="o">=</span><span class="s2">"https://us-central1-</span><span class="nv">$PROJECT_ID</span><span class="s2">.cloudfunctions.net/mongodb-to-bigquery"</span> <span class="se">\</span>
-    <span class="nt">--http-method</span><span class="o">=</span>GET <span class="se">\</span>
-    <span class="nt">--time-zone</span><span class="o">=</span><span class="s2">"America/New_York"</span>
-
-<span class="c"># Create scheduler for BigQuery to Google Sheets (runs daily at 2 AM)</span>
-gcloud scheduler <span class="nb">jobs </span>create http bigquery-to-sheets-job <span class="se">\</span>
-    <span class="nt">--schedule</span><span class="o">=</span><span class="s2">"0 2 * * *"</span> <span class="se">\</span>
-    <span class="nt">--uri</span><span class="o">=</span><span class="s2">"https://us-central1-</span><span class="nv">$PROJECT_ID</span><span class="s2">.cloudfunctions.net/bigquery-to-sheets"</span> <span class="se">\</span>
-    <span class="nt">--http-method</span><span class="o">=</span>GET <span class="se">\</span>
-    <span class="nt">--time-zone</span><span class="o">=</span><span class="s2">"America/New_York"</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/a65b24be24b41572d6471e499aaf7791.js"></script>
 
 <p><br /></p>
 
@@ -1017,7 +934,7 @@ gcloud scheduler <span class="nb">jobs </span>create http bigquery-to-sheets-job
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="19">
+            <div class="time-bar" data-minutes="17">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1796,22 +1713,8 @@ gcloud services enable sheets.googleapis.com
 
 2. Set Up Service Accounts and Permissions
 
-# Create service account for BigQuery operations
-gcloud iam service-accounts create bigquery-sa \
-    --display-name=&quot;BigQuery Service Account&quot;
 
-# Grant necessary permissions
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member=&quot;serviceAccount:bigquery-sa@$PROJECT_ID.iam.gserviceaccount.com&quot; \
-    --role=&quot;roles/bigquery.dataEditor&quot;
 
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member=&quot;serviceAccount:bigquery-sa@$PROJECT_ID.iam.gserviceaccount.com&quot; \
-    --role=&quot;roles/bigquery.jobUser&quot;
-
-# Create and download key for the service account
-gcloud iam service-accounts keys create bigquery.json \
-    --iam-account=bigquery-sa@$PROJECT_ID.iam.gserviceaccount.com
 
 
 3. Create BigQuery Dataset and Tables
@@ -1820,9 +1723,7 @@ gcloud iam service-accounts keys create bigquery.json \
 bq mk --dataset $PROJECT_ID:analytics_data
 
 # Create table with schema
-bq mk --table \
-    $PROJECT_ID:analytics_data.mongodb_data \
-    _id:STRING,name:STRING,value:FLOAT,timestamp:TIMESTAMP
+bq mk --table $PROJECT_ID:analytics_data.mongodb_data _id:STRING,name:STRING,value:FLOAT,timestamp:TIMESTAMP
 
 
 4. Set Up Cloud Storage for Function Code
@@ -1833,85 +1734,18 @@ gsutil mb -l us-central1 gs://$PROJECT_ID-functions
 
 5. Prepare and Deploy MongoDB to BigQuery Function
 
-# Create function directory and files
-mkdir -p mongodb-to-bigquery
-cd mongodb-to-bigquery
 
-# Create requirements.txt
-cat &amp;gt; requirements.txt &amp;lt;&amp;lt; &apos;EOF&apos;
-pymongo==4.3.3
-google-cloud-bigquery==3.9.0
-EOF
 
-# Create main.py with the function code
-# (Use the MongoDB to BigQuery function code from above)
-
-# Zip the function code
-zip -r mongodb-to-bigquery.zip main.py requirements.txt
-
-# Upload to Cloud Storage
-gsutil cp mongodb-to-bigquery.zip gs://$PROJECT_ID-functions/
-
-# Deploy the function
-gcloud functions deploy mongodb-to-bigquery \
-    --runtime python39 \
-    --trigger-http \
-    --allow-unauthenticated \
-    --entry-point=mongodb_to_bigquery \
-    --source=gs://$PROJECT_ID-functions/mongodb-to-bigquery.zip \
-    --set-env-vars=MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net,MONGODB_DB=your_database,MONGODB_COLLECTION=your_collection,BIGQUERY_PROJECT=$PROJECT_ID,BIGQUERY_DATASET=analytics_data,BIGQUERY_TABLE=mongodb_data
 
 
 6. Prepare and Deploy BigQuery to Google Sheets Function
 
-# Create function directory and files
-mkdir -p bigquery-to-sheets
-cd bigquery-to-sheets
 
-# Create requirements.txt
-cat &amp;gt; requirements.txt &amp;lt;&amp;lt; &apos;EOF&apos;
-google-cloud-bigquery==3.9.0
-gspread==5.7.2
-google-auth==2.16.2
-EOF
 
-# Copy the service account key
-cp ../bigquery.json .
-
-# Create main.py with the function code
-# (Use the BigQuery to Google Sheets function code from above)
-
-# Zip the function code
-zip -r bigquery-to-sheets.zip main.py requirements.txt bigquery.json
-
-# Upload to Cloud Storage
-gsutil cp bigquery-to-sheets.zip gs://$PROJECT_ID-functions/
-
-# Deploy the function
-gcloud functions deploy bigquery-to-sheets \
-    --runtime python39 \
-    --trigger-http \
-    --allow-unauthenticated \
-    --entry-point=bigquery_to_sheets \
-    --source=gs://$PROJECT_ID-functions/bigquery-to-sheets.zip \
-    --set-env-vars=BIGQUERY_PROJECT=$PROJECT_ID,BIGQUERY_DATASET=analytics_data,BIGQUERY_TABLE=mongodb_data,SHEET_ID=your-sheet-id,SHEET_NAME=Sheet1
 
 
 7. Set Up Cloud Scheduler Jobs
 
-# Create scheduler for MongoDB to BigQuery (runs daily at 1 AM)
-gcloud scheduler jobs create http mongodb-to-bigquery-job \
-    --schedule=&quot;0 1 * * *&quot; \
-    --uri=&quot;https://us-central1-$PROJECT_ID.cloudfunctions.net/mongodb-to-bigquery&quot; \
-    --http-method=GET \
-    --time-zone=&quot;America/New_York&quot;
-
-# Create scheduler for BigQuery to Google Sheets (runs daily at 2 AM)
-gcloud scheduler jobs create http bigquery-to-sheets-job \
-    --schedule=&quot;0 2 * * *&quot; \
-    --uri=&quot;https://us-central1-$PROJECT_ID.cloudfunctions.net/bigquery-to-sheets&quot; \
-    --http-method=GET \
-    --time-zone=&quot;America/New_York&quot;
 
 
 
@@ -2144,7 +1978,7 @@ References
   Pulumi Implementation
 
 ",
-            "wordcount": "3520",
+            "wordcount": "3061",
             "inLanguage": "en",
             "dateCreated": "2025-02-11/",
             "datePublished": "2025-02-11/",
