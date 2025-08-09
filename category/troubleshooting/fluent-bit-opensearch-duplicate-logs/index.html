@@ -37,19 +37,19 @@
         mermaid.initialize({ startOnLoad: true });
     </script>
 
-    <title>Deep Dive into Zero Trust Security Model | somaz</title>
-    <meta name="description" content="A comprehensive guide to Zero Trust Security Model, its principles, components, and implementation strategies">
+    <title>Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration | somaz</title>
+    <meta name="description" content="A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID conf...">
     
-        <meta name="keywords" content="security, zero-trust, cybersecurity, access-control, identity">
+        <meta name="keywords" content="fluent-bit, opensearch, eks, kubernetes, logging, troubleshooting">
     
 
     <!-- Social: Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Deep Dive into Zero Trust Security Model | somaz">
-    <meta name="twitter:description" content="A comprehensive guide to Zero Trust Security Model, its principles, components, and implementation strategies">
+    <meta name="twitter:title" content="Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration | somaz">
+    <meta name="twitter:description" content="A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID conf...">
 
     
-        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754443374/zero-trust_p7tr7i.png">
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754458041/fluenbit-opensearch_lmr5hf.png">
     
     
     
@@ -57,10 +57,10 @@
     
 
     <!-- Social: Facebook / Open Graph -->
-    <meta property="og:url" content="https://somaz.blog/category/security/zero-trust/">
-    <meta property="og:title" content="Deep Dive into Zero Trust Security Model | somaz">
-    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754443374/zero-trust_p7tr7i.png">
-    <meta property="og:description" content="A comprehensive guide to Zero Trust Security Model, its principles, components, and implementation strategies">
+    <meta property="og:url" content="https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/">
+    <meta property="og:title" content="Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754458041/fluenbit-opensearch_lmr5hf.png">
+    <meta property="og:description" content="A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID conf...">
     <meta property="og:site_name" content="Somaz Tech Blog">
 
     <!-- Favicon -->
@@ -92,7 +92,7 @@
     <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
 
     <link rel="stylesheet" href="/assets/css/styles.css">
-    <link rel="canonical" href="https://somaz.blog/category/security/zero-trust/">
+    <link rel="canonical" href="https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/">
     <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
 
     <!-- Include extra styles -->
@@ -211,22 +211,22 @@
                 <p class="post-info">
                     
                         <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
-                        <time class="date" datetime="2025-07-13T16:00:00+00:00">
+                        <time class="date" datetime="2025-08-08T08:00:00+00:00">
                             
 
 
-July 13, 2025
+August 8, 2025
 
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
                     <span>4 min to read</span>
                 </p>
-                <h1 class="post-title">Deep Dive into Zero Trust Security Model</h1>
-                <p class="post-subtitle">Understanding the Never Trust, Always Verify Approach</p>
+                <h1 class="post-title">Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration</h1>
+                <p class="post-subtitle">How to prevent duplicate log storage using Generate_ID configuration in EKS environment</p>
 
                 
-                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1754443374/zero-trust_p7tr7i.png" alt="Featured image" class="post-cover">
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1754458041/fluenbit-opensearch_lmr5hf.png" alt="Featured image" class="post-cover">
                 
 
                 <!-- Pagination links -->
@@ -236,299 +236,108 @@ July 13, 2025
                 <!-- Add your table of contents here -->
 
 
-                <p><a href="https://www.nist.gov/">Image Reference link</a></p>
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>Have you ever experienced duplicate logs being stored in OpenSearch when forwarding logs through Fluent Bit in an EKS environment?</p>
+
+<p>We faced a similar issue. Despite having identical log content and timestamps, logs were being stored twice in OpenSearch, causing metrics and search results to be artificially inflated.</p>
+
+<p>After investigation, we discovered that each log had different <code class="language-plaintext highlighter-rouge">_id</code> values, causing OpenSearch to recognize them as separate documents.</p>
+
+<p>This article shares a real case study of resolving this issue solely through Fluent Bit configuration. Specifically, we’ll explain the phenomenon where logs with identical content but different <code class="language-plaintext highlighter-rouge">_id</code> values get stored as duplicates, and how we resolved this using the <code class="language-plaintext highlighter-rouge">Generate_ID</code> setting.</p>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="understanding-zero-trust-security-model">Understanding Zero Trust Security Model</h2>
+<h2 id="problem-situation">Problem Situation</h2>
 
 <div class="info-box info-box-modern">
-Zero Trust is a modern security model based on the principle of "never trust, always verify." It challenges the traditional perimeter-based security approach by assuming that no user, device, or network should be inherently trusted, regardless of their location or previous authentication.
+While using aws-for-fluent-bit in an AWS EKS environment to forward Fluent Bit logs to OpenSearch, we encountered an issue where identical logs were being stored multiple times.
 </div>
 
-<h3 id="what-is-zero-trust">What is Zero Trust?</h3>
-
-<div class="info-box info-box-default-not-check">
-  <strong>The Security Paradigm Shift</strong>
-  <p>Zero Trust represents a fundamental shift in security philosophy:</p>
-  
-  <ul>
-    <li><strong>No Implicit Trust</strong>: Every access request is verified, regardless of source</li>
-    <li><strong>Continuous Validation</strong>: Trust is never granted permanently</li>
-    <li><strong>Least Privilege</strong>: Access is granted on a need-to-know basis</li>
-    <li><strong>Micro-segmentation</strong>: Network is divided into smaller, isolated segments</li>
-  </ul>
-  
-  <p>This approach addresses modern security challenges posed by cloud computing, remote work, and sophisticated cyber threats.</p>
-</div>
-
-<div style="width: 100%; margin: 20px auto;">
-  <div class="mermaid">
-    graph LR
-      A[Zero Trust Model]
-      A --&gt; B[Core Principles]
-      A --&gt; C[Components]
-      A --&gt; D[Implementation]
-      A --&gt; E[Benefits]
-      
-      B --&gt; B1[Never Trust]
-      B --&gt; B2[Always Verify]
-      B --&gt; B3[Least Privilege]
-      
-      C --&gt; C1[Identity]
-      C --&gt; C2[Device]
-      C --&gt; C3[Network]
-      
-      D --&gt; D1[Assessment]
-      D --&gt; D2[Planning]
-      D --&gt; D3[Deployment]
-      
-      E --&gt; E1[Enhanced Security]
-      E --&gt; E2[Better Control]
-      E --&gt; E3[Improved Visibility]
-
-      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
-      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
-      style C stroke:#333,stroke-width:1px,fill:#64b5f6
-      style D stroke:#333,stroke-width:1px,fill:#ffcc80
-      style E stroke:#333,stroke-width:1px,fill:#ce93d8
-  </div>
-</div>
-
-<p><br /></p>
-
-<hr />
-
-<h2 id="core-principles-and-components">Core Principles and Components</h2>
-
-<div class="info-box info-box-modern">
-Zero Trust architecture is built on several key principles and components that work together to create a comprehensive security framework. Understanding these elements is crucial for effective implementation.
-</div>
-
-<h3 id="core-principles">Core Principles</h3>
-
-<div class="table-container">
-  <table class="table-beauty">
-    <tr>
-      <th style="width: 20%;">Principle</th>
-      <th style="width: 25%;">Description</th>
-      <th style="width: 55%;">Implementation</th>
-    </tr>
-    <tr>
-      <td><strong>Never Trust</strong></td>
-      <td>No implicit trust granted</td>
-      <td>
-        <ul>
-          <li>Continuous authentication</li>
-          <li>Context-aware access control</li>
-          <li>Risk-based validation</li>
-          <li>Behavioral analysis</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td><strong>Least Privilege</strong></td>
-      <td>Minimum access required</td>
-      <td>
-        <ul>
-          <li>Role-based access control</li>
-          <li>Just-in-time access</li>
-          <li>Time-bound permissions</li>
-          <li>Access reviews</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td><strong>Micro-segmentation</strong></td>
-      <td>Network isolation</td>
-      <td>
-        <ul>
-          <li>Network segmentation</li>
-          <li>Service isolation</li>
-          <li>Traffic inspection</li>
-          <li>Access control lists</li>
-        </ul>
-      </td>
-    </tr>
-  </table>
-</div>
-
-<h3 id="key-components">Key Components</h3>
-
-<div class="info-box info-box-default-not-check">
-  <strong>Essential Components</strong>
-  <p>Zero Trust implementation requires several key components:</p>
-  <ul>
-    <li><strong>Identity and Access Management (IAM)</strong>: SSO, MFA, RBAC</li>
-    <li><strong>Device Security</strong>: Endpoint protection, MDM, device health checks</li>
-    <li><strong>Network Security</strong>: Micro-segmentation, SDN, VPN alternatives</li>
-    <li><strong>Data Protection</strong>: Encryption, DLP, data classification</li>
-    <li><strong>Visibility and Analytics</strong>: SIEM, UEBA, security analytics</li>
-  </ul>
-  <p>These components work together to create a comprehensive security framework.</p>
-</div>
-
-<p><br /></p>
-
-<hr />
-
-<h2 id="implementation-strategy">Implementation Strategy</h2>
-
-<div class="info-box info-box-modern">
-Implementing Zero Trust requires a strategic approach that considers organizational needs, existing infrastructure, and security requirements. A phased implementation helps ensure successful adoption.
-</div>
-
-<h3 id="implementation-phases">Implementation Phases</h3>
-
-<div class="table-container">
-  <table class="table-beauty">
-    <tr>
-      <th style="width: 20%;">Phase</th>
-      <th style="width: 40%;">Description</th>
-      <th style="width: 40%;">Key Activities</th>
-    </tr>
-    <tr>
-      <td><strong>Assessment</strong></td>
-      <td>Evaluate current state</td>
-      <td>
-        <ul>
-          <li>Asset inventory</li>
-          <li>Risk assessment</li>
-          <li>Gap analysis</li>
-          <li>Stakeholder engagement</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td><strong>Planning</strong></td>
-      <td>Develop implementation strategy</td>
-      <td>
-        <ul>
-          <li>Roadmap creation</li>
-          <li>Resource allocation</li>
-          <li>Timeline development</li>
-          <li>Success metrics</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td><strong>Deployment</strong></td>
-      <td>Implement solutions</td>
-      <td>
-        <ul>
-          <li>Pilot programs</li>
-          <li>Phased rollout</li>
-          <li>Training and awareness</li>
-          <li>Continuous improvement</li>
-        </ul>
-      </td>
-    </tr>
-  </table>
-</div>
-
-<h3 id="best-practices">Best Practices</h3>
+<p>In the OpenSearch dashboard, logs with identical messages and timestamps were being stored as duplicates, causing the following problems:</p>
 
 <div class="info-box info-box-warning-not-check">
-  <strong>Implementation Best Practices</strong>
-  <p>Key considerations for successful implementation:</p>
+  <strong>Impact of Duplicate Logs</strong>
   <ul>
-    <li><strong>Start Small</strong>: Begin with critical assets and expand gradually</li>
-    <li><strong>User Experience</strong>: Balance security with usability</li>
-    <li><strong>Continuous Monitoring</strong>: Implement comprehensive logging and analysis</li>
-    <li><strong>Regular Reviews</strong>: Assess and update security policies</li>
-    <li><strong>Training</strong>: Educate users and administrators</li>
+    <li>Search result counts became inflated beyond actual values</li>
+    <li>Log-based alerts were triggered multiple times</li>
+    <li>Visualization metrics became distorted</li>
   </ul>
-  <p>These practices help ensure successful Zero Trust implementation.</p>
 </div>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="use-cases-and-examples">Use Cases and Examples</h2>
+<h2 id="root-cause-analysis">Root Cause Analysis</h2>
 
-<div class="info-box info-box-modern">
-Zero Trust can be applied across various environments and scenarios. Here are some common use cases and implementation examples.
-</div>
+<p>When Fluent Bit sends logs to OpenSearch without specifying an <code class="language-plaintext highlighter-rouge">_id</code>, OpenSearch automatically generates a unique <code class="language-plaintext highlighter-rouge">_id</code> for each log. In this case, even if the content is identical, duplicate storage occurs due to different <code class="language-plaintext highlighter-rouge">_id</code> values.</p>
 
-<h3 id="common-use-cases">Common Use Cases</h3>
+<h3 id="problem-analysis">Problem Analysis</h3>
 
-<div class="table-container">
-  <table class="table-beauty">
-    <tr>
-      <th style="width: 20%;">Environment</th>
-      <th style="width: 40%;">Implementation</th>
-      <th style="width: 40%;">Benefits</th>
-    </tr>
-    <tr>
-      <td><strong>Cloud</strong></td>
-      <td>
-        <ul>
-          <li>AWS IAM + SCP</li>
-          <li>Azure Conditional Access</li>
-          <li>Google BeyondCorp</li>
-        </ul>
-      </td>
-      <td>
-        <ul>
-          <li>Enhanced cloud security</li>
-          <li>Better access control</li>
-          <li>Improved compliance</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td><strong>Kubernetes</strong></td>
-      <td>
-        <ul>
-          <li>Network Policies</li>
-          <li>RBAC</li>
-          <li>Service Mesh</li>
-        </ul>
-      </td>
-      <td>
-        <ul>
-          <li>Container security</li>
-          <li>Service isolation</li>
-          <li>Traffic control</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td><strong>Enterprise</strong></td>
-      <td>
-        <ul>
-          <li>SASE/ZTNA</li>
-          <li>MDM Integration</li>
-          <li>Endpoint Security</li>
-        </ul>
-      </td>
-      <td>
-        <ul>
-          <li>Remote access security</li>
-          <li>Device management</li>
-          <li>Data protection</li>
-        </ul>
-      </td>
-    </tr>
-  </table>
-</div>
-
-<h3 id="implementation-considerations">Implementation Considerations</h3>
+<p>In our environment, the <code class="language-plaintext highlighter-rouge">rewrite_tag</code> filter caused identical logs to propagate through multiple paths within Fluent Bit, with each path generating different <code class="language-plaintext highlighter-rouge">_id</code> values, resulting in storage as separate documents in OpenSearch.</p>
 
 <div class="info-box info-box-default-not-check">
-  <strong>Key Considerations</strong>
-  <p>Important factors to consider:</p>
+  <strong>Conditions Where This Problem Occurs More Frequently</strong>
   <ul>
-    <li><strong>Legacy Systems</strong>: Compatibility with existing infrastructure</li>
-    <li><strong>User Experience</strong>: Impact on productivity and usability</li>
-    <li><strong>Cost</strong>: Investment in new technologies and training</li>
-    <li><strong>Compliance</strong>: Meeting regulatory requirements</li>
-    <li><strong>Integration</strong>: Working with existing security tools</li>
+    <li><code>Logstash_Format On</code> option is configured</li>
+    <li><code>Generate_ID</code> option is disabled</li>
+    <li>Identical logs are sent through multiple OUTPUT paths</li>
   </ul>
-  <p>These considerations help ensure successful implementation.</p>
+</div>
+
+<p>As a result, OpenSearch stores logs with identical content but different <code class="language-plaintext highlighter-rouge">_id</code> values as duplicate documents.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="solution">Solution</h2>
+
+<p>This issue can be resolved by adding the following option to the Fluent Bit es Output configuration.</p>
+
+<h3 id="configuration-update">Configuration Update</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>OUTPUT]
+    Name            es
+    Match           es.<span class="k">*</span>
+    ...
+    Generate_ID     On
+</code></pre></div></div>
+
+<div class="info-box info-box-success-not-check">
+  <strong>How Generate_ID Works</strong>
+  <p>The <code>Generate_ID On</code> option forces Fluent Bit to generate a unique <code>_id</code> internally when sending logs to OpenSearch. This ensures that even if identical logs are forwarded through multiple paths, OpenSearch recognizes them as the same document and stores only one copy.</p>
+</div>
+
+<h3 id="why-this-setting-is-essential">Why This Setting is Essential</h3>
+
+<p>This configuration is particularly essential when using <code class="language-plaintext highlighter-rouge">rewrite_tag</code> filters to forward logs through multiple Match paths. When identical logs are split and sent to <code class="language-plaintext highlighter-rouge">s3.*</code>, <code class="language-plaintext highlighter-rouge">es.*</code> paths, if <code class="language-plaintext highlighter-rouge">_id</code> is not forcibly generated, logs will have different <code class="language-plaintext highlighter-rouge">_id</code> values despite identical content. This results in the same log being stored 2 or more times in OpenSearch.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="verification-and-follow-up-actions">Verification and Follow-up Actions</h2>
+
+<p>After applying the configuration, verify the following items to ensure the solution is working correctly.</p>
+
+<h3 id="verification-steps">Verification Steps</h3>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Post-Implementation Verification</strong>
+  <ol>
+    <li>Confirm in the OpenSearch dashboard that logs with identical messages and timestamps are stored only once</li>
+    <li>Compare the <code>_id</code> patterns of logs with Generate_ID applied to verify that uniqueness is ensured</li>
+    <li>Continuously monitor through Health Check paths to ensure logs are being sent normally without errors or retries in Fluent Bit logs</li>
+    <li>If necessary, simplify rewrite_tag filter logic to reduce the possibility of duplicate tagging</li>
+  </ol>
 </div>
 
 <p><br /></p>
@@ -538,28 +347,25 @@ Zero Trust can be applied across various environments and scenarios. Here are so
 <h2 id="key-points">Key Points</h2>
 
 <div class="info-box info-box-success-not-check">
-  <strong>💡 Zero Trust Essentials</strong>
+  <strong>💡 Resolution Summary</strong>
   <ul>
     <li>
-      <strong>Core Principles</strong><br />
-      - Never trust, always verify<br />
-      - Least privilege access<br />
-      - Micro-segmentation<br />
-      - Continuous monitoring
+      <strong>Problem Cause</strong><br />
+      - Different _id values for identical log content<br />
+      - OpenSearch treating them as separate documents<br />
+      - Multiple paths through rewrite_tag filters
     </li>
     <li>
-      <strong>Key Components</strong><br />
-      - Identity management<br />
-      - Device security<br />
-      - Network protection<br />
-      - Data security
+      <strong>Solution</strong><br />
+      - Enable Generate_ID in Fluent Bit OUTPUT configuration<br />
+      - Ensures consistent _id generation for identical logs<br />
+      - Prevents duplicate storage in OpenSearch
     </li>
     <li>
-      <strong>Implementation</strong><br />
-      - Phased approach<br />
-      - User experience<br />
-      - Continuous improvement<br />
-      - Regular assessment
+      <strong>Prevention</strong><br />
+      - Proper _id management in multi-path logging<br />
+      - Regular monitoring of log storage patterns<br />
+      - Optimization of filtering and tagging strategies
     </li>
   </ul>
 </div>
@@ -568,12 +374,27 @@ Zero Trust can be applied across various environments and scenarios. Here are so
 
 <hr />
 
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This issue appeared to be a simple case of duplicate log storage, but the root cause lay in the <code class="language-plaintext highlighter-rouge">_id</code> generation mechanism between Fluent Bit and OpenSearch. Fortunately, we were able to completely resolve the problem with a single <code class="language-plaintext highlighter-rouge">Generate_ID</code> option provided by Fluent Bit.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Lessons Learned</strong>
+  <p>When integrating Fluent Bit with OpenSearch in EKS environments, it's important to apply configurations that prevent <code>_id</code> conflicts or duplicate generation in advance, especially when considering multi-path log routing scenarios.</p>
+</div>
+
+<p>Moving forward, it’s necessary to continuously inspect log storage structures and refine filtering and tagging strategies. This experience reinforces how a small configuration change can make a significant difference in data quality and operational efficiency.</p>
+
+<p><br /></p>
+
+<hr />
+
 <h2 id="references">References</h2>
 <ul>
-  <li><a href="https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-207.pdf">NIST SP 800-207: Zero Trust Architecture</a></li>
-  <li><a href="https://cloud.google.com/beyondcorp">Google BeyondCorp Whitepaper</a></li>
-  <li><a href="https://www.microsoft.com/security/blog/topic/zero-trust/">Microsoft Zero Trust Guidance</a></li>
-  <li><a href="https://aws.amazon.com/blogs/security/tag/zero-trust/">AWS Zero Trust Blog</a></li>
+  <li><a href="https://github.com/fluent/fluent-bit/issues/6272">Fluent Bit GitHub Issue #6272</a></li>
+  <li><a href="https://docs.fluentbit.io/manual/pipeline/outputs/opensearch">Fluent Bit OpenSearch Output Documentation</a></li>
+  <li><a href="https://github.com/aws/aws-for-fluent-bit">AWS for Fluent Bit Documentation</a></li>
+  <li><a href="https://opensearch.org/docs/latest/im-plugin/index/">OpenSearch Index Management</a></li>
 </ul>
 
 
@@ -590,15 +411,6 @@ Zero Trust can be applied across various environments and scenarios. Here are so
                         
                         
                             <li>
-                                <a href="/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1754458041/fluenbit-opensearch_lmr5hf.png">
-                                    
-                                    <h3>Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration</h3>
-                                </a>
-                            </li>
-                        
-                            <li>
                                 <a href="/category/kubernetes/kubernetes-install-kubespray-new/">
                                     
                                         <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737697968/kubespray_uyug5r.png">
@@ -613,6 +425,15 @@ Zero Trust can be applied across various environments and scenarios. Here are so
                                         <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1742267532/openstack_t2tmoc.png">
                                     
                                     <h3>Deep Dive into OpenStack Kuryr</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/troubleshooting/github-account-suspension/">
+                                    
+                                        <img src="https://blog.kakaocdn.net/dn/xOsBb/btsMqCFn1Vv/nwSrCKkeuEwkoZ5eEK6860/img.png">
+                                    
+                                    <h3>GitHub Account Suspension Recovery Guide</h3>
                                 </a>
                             </li>
                         
@@ -649,13 +470,13 @@ Zero Trust can be applied across various environments and scenarios. Here are so
     </div>
     <div id="previewSection" class="preview-section">
         
-        <a href="/category/openstack/openstack-ceilometer/" class="post-preview">
+        <a href="/category/kubernetes/kubernetes-install-kubespray-new/" class="post-preview">
             <div class="image">
                 
-                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1742267532/openstack_t2tmoc.png">
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737697968/kubespray_uyug5r.png">
                 
             </div>
-            <h3 class="title">Deep Dive into OpenStack Ceilometer</h3>
+            <h3 class="title">Installing Kubernetes with Kubespray and Adding Worker Nodes (2025V.)</h3>
         </a>
     </div>
 </div>
@@ -758,11 +579,11 @@ window.addEventListener('scroll', function() {
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to Zero Trust Security Model, its principles, components, and implementation strategies&quot;%20https://somaz.blog/category/security/zero-trust/%20via%20&#64;twitter_username&hashtags=security,zero-trust,cybersecurity,access-control,identity"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID configuration&quot;%20https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/%20via%20&#64;twitter_username&hashtags=fluent-bit,opensearch,eks,kubernetes,logging,troubleshooting"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
-    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/security/zero-trust/"
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/"
     onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
         <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
     </a>
@@ -844,7 +665,7 @@ window.addEventListener('scroll', function() {
         disqus_loaded = true;
         var disqus_shortname = 'https-somaz94-github-io';
         var disqus_title = '';
-        var disqus_url = '/category/security/zero-trust/';
+        var disqus_url = '/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/';
         var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
         dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
         (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
@@ -1013,69 +834,43 @@ window.addEventListener('scroll', function() {
         {
             "@context": "http://schema.org",
             "@type": "BlogPosting",
-            "name": "Deep Dive into Zero Trust Security Model",
-            "headline": "Understanding the Never Trust, Always Verify Approach",
-            "description": "A comprehensive guide to Zero Trust Security Model, its principles, components, and implementation strategies",
-            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1754443374/zero-trust_p7tr7i.png",
-            "url": "https://somaz.blog/category/security/zero-trust/",
-            "articleBody": "Image Reference link
+            "name": "Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration",
+            "headline": "How to prevent duplicate log storage using Generate_ID configuration in EKS environment",
+            "description": "A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID configuration",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1754458041/fluenbit-opensearch_lmr5hf.png",
+            "url": "https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/",
+            "articleBody": "
+
+
+
+Overview
+
+Have you ever experienced duplicate logs being stored in OpenSearch when forwarding logs through Fluent Bit in an EKS environment?
+
+We faced a similar issue. Despite having identical log content and timestamps, logs were being stored twice in OpenSearch, causing metrics and search results to be artificially inflated.
+
+After investigation, we discovered that each log had different _id values, causing OpenSearch to recognize them as separate documents.
+
+This article shares a real case study of resolving this issue solely through Fluent Bit configuration. Specifically, we’ll explain the phenomenon where logs with identical content but different _id values get stored as duplicates, and how we resolved this using the Generate_ID setting.
 
 
 
 
 
-Understanding Zero Trust Security Model
+Problem Situation
 
 
-Zero Trust is a modern security model based on the principle of &quot;never trust, always verify.&quot; It challenges the traditional perimeter-based security approach by assuming that no user, device, or network should be inherently trusted, regardless of their location or previous authentication.
+While using aws-for-fluent-bit in an AWS EKS environment to forward Fluent Bit logs to OpenSearch, we encountered an issue where identical logs were being stored multiple times.
 
 
-What is Zero Trust?
+In the OpenSearch dashboard, logs with identical messages and timestamps were being stored as duplicates, causing the following problems:
 
 
-  The Security Paradigm Shift
-  Zero Trust represents a fundamental shift in security philosophy:
+  Impact of Duplicate Logs
   
-  
-    No Implicit Trust: Every access request is verified, regardless of source
-    Continuous Validation: Trust is never granted permanently
-    Least Privilege: Access is granted on a need-to-know basis
-    Micro-segmentation: Network is divided into smaller, isolated segments
-  
-  
-  This approach addresses modern security challenges posed by cloud computing, remote work, and sophisticated cyber threats.
-
-
-
-  
-    graph LR
-      A[Zero Trust Model]
-      A --&amp;gt; B[Core Principles]
-      A --&amp;gt; C[Components]
-      A --&amp;gt; D[Implementation]
-      A --&amp;gt; E[Benefits]
-      
-      B --&amp;gt; B1[Never Trust]
-      B --&amp;gt; B2[Always Verify]
-      B --&amp;gt; B3[Least Privilege]
-      
-      C --&amp;gt; C1[Identity]
-      C --&amp;gt; C2[Device]
-      C --&amp;gt; C3[Network]
-      
-      D --&amp;gt; D1[Assessment]
-      D --&amp;gt; D2[Planning]
-      D --&amp;gt; D3[Deployment]
-      
-      E --&amp;gt; E1[Enhanced Security]
-      E --&amp;gt; E2[Better Control]
-      E --&amp;gt; E3[Improved Visibility]
-
-      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
-      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
-      style C stroke:#333,stroke-width:1px,fill:#64b5f6
-      style D stroke:#333,stroke-width:1px,fill:#ffcc80
-      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+    Search result counts became inflated beyond actual values
+    Log-based alerts were triggered multiple times
+    Visualization metrics became distorted
   
 
 
@@ -1083,234 +878,69 @@ What is Zero Trust?
 
 
 
-Core Principles and Components
+Root Cause Analysis
+
+When Fluent Bit sends logs to OpenSearch without specifying an _id, OpenSearch automatically generates a unique _id for each log. In this case, even if the content is identical, duplicate storage occurs due to different _id values.
+
+Problem Analysis
+
+In our environment, the rewrite_tag filter caused identical logs to propagate through multiple paths within Fluent Bit, with each path generating different _id values, resulting in storage as separate documents in OpenSearch.
 
 
-Zero Trust architecture is built on several key principles and components that work together to create a comprehensive security framework. Understanding these elements is crucial for effective implementation.
-
-
-Core Principles
-
-
+  Conditions Where This Problem Occurs More Frequently
   
-    
-      Principle
-      Description
-      Implementation
-    
-    
-      Never Trust
-      No implicit trust granted
-      
-        
-          Continuous authentication
-          Context-aware access control
-          Risk-based validation
-          Behavioral analysis
-        
-      
-    
-    
-      Least Privilege
-      Minimum access required
-      
-        
-          Role-based access control
-          Just-in-time access
-          Time-bound permissions
-          Access reviews
-        
-      
-    
-    
-      Micro-segmentation
-      Network isolation
-      
-        
-          Network segmentation
-          Service isolation
-          Traffic inspection
-          Access control lists
-        
-      
-    
+    Logstash_Format On option is configured
+    Generate_ID option is disabled
+    Identical logs are sent through multiple OUTPUT paths
   
 
 
-Key Components
+As a result, OpenSearch stores logs with identical content but different _id values as duplicate documents.
 
 
-  Essential Components
-  Zero Trust implementation requires several key components:
+
+
+
+Solution
+
+This issue can be resolved by adding the following option to the Fluent Bit es Output configuration.
+
+Configuration Update
+
+[OUTPUT]
+    Name            es
+    Match           es.*
+    ...
+    Generate_ID     On
+
+
+
+  How Generate_ID Works
+  The Generate_ID On option forces Fluent Bit to generate a unique _id internally when sending logs to OpenSearch. This ensures that even if identical logs are forwarded through multiple paths, OpenSearch recognizes them as the same document and stores only one copy.
+
+
+Why This Setting is Essential
+
+This configuration is particularly essential when using rewrite_tag filters to forward logs through multiple Match paths. When identical logs are split and sent to s3.*, es.* paths, if _id is not forcibly generated, logs will have different _id values despite identical content. This results in the same log being stored 2 or more times in OpenSearch.
+
+
+
+
+
+Verification and Follow-up Actions
+
+After applying the configuration, verify the following items to ensure the solution is working correctly.
+
+Verification Steps
+
+
+  Post-Implementation Verification
   
-    Identity and Access Management (IAM): SSO, MFA, RBAC
-    Device Security: Endpoint protection, MDM, device health checks
-    Network Security: Micro-segmentation, SDN, VPN alternatives
-    Data Protection: Encryption, DLP, data classification
-    Visibility and Analytics: SIEM, UEBA, security analytics
+    Confirm in the OpenSearch dashboard that logs with identical messages and timestamps are stored only once
+    Compare the _id patterns of logs with Generate_ID applied to verify that uniqueness is ensured
+    Continuously monitor through Health Check paths to ensure logs are being sent normally without errors or retries in Fluent Bit logs
+    If necessary, simplify rewrite_tag filter logic to reduce the possibility of duplicate tagging
   
-  These components work together to create a comprehensive security framework.
-
-
-
-
-
-
-Implementation Strategy
-
-
-Implementing Zero Trust requires a strategic approach that considers organizational needs, existing infrastructure, and security requirements. A phased implementation helps ensure successful adoption.
-
-
-Implementation Phases
-
-
-  
-    
-      Phase
-      Description
-      Key Activities
-    
-    
-      Assessment
-      Evaluate current state
-      
-        
-          Asset inventory
-          Risk assessment
-          Gap analysis
-          Stakeholder engagement
-        
-      
-    
-    
-      Planning
-      Develop implementation strategy
-      
-        
-          Roadmap creation
-          Resource allocation
-          Timeline development
-          Success metrics
-        
-      
-    
-    
-      Deployment
-      Implement solutions
-      
-        
-          Pilot programs
-          Phased rollout
-          Training and awareness
-          Continuous improvement
-        
-      
-    
-  
-
-
-Best Practices
-
-
-  Implementation Best Practices
-  Key considerations for successful implementation:
-  
-    Start Small: Begin with critical assets and expand gradually
-    User Experience: Balance security with usability
-    Continuous Monitoring: Implement comprehensive logging and analysis
-    Regular Reviews: Assess and update security policies
-    Training: Educate users and administrators
-  
-  These practices help ensure successful Zero Trust implementation.
-
-
-
-
-
-
-Use Cases and Examples
-
-
-Zero Trust can be applied across various environments and scenarios. Here are some common use cases and implementation examples.
-
-
-Common Use Cases
-
-
-  
-    
-      Environment
-      Implementation
-      Benefits
-    
-    
-      Cloud
-      
-        
-          AWS IAM + SCP
-          Azure Conditional Access
-          Google BeyondCorp
-        
-      
-      
-        
-          Enhanced cloud security
-          Better access control
-          Improved compliance
-        
-      
-    
-    
-      Kubernetes
-      
-        
-          Network Policies
-          RBAC
-          Service Mesh
-        
-      
-      
-        
-          Container security
-          Service isolation
-          Traffic control
-        
-      
-    
-    
-      Enterprise
-      
-        
-          SASE/ZTNA
-          MDM Integration
-          Endpoint Security
-        
-      
-      
-        
-          Remote access security
-          Device management
-          Data protection
-        
-      
-    
-  
-
-
-Implementation Considerations
-
-
-  Key Considerations
-  Important factors to consider:
-  
-    Legacy Systems: Compatibility with existing infrastructure
-    User Experience: Impact on productivity and usability
-    Cost: Investment in new technologies and training
-    Compliance: Meeting regulatory requirements
-    Integration: Working with existing security tools
-  
-  These considerations help ensure successful implementation.
 
 
 
@@ -1320,31 +950,43 @@ Implementation Considerations
 Key Points
 
 
-  💡 Zero Trust Essentials
+  💡 Resolution Summary
   
     
-      Core Principles
-      - Never trust, always verify
-      - Least privilege access
-      - Micro-segmentation
-      - Continuous monitoring
+      Problem Cause
+      - Different _id values for identical log content
+      - OpenSearch treating them as separate documents
+      - Multiple paths through rewrite_tag filters
     
     
-      Key Components
-      - Identity management
-      - Device security
-      - Network protection
-      - Data security
+      Solution
+      - Enable Generate_ID in Fluent Bit OUTPUT configuration
+      - Ensures consistent _id generation for identical logs
+      - Prevents duplicate storage in OpenSearch
     
     
-      Implementation
-      - Phased approach
-      - User experience
-      - Continuous improvement
-      - Regular assessment
+      Prevention
+      - Proper _id management in multi-path logging
+      - Regular monitoring of log storage patterns
+      - Optimization of filtering and tagging strategies
     
   
 
+
+
+
+
+
+Conclusion
+
+This issue appeared to be a simple case of duplicate log storage, but the root cause lay in the _id generation mechanism between Fluent Bit and OpenSearch. Fortunately, we were able to completely resolve the problem with a single Generate_ID option provided by Fluent Bit.
+
+
+  Lessons Learned
+  When integrating Fluent Bit with OpenSearch in EKS environments, it&apos;s important to apply configurations that prevent _id conflicts or duplicate generation in advance, especially when considering multi-path log routing scenarios.
+
+
+Moving forward, it’s necessary to continuously inspect log storage structures and refine filtering and tagging strategies. This experience reinforces how a small configuration change can make a significant difference in data quality and operational efficiency.
 
 
 
@@ -1352,17 +994,17 @@ Key Points
 
 References
 
-  NIST SP 800-207: Zero Trust Architecture
-  Google BeyondCorp Whitepaper
-  Microsoft Zero Trust Guidance
-  AWS Zero Trust Blog
+  Fluent Bit GitHub Issue #6272
+  Fluent Bit OpenSearch Output Documentation
+  AWS for Fluent Bit Documentation
+  OpenSearch Index Management
 
 ",
-            "wordcount": "855",
+            "wordcount": "862",
             "inLanguage": "en",
-            "dateCreated": "2025-07-13/",
-            "datePublished": "2025-07-13/",
-            "dateModified": "2025-07-13/",
+            "dateCreated": "2025-08-08/",
+            "datePublished": "2025-08-08/",
+            "dateModified": "2025-08-08/",
             "author": {
                 "@type": "Person",
                 "name": "Somaz",
@@ -1387,9 +1029,9 @@ References
                 }
             },
             "mainEntityOfPage": "True",
-            "genre": "SECURITY",
-            "articleSection": "SECURITY",
-            "keywords": ["security","zero-trust","cybersecurity","access-control","identity"]
+            "genre": "TROUBLESHOOTING",
+            "articleSection": "TROUBLESHOOTING",
+            "keywords": ["fluent-bit","opensearch","eks","kubernetes","logging","troubleshooting"]
         }
         </script>
     </body>
