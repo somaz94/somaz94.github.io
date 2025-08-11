@@ -267,6 +267,8 @@ helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>Next, clone the Grafana Helm charts repository to customize the installation according to your requirements:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Copy the Chart</span>
@@ -275,11 +277,15 @@ git clone https://github.com/grafana/helm-charts.git
 <span class="nb">cd </span>grafana
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>Finally, update the dependencies to ensure all required components are available:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Update Dependencies</span>
 helm dependency update <span class="nb">.</span>
 </code></pre></div></div>
+
+<p><br /></p>
 
 <p>These steps prepare the Helm chart for customization and deployment in your Kubernetes environment.</p>
 
@@ -332,11 +338,15 @@ helm lint <span class="nt">--values</span> ./values/mgmt.yaml
 helm <span class="nb">install </span>grafana <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/mgmt.yaml <span class="nt">--create-namespace</span> <span class="nt">--dry-run</span> <span class="o">&gt;&gt;</span> output.yaml
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>Once you’ve verified that everything looks good, proceed with the actual installation:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Installation</span>
 helm <span class="nb">install </span>grafana <span class="nb">.</span> <span class="nt">-n</span> monitoring <span class="nt">-f</span> ./values/mgmt.yaml <span class="nt">--create-namespace</span>
 </code></pre></div></div>
+
+<p><br /></p>
 
 <p>⚠️ For future updates to your Grafana deployment, use the upgrade command:
 <code class="language-plaintext highlighter-rouge">helm upgrade grafana . -n monitoring -f ./values/mgmt.yaml</code></p>
@@ -359,14 +369,14 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
 
 <p>Since this is an older dashboard, you’ll need to modify queries to match the latest Prometheus setup. Data Source registration must be completed before proceeding.</p>
 
-<p><strong>Query Modification Examples (for Production Environment)</strong></p>
+<h4 id="query-modification-examples-for-production-environment">Query Modification Examples (for Production Environment)</h4>
 
-<p><strong>CPU Utilization:</strong></p>
+<h5 id="cpu-utilization">CPU Utilization:</h5>
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>- irate(node_cpu_seconds_total{mode!~"guest.*|idle|iowait", kubernetes_node="$node"}[5m])
 + irate(node_cpu_seconds_total{instance="$instance", mode!~"guest.*|idle|iowait"}[5m])
 </code></pre></div></div>
 
-<p><strong>Memory Usage:</strong></p>
+<h5 id="memory-usage">Memory Usage:</h5>
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>- node_memory_MemTotal_bytes{kubernetes_node="m-k8s"} - node_memory_MemAvailable_bytes{kubernetes_node="m-k8s"}
 + node_memory_MemTotal_bytes{instance="$instance"} - node_memory_MemAvailable_bytes{instance="$instance"}
 </code></pre></div></div>
@@ -381,7 +391,7 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
 
 <h3 id="1-1-data-source-registration-loki--prometheus">1-1. Data Source Registration (Loki &amp; Prometheus)</h3>
 
-<p><strong>Prometheus Registration</strong></p>
+<h4 id="prometheus-registration">Prometheus Registration</h4>
 
 <p>To register Prometheus as a data source, add the following to your Grafana values file:</p>
 
@@ -396,7 +406,7 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
         <span class="na">isDefault</span><span class="pi">:</span> <span class="no">true</span>
 </code></pre></div></div>
 
-<p><strong>Loki Registration</strong></p>
+<h4 id="loki-registration">Loki Registration</h4>
 
 <p>To add Loki as a data source, include this configuration in the same datasources section:</p>
 
@@ -407,13 +417,15 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
         <span class="na">isDefault</span><span class="pi">:</span> <span class="no">false</span>
 </code></pre></div></div>
 
-<p>⚠ Important: The URL should be set to a service address accessible within the cluster. After registration, you can verify in the Grafana UI under [Settings] → [Data Sources].</p>
+<blockquote>
+  <p>Important: The URL should be set to a service address accessible within the cluster. After registration, you can verify in the Grafana UI under [Settings] → [Data Sources].</p>
+</blockquote>
 
 <p><br /></p>
 
 <h3 id="1-2-console-based-data-source-registration-prometheus--loki">1-2. Console-Based Data Source Registration (Prometheus &amp; Loki)</h3>
 
-<p><strong>Prometheus Registration (UI-based)</strong></p>
+<h4 id="prometheus-registration-ui-based">Prometheus Registration (UI-based)</h4>
 <ol>
   <li>Grafana login → Click Gear(⚙) icon → Data Sources</li>
   <li>→ Click Add data source button</li>
@@ -422,20 +434,22 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
   <li>→ Click Save &amp; Test</li>
 </ol>
 
-<p><strong>Loki Registration (UI-based)</strong></p>
+<h4 id="loki-registration-ui-based">Loki Registration (UI-based)</h4>
 <ol>
   <li>→ Add data source → Select Loki</li>
   <li>→ Enter URL: <code class="language-plaintext highlighter-rouge">http://loki-gateway.monitoring.svc.cluster.local</code></li>
   <li>→ Click Save &amp; Test</li>
 </ol>
 
-<p>Data sources configured via the console are stored in grafana.db. For persistent deployment, it’s more stable to transition to Helm values or ConfigMap methods.</p>
+<blockquote>
+  <p>Data sources configured via the console are stored in grafana.db. For persistent deployment, it’s more stable to transition to Helm values or ConfigMap methods.</p>
+</blockquote>
 
 <p><br /></p>
 
 <h3 id="2-alertmanager-integration-slack--email">2. Alertmanager Integration (Slack &amp; Email)</h3>
 
-<p><strong>1️⃣ Slack Integration Example</strong></p>
+<h4 id="1️⃣-slack-integration-example">1️⃣ Slack Integration Example</h4>
 
 <p>To set up Slack notifications from Grafana:</p>
 <ol>
@@ -445,7 +459,7 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
   <li>Enter your Webhook URL and configure the alert template</li>
 </ol>
 
-<p><strong>2️⃣ Email Integration Example</strong></p>
+<h4 id="2️⃣-email-integration-example">2️⃣ Email Integration Example</h4>
 
 <p>For email notifications, add the following to your Grafana values file:</p>
 
@@ -464,7 +478,7 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
 
 <h3 id="3-dashboard-automatic-deployment-provisioning-with-configmap-or-sidecar">3. Dashboard Automatic Deployment (Provisioning with ConfigMap or sidecar)</h3>
 
-<p><strong>Method 1: ConfigMap Approach</strong></p>
+<h4 id="method-1-configmap-approach">Method 1: ConfigMap Approach</h4>
 
 <p>Create a ConfigMap containing your dashboard JSON definitions:</p>
 
@@ -479,6 +493,8 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
     <span class="s">{ ... Dashboard JSON ... }</span>
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>Then add sidecar configuration to your grafana.values.yaml file:</p>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">sidecar</span><span class="pi">:</span>
@@ -488,7 +504,7 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
     <span class="na">folder</span><span class="pi">:</span> <span class="s2">"</span><span class="s">K8S</span><span class="nv"> </span><span class="s">Cluster</span><span class="nv"> </span><span class="s">Dashboards"</span>
 </code></pre></div></div>
 
-<p><strong>Method 2: Direct Insertion in Helm values (Sidecar method)</strong></p>
+<h4 id="method-2-direct-insertion-in-helm-values-sidecar-method">Method 2: Direct Insertion in Helm values (Sidecar method)</h4>
 
 <p>Alternatively, you can specify dashboards directly in your Helm values:</p>
 
@@ -578,6 +594,8 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
 
 <p>This guide has covered installing Grafana via Helm and setting up essential components for cluster operation, including data source connections, alert integration, and automatic dashboard deployment.</p>
 
+<p><br /></p>
+
 <p>To integrate Grafana into a production environment, consider:</p>
 <ul>
   <li>Team-based permission management (Folder/Team Role-based RBAC)</li>
@@ -586,6 +604,8 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
   <li>Granular status-based alert policies</li>
   <li>Integration with Grafana Agent, Mimir, and Tempo</li>
 </ul>
+
+<p><br /></p>
 
 <p>👉 Grafana has evolved beyond a simple visualization tool into an Observability-centered DevOps platform. If this installation and configuration is your first step, I recommend advancing to a more automated, team-scalable operational Grafana infrastructure.</p>
 
@@ -617,6 +637,15 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
                         
                         
                             <li>
+                                <a href="/category/troubleshooting/argocd-ingress-gke/">
+                                    
+                                        <img src="https://blog.kakaocdn.net/dn/baMOz9/btsGPPRoXDF/KFCDia9hhgPKkgFK8RcPHK/img.png">
+                                    
+                                    <h3>ArgoCD Ingress Error Resolution Guide (GKE)</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
                                 <a href="/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/">
                                     
                                         <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1754458041/fluenbit-opensearch_lmr5hf.png">
@@ -631,15 +660,6 @@ helm <span class="nb">install </span>grafana <span class="nb">.</span> <span cla
                                         <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1737697968/kubespray_uyug5r.png">
                                     
                                     <h3>Installing Kubernetes with Kubespray and Adding Worker Nodes (2025V.)</h3>
-                                </a>
-                            </li>
-                        
-                            <li>
-                                <a href="/category/openstack/openstack-kuryr/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1742267532/openstack_t2tmoc.png">
-                                    
-                                    <h3>Deep Dive into OpenStack Kuryr</h3>
                                 </a>
                             </li>
                         
@@ -1076,6 +1096,8 @@ helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
 
 
+
+
 Next, clone the Grafana Helm charts repository to customize the installation according to your requirements:
 
 # Copy the Chart
@@ -1084,10 +1106,14 @@ cp -r helm-charts/charts/grafana .
 cd grafana
 
 
+
+
 Finally, update the dependencies to ensure all required components are available:
 
 # Update Dependencies
 helm dependency update .
+
+
 
 
 These steps prepare the Helm chart for customization and deployment in your Kubernetes environment.
@@ -1141,10 +1167,14 @@ helm lint --values ./values/mgmt.yaml
 helm install grafana . -n monitoring -f ./values/mgmt.yaml --create-namespace --dry-run &amp;gt;&amp;gt; output.yaml
 
 
+
+
 Once you’ve verified that everything looks good, proceed with the actual installation:
 
 # Installation
 helm install grafana . -n monitoring -f ./values/mgmt.yaml --create-namespace
+
+
 
 
 ⚠️ For future updates to your Grafana deployment, use the upgrade command:
@@ -1216,7 +1246,9 @@ To add Loki as a data source, include this configuration in the same datasources
         isDefault: false
 
 
-⚠ Important: The URL should be set to a service address accessible within the cluster. After registration, you can verify in the Grafana UI under [Settings] → [Data Sources].
+
+  Important: The URL should be set to a service address accessible within the cluster. After registration, you can verify in the Grafana UI under [Settings] → [Data Sources].
+
 
 
 
@@ -1238,7 +1270,9 @@ Loki Registration (UI-based)
   → Click Save &amp;amp; Test
 
 
-Data sources configured via the console are stored in grafana.db. For persistent deployment, it’s more stable to transition to Helm values or ConfigMap methods.
+
+  Data sources configured via the console are stored in grafana.db. For persistent deployment, it’s more stable to transition to Helm values or ConfigMap methods.
+
 
 
 
@@ -1286,6 +1320,8 @@ metadata:
 data:
   13770_rev1.json: |
     { ... Dashboard JSON ... }
+
+
 
 
 Then add sidecar configuration to your grafana.values.yaml file:
@@ -1387,6 +1423,8 @@ These resource settings provide sufficient CPU and memory allocation for a stand
 
 This guide has covered installing Grafana via Helm and setting up essential components for cluster operation, including data source connections, alert integration, and automatic dashboard deployment.
 
+
+
 To integrate Grafana into a production environment, consider:
 
   Team-based permission management (Folder/Team Role-based RBAC)
@@ -1394,6 +1432,8 @@ To integrate Grafana into a production environment, consider:
   GitOps-based dashboard/alert Git integration
   Granular status-based alert policies
   Integration with Grafana Agent, Mimir, and Tempo
+
+
 
 
 👉 Grafana has evolved beyond a simple visualization tool into an Observability-centered DevOps platform. If this installation and configuration is your first step, I recommend advancing to a more automated, team-scalable operational Grafana infrastructure.
@@ -1412,7 +1452,7 @@ References
   DigitalOcean Grafana Tutorial
 
 ",
-            "wordcount": "1643",
+            "wordcount": "1673",
             "inLanguage": "en",
             "dateCreated": "2025-06-17/",
             "datePublished": "2025-06-17/",
