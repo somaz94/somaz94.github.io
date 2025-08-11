@@ -270,6 +270,8 @@ terraform apply <span class="nt">-var-file</span><span class="o">=</span><span c
 2024-05-13T18:55:35.041+0900 <span class="o">[</span>DEBUG] provider.terraform-provider-google_v5.21.0_x5: User-Agent: google-api-go-client/0.5 Terraform/1.6.2 <span class="o">(</span>+https://www.terraform.io<span class="o">)</span> Terraform-Plugin-SDK/2.31.0 terraform-provider-google/5.21.0
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>The critical information appears in the error section:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2024-05-13T18:55:35.410+0900 <span class="o">[</span>DEBUG] provider.terraform-provider-google_v5.21.0_x5: HTTP/2.0 404 Not Found
@@ -283,7 +285,11 @@ terraform apply <span class="nt">-var-file</span><span class="o">=</span><span c
 2024-05-13T18:55:35.410+0900 <span class="o">[</span>DEBUG] provider.terraform-provider-google_v5.21.0_x5:     <span class="s2">"reason"</span>: <span class="s2">"notFound"</span>
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>Looking at the entire log, we can see a 404 Not Found error. This indicates that a specific resource has been manually deleted, causing inconsistency between Terraform’s state and the actual infrastructure. Terraform continuously tries to find this resource, leading to the error.</p>
+
+<p><br /></p>
 
 <p>The specific request failing is:</p>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>GET /storage/v1/b/cdn.somaz.link?alt<span class="o">=</span>json&amp;prettyPrint<span class="o">=</span><span class="nb">false </span>HTTP/1.1
@@ -302,6 +308,8 @@ HTTP/2.0 404 Not Found
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>terraform state list
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>This command provides a list of all resources in the state file:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>data.google_client_config.default
@@ -319,6 +327,8 @@ module.gcs_buckets.google_storage_bucket.buckets[<span class="s2">"devqa-sm-terr
 module.gke_autopilot.google_container_cluster.primary
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>By analyzing the error logs and comparing them with the state list, we can identify that <code class="language-plaintext highlighter-rouge">google_storage_bucket.dev_sm_cdn_somaz_run</code> has been manually deleted.</p>
 
 <p>Remove this resource from the state file:</p>
@@ -326,10 +336,14 @@ module.gke_autopilot.google_container_cluster.primary
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>terraform state <span class="nb">rm </span>google_storage_bucket.dev_sm_cdn_somaz_run
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>After removing the problematic resource from the state file, run the Terraform apply command again:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>terraform apply <span class="nt">-var-file</span><span class="o">=</span><span class="s2">"devqa.tfvars"</span>
 </code></pre></div></div>
+
+<p><br /></p>
 
 <p>The operation should now complete successfully.</p>
 
@@ -342,10 +356,14 @@ module.gke_autopilot.google_container_cluster.primary
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>terraform graph
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>For a more visual representation, convert the output to an SVG image:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>terraform graph | dot <span class="nt">-Tsvg</span> <span class="o">&gt;</span> graph.svg
 </code></pre></div></div>
+
+<p><br /></p>
 
 <p>This graph helps identify resource dependencies that might be causing issues or conflicts in your infrastructure.</p>
 
@@ -854,6 +872,8 @@ With debugging enabled, you can easily find the problematic section in the logs:
 2024-05-13T18:55:35.041+0900 [DEBUG] provider.terraform-provider-google_v5.21.0_x5: User-Agent: google-api-go-client/0.5 Terraform/1.6.2 (+https://www.terraform.io) Terraform-Plugin-SDK/2.31.0 terraform-provider-google/5.21.0
 
 
+
+
 The critical information appears in the error section:
 
 2024-05-13T18:55:35.410+0900 [DEBUG] provider.terraform-provider-google_v5.21.0_x5: HTTP/2.0 404 Not Found
@@ -867,7 +887,11 @@ The critical information appears in the error section:
 2024-05-13T18:55:35.410+0900 [DEBUG] provider.terraform-provider-google_v5.21.0_x5:     &quot;reason&quot;: &quot;notFound&quot;
 
 
+
+
 Looking at the entire log, we can see a 404 Not Found error. This indicates that a specific resource has been manually deleted, causing inconsistency between Terraform’s state and the actual infrastructure. Terraform continuously tries to find this resource, leading to the error.
+
+
 
 The specific request failing is:
 GET /storage/v1/b/cdn.somaz.link?alt=json&amp;amp;prettyPrint=false HTTP/1.1
@@ -884,6 +908,8 @@ To resolve this issue, we need to identify which resources in the Terraform stat
 First, list all resources in the state:
 
 terraform state list
+
+
 
 
 This command provides a list of all resources in the state file:
@@ -903,6 +929,8 @@ module.gcs_buckets.google_storage_bucket.buckets[&quot;devqa-sm-terraform-remote
 module.gke_autopilot.google_container_cluster.primary
 
 
+
+
 By analyzing the error logs and comparing them with the state list, we can identify that google_storage_bucket.dev_sm_cdn_somaz_run has been manually deleted.
 
 Remove this resource from the state file:
@@ -910,9 +938,13 @@ Remove this resource from the state file:
 terraform state rm google_storage_bucket.dev_sm_cdn_somaz_run
 
 
+
+
 After removing the problematic resource from the state file, run the Terraform apply command again:
 
 terraform apply -var-file=&quot;devqa.tfvars&quot;
+
+
 
 
 The operation should now complete successfully.
@@ -926,9 +958,13 @@ If you suspect dependency issues between resources or modules, Terraform provide
 terraform graph
 
 
+
+
 For a more visual representation, convert the output to an SVG image:
 
 terraform graph | dot -Tsvg &amp;gt; graph.svg
+
+
 
 
 This graph helps identify resource dependencies that might be causing issues or conflicts in your infrastructure.
@@ -962,7 +998,7 @@ References
   Terraform Provider Logging
 
 ",
-            "wordcount": "728",
+            "wordcount": "746",
             "inLanguage": "en",
             "dateCreated": "2025-06-24/",
             "datePublished": "2025-06-24/",
