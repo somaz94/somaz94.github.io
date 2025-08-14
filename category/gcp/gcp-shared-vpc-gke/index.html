@@ -1,0 +1,2262 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- ✅ Google Tag Manager 추가 -->
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+      <!-- ✅ End Google Tag Manager -->
+
+    <!-- Mermaid.js 직접 로드 -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+
+    <title>GCP Shared VPC and GKE Cluster Setup Guide | somaz</title>
+    <meta name="description" content="Learn how to set up GKE clusters across multiple projects using Shared VPC with proper IAM configurations">
+    
+        <meta name="keywords" content="gcp, shared-vpc, gke, kubernetes, iam, networking">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="GCP Shared VPC and GKE Cluster Setup Guide | somaz">
+    <meta name="twitter:description" content="Learn how to set up GKE clusters across multiple projects using Shared VPC with proper IAM configurations">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1755164318/gcp-shared-vpc-gke_pmoesj.png">
+    
+    
+    
+        <meta name="twitter:site" content="@twitter_username">
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/gcp/gcp-shared-vpc-gke/">
+    <meta property="og:title" content="GCP Shared VPC and GKE Cluster Setup Guide | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1755164318/gcp-shared-vpc-gke_pmoesj.png">
+    <meta property="og:description" content="Learn how to set up GKE clusters across multiple projects using Shared VPC with proper IAM configurations">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/gcp/gcp-shared-vpc-gke/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
+    <!-- <link href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;700&display=swap" rel="stylesheet"> -->
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<!-- ✅ Google Tag Manager (noscript) -->
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+<!-- ✅ End Google Tag Manager (noscript) -->
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2025-07-25T00:00:00+00:00">
+                            
+
+
+July 25, 2025
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>14 min to read</span>
+                </p>
+                <h1 class="post-title">GCP Shared VPC and GKE Cluster Setup Guide</h1>
+                <p class="post-subtitle">Configure IAM permissions for GKE clusters using Shared VPC architecture</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1755164318/gcp-shared-vpc-gke_pmoesj.png" alt="Featured image" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>Google Cloud Platform’s Shared VPC is a powerful feature that enables centralized network management while maintaining project-level resource isolation.</p>
+
+<p>This comprehensive guide walks through the process of setting up GKE clusters across different service projects using Shared VPC architecture, with detailed IAM configuration steps.</p>
+
+<p>Shared VPC allows organizations to <strong>centrally manage network resources</strong> while enabling <strong>independent resource operations</strong> across service projects.</p>
+
+<p>This approach ensures consistent security policies, systematic network separation across different environments (dev, staging, production), and efficient collaboration across teams.</p>
+
+<p><br /></p>
+
+<h3 id="why-shared-vpc-matters">Why Shared VPC Matters&lt;</h3>
+
+<p>Shared VPC is essential for enterprise-grade GCP deployments where network security, cost optimization, and operational efficiency are critical.</p>
+
+<p>It provides a foundation for multi-environment architectures while maintaining security boundaries and enabling centralized network governance.</p>
+
+<p>For organizations running multiple projects and environments, Shared VPC eliminates the complexity of VPC peering while providing superior network control and security posture management.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="what-is-shared-vpc">What is Shared VPC?</h2>
+
+<p>Shared VPC allows multiple projects to connect their resources to a common VPC network, enabling secure and efficient communication using internal IP addresses.</p>
+
+<p>This architecture separates network administration from project administration, providing several key benefits:</p>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph TB
+      subgraph "Organization"
+        subgraph "Host Project"
+          A[VPC Network]
+          B[Subnets]
+          C[Firewall Rules]
+          D[Routes]
+        end
+        
+        subgraph "Service Project 1"
+          E[GKE Cluster]
+          F[Compute Instances]
+          G[Cloud SQL]
+        end
+        
+        subgraph "Service Project 2"
+          H[GKE Cluster]
+          I[App Engine]
+          J[Cloud Functions]
+        end
+        
+        A --&gt; E
+        A --&gt; F
+        A --&gt; G
+        A --&gt; H
+        A --&gt; I
+        A --&gt; J
+        
+        B --&gt; E
+        B --&gt; H
+      end
+      
+      style A fill:#4285f4,color:#fff
+      style E fill:#34a853,color:#fff
+      style H fill:#34a853,color:#fff
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="key-benefits-of-shared-vpc">Key Benefits of Shared VPC</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th>Benefit</th>
+      <th>Description</th>
+      <th>Business Impact</th>
+    </tr>
+    <tr>
+      <td>Centralized Network Management</td>
+      <td>Single point of control for network policies, firewall rules, and routing</td>
+      <td>Reduced operational overhead and consistent security policies</td>
+    </tr>
+    <tr>
+      <td>Project Isolation</td>
+      <td>Resources separated by project boundaries while sharing network</td>
+      <td>Clear cost allocation and security boundaries</td>
+    </tr>
+    <tr>
+      <td>Simplified Communication</td>
+      <td>Internal IP communication without VPC peering complexity</td>
+      <td>Lower latency and reduced network management complexity</td>
+    </tr>
+    <tr>
+      <td>Environment Separation</td>
+      <td>Logical separation of dev, staging, and production environments</td>
+      <td>Improved security and compliance posture</td>
+    </tr>
+    <tr>
+      <td>Cost Optimization</td>
+      <td>Shared network resources and reduced data transfer costs</td>
+      <td>Lower overall infrastructure costs</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="shared-vpc-architecture-patterns">Shared VPC Architecture Patterns</h2>
+
+<p><br /></p>
+
+<h3 id="single-host-project-architecture">Single Host Project Architecture</h3>
+
+<p>The most common Shared VPC pattern uses one host project providing network services to multiple service projects:</p>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph TB
+      subgraph "Single Host Project Architecture"
+        subgraph "Host Project: somaz-network"
+          HP[VPC Network]
+          HS1[Subnet: dev-subnet]
+          HS2[Subnet: prod-subnet]
+          HF[Firewall Rules]
+          HR[Routes &amp; NAT]
+        end
+        
+        subgraph "Service Project: somaz-sp-dev"
+          SP1[GKE Dev Cluster]
+          SP1VM[Dev VMs]
+        end
+        
+        subgraph "Service Project: somaz-sp-prod"
+          SP2[GKE Prod Cluster]
+          SP2VM[Prod VMs]
+        end
+        
+        HS1 --&gt; SP1
+        HS1 --&gt; SP1VM
+        HS2 --&gt; SP2
+        HS2 --&gt; SP2VM
+        HF --&gt; SP1
+        HF --&gt; SP2
+      end
+      
+      style HP fill:#4285f4,color:#fff
+      style SP1 fill:#34a853,color:#fff
+      style SP2 fill:#ea4335,color:#fff
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="multiple-host-projects-architecture">Multiple Host Projects Architecture</h3>
+
+<p>For organizations requiring environment isolation at the network level:</p>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph TB
+      subgraph "Multiple Host Projects Architecture"
+        subgraph "Dev Host Project"
+          DHP[Dev VPC Network]
+          DHS[Dev Subnets]
+        end
+        
+        subgraph "Prod Host Project"
+          PHP[Prod VPC Network]
+          PHS[Prod Subnets]
+        end
+        
+        subgraph "Dev Service Projects"
+          DSP1[Frontend Dev]
+          DSP2[Backend Dev]
+          DSP3[Data Dev]
+        end
+        
+        subgraph "Prod Service Projects"
+          PSP1[Frontend Prod]
+          PSP2[Backend Prod]
+          PSP3[Data Prod]
+        end
+        
+        DHS --&gt; DSP1
+        DHS --&gt; DSP2
+        DHS --&gt; DSP3
+        
+        PHS --&gt; PSP1
+        PHS --&gt; PSP2
+        PHS --&gt; PSP3
+      end
+      
+      style DHP fill:#34a853,color:#fff
+      style PHP fill:#ea4335,color:#fff
+  </div>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="prerequisites-and-project-setup">Prerequisites and Project Setup</h2>
+
+<p><br /></p>
+
+<h3 id="example-project-structure">Example Project Structure</h3>
+
+<p>For this guide, we’ll use the following project structure:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th>Project Type</th>
+      <th>Project ID</th>
+      <th>Purpose</th>
+      <th>Resources</th>
+    </tr>
+    <tr>
+      <td>Host Project</td>
+      <td>somaz-hp</td>
+      <td>Network management and shared resources</td>
+      <td>VPC, Subnets, Firewall Rules, Artifact Registry</td>
+    </tr>
+    <tr>
+      <td>Service Project</td>
+      <td>somaz-sp-dev</td>
+      <td>Development environment</td>
+      <td>GKE Cluster, Development workloads</td>
+    </tr>
+    <tr>
+      <td>Service Project</td>
+      <td>somaz-sp-prod</td>
+      <td>Production environment</td>
+      <td>GKE Cluster, Production workloads</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="required-apis-and-service-accounts">Required APIs and Service Accounts</h3>
+
+<p>Before starting the IAM configuration, ensure the following APIs are enabled and understand the service accounts involved:</p>
+
+<h4 id="apis-to-enable">APIs to Enable:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Enable required APIs in all projects</span>
+gcloud services <span class="nb">enable </span>container.googleapis.com
+gcloud services <span class="nb">enable </span>compute.googleapis.com
+gcloud services <span class="nb">enable </span>artifactregistry.googleapis.com
+gcloud services <span class="nb">enable </span>cloudresourcemanager.googleapis.com
+
+<span class="c"># Verify enabled APIs</span>
+gcloud services list <span class="nt">--enabled</span> <span class="nt">--filter</span><span class="o">=</span><span class="s2">"name:container.googleapis.com OR name:compute.googleapis.com"</span>
+</code></pre></div></div>
+
+<h4 id="key-service-accounts">Key Service Accounts:</h4>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th>Service Account</th>
+      <th>Format</th>
+      <th>Purpose</th>
+    </tr>
+    <tr>
+      <td>Google APIs Service Account</td>
+      <td>&lt;project-number&gt;@cloudservices.gserviceaccount.com</td>
+      <td>Default service account for Google Cloud services</td>
+    </tr>
+    <tr>
+      <td>GKE Service Agent</td>
+      <td>service-&lt;project-number&gt;@container-engine-robot.iam.gserviceaccount.com</td>
+      <td>GKE cluster operations and management</td>
+    </tr>
+    <tr>
+      <td>Terraform GKE Service Account</td>
+      <td>tf-gke-&lt;cluster-name&gt;-&lt;random&gt;@&lt;project&gt;.iam.gserviceaccount.com</td>
+      <td>Terraform-managed GKE cluster service account</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="iam-configuration-step-by-step">IAM Configuration Step by Step</h2>
+
+<p>This section provides a comprehensive walkthrough of IAM permissions required for GKE clusters in Shared VPC environments.</p>
+
+<p><br /></p>
+
+<h3 id="step-1-set-environment-variables">Step 1: Set Environment Variables</h3>
+
+<p>First, establish environment variables for the service accounts and project information:</p>
+
+<script src="https://gist.github.com/somaz94/028dfe4b95e0d39edca0103368582a8b.js"></script>
+
+<p><br /></p>
+
+<h3 id="step-2-enable-required-apis">Step 2: Enable Required APIs</h3>
+
+<p>Ensure all necessary APIs are enabled in both host and service projects:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Enable APIs in service project</span>
+gcloud services <span class="nb">enable </span>container.googleapis.com <span class="nt">--project</span><span class="o">=</span><span class="nv">$SERVICE_PROJECT</span>
+gcloud services <span class="nb">enable </span>compute.googleapis.com <span class="nt">--project</span><span class="o">=</span><span class="nv">$SERVICE_PROJECT</span>
+
+<span class="c"># Enable APIs in host project</span>
+gcloud services <span class="nb">enable </span>container.googleapis.com <span class="nt">--project</span><span class="o">=</span><span class="nv">$HOST_PROJECT</span>
+gcloud services <span class="nb">enable </span>compute.googleapis.com <span class="nt">--project</span><span class="o">=</span><span class="nv">$HOST_PROJECT</span>
+
+<span class="c"># Verify API enablement</span>
+gcloud services list <span class="nt">--enabled</span> <span class="nt">--project</span><span class="o">=</span><span class="nv">$SERVICE_PROJECT</span> <span class="nt">--filter</span><span class="o">=</span><span class="s2">"name:container.googleapis.com"</span>
+gcloud services list <span class="nt">--enabled</span> <span class="nt">--project</span><span class="o">=</span><span class="nv">$HOST_PROJECT</span> <span class="nt">--filter</span><span class="o">=</span><span class="s2">"name:compute.googleapis.com"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="step-3-grant-kubernetes-engine-service-agent-role">Step 3: Grant Kubernetes Engine Service Agent Role</h3>
+
+<p>Grant the <code class="language-plaintext highlighter-rouge">roles/container.serviceAgent</code> role to both host and service project service accounts:</p>
+
+<script src="https://gist.github.com/somaz94/058ab1f9b7b7502271539de2c36e6167.js"></script>
+
+<p><br /></p>
+
+<h3 id="step-4-grant-editor-role-to-service-project">Step 4: Grant Editor Role to Service Project</h3>
+
+<p>Grant editor permissions within the service project:</p>
+
+<script src="https://gist.github.com/somaz94/a80b4bc16c615a45c6471c1748f69a00.js"></script>
+
+<p><br /></p>
+
+<h3 id="step-5-grant-network-user-role">Step 5: Grant Network User Role</h3>
+
+<p>Grant network access permissions on the host project:</p>
+
+<script src="https://gist.github.com/somaz94/a50c6221a59a312f60c902fb397706c9.js"></script>
+
+<p><br /></p>
+
+<h3 id="step-6-grant-additional-required-roles">Step 6: Grant Additional Required Roles</h3>
+
+<p>Grant additional roles needed for full GKE functionality:</p>
+
+<script src="https://gist.github.com/somaz94/914f5d5ba339edfca041cec4c07ca64d.js"></script>
+
+<p><br /></p>
+
+<h3 id="step-7-organization-level-permissions-for-terraform">Step 7: Organization-Level Permissions for Terraform</h3>
+
+<p>For Terraform automation, grant organization-level permissions:</p>
+
+<script src="https://gist.github.com/somaz94/f8516e4f46d685bfa311ef354af9ef9c.js"></script>
+
+<p><br /></p>
+
+<h3 id="step-8-artifact-registry-permissions">Step 8: Artifact Registry Permissions</h3>
+
+<p>After creating the GKE cluster with Terraform, grant Artifact Registry access:</p>
+
+<script src="https://gist.github.com/somaz94/c2811e1c46e84df2667ee05aa0be97f5.js"></script>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="terraform-integration">Terraform Integration</h2>
+
+<p><br /></p>
+
+<h3 id="terraform-configuration-example">Terraform Configuration Example</h3>
+
+<p>Here’s a comprehensive Terraform configuration for creating GKE clusters in Shared VPC:</p>
+
+<div class="language-hcl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># terraform/main.tf</span>
+<span class="nx">terraform</span> <span class="p">{</span>
+  <span class="nx">required_providers</span> <span class="p">{</span>
+    <span class="nx">google</span> <span class="p">=</span> <span class="p">{</span>
+      <span class="nx">source</span>  <span class="p">=</span> <span class="s2">"hashicorp/google"</span>
+      <span class="nx">version</span> <span class="p">=</span> <span class="s2">"~&gt; 4.0"</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nx">provider</span> <span class="s2">"google"</span> <span class="p">{</span>
+  <span class="nx">project</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">service_project_id</span>
+  <span class="nx">region</span>  <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">region</span>
+<span class="p">}</span>
+
+<span class="c1"># Data sources for existing network resources</span>
+<span class="nx">data</span> <span class="s2">"google_compute_network"</span> <span class="s2">"shared_vpc"</span> <span class="p">{</span>
+  <span class="nx">name</span>    <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">network_name</span>
+  <span class="nx">project</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">host_project_id</span>
+<span class="p">}</span>
+
+<span class="nx">data</span> <span class="s2">"google_compute_subnetwork"</span> <span class="s2">"gke_subnet"</span> <span class="p">{</span>
+  <span class="nx">name</span>    <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">subnet_name</span>
+  <span class="nx">project</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">host_project_id</span>
+  <span class="nx">region</span>  <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">region</span>
+<span class="p">}</span>
+
+<span class="c1"># GKE Cluster in Shared VPC</span>
+<span class="nx">resource</span> <span class="s2">"google_container_cluster"</span> <span class="s2">"shared_vpc_cluster"</span> <span class="p">{</span>
+  <span class="nx">name</span>     <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">cluster_name</span>
+  <span class="nx">location</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">region</span>
+  <span class="nx">project</span>  <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">service_project_id</span>
+
+  <span class="c1"># Network configuration for Shared VPC</span>
+  <span class="nx">network</span>    <span class="p">=</span> <span class="nx">data</span><span class="err">.</span><span class="nx">google_compute_network</span><span class="err">.</span><span class="nx">shared_vpc</span><span class="err">.</span><span class="nx">self_link</span>
+  <span class="nx">subnetwork</span> <span class="p">=</span> <span class="nx">data</span><span class="err">.</span><span class="nx">google_compute_subnetwork</span><span class="err">.</span><span class="nx">gke_subnet</span><span class="err">.</span><span class="nx">self_link</span>
+
+  <span class="c1"># IP allocation policy for VPC-native cluster</span>
+  <span class="nx">ip_allocation_policy</span> <span class="p">{</span>
+    <span class="nx">cluster_secondary_range_name</span>  <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">cluster_secondary_range_name</span>
+    <span class="nx">services_secondary_range_name</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">services_secondary_range_name</span>
+  <span class="p">}</span>
+
+  <span class="c1"># Remove default node pool</span>
+  <span class="nx">remove_default_node_pool</span> <span class="p">=</span> <span class="kc">true</span>
+  <span class="nx">initial_node_count</span>       <span class="p">=</span> <span class="mi">1</span>
+
+  <span class="c1"># Network policy configuration</span>
+  <span class="nx">network_policy</span> <span class="p">{</span>
+    <span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+  <span class="p">}</span>
+
+  <span class="c1"># Workload Identity</span>
+  <span class="nx">workload_identity_config</span> <span class="p">{</span>
+    <span class="nx">workload_pool</span> <span class="p">=</span> <span class="s2">"${var.service_project_id}.svc.id.goog"</span>
+  <span class="p">}</span>
+
+  <span class="c1"># Private cluster configuration</span>
+  <span class="nx">private_cluster_config</span> <span class="p">{</span>
+    <span class="nx">enable_private_nodes</span>    <span class="p">=</span> <span class="kc">true</span>
+    <span class="nx">enable_private_endpoint</span> <span class="p">=</span> <span class="kc">false</span>
+    <span class="nx">master_ipv4_cidr_block</span>  <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">master_ipv4_cidr_block</span>
+  <span class="p">}</span>
+
+  <span class="c1"># Master authorized networks</span>
+  <span class="nx">master_authorized_networks_config</span> <span class="p">{</span>
+    <span class="nx">dynamic</span> <span class="s2">"cidr_blocks"</span> <span class="p">{</span>
+      <span class="nx">for_each</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">authorized_networks</span>
+      <span class="nx">content</span> <span class="p">{</span>
+        <span class="nx">cidr_block</span>   <span class="p">=</span> <span class="nx">cidr_blocks</span><span class="err">.</span><span class="nx">value</span><span class="err">.</span><span class="nx">cidr_block</span>
+        <span class="nx">display_name</span> <span class="p">=</span> <span class="nx">cidr_blocks</span><span class="err">.</span><span class="nx">value</span><span class="err">.</span><span class="nx">display_name</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1"># Node pool</span>
+<span class="nx">resource</span> <span class="s2">"google_container_node_pool"</span> <span class="s2">"primary_nodes"</span> <span class="p">{</span>
+  <span class="nx">name</span>       <span class="p">=</span> <span class="s2">"${var.cluster_name}-node-pool"</span>
+  <span class="nx">location</span>   <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">region</span>
+  <span class="nx">cluster</span>    <span class="p">=</span> <span class="nx">google_container_cluster</span><span class="err">.</span><span class="nx">shared_vpc_cluster</span><span class="err">.</span><span class="nx">name</span>
+  <span class="nx">project</span>    <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">service_project_id</span>
+  <span class="nx">node_count</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">node_count</span>
+
+  <span class="nx">node_config</span> <span class="p">{</span>
+    <span class="nx">preemptible</span>  <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">preemptible</span>
+    <span class="nx">machine_type</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">machine_type</span>
+
+    <span class="c1"># Service account for nodes</span>
+    <span class="nx">service_account</span> <span class="p">=</span> <span class="nx">google_service_account</span><span class="err">.</span><span class="nx">gke_nodes</span><span class="err">.</span><span class="nx">email</span>
+    <span class="nx">oauth_scopes</span> <span class="p">=</span> <span class="p">[</span>
+      <span class="s2">"https://www.googleapis.com/auth/cloud-platform"</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Workload Identity</span>
+    <span class="nx">workload_metadata_config</span> <span class="p">{</span>
+      <span class="nx">mode</span> <span class="p">=</span> <span class="s2">"GKE_METADATA"</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="c1"># Auto-scaling</span>
+  <span class="nx">autoscaling</span> <span class="p">{</span>
+    <span class="nx">min_node_count</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">min_node_count</span>
+    <span class="nx">max_node_count</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">max_node_count</span>
+  <span class="p">}</span>
+
+  <span class="c1"># Node management</span>
+  <span class="nx">management</span> <span class="p">{</span>
+    <span class="nx">auto_repair</span>  <span class="p">=</span> <span class="kc">true</span>
+    <span class="nx">auto_upgrade</span> <span class="p">=</span> <span class="kc">true</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1"># Service account for GKE nodes</span>
+<span class="nx">resource</span> <span class="s2">"google_service_account"</span> <span class="s2">"gke_nodes"</span> <span class="p">{</span>
+  <span class="nx">account_id</span>   <span class="p">=</span> <span class="s2">"tf-gke-${var.cluster_name}-nodes"</span>
+  <span class="nx">display_name</span> <span class="p">=</span> <span class="s2">"GKE Node Service Account for ${var.cluster_name}"</span>
+  <span class="nx">project</span>      <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">service_project_id</span>
+<span class="p">}</span>
+
+<span class="c1"># IAM binding for node service account</span>
+<span class="nx">resource</span> <span class="s2">"google_project_iam_binding"</span> <span class="s2">"gke_nodes_gcr"</span> <span class="p">{</span>
+  <span class="nx">project</span> <span class="p">=</span> <span class="nx">var</span><span class="err">.</span><span class="nx">host_project_id</span>
+  <span class="nx">role</span>    <span class="p">=</span> <span class="s2">"roles/artifactregistry.reader"</span>
+
+  <span class="nx">members</span> <span class="p">=</span> <span class="p">[</span>
+    <span class="s2">"serviceAccount:${google_service_account.gke_nodes.email}"</span><span class="p">,</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="variables-configuration">Variables Configuration</h3>
+
+<div class="language-hcl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># terraform/variables.tf</span>
+<span class="nx">variable</span> <span class="s2">"service_project_id"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The service project ID where GKE cluster will be created"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"host_project_id"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The host project ID containing the Shared VPC"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"region"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The region for the GKE cluster"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+  <span class="nx">default</span>     <span class="p">=</span> <span class="s2">"us-central1"</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"network_name"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The name of the Shared VPC network"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"subnet_name"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The name of the subnet for GKE cluster"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"cluster_name"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The name of the GKE cluster"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"cluster_secondary_range_name"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The name of the secondary range for cluster IPs"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"services_secondary_range_name"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The name of the secondary range for services"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"master_ipv4_cidr_block"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"The IP range for the GKE master"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+  <span class="nx">default</span>     <span class="p">=</span> <span class="s2">"172.16.0.0/28"</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"authorized_networks"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"List of authorized networks for GKE master"</span>
+  <span class="nx">type</span> <span class="p">=</span> <span class="nx">list</span><span class="err">(</span><span class="nx">object</span><span class="err">(</span><span class="p">{</span>
+    <span class="nx">cidr_block</span>   <span class="p">=</span> <span class="nx">string</span>
+    <span class="nx">display_name</span> <span class="p">=</span> <span class="nx">string</span>
+  <span class="p">}</span><span class="err">))</span>
+  <span class="nx">default</span> <span class="p">=</span> <span class="p">[]</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"node_count"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"Number of nodes in the node pool"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">number</span>
+  <span class="nx">default</span>     <span class="p">=</span> <span class="mi">3</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"min_node_count"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"Minimum number of nodes in the node pool"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">number</span>
+  <span class="nx">default</span>     <span class="p">=</span> <span class="mi">1</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"max_node_count"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"Maximum number of nodes in the node pool"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">number</span>
+  <span class="nx">default</span>     <span class="p">=</span> <span class="mi">10</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"machine_type"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"Machine type for GKE nodes"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">string</span>
+  <span class="nx">default</span>     <span class="p">=</span> <span class="s2">"e2-medium"</span>
+<span class="p">}</span>
+
+<span class="nx">variable</span> <span class="s2">"preemptible"</span> <span class="p">{</span>
+  <span class="nx">description</span> <span class="p">=</span> <span class="s2">"Whether to use preemptible nodes"</span>
+  <span class="nx">type</span>        <span class="p">=</span> <span class="nx">bool</span>
+  <span class="nx">default</span>     <span class="p">=</span> <span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="terraform-execution">Terraform Execution</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Initialize Terraform</span>
+terraform init
+
+<span class="c"># Plan the deployment</span>
+terraform plan <span class="nt">-var-file</span><span class="o">=</span><span class="s2">"environments/dev.tfvars"</span>
+
+<span class="c"># Apply the configuration</span>
+terraform apply <span class="nt">-var-file</span><span class="o">=</span><span class="s2">"environments/dev.tfvars"</span>
+
+<span class="c"># Verify cluster creation</span>
+gcloud container clusters get-credentials cluster-name <span class="nt">--region</span><span class="o">=</span>region <span class="nt">--project</span><span class="o">=</span>service-project-id
+kubectl get nodes
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="best-practices-and-security-guidelines">Best Practices and Security Guidelines</h2>
+
+<p><br /></p>
+
+<h3 id="iam-security-best-practices">IAM Security Best Practices</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th>Practice</th>
+      <th>Description</th>
+      <th>Implementation</th>
+    </tr>
+    <tr>
+      <td>Principle of Least Privilege</td>
+      <td>Grant only the minimum required permissions</td>
+      <td>Use specific predefined roles instead of primitive roles</td>
+    </tr>
+    <tr>
+      <td>Service Account Segregation</td>
+      <td>Create dedicated service accounts for different purposes</td>
+      <td>Separate accounts for GKE nodes, applications, and CI/CD</td>
+    </tr>
+    <tr>
+      <td>Regular Access Review</td>
+      <td>Periodically review and audit IAM permissions</td>
+      <td>Use Cloud Asset Inventory and IAM Recommender</td>
+    </tr>
+    <tr>
+      <td>Conditional Access</td>
+      <td>Use IAM conditions for time-based or resource-specific access</td>
+      <td>Implement conditions for temporary access or specific resources</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="network-security-configuration">Network Security Configuration</h3>
+
+<script src="https://gist.github.com/somaz94/2308f88a8244c21029ea3b9365767e14.js"></script>
+
+<p><br /></p>
+
+<h3 id="monitoring-and-logging">Monitoring and Logging</h3>
+
+<script src="https://gist.github.com/somaz94/19ec4858cc4a6992186544f162baae56.js"></script>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="troubleshooting-common-issues">Troubleshooting Common Issues</h2>
+
+<p><br /></p>
+
+<h3 id="permission-denied-errors">Permission Denied Errors</h3>
+
+<div class="info-box info-box-default">
+  <strong>Common GKE Shared VPC Issues</strong>
+  <ul>
+    <li><strong>Cluster creation fails:</strong> Verify all service accounts have required roles on host project</li>
+    <li><strong>Node pool creation fails:</strong> Check compute.networkUser role for GKE service account</li>
+    <li><strong>Pod networking issues:</strong> Verify secondary IP ranges are properly configured</li>
+    <li><strong>Image pull errors:</strong> Ensure Artifact Registry reader permissions are granted</li>
+  </ul>
+</div>
+
+<h4 id="diagnostic-commands">Diagnostic Commands</h4>
+
+<script src="https://gist.github.com/somaz94/c97e3038f78ed0e3ff8bedab6478d936.js"></script>
+
+<p><br /></p>
+
+<h3 id="network-configuration-issues">Network Configuration Issues</h3>
+
+<script src="https://gist.github.com/somaz94/590b48b5e8154b489b6ce586ffb1e7dd.js"></script>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="whats-next">What’s Next?</h2>
+
+<p>After successfully setting up GKE clusters with Shared VPC, consider these advanced topics:</p>
+
+<ol>
+  <li><strong>Multi-cluster Service Mesh</strong>: Implement Istio across multiple GKE clusters</li>
+  <li><strong>GitOps with ArgoCD</strong>: Set up continuous deployment pipelines</li>
+  <li><strong>Workload Identity</strong>: Secure pod-to-GCP service authentication</li>
+  <li><strong>Network Policies</strong>: Implement fine-grained network security</li>
+  <li><strong>Cross-project Monitoring</strong>: Set up centralized observability</li>
+</ol>
+
+<p><br /></p>
+
+<h3 id="advanced-configurations">Advanced Configurations</h3>
+
+<div style="width: 100%; margin: auto; margin-top: 20px;">
+  <div class="mermaid">
+    graph LR
+      A[Basic Shared VPC + GKE] --&gt; B[Workload Identity]
+      A --&gt; C[Network Policies]
+      B --&gt; D[Multi-cluster Service Mesh]
+      C --&gt; E[Zero-trust Networking]
+      D --&gt; F[Advanced Observability]
+      E --&gt; F
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="recommended-learning-path">Recommended Learning Path</h3>
+
+<ol>
+  <li><strong>Master the basics</strong>: Ensure solid understanding of Shared VPC and GKE fundamentals</li>
+  <li><strong>Implement automation</strong>: Use Terraform for all infrastructure provisioning</li>
+  <li><strong>Security hardening</strong>: Apply network policies and Workload Identity</li>
+  <li><strong>Observability</strong>: Set up comprehensive monitoring and logging</li>
+  <li><strong>Advanced networking</strong>: Explore service mesh and multi-cluster architectures</li>
+</ol>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://cloud.google.com/vpc/docs/shared-vpc">Google Cloud Shared VPC Documentation</a></li>
+  <li><a href="https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-shared-vpc">GKE Shared VPC Setup Guide</a></li>
+  <li><a href="https://cloud.google.com/vpc/docs/shared-vpc-best-practices">Shared VPC Best Practices</a></li>
+  <li><a href="https://cloud.google.com/kubernetes-engine/docs/how-to/hardening-your-cluster">GKE Network Security</a></li>
+  <li><a href="https://registry.terraform.io/providers/hashicorp/google/latest/docs">Terraform Google Provider</a></li>
+  <li><a href="https://cloud.google.com/kubernetes-engine/docs/how-to/iam">GKE IAM Roles</a></li>
+  <li><a href="https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity">Workload Identity Setup</a></li>
+  <li><a href="https://cloud.google.com/kubernetes-engine/docs/concepts/alias-ips">VPC-native Networking</a></li>
+  <li><a href="https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters">Private GKE Clusters</a></li>
+  <li><a href="https://cloud.google.com/kubernetes-engine/docs/how-to/network-policy">GKE Network Policies</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/openstack/openstack-octavia/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1742267532/openstack_t2tmoc.png">
+                                    
+                                    <h3>Deep Dive into OpenStack Octavia</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/troubleshooting/argocd-ingress-gke/">
+                                    
+                                        <img src="https://blog.kakaocdn.net/dn/baMOz9/btsGPPRoXDF/KFCDia9hhgPKkgFK8RcPHK/img.png">
+                                    
+                                    <h3>ArgoCD Ingress Error Resolution Guide (GKE)</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1754458041/fluenbit-opensearch_lmr5hf.png">
+                                    
+                                    <h3>Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="14">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/linux/linux-kernel-parameters/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1742267532/linux-kernel_qd0x1d.png">
+                
+            </div>
+            <h3 class="title">Linux Kernel Parameters (sysctl) Guide</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn how to set up GKE clusters across multiple projects using Shared VPC with proper IAM configurations&quot;%20https://somaz.blog/category/gcp/gcp-shared-vpc-gke/%20via%20&#64;twitter_username&hashtags=gcp,shared-vpc,gke,kubernetes,iam,networking"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/gcp/gcp-shared-vpc-gke/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile.png" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  <script type="application/ld+json">
+  {
+      "@context": "http://schema.org",
+      "@type": "Person",
+      "name": "Somaz",
+      
+      "image": "/assets/img/uploads/profile.png",
+      
+      "jobTitle": "DevOps Engineer",
+      "url": "https://somaz.blog/authors/somaz/",
+      "sameAs": [
+        "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://{{ author.tistory_username }}.tistory.com"
+      ]
+  }
+  </script>
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/gcp/gcp-shared-vpc-gke/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.facebook.com/facebook_username" title="Facebook">
+          <svg><use xlink:href="#icon-facebook"></use></svg>
+        </a>
+      
+      
+        <a href="https://twitter.com/twitter_username" title="Twitter">
+          <svg><use xlink:href="#icon-twitter"></use></svg>
+        </a>
+      
+      
+        <a href="https://medium.com/@medium_username" title="Medium">
+          <svg><use xlink:href="#icon-medium"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.instagram.com/instagram_username" title="Instagram">
+          <svg><use xlink:href="#icon-instagram"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy.html" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "Organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": "600",
+      "height": "315"
+  },
+  "sameAs": [
+    "https://github.com/somaz94","https://www.facebook.com/facebook_username","https://twitter.com/twitter_username","https://medium.com/@medium_username","https://www.instagram.com/instagram_username","https://www.linkedin.com/in/somaz","https://{{ site.tistory_username }}.tistory.com"
+  ]
+}
+</script>
+
+<!-- Include the script that allows Netlify CMS login -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-XXXXXXXX-X"></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-XXXXXXXX-X');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "http://schema.org",
+            "@type": "BlogPosting",
+            "name": "GCP Shared VPC and GKE Cluster Setup Guide",
+            "headline": "Configure IAM permissions for GKE clusters using Shared VPC architecture",
+            "description": "Learn how to set up GKE clusters across multiple projects using Shared VPC with proper IAM configurations",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1755164318/gcp-shared-vpc-gke_pmoesj.png",
+            "url": "https://somaz.blog/category/gcp/gcp-shared-vpc-gke/",
+            "articleBody": "
+
+
+
+Overview
+
+Google Cloud Platform’s Shared VPC is a powerful feature that enables centralized network management while maintaining project-level resource isolation.
+
+This comprehensive guide walks through the process of setting up GKE clusters across different service projects using Shared VPC architecture, with detailed IAM configuration steps.
+
+Shared VPC allows organizations to centrally manage network resources while enabling independent resource operations across service projects.
+
+This approach ensures consistent security policies, systematic network separation across different environments (dev, staging, production), and efficient collaboration across teams.
+
+
+
+Why Shared VPC Matters&amp;lt;
+
+Shared VPC is essential for enterprise-grade GCP deployments where network security, cost optimization, and operational efficiency are critical.
+
+It provides a foundation for multi-environment architectures while maintaining security boundaries and enabling centralized network governance.
+
+For organizations running multiple projects and environments, Shared VPC eliminates the complexity of VPC peering while providing superior network control and security posture management.
+
+
+
+
+
+What is Shared VPC?
+
+Shared VPC allows multiple projects to connect their resources to a common VPC network, enabling secure and efficient communication using internal IP addresses.
+
+This architecture separates network administration from project administration, providing several key benefits:
+
+
+  
+    graph TB
+      subgraph &quot;Organization&quot;
+        subgraph &quot;Host Project&quot;
+          A[VPC Network]
+          B[Subnets]
+          C[Firewall Rules]
+          D[Routes]
+        end
+        
+        subgraph &quot;Service Project 1&quot;
+          E[GKE Cluster]
+          F[Compute Instances]
+          G[Cloud SQL]
+        end
+        
+        subgraph &quot;Service Project 2&quot;
+          H[GKE Cluster]
+          I[App Engine]
+          J[Cloud Functions]
+        end
+        
+        A --&amp;gt; E
+        A --&amp;gt; F
+        A --&amp;gt; G
+        A --&amp;gt; H
+        A --&amp;gt; I
+        A --&amp;gt; J
+        
+        B --&amp;gt; E
+        B --&amp;gt; H
+      end
+      
+      style A fill:#4285f4,color:#fff
+      style E fill:#34a853,color:#fff
+      style H fill:#34a853,color:#fff
+  
+
+
+
+
+Key Benefits of Shared VPC
+
+
+  
+    
+      Benefit
+      Description
+      Business Impact
+    
+    
+      Centralized Network Management
+      Single point of control for network policies, firewall rules, and routing
+      Reduced operational overhead and consistent security policies
+    
+    
+      Project Isolation
+      Resources separated by project boundaries while sharing network
+      Clear cost allocation and security boundaries
+    
+    
+      Simplified Communication
+      Internal IP communication without VPC peering complexity
+      Lower latency and reduced network management complexity
+    
+    
+      Environment Separation
+      Logical separation of dev, staging, and production environments
+      Improved security and compliance posture
+    
+    
+      Cost Optimization
+      Shared network resources and reduced data transfer costs
+      Lower overall infrastructure costs
+    
+  
+
+
+
+
+
+
+Shared VPC Architecture Patterns
+
+
+
+Single Host Project Architecture
+
+The most common Shared VPC pattern uses one host project providing network services to multiple service projects:
+
+
+  
+    graph TB
+      subgraph &quot;Single Host Project Architecture&quot;
+        subgraph &quot;Host Project: somaz-network&quot;
+          HP[VPC Network]
+          HS1[Subnet: dev-subnet]
+          HS2[Subnet: prod-subnet]
+          HF[Firewall Rules]
+          HR[Routes &amp;amp; NAT]
+        end
+        
+        subgraph &quot;Service Project: somaz-sp-dev&quot;
+          SP1[GKE Dev Cluster]
+          SP1VM[Dev VMs]
+        end
+        
+        subgraph &quot;Service Project: somaz-sp-prod&quot;
+          SP2[GKE Prod Cluster]
+          SP2VM[Prod VMs]
+        end
+        
+        HS1 --&amp;gt; SP1
+        HS1 --&amp;gt; SP1VM
+        HS2 --&amp;gt; SP2
+        HS2 --&amp;gt; SP2VM
+        HF --&amp;gt; SP1
+        HF --&amp;gt; SP2
+      end
+      
+      style HP fill:#4285f4,color:#fff
+      style SP1 fill:#34a853,color:#fff
+      style SP2 fill:#ea4335,color:#fff
+  
+
+
+
+
+Multiple Host Projects Architecture
+
+For organizations requiring environment isolation at the network level:
+
+
+  
+    graph TB
+      subgraph &quot;Multiple Host Projects Architecture&quot;
+        subgraph &quot;Dev Host Project&quot;
+          DHP[Dev VPC Network]
+          DHS[Dev Subnets]
+        end
+        
+        subgraph &quot;Prod Host Project&quot;
+          PHP[Prod VPC Network]
+          PHS[Prod Subnets]
+        end
+        
+        subgraph &quot;Dev Service Projects&quot;
+          DSP1[Frontend Dev]
+          DSP2[Backend Dev]
+          DSP3[Data Dev]
+        end
+        
+        subgraph &quot;Prod Service Projects&quot;
+          PSP1[Frontend Prod]
+          PSP2[Backend Prod]
+          PSP3[Data Prod]
+        end
+        
+        DHS --&amp;gt; DSP1
+        DHS --&amp;gt; DSP2
+        DHS --&amp;gt; DSP3
+        
+        PHS --&amp;gt; PSP1
+        PHS --&amp;gt; PSP2
+        PHS --&amp;gt; PSP3
+      end
+      
+      style DHP fill:#34a853,color:#fff
+      style PHP fill:#ea4335,color:#fff
+  
+
+
+
+
+
+
+Prerequisites and Project Setup
+
+
+
+Example Project Structure
+
+For this guide, we’ll use the following project structure:
+
+
+  
+    
+      Project Type
+      Project ID
+      Purpose
+      Resources
+    
+    
+      Host Project
+      somaz-hp
+      Network management and shared resources
+      VPC, Subnets, Firewall Rules, Artifact Registry
+    
+    
+      Service Project
+      somaz-sp-dev
+      Development environment
+      GKE Cluster, Development workloads
+    
+    
+      Service Project
+      somaz-sp-prod
+      Production environment
+      GKE Cluster, Production workloads
+    
+  
+
+
+
+
+Required APIs and Service Accounts
+
+Before starting the IAM configuration, ensure the following APIs are enabled and understand the service accounts involved:
+
+APIs to Enable:
+# Enable required APIs in all projects
+gcloud services enable container.googleapis.com
+gcloud services enable compute.googleapis.com
+gcloud services enable artifactregistry.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
+
+# Verify enabled APIs
+gcloud services list --enabled --filter=&quot;name:container.googleapis.com OR name:compute.googleapis.com&quot;
+
+
+Key Service Accounts:
+
+
+  
+    
+      Service Account
+      Format
+      Purpose
+    
+    
+      Google APIs Service Account
+      &amp;lt;project-number&amp;gt;@cloudservices.gserviceaccount.com
+      Default service account for Google Cloud services
+    
+    
+      GKE Service Agent
+      service-&amp;lt;project-number&amp;gt;@container-engine-robot.iam.gserviceaccount.com
+      GKE cluster operations and management
+    
+    
+      Terraform GKE Service Account
+      tf-gke-&amp;lt;cluster-name&amp;gt;-&amp;lt;random&amp;gt;@&amp;lt;project&amp;gt;.iam.gserviceaccount.com
+      Terraform-managed GKE cluster service account
+    
+  
+
+
+
+
+
+
+IAM Configuration Step by Step
+
+This section provides a comprehensive walkthrough of IAM permissions required for GKE clusters in Shared VPC environments.
+
+
+
+Step 1: Set Environment Variables
+
+First, establish environment variables for the service accounts and project information:
+
+
+
+
+
+Step 2: Enable Required APIs
+
+Ensure all necessary APIs are enabled in both host and service projects:
+
+# Enable APIs in service project
+gcloud services enable container.googleapis.com --project=$SERVICE_PROJECT
+gcloud services enable compute.googleapis.com --project=$SERVICE_PROJECT
+
+# Enable APIs in host project
+gcloud services enable container.googleapis.com --project=$HOST_PROJECT
+gcloud services enable compute.googleapis.com --project=$HOST_PROJECT
+
+# Verify API enablement
+gcloud services list --enabled --project=$SERVICE_PROJECT --filter=&quot;name:container.googleapis.com&quot;
+gcloud services list --enabled --project=$HOST_PROJECT --filter=&quot;name:compute.googleapis.com&quot;
+
+
+
+
+Step 3: Grant Kubernetes Engine Service Agent Role
+
+Grant the roles/container.serviceAgent role to both host and service project service accounts:
+
+
+
+
+
+Step 4: Grant Editor Role to Service Project
+
+Grant editor permissions within the service project:
+
+
+
+
+
+Step 5: Grant Network User Role
+
+Grant network access permissions on the host project:
+
+
+
+
+
+Step 6: Grant Additional Required Roles
+
+Grant additional roles needed for full GKE functionality:
+
+
+
+
+
+Step 7: Organization-Level Permissions for Terraform
+
+For Terraform automation, grant organization-level permissions:
+
+
+
+
+
+Step 8: Artifact Registry Permissions
+
+After creating the GKE cluster with Terraform, grant Artifact Registry access:
+
+
+
+
+
+
+
+Terraform Integration
+
+
+
+Terraform Configuration Example
+
+Here’s a comprehensive Terraform configuration for creating GKE clusters in Shared VPC:
+
+# terraform/main.tf
+terraform {
+  required_providers {
+    google = {
+      source  = &quot;hashicorp/google&quot;
+      version = &quot;~&amp;gt; 4.0&quot;
+    }
+  }
+}
+
+provider &quot;google&quot; {
+  project = var.service_project_id
+  region  = var.region
+}
+
+# Data sources for existing network resources
+data &quot;google_compute_network&quot; &quot;shared_vpc&quot; {
+  name    = var.network_name
+  project = var.host_project_id
+}
+
+data &quot;google_compute_subnetwork&quot; &quot;gke_subnet&quot; {
+  name    = var.subnet_name
+  project = var.host_project_id
+  region  = var.region
+}
+
+# GKE Cluster in Shared VPC
+resource &quot;google_container_cluster&quot; &quot;shared_vpc_cluster&quot; {
+  name     = var.cluster_name
+  location = var.region
+  project  = var.service_project_id
+
+  # Network configuration for Shared VPC
+  network    = data.google_compute_network.shared_vpc.self_link
+  subnetwork = data.google_compute_subnetwork.gke_subnet.self_link
+
+  # IP allocation policy for VPC-native cluster
+  ip_allocation_policy {
+    cluster_secondary_range_name  = var.cluster_secondary_range_name
+    services_secondary_range_name = var.services_secondary_range_name
+  }
+
+  # Remove default node pool
+  remove_default_node_pool = true
+  initial_node_count       = 1
+
+  # Network policy configuration
+  network_policy {
+    enabled = true
+  }
+
+  # Workload Identity
+  workload_identity_config {
+    workload_pool = &quot;${var.service_project_id}.svc.id.goog&quot;
+  }
+
+  # Private cluster configuration
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false
+    master_ipv4_cidr_block  = var.master_ipv4_cidr_block
+  }
+
+  # Master authorized networks
+  master_authorized_networks_config {
+    dynamic &quot;cidr_blocks&quot; {
+      for_each = var.authorized_networks
+      content {
+        cidr_block   = cidr_blocks.value.cidr_block
+        display_name = cidr_blocks.value.display_name
+      }
+    }
+  }
+}
+
+# Node pool
+resource &quot;google_container_node_pool&quot; &quot;primary_nodes&quot; {
+  name       = &quot;${var.cluster_name}-node-pool&quot;
+  location   = var.region
+  cluster    = google_container_cluster.shared_vpc_cluster.name
+  project    = var.service_project_id
+  node_count = var.node_count
+
+  node_config {
+    preemptible  = var.preemptible
+    machine_type = var.machine_type
+
+    # Service account for nodes
+    service_account = google_service_account.gke_nodes.email
+    oauth_scopes = [
+      &quot;https://www.googleapis.com/auth/cloud-platform&quot;
+    ]
+
+    # Workload Identity
+    workload_metadata_config {
+      mode = &quot;GKE_METADATA&quot;
+    }
+  }
+
+  # Auto-scaling
+  autoscaling {
+    min_node_count = var.min_node_count
+    max_node_count = var.max_node_count
+  }
+
+  # Node management
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+}
+
+# Service account for GKE nodes
+resource &quot;google_service_account&quot; &quot;gke_nodes&quot; {
+  account_id   = &quot;tf-gke-${var.cluster_name}-nodes&quot;
+  display_name = &quot;GKE Node Service Account for ${var.cluster_name}&quot;
+  project      = var.service_project_id
+}
+
+# IAM binding for node service account
+resource &quot;google_project_iam_binding&quot; &quot;gke_nodes_gcr&quot; {
+  project = var.host_project_id
+  role    = &quot;roles/artifactregistry.reader&quot;
+
+  members = [
+    &quot;serviceAccount:${google_service_account.gke_nodes.email}&quot;,
+  ]
+}
+
+
+
+
+Variables Configuration
+
+# terraform/variables.tf
+variable &quot;service_project_id&quot; {
+  description = &quot;The service project ID where GKE cluster will be created&quot;
+  type        = string
+}
+
+variable &quot;host_project_id&quot; {
+  description = &quot;The host project ID containing the Shared VPC&quot;
+  type        = string
+}
+
+variable &quot;region&quot; {
+  description = &quot;The region for the GKE cluster&quot;
+  type        = string
+  default     = &quot;us-central1&quot;
+}
+
+variable &quot;network_name&quot; {
+  description = &quot;The name of the Shared VPC network&quot;
+  type        = string
+}
+
+variable &quot;subnet_name&quot; {
+  description = &quot;The name of the subnet for GKE cluster&quot;
+  type        = string
+}
+
+variable &quot;cluster_name&quot; {
+  description = &quot;The name of the GKE cluster&quot;
+  type        = string
+}
+
+variable &quot;cluster_secondary_range_name&quot; {
+  description = &quot;The name of the secondary range for cluster IPs&quot;
+  type        = string
+}
+
+variable &quot;services_secondary_range_name&quot; {
+  description = &quot;The name of the secondary range for services&quot;
+  type        = string
+}
+
+variable &quot;master_ipv4_cidr_block&quot; {
+  description = &quot;The IP range for the GKE master&quot;
+  type        = string
+  default     = &quot;172.16.0.0/28&quot;
+}
+
+variable &quot;authorized_networks&quot; {
+  description = &quot;List of authorized networks for GKE master&quot;
+  type = list(object({
+    cidr_block   = string
+    display_name = string
+  }))
+  default = []
+}
+
+variable &quot;node_count&quot; {
+  description = &quot;Number of nodes in the node pool&quot;
+  type        = number
+  default     = 3
+}
+
+variable &quot;min_node_count&quot; {
+  description = &quot;Minimum number of nodes in the node pool&quot;
+  type        = number
+  default     = 1
+}
+
+variable &quot;max_node_count&quot; {
+  description = &quot;Maximum number of nodes in the node pool&quot;
+  type        = number
+  default     = 10
+}
+
+variable &quot;machine_type&quot; {
+  description = &quot;Machine type for GKE nodes&quot;
+  type        = string
+  default     = &quot;e2-medium&quot;
+}
+
+variable &quot;preemptible&quot; {
+  description = &quot;Whether to use preemptible nodes&quot;
+  type        = bool
+  default     = false
+}
+
+
+
+
+Terraform Execution
+
+# Initialize Terraform
+terraform init
+
+# Plan the deployment
+terraform plan -var-file=&quot;environments/dev.tfvars&quot;
+
+# Apply the configuration
+terraform apply -var-file=&quot;environments/dev.tfvars&quot;
+
+# Verify cluster creation
+gcloud container clusters get-credentials cluster-name --region=region --project=service-project-id
+kubectl get nodes
+
+
+
+
+
+
+Best Practices and Security Guidelines
+
+
+
+IAM Security Best Practices
+
+
+  
+    
+      Practice
+      Description
+      Implementation
+    
+    
+      Principle of Least Privilege
+      Grant only the minimum required permissions
+      Use specific predefined roles instead of primitive roles
+    
+    
+      Service Account Segregation
+      Create dedicated service accounts for different purposes
+      Separate accounts for GKE nodes, applications, and CI/CD
+    
+    
+      Regular Access Review
+      Periodically review and audit IAM permissions
+      Use Cloud Asset Inventory and IAM Recommender
+    
+    
+      Conditional Access
+      Use IAM conditions for time-based or resource-specific access
+      Implement conditions for temporary access or specific resources
+    
+  
+
+
+
+
+Network Security Configuration
+
+
+
+
+
+Monitoring and Logging
+
+
+
+
+
+
+
+Troubleshooting Common Issues
+
+
+
+Permission Denied Errors
+
+
+  Common GKE Shared VPC Issues
+  
+    Cluster creation fails: Verify all service accounts have required roles on host project
+    Node pool creation fails: Check compute.networkUser role for GKE service account
+    Pod networking issues: Verify secondary IP ranges are properly configured
+    Image pull errors: Ensure Artifact Registry reader permissions are granted
+  
+
+
+Diagnostic Commands
+
+
+
+
+
+Network Configuration Issues
+
+
+
+
+
+
+
+What’s Next?
+
+After successfully setting up GKE clusters with Shared VPC, consider these advanced topics:
+
+
+  Multi-cluster Service Mesh: Implement Istio across multiple GKE clusters
+  GitOps with ArgoCD: Set up continuous deployment pipelines
+  Workload Identity: Secure pod-to-GCP service authentication
+  Network Policies: Implement fine-grained network security
+  Cross-project Monitoring: Set up centralized observability
+
+
+
+
+Advanced Configurations
+
+
+  
+    graph LR
+      A[Basic Shared VPC + GKE] --&amp;gt; B[Workload Identity]
+      A --&amp;gt; C[Network Policies]
+      B --&amp;gt; D[Multi-cluster Service Mesh]
+      C --&amp;gt; E[Zero-trust Networking]
+      D --&amp;gt; F[Advanced Observability]
+      E --&amp;gt; F
+  
+
+
+
+
+Recommended Learning Path
+
+
+  Master the basics: Ensure solid understanding of Shared VPC and GKE fundamentals
+  Implement automation: Use Terraform for all infrastructure provisioning
+  Security hardening: Apply network policies and Workload Identity
+  Observability: Set up comprehensive monitoring and logging
+  Advanced networking: Explore service mesh and multi-cluster architectures
+
+
+
+
+
+
+References
+
+
+  Google Cloud Shared VPC Documentation
+  GKE Shared VPC Setup Guide
+  Shared VPC Best Practices
+  GKE Network Security
+  Terraform Google Provider
+  GKE IAM Roles
+  Workload Identity Setup
+  VPC-native Networking
+  Private GKE Clusters
+  GKE Network Policies
+
+",
+            "wordcount": "2675",
+            "inLanguage": "en",
+            "dateCreated": "2025-07-25/",
+            "datePublished": "2025-07-25/",
+            "dateModified": "2025-07-25/",
+            "author": {
+                "@type": "Person",
+                "name": "Somaz",
+                
+                "image": "/assets/img/uploads/profile.png",
+                
+                "jobTitle": "DevOps Engineer",
+                "url": "https://somaz.blog/authors/somaz/",
+                "sameAs": [
+                    "https://github.com/somaz94","https://www.linkedin.com/in/somaz"
+                ]
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "somaz",
+                "url": "https://somaz.blog/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://somaz.blog/assets/img/blog-image.png",
+                    "width": "600",
+                    "height": "315"
+                }
+            },
+            "mainEntityOfPage": "True",
+            "genre": "GCP",
+            "articleSection": "GCP",
+            "keywords": ["gcp","shared-vpc","gke","kubernetes","iam","networking"]
+        }
+        </script>
+    </body>
+</html>
