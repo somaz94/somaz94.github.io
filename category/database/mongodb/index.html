@@ -220,7 +220,7 @@ January 27, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>81 min to read</span>
+                    <span>75 min to read</span>
                 </p>
                 <h1 class="post-title">MongoDB: From Fundamentals to Production Excellence</h1>
                 <p class="post-subtitle">Comprehensive guide to MongoDB architecture, advanced patterns, and enterprise deployment strategies</p>
@@ -1643,141 +1643,8 @@ January 27, 2025
 <h3 id="multi-tenant-architecture-patterns">Multi-Tenant Architecture Patterns</h3>
 
 <h4 id="tenant-isolation-strategies">Tenant Isolation Strategies</h4>
-<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Database per Tenant Strategy</span>
-<span class="kd">class</span> <span class="nx">DatabasePerTenantManager</span> <span class="p">{</span>
-  <span class="kd">constructor</span><span class="p">(</span><span class="nx">mongoClient</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">this</span><span class="p">.</span><span class="nx">client</span> <span class="o">=</span> <span class="nx">mongoClient</span><span class="p">;</span>
-    <span class="k">this</span><span class="p">.</span><span class="nx">tenantDatabases</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Map</span><span class="p">();</span>
-  <span class="p">}</span>
-  
-  <span class="k">async</span> <span class="nx">getTenantDatabase</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">this</span><span class="p">.</span><span class="nx">tenantDatabases</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">))</span> <span class="p">{</span>
-      <span class="kd">const</span> <span class="nx">dbName</span> <span class="o">=</span> <span class="s2">`tenant_</span><span class="p">${</span><span class="nx">tenantId</span><span class="p">}</span><span class="s2">`</span><span class="p">;</span>
-      <span class="kd">const</span> <span class="nx">db</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">client</span><span class="p">.</span><span class="nx">db</span><span class="p">(</span><span class="nx">dbName</span><span class="p">);</span>
-      
-      <span class="c1">// Initialize tenant-specific collections and indexes</span>
-      <span class="k">await</span> <span class="k">this</span><span class="p">.</span><span class="nx">initializeTenantDatabase</span><span class="p">(</span><span class="nx">db</span><span class="p">);</span>
-      
-      <span class="k">this</span><span class="p">.</span><span class="nx">tenantDatabases</span><span class="p">.</span><span class="kd">set</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">,</span> <span class="nx">db</span><span class="p">);</span>
-    <span class="p">}</span>
-    
-    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">tenantDatabases</span><span class="p">.</span><span class="kd">get</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">);</span>
-  <span class="p">}</span>
-  
-  <span class="k">async</span> <span class="nx">initializeTenantDatabase</span><span class="p">(</span><span class="nx">db</span><span class="p">)</span> <span class="p">{</span>
-    <span class="c1">// Create collections with tenant-specific configurations</span>
-    <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nx">createCollection</span><span class="p">(</span><span class="dl">'</span><span class="s1">users</span><span class="dl">'</span><span class="p">,</span> <span class="p">{</span>
-      <span class="na">validator</span><span class="p">:</span> <span class="p">{</span>
-        <span class="na">$jsonSchema</span><span class="p">:</span> <span class="p">{</span>
-          <span class="na">bsonType</span><span class="p">:</span> <span class="dl">"</span><span class="s2">object</span><span class="dl">"</span><span class="p">,</span>
-          <span class="na">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">"</span><span class="s2">email</span><span class="dl">"</span><span class="p">,</span> <span class="dl">"</span><span class="s2">createdAt</span><span class="dl">"</span><span class="p">],</span>
-          <span class="na">properties</span><span class="p">:</span> <span class="p">{</span>
-            <span class="na">email</span><span class="p">:</span> <span class="p">{</span> <span class="na">bsonType</span><span class="p">:</span> <span class="dl">"</span><span class="s2">string</span><span class="dl">"</span><span class="p">,</span> <span class="na">pattern</span><span class="p">:</span> <span class="dl">"</span><span class="s2">^.+@.+</span><span class="se">\</span><span class="s2">..+$</span><span class="dl">"</span> <span class="p">},</span>
-            <span class="na">createdAt</span><span class="p">:</span> <span class="p">{</span> <span class="na">bsonType</span><span class="p">:</span> <span class="dl">"</span><span class="s2">date</span><span class="dl">"</span> <span class="p">}</span>
-          <span class="p">}</span>
-        <span class="p">}</span>
-      <span class="p">}</span>
-    <span class="p">});</span>
-    
-    <span class="c1">// Create tenant-specific indexes</span>
-    <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nx">collection</span><span class="p">(</span><span class="dl">'</span><span class="s1">users</span><span class="dl">'</span><span class="p">).</span><span class="nx">createIndex</span><span class="p">({</span> <span class="na">email</span><span class="p">:</span> <span class="mi">1</span> <span class="p">},</span> <span class="p">{</span> <span class="na">unique</span><span class="p">:</span> <span class="kc">true</span> <span class="p">});</span>
-    <span class="k">await</span> <span class="nx">db</span><span class="p">.</span><span class="nx">collection</span><span class="p">(</span><span class="dl">'</span><span class="s1">orders</span><span class="dl">'</span><span class="p">).</span><span class="nx">createIndex</span><span class="p">({</span> <span class="na">customerId</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="na">createdAt</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span> <span class="p">});</span>
-  <span class="p">}</span>
-<span class="p">}</span>
 
-<span class="c1">// Collection per Tenant Strategy</span>
-<span class="kd">class</span> <span class="nx">CollectionPerTenantManager</span> <span class="p">{</span>
-  <span class="kd">constructor</span><span class="p">(</span><span class="nx">db</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">this</span><span class="p">.</span><span class="nx">db</span> <span class="o">=</span> <span class="nx">db</span><span class="p">;</span>
-  <span class="p">}</span>
-  
-  <span class="nx">getCollectionName</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">,</span> <span class="nx">baseCollection</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="s2">`</span><span class="p">${</span><span class="nx">baseCollection</span><span class="p">}</span><span class="s2">_</span><span class="p">${</span><span class="nx">tenantId</span><span class="p">}</span><span class="s2">`</span><span class="p">;</span>
-  <span class="p">}</span>
-  
-  <span class="k">async</span> <span class="nx">getTenantCollection</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">,</span> <span class="nx">collectionName</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kd">const</span> <span class="nx">tenantCollectionName</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getCollectionName</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">,</span> <span class="nx">collectionName</span><span class="p">);</span>
-    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">db</span><span class="p">.</span><span class="nx">collection</span><span class="p">(</span><span class="nx">tenantCollectionName</span><span class="p">);</span>
-  <span class="p">}</span>
-  
-  <span class="k">async</span> <span class="nx">createTenantCollection</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">,</span> <span class="nx">collectionName</span><span class="p">,</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{})</span> <span class="p">{</span>
-    <span class="kd">const</span> <span class="nx">tenantCollectionName</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getCollectionName</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">,</span> <span class="nx">collectionName</span><span class="p">);</span>
-    
-    <span class="k">await</span> <span class="k">this</span><span class="p">.</span><span class="nx">db</span><span class="p">.</span><span class="nx">createCollection</span><span class="p">(</span><span class="nx">tenantCollectionName</span><span class="p">,</span> <span class="p">{</span>
-      <span class="p">...</span><span class="nx">options</span><span class="p">,</span>
-      <span class="na">validator</span><span class="p">:</span> <span class="p">{</span>
-        <span class="na">$jsonSchema</span><span class="p">:</span> <span class="p">{</span>
-          <span class="na">bsonType</span><span class="p">:</span> <span class="dl">"</span><span class="s2">object</span><span class="dl">"</span><span class="p">,</span>
-          <span class="na">required</span><span class="p">:</span> <span class="p">[</span><span class="dl">"</span><span class="s2">tenantId</span><span class="dl">"</span><span class="p">],</span>
-          <span class="na">properties</span><span class="p">:</span> <span class="p">{</span>
-            <span class="na">tenantId</span><span class="p">:</span> <span class="p">{</span> <span class="na">bsonType</span><span class="p">:</span> <span class="dl">"</span><span class="s2">string</span><span class="dl">"</span><span class="p">,</span> <span class="na">enum</span><span class="p">:</span> <span class="p">[</span><span class="nx">tenantId</span><span class="p">]</span> <span class="p">}</span>
-          <span class="p">}</span>
-        <span class="p">}</span>
-      <span class="p">}</span>
-    <span class="p">});</span>
-    
-    <span class="c1">// Create tenant-specific indexes</span>
-    <span class="kd">const</span> <span class="nx">collection</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">db</span><span class="p">.</span><span class="nx">collection</span><span class="p">(</span><span class="nx">tenantCollectionName</span><span class="p">);</span>
-    <span class="k">await</span> <span class="nx">collection</span><span class="p">.</span><span class="nx">createIndex</span><span class="p">({</span> <span class="na">tenantId</span><span class="p">:</span> <span class="mi">1</span> <span class="p">});</span>
-    
-    <span class="k">return</span> <span class="nx">collection</span><span class="p">;</span>
-  <span class="p">}</span>
-<span class="p">}</span>
-
-<span class="c1">// Document-level Tenant Isolation</span>
-<span class="kd">class</span> <span class="nx">DocumentLevelTenantIsolation</span> <span class="p">{</span>
-  <span class="kd">constructor</span><span class="p">(</span><span class="nx">db</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">this</span><span class="p">.</span><span class="nx">db</span> <span class="o">=</span> <span class="nx">db</span><span class="p">;</span>
-  <span class="p">}</span>
-  
-  <span class="c1">// Middleware to automatically add tenant context</span>
-  <span class="nx">addTenantContext</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="p">{</span>
-      <span class="na">insertOne</span><span class="p">:</span> <span class="k">async</span> <span class="p">(</span><span class="nx">collection</span><span class="p">,</span> <span class="nx">doc</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nx">collection</span><span class="p">.</span><span class="nx">insertOne</span><span class="p">({</span> <span class="p">...</span><span class="nx">doc</span><span class="p">,</span> <span class="nx">tenantId</span> <span class="p">});</span>
-      <span class="p">},</span>
-      
-      <span class="na">find</span><span class="p">:</span> <span class="k">async</span> <span class="p">(</span><span class="nx">collection</span><span class="p">,</span> <span class="nx">query</span><span class="p">,</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{})</span> <span class="o">=&gt;</span> <span class="p">{</span>
-        <span class="kd">const</span> <span class="nx">tenantQuery</span> <span class="o">=</span> <span class="p">{</span> <span class="p">...</span><span class="nx">query</span><span class="p">,</span> <span class="nx">tenantId</span> <span class="p">};</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nx">collection</span><span class="p">.</span><span class="nx">find</span><span class="p">(</span><span class="nx">tenantQuery</span><span class="p">,</span> <span class="nx">options</span><span class="p">);</span>
-      <span class="p">},</span>
-      
-      <span class="na">updateOne</span><span class="p">:</span> <span class="k">async</span> <span class="p">(</span><span class="nx">collection</span><span class="p">,</span> <span class="nx">filter</span><span class="p">,</span> <span class="nx">update</span><span class="p">,</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{})</span> <span class="o">=&gt;</span> <span class="p">{</span>
-        <span class="kd">const</span> <span class="nx">tenantFilter</span> <span class="o">=</span> <span class="p">{</span> <span class="p">...</span><span class="nx">filter</span><span class="p">,</span> <span class="nx">tenantId</span> <span class="p">};</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nx">collection</span><span class="p">.</span><span class="nx">updateOne</span><span class="p">(</span><span class="nx">tenantFilter</span><span class="p">,</span> <span class="nx">update</span><span class="p">,</span> <span class="nx">options</span><span class="p">);</span>
-      <span class="p">},</span>
-      
-      <span class="na">deleteOne</span><span class="p">:</span> <span class="k">async</span> <span class="p">(</span><span class="nx">collection</span><span class="p">,</span> <span class="nx">filter</span><span class="p">,</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{})</span> <span class="o">=&gt;</span> <span class="p">{</span>
-        <span class="kd">const</span> <span class="nx">tenantFilter</span> <span class="o">=</span> <span class="p">{</span> <span class="p">...</span><span class="nx">filter</span><span class="p">,</span> <span class="nx">tenantId</span> <span class="p">};</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nx">collection</span><span class="p">.</span><span class="nx">deleteOne</span><span class="p">(</span><span class="nx">tenantFilter</span><span class="p">,</span> <span class="nx">options</span><span class="p">);</span>
-      <span class="p">}</span>
-    <span class="p">};</span>
-  <span class="p">}</span>
-  
-  <span class="c1">// Aggregation pipeline with tenant filtering</span>
-  <span class="nx">createTenantAggregation</span><span class="p">(</span><span class="nx">tenantId</span><span class="p">,</span> <span class="nx">pipeline</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="p">[</span>
-      <span class="p">{</span> <span class="na">$match</span><span class="p">:</span> <span class="p">{</span> <span class="nx">tenantId</span> <span class="p">}</span> <span class="p">},</span>
-      <span class="p">...</span><span class="nx">pipeline</span><span class="p">,</span>
-      <span class="c1">// Ensure tenant isolation in lookups</span>
-      <span class="p">{</span>
-        <span class="na">$lookup</span><span class="p">:</span> <span class="p">{</span>
-          <span class="na">from</span><span class="p">:</span> <span class="dl">"</span><span class="s2">orders</span><span class="dl">"</span><span class="p">,</span>
-          <span class="na">let</span><span class="p">:</span> <span class="p">{</span> <span class="na">customerId</span><span class="p">:</span> <span class="dl">"</span><span class="s2">$_id</span><span class="dl">"</span> <span class="p">},</span>
-          <span class="na">pipeline</span><span class="p">:</span> <span class="p">[</span>
-            <span class="p">{</span> <span class="na">$match</span><span class="p">:</span> <span class="p">{</span> 
-                <span class="na">$expr</span><span class="p">:</span> <span class="p">{</span> <span class="na">$eq</span><span class="p">:</span> <span class="p">[</span><span class="dl">"</span><span class="s2">$customerId</span><span class="dl">"</span><span class="p">,</span> <span class="dl">"</span><span class="s2">$$customerId</span><span class="dl">"</span><span class="p">]</span> <span class="p">},</span>
-                <span class="nx">tenantId</span> 
-              <span class="p">}</span>
-            <span class="p">}</span>
-          <span class="p">],</span>
-          <span class="na">as</span><span class="p">:</span> <span class="dl">"</span><span class="s2">orders</span><span class="dl">"</span>
-        <span class="p">}</span>
-      <span class="p">}</span>
-    <span class="p">];</span>
-  <span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/e8827c1d5ad93453d4f23c5f9997fa7c.js"></script>
 
 <p><br /></p>
 
@@ -2519,7 +2386,7 @@ January 27, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="81">
+            <div class="time-bar" data-minutes="75">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -4320,140 +4187,7 @@ class OrderProjectionHandler {
 Multi-Tenant Architecture Patterns
 
 Tenant Isolation Strategies
-// Database per Tenant Strategy
-class DatabasePerTenantManager {
-  constructor(mongoClient) {
-    this.client = mongoClient;
-    this.tenantDatabases = new Map();
-  }
-  
-  async getTenantDatabase(tenantId) {
-    if (!this.tenantDatabases.has(tenantId)) {
-      const dbName = `tenant_${tenantId}`;
-      const db = this.client.db(dbName);
-      
-      // Initialize tenant-specific collections and indexes
-      await this.initializeTenantDatabase(db);
-      
-      this.tenantDatabases.set(tenantId, db);
-    }
-    
-    return this.tenantDatabases.get(tenantId);
-  }
-  
-  async initializeTenantDatabase(db) {
-    // Create collections with tenant-specific configurations
-    await db.createCollection(&apos;users&apos;, {
-      validator: {
-        $jsonSchema: {
-          bsonType: &quot;object&quot;,
-          required: [&quot;email&quot;, &quot;createdAt&quot;],
-          properties: {
-            email: { bsonType: &quot;string&quot;, pattern: &quot;^.+@.+\..+$&quot; },
-            createdAt: { bsonType: &quot;date&quot; }
-          }
-        }
-      }
-    });
-    
-    // Create tenant-specific indexes
-    await db.collection(&apos;users&apos;).createIndex({ email: 1 }, { unique: true });
-    await db.collection(&apos;orders&apos;).createIndex({ customerId: 1, createdAt: -1 });
-  }
-}
 
-// Collection per Tenant Strategy
-class CollectionPerTenantManager {
-  constructor(db) {
-    this.db = db;
-  }
-  
-  getCollectionName(tenantId, baseCollection) {
-    return `${baseCollection}_${tenantId}`;
-  }
-  
-  async getTenantCollection(tenantId, collectionName) {
-    const tenantCollectionName = this.getCollectionName(tenantId, collectionName);
-    return this.db.collection(tenantCollectionName);
-  }
-  
-  async createTenantCollection(tenantId, collectionName, options = {}) {
-    const tenantCollectionName = this.getCollectionName(tenantId, collectionName);
-    
-    await this.db.createCollection(tenantCollectionName, {
-      ...options,
-      validator: {
-        $jsonSchema: {
-          bsonType: &quot;object&quot;,
-          required: [&quot;tenantId&quot;],
-          properties: {
-            tenantId: { bsonType: &quot;string&quot;, enum: [tenantId] }
-          }
-        }
-      }
-    });
-    
-    // Create tenant-specific indexes
-    const collection = this.db.collection(tenantCollectionName);
-    await collection.createIndex({ tenantId: 1 });
-    
-    return collection;
-  }
-}
-
-// Document-level Tenant Isolation
-class DocumentLevelTenantIsolation {
-  constructor(db) {
-    this.db = db;
-  }
-  
-  // Middleware to automatically add tenant context
-  addTenantContext(tenantId) {
-    return {
-      insertOne: async (collection, doc) =&amp;gt; {
-        return await collection.insertOne({ ...doc, tenantId });
-      },
-      
-      find: async (collection, query, options = {}) =&amp;gt; {
-        const tenantQuery = { ...query, tenantId };
-        return await collection.find(tenantQuery, options);
-      },
-      
-      updateOne: async (collection, filter, update, options = {}) =&amp;gt; {
-        const tenantFilter = { ...filter, tenantId };
-        return await collection.updateOne(tenantFilter, update, options);
-      },
-      
-      deleteOne: async (collection, filter, options = {}) =&amp;gt; {
-        const tenantFilter = { ...filter, tenantId };
-        return await collection.deleteOne(tenantFilter, options);
-      }
-    };
-  }
-  
-  // Aggregation pipeline with tenant filtering
-  createTenantAggregation(tenantId, pipeline) {
-    return [
-      { $match: { tenantId } },
-      ...pipeline,
-      // Ensure tenant isolation in lookups
-      {
-        $lookup: {
-          from: &quot;orders&quot;,
-          let: { customerId: &quot;$_id&quot; },
-          pipeline: [
-            { $match: { 
-                $expr: { $eq: [&quot;$customerId&quot;, &quot;$$customerId&quot;] },
-                tenantId 
-              }
-            }
-          ],
-          as: &quot;orders&quot;
-        }
-      }
-    ];
-  }
-}
 
 
 
@@ -5148,7 +4882,7 @@ References and Further Reading
   MongoDB GitHub Repository
 
 ",
-            "wordcount": "14605",
+            "wordcount": "13650",
             "inLanguage": "en",
             "dateCreated": "2025-01-27/",
             "datePublished": "2025-01-27/",

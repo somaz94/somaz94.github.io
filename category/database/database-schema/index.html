@@ -220,7 +220,7 @@ August 17, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>51 min to read</span>
+                    <span>49 min to read</span>
                 </p>
                 <h1 class="post-title">Database Schema Design: From Concepts to Production Excellence</h1>
                 <p class="post-subtitle">Comprehensive guide to database schema architecture, design patterns, and optimization strategies</p>
@@ -822,63 +822,7 @@ August 17, 2025
 <h3 id="zero-downtime-migration-patterns">Zero-Downtime Migration Patterns</h3>
 
 <h4 id="backward-compatible-migrations">Backward Compatible Migrations</h4>
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- Phase 1: Add new nullable column</span>
-<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="k">ADD</span> <span class="k">COLUMN</span> <span class="n">full_name</span> <span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">255</span><span class="p">);</span>
-
-<span class="c1">-- Phase 2: Populate new column with data migration</span>
-<span class="k">UPDATE</span> <span class="n">users</span> 
-<span class="k">SET</span> <span class="n">full_name</span> <span class="o">=</span> <span class="k">TRIM</span><span class="p">(</span><span class="n">CONCAT</span><span class="p">(</span><span class="n">first_name</span><span class="p">,</span> <span class="s1">' '</span><span class="p">,</span> <span class="n">last_name</span><span class="p">))</span>
-<span class="k">WHERE</span> <span class="n">full_name</span> <span class="k">IS</span> <span class="k">NULL</span><span class="p">;</span>
-
-<span class="c1">-- Phase 3: Make column NOT NULL (in subsequent deployment)</span>
-<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">users</span> <span class="k">ALTER</span> <span class="k">COLUMN</span> <span class="n">full_name</span> <span class="k">SET</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">;</span>
-
-<span class="c1">-- Phase 4: Remove old columns (after application update)</span>
-<span class="c1">-- ALTER TABLE users DROP COLUMN first_name;</span>
-<span class="c1">-- ALTER TABLE users DROP COLUMN last_name;</span>
-</code></pre></div></div>
-
-<h4 id="online-schema-changes-with-pt-online-schema-change">Online Schema Changes with pt-online-schema-change</h4>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="c"># MySQL online schema change example</span>
-
-pt-online-schema-change <span class="se">\</span>
-  <span class="nt">--alter</span> <span class="s2">"ADD COLUMN email_verified BOOLEAN DEFAULT FALSE"</span> <span class="se">\</span>
-  <span class="nt">--execute</span> <span class="se">\</span>
-  <span class="nt">--no-drop-old-table</span> <span class="se">\</span>
-  <span class="nt">--chunk-size</span><span class="o">=</span>1000 <span class="se">\</span>
-  <span class="nt">--max-lag</span><span class="o">=</span>2 <span class="se">\</span>
-  <span class="nt">--critical-load</span><span class="o">=</span><span class="s2">"Threads_running=50"</span> <span class="se">\</span>
-  <span class="nt">--max-load</span><span class="o">=</span><span class="s2">"Threads_running=30"</span> <span class="se">\</span>
-  <span class="nv">D</span><span class="o">=</span>production_db,t<span class="o">=</span><span class="nb">users</span>
-
-<span class="c"># Verify migration success before dropping old table</span>
-</code></pre></div></div>
-
-<h4 id="database-migration-with-flyway">Database Migration with Flyway</h4>
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- V1.0.1__Add_user_preferences.sql</span>
-<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">user_preferences</span> <span class="p">(</span>
-    <span class="n">preference_id</span> <span class="nb">SERIAL</span> <span class="k">PRIMARY</span> <span class="k">KEY</span><span class="p">,</span>
-    <span class="n">user_id</span> <span class="nb">INTEGER</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">REFERENCES</span> <span class="n">users</span><span class="p">(</span><span class="n">user_id</span><span class="p">),</span>
-    <span class="n">preference_key</span> <span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
-    <span class="n">preference_value</span> <span class="nb">TEXT</span><span class="p">,</span>
-    <span class="n">created_at</span> <span class="nb">TIMESTAMP</span> <span class="k">DEFAULT</span> <span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
-    <span class="n">updated_at</span> <span class="nb">TIMESTAMP</span> <span class="k">DEFAULT</span> <span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
-    <span class="k">UNIQUE</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">preference_key</span><span class="p">)</span>
-<span class="p">);</span>
-
-<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">idx_user_preferences_user_id</span> <span class="k">ON</span> <span class="n">user_preferences</span><span class="p">(</span><span class="n">user_id</span><span class="p">);</span>
-
-<span class="c1">-- Insert default preferences for existing users</span>
-<span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">user_preferences</span> <span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">preference_key</span><span class="p">,</span> <span class="n">preference_value</span><span class="p">)</span>
-<span class="k">SELECT</span> <span class="n">user_id</span><span class="p">,</span> <span class="s1">'theme'</span><span class="p">,</span> <span class="s1">'light'</span>
-<span class="k">FROM</span> <span class="n">users</span>
-<span class="k">WHERE</span> <span class="k">NOT</span> <span class="k">EXISTS</span> <span class="p">(</span>
-    <span class="k">SELECT</span> <span class="mi">1</span> <span class="k">FROM</span> <span class="n">user_preferences</span> <span class="n">up</span> 
-    <span class="k">WHERE</span> <span class="n">up</span><span class="p">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="n">users</span><span class="p">.</span><span class="n">user_id</span> 
-    <span class="k">AND</span> <span class="n">up</span><span class="p">.</span><span class="n">preference_key</span> <span class="o">=</span> <span class="s1">'theme'</span>
-<span class="p">);</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/73cb36240f022ebd0555499e97546d2b.js"></script>
 
 <p><br /></p>
 
@@ -1672,7 +1616,7 @@ pt-online-schema-change <span class="se">\</span>
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="51">
+            <div class="time-bar" data-minutes="49">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -2652,62 +2596,6 @@ Schema evolution is inevitable in production systems. Effective migration strate
 Zero-Downtime Migration Patterns
 
 Backward Compatible Migrations
--- Phase 1: Add new nullable column
-ALTER TABLE users ADD COLUMN full_name VARCHAR(255);
-
--- Phase 2: Populate new column with data migration
-UPDATE users 
-SET full_name = TRIM(CONCAT(first_name, &apos; &apos;, last_name))
-WHERE full_name IS NULL;
-
--- Phase 3: Make column NOT NULL (in subsequent deployment)
-ALTER TABLE users ALTER COLUMN full_name SET NOT NULL;
-
--- Phase 4: Remove old columns (after application update)
--- ALTER TABLE users DROP COLUMN first_name;
--- ALTER TABLE users DROP COLUMN last_name;
-
-
-Online Schema Changes with pt-online-schema-change
-#!/bin/bash
-# MySQL online schema change example
-
-pt-online-schema-change \
-  --alter &quot;ADD COLUMN email_verified BOOLEAN DEFAULT FALSE&quot; \
-  --execute \
-  --no-drop-old-table \
-  --chunk-size=1000 \
-  --max-lag=2 \
-  --critical-load=&quot;Threads_running=50&quot; \
-  --max-load=&quot;Threads_running=30&quot; \
-  D=production_db,t=users
-
-# Verify migration success before dropping old table
-
-
-Database Migration with Flyway
--- V1.0.1__Add_user_preferences.sql
-CREATE TABLE user_preferences (
-    preference_id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(user_id),
-    preference_key VARCHAR(100) NOT NULL,
-    preference_value TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, preference_key)
-);
-
-CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
-
--- Insert default preferences for existing users
-INSERT INTO user_preferences (user_id, preference_key, preference_value)
-SELECT user_id, &apos;theme&apos;, &apos;light&apos;
-FROM users
-WHERE NOT EXISTS (
-    SELECT 1 FROM user_preferences up 
-    WHERE up.user_id = users.user_id 
-    AND up.preference_key = &apos;theme&apos;
-);
 
 
 
@@ -3454,7 +3342,7 @@ References
   Google Cloud Database Migration Patterns
 
 ",
-            "wordcount": "9238",
+            "wordcount": "8850",
             "inLanguage": "en",
             "dateCreated": "2025-08-17/",
             "datePublished": "2025-08-17/",
