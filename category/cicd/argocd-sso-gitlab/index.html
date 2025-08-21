@@ -37,16 +37,16 @@
         mermaid.initialize({ startOnLoad: true });
     </script>
 
-    <title>Setting up ArgoCD SSO with GitLab | somaz</title>
-    <meta name="description" content="Learn how to set up and manage ArgoCD SSO with GitLab">
+    <title>Enterprise-Grade ArgoCD SSO with GitLab Integration | somaz</title>
+    <meta name="description" content="Complete guide to implementing enterprise ArgoCD SSO with GitLab, including security hardening, RBAC patterns, and operational best practices">
     
-        <meta name="keywords" content="gitlab, kubernetes, helm, cicd">
+        <meta name="keywords" content="argocd, gitlab, kubernetes, helm, sso, rbac, security, gitops, enterprise">
     
 
     <!-- Social: Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Setting up ArgoCD SSO with GitLab | somaz">
-    <meta name="twitter:description" content="Learn how to set up and manage ArgoCD SSO with GitLab">
+    <meta name="twitter:title" content="Enterprise-Grade ArgoCD SSO with GitLab Integration | somaz">
+    <meta name="twitter:description" content="Complete guide to implementing enterprise ArgoCD SSO with GitLab, including security hardening, RBAC patterns, and operational best practices">
 
     
         <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1739943377/argocd-sso-gitlab_jzuunn.png">
@@ -58,9 +58,9 @@
 
     <!-- Social: Facebook / Open Graph -->
     <meta property="og:url" content="https://somaz.blog/category/cicd/argocd-sso-gitlab/">
-    <meta property="og:title" content="Setting up ArgoCD SSO with GitLab | somaz">
+    <meta property="og:title" content="Enterprise-Grade ArgoCD SSO with GitLab Integration | somaz">
     <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1739943377/argocd-sso-gitlab_jzuunn.png">
-    <meta property="og:description" content="Learn how to set up and manage ArgoCD SSO with GitLab">
+    <meta property="og:description" content="Complete guide to implementing enterprise ArgoCD SSO with GitLab, including security hardening, RBAC patterns, and operational best practices">
     <meta property="og:site_name" content="Somaz Tech Blog">
 
     <!-- Favicon -->
@@ -220,10 +220,10 @@ June 15, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>10 min to read</span>
+                    <span>23 min to read</span>
                 </p>
-                <h1 class="post-title">Setting up ArgoCD SSO with GitLab</h1>
-                <p class="post-subtitle">A comprehensive guide to implementing ArgoCD SSO with GitLab</p>
+                <h1 class="post-title">Enterprise-Grade ArgoCD SSO with GitLab Integration</h1>
+                <p class="post-subtitle">Production-ready guide to implementing secure ArgoCD SSO with GitLab including advanced RBAC and multi-cluster federation</p>
 
                 
                     <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1739943377/argocd-sso-gitlab_jzuunn.png" alt="Featured image" class="post-cover">
@@ -245,6 +245,49 @@ June 15, 2025
 <p>In the last post, I tried configuring <a href="https://somaz94.github.io/cicd/2025-03-07-argocd-sso-gcp-oauth/">ArgoCD SSO using Google Oauth</a>,</p>
 
 <p>This post explains how to configure Single Sign-On (SSO) for ArgoCD using GitLab. We’ll walk through the process of setting up GitLab OAuth and integrating it with ArgoCD.</p>
+
+<p><br /></p>
+
+<h3 id="enterprise-gitops-authentication-architecture">Enterprise GitOps Authentication Architecture</h3>
+
+<p>Modern enterprise environments require sophisticated authentication strategies that can scale across multiple clusters while maintaining security and compliance. The integration between ArgoCD and GitLab provides a robust foundation for enterprise GitOps workflows.</p>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TB
+        subgraph "Identity Provider Layer"
+            GitLab[GitLab OAuth Provider]
+            SAML[Enterprise SAML/LDAP]
+        end
+        
+        subgraph "Authentication Layer"
+            Dex[Dex Identity Proxy]
+            OAuth[OAuth2 Flow]
+        end
+        
+        subgraph "ArgoCD Platform"
+            Server[ArgoCD Server]
+            RBAC[RBAC Engine]
+            JWT[JWT Validation]
+        end
+        
+        subgraph "Multi-Cluster Environment"
+            Prod[Production Cluster]
+            Staging[Staging Cluster]
+            Dev[Development Cluster]
+        end
+        
+        GitLab --&gt; Dex
+        SAML --&gt; GitLab
+        Dex --&gt; OAuth
+        OAuth --&gt; Server
+        Server --&gt; RBAC
+        RBAC --&gt; JWT
+        JWT --&gt; Prod
+        JWT --&gt; Staging
+        JWT --&gt; Dev
+  </div>
+</div>
 
 <p><br /></p>
 
@@ -275,11 +318,47 @@ June 15, 2025
 
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-  <li>GitLab instance</li>
-  <li>ArgoCD installed on a Kubernetes cluster</li>
+  <li>GitLab instance (Self-hosted CE/EE 13.0+ or GitLab.com)</li>
+  <li>ArgoCD 2.8+ installed on a Kubernetes cluster</li>
   <li>Administrative access to both GitLab and ArgoCD</li>
   <li>Properly configured DNS for ArgoCD server</li>
+  <li>SSL/TLS certificates for secure communication</li>
+  <li>Kubernetes RBAC enabled cluster</li>
 </ul>
+
+<h3 id="security-planning-considerations">Security Planning Considerations</h3>
+
+<p>Before implementing SSO, consider these enterprise security requirements:</p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Security Domain</th>
+      <th>Requirements</th>
+      <th>Implementation</th>
+    </tr>
+    <tr>
+      <td><strong>Identity Provider</strong></td>
+      <td>Multi-factor authentication, SAML integration</td>
+      <td>GitLab + Enterprise SSO</td>
+    </tr>
+    <tr>
+      <td><strong>Network Security</strong></td>
+      <td>TLS 1.3, Network policies, WAF</td>
+      <td>Ingress + cert-manager</td>
+    </tr>
+    <tr>
+      <td><strong>Access Control</strong></td>
+      <td>Least privilege, role separation</td>
+      <td>RBAC + Project isolation</td>
+    </tr>
+    <tr>
+      <td><strong>Audit &amp; Compliance</strong></td>
+      <td>Complete audit trails, compliance reporting</td>
+      <td>Centralized logging + monitoring</td>
+    </tr>
+  </table>
+</div>
 
 <p><br /></p>
 
@@ -320,42 +399,67 @@ June 15, 2025
 
 <p>If you’re using GitLab API to create the application:</p>
 
-<p><br /></p>
-
 <script src="https://gist.github.com/somaz94/da96d596e9e28e2e4a0d094f7a202352.js"></script>
 
 <p><br /></p>
 
 <h4 id="gitlab-application-security-considerations">GitLab Application Security Considerations</h4>
 
-<h5 id="application-security-tips">Application Security Tips:</h5>
+<h5 id="application-security-best-practices">Application Security Best Practices:</h5>
 <ul>
-  <li>Scopes Selection:
+  <li><strong>Scopes Selection</strong>:
     <ul>
       <li>Only select required scopes (read_user, openid, profile, email)</li>
-      <li>Avoid adding unnecessary permissions</li>
+      <li>Avoid adding unnecessary permissions like <code class="language-plaintext highlighter-rouge">api</code> or <code class="language-plaintext highlighter-rouge">write_repository</code></li>
     </ul>
   </li>
-  <li>Application Configuration:
+  <li><strong>Application Configuration</strong>:
     <ul>
       <li>Use a descriptive application name for audit purposes</li>
-      <li>Consider setting application expiration date for security</li>
-      <li>Rotate client secrets periodically</li>
+      <li>Set application expiration date for security rotation</li>
+      <li>Rotate client secrets every 90 days in production</li>
+      <li>Use secure redirect URI validation</li>
     </ul>
   </li>
-  <li>Access Management:
+  <li><strong>Access Management</strong>:
     <ul>
       <li>Limit admin access to GitLab application settings</li>
       <li>Document the integration for security reviews</li>
+      <li>Implement approval workflows for changes</li>
     </ul>
   </li>
 </ul>
+
+<h5 id="enterprise-security-enhancements">Enterprise Security Enhancements:</h5>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Enhanced security configuration</span>
+<span class="na">dex.config</span><span class="pi">:</span> <span class="pi">|</span>
+  <span class="s">connectors:</span>
+    <span class="s">- type: gitlab</span>
+      <span class="s">id: gitlab</span>
+      <span class="s">name: GitLab</span>
+      <span class="s">config:</span>
+        <span class="s">baseURL: https://gitlab.your-domain.com</span>
+        <span class="s">clientID: $dex.gitlab.clientId</span>
+        <span class="s">clientSecret: $dex.gitlab.clientSecret</span>
+        <span class="s">redirectURI: https://argocd.your-domain.com/api/dex/callback</span>
+        <span class="s">groups:</span>
+          <span class="s">- engineering</span>
+          <span class="s">- platform</span>
+        <span class="s"># Enhanced security options</span>
+        <span class="s">useLoginAsID: false</span>
+        <span class="s">insecureSkipVerify: false</span>
+        <span class="s"># Custom CA certificate for private GitLab</span>
+        <span class="s">rootCAs: |</span>
+          <span class="s">-----BEGIN CERTIFICATE-----</span>
+          <span class="s">... your CA certificate ...</span>
+          <span class="s">-----END CERTIFICATE-----</span>
+</code></pre></div></div>
 
 <p><br /></p>
 
 <h3 id="2-configure-argocd-installation">2. Configure ArgoCD Installation</h3>
 
-<p>Create <code class="language-plaintext highlighter-rouge">values/mgmt.yaml</code>:</p>
+<p>Create <code class="language-plaintext highlighter-rouge">values/mgmt.yaml</code> with production-ready configuration:</p>
 
 <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">global</span><span class="pi">:</span>
   <span class="na">domain</span><span class="pi">:</span> <span class="s">argocd.your-domain.com</span>
@@ -363,42 +467,144 @@ June 15, 2025
 <span class="na">configs</span><span class="pi">:</span>
   <span class="na">params</span><span class="pi">:</span>
     <span class="na">create</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">server.insecure</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">server.insecure</span><span class="pi">:</span> <span class="no">false</span>  <span class="c1"># Always use TLS in production</span>
+    <span class="c1"># Security hardening</span>
+    <span class="na">server.enable.grpc.web</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">server.grpc.keepalive.time</span><span class="pi">:</span> <span class="s">60s</span>
+    <span class="na">server.grpc.keepalive.timeout</span><span class="pi">:</span> <span class="s">5s</span>
 
   <span class="na">ssh</span><span class="pi">:</span>
     <span class="na">extraHosts</span><span class="pi">:</span> <span class="pi">|</span>
-      <span class="s">gitlab.concrit.us ssh-rsa AAAAB3N...</span>
-      <span class="s">gitlab.concrit.us ecdsa-sha2-nistp256...</span>
-      <span class="s">gitlab.concrit.us ssh-ed25519 AAAA..</span>
+      <span class="s">gitlab.your-domain.com ssh-rsa AAAAB3N...</span>
+      <span class="s">gitlab.your-domain.com ecdsa-sha2-nistp256...</span>
+      <span class="s">gitlab.your-domain.com ssh-ed25519 AAAA..</span>
+
+  <span class="c1"># Global security configurations</span>
+  <span class="na">cm</span><span class="pi">:</span>
+    <span class="c1"># Session timeout for security</span>
+    <span class="na">timeout.hard.reconciliation</span><span class="pi">:</span> <span class="m">0</span>
+    <span class="na">timeout.reconciliation</span><span class="pi">:</span> <span class="s">180s</span>
+    <span class="c1"># Application source restrictions</span>
+    <span class="na">application.instanceLabelKey</span><span class="pi">:</span> <span class="s">argocd.argoproj.io/instance</span>
+    <span class="c1"># Repository credentials template</span>
+    <span class="na">repositories</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">- type: git</span>
+        <span class="s">url: https://gitlab.your-domain.com</span>
+        <span class="s">passwordSecret:</span>
+          <span class="s">name: gitlab-secret</span>
+          <span class="s">key: password</span>
+        <span class="s">usernameSecret:</span>
+          <span class="s">name: gitlab-secret</span>
+          <span class="s">key: username</span>
 
 <span class="na">controller</span><span class="pi">:</span>
-  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>  <span class="c1"># High availability</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">2000m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">4Gi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">500m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">1Gi</span>
+  <span class="c1"># Application controller metrics</span>
+  <span class="na">metrics</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">serviceMonitor</span><span class="pi">:</span>
+      <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
 
 <span class="na">dex</span><span class="pi">:</span>
   <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">500m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">256Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">250m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">128Mi</span>
 
 <span class="na">redis</span><span class="pi">:</span>
   <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">200m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">128Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">100m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">64Mi</span>
 
 <span class="na">server</span><span class="pi">:</span>
-  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>  <span class="c1"># High availability</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">1000m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">2Gi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">250m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">512Mi</span>
   <span class="na">ingress</span><span class="pi">:</span>
     <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
     <span class="na">annotations</span><span class="pi">:</span>
-      <span class="na">nginx.ingress.kubernetes.io/force-ssl-redirect</span><span class="pi">:</span> <span class="s2">"</span><span class="s">false"</span>
-      <span class="na">nginx.ingress.kubernetes.io/ssl-passthrough</span><span class="pi">:</span> <span class="s2">"</span><span class="s">false"</span>
+      <span class="na">nginx.ingress.kubernetes.io/ssl-redirect</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+      <span class="na">nginx.ingress.kubernetes.io/backend-protocol</span><span class="pi">:</span> <span class="s2">"</span><span class="s">GRPC"</span>
+      <span class="na">cert-manager.io/cluster-issuer</span><span class="pi">:</span> <span class="s2">"</span><span class="s">letsencrypt-prod"</span>
+      <span class="na">nginx.ingress.kubernetes.io/grpc-backend</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
     <span class="na">ingressClassName</span><span class="pi">:</span> <span class="s2">"</span><span class="s">nginx"</span>
     <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
     <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+    <span class="na">tls</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">secretName</span><span class="pi">:</span> <span class="s">argocd-server-tls</span>
+        <span class="na">hosts</span><span class="pi">:</span>
+          <span class="pi">-</span> <span class="s">argocd.your-domain.com</span>
+  <span class="c1"># Server metrics</span>
+  <span class="na">metrics</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">serviceMonitor</span><span class="pi">:</span>
+      <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
 
 <span class="na">repoServer</span><span class="pi">:</span>
-  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">3</span>  <span class="c1"># High availability</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">1000m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">2Gi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">250m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">512Mi</span>
+  <span class="c1"># Repo server metrics</span>
+  <span class="na">metrics</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">serviceMonitor</span><span class="pi">:</span>
+      <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
 
 <span class="na">applicationSet</span><span class="pi">:</span>
-  <span class="na">replicas</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">2</span>  <span class="c1"># High availability</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">500m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">512Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">100m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">128Mi</span>
 
 <span class="na">notifications</span><span class="pi">:</span>
   <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">500m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">128Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">100m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">64Mi</span>
+  <span class="c1"># Notification integrations</span>
+  <span class="na">notifiers</span><span class="pi">:</span>
+    <span class="na">service.slack</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">token: $slack-token</span>
+    <span class="na">service.email.gmail</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">username: $email-username</span>
+      <span class="s">password: $email-password</span>
+      <span class="s">host: smtp.gmail.com</span>
+      <span class="s">port: 587</span>
+      <span class="s">from: $email-username</span>
 </code></pre></div></div>
 
 <p><br /></p>
@@ -440,6 +646,8 @@ June 15, 2025
     <span class="na">dex.gitlab.clientSecret</span><span class="pi">:</span> <span class="s2">"</span><span class="s">&lt;secret&gt;"</span>
 </code></pre></div></div>
 
+<p><br /></p>
+
 <p>Apply the changes:</p>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm upgrade argocd <span class="nb">.</span> <span class="nt">-n</span> argocd <span class="nt">-f</span> ./values/mgmt.yaml
@@ -458,6 +666,76 @@ kubectl rollout restart <span class="nt">-n</span> argocd deployment argocd-dex-
 <h2 id="advanced-gitlab-sso-configuration">Advanced GitLab SSO Configuration</h2>
 
 <p><br /></p>
+
+<h3 id="multi-environment-rbac-strategy">Multi-Environment RBAC Strategy</h3>
+
+<p>Implement a comprehensive RBAC strategy that scales across multiple environments:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">configs</span><span class="pi">:</span>
+  <span class="na">rbac</span><span class="pi">:</span>
+    <span class="na">policy.csv</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s"># Global Admin Role - Full cluster access</span>
+      <span class="s">p, role:global-admin, applications, *, */*, allow</span>
+      <span class="s">p, role:global-admin, clusters, *, *, allow</span>
+      <span class="s">p, role:global-admin, repositories, *, *, allow</span>
+      <span class="s">p, role:global-admin, projects, *, *, allow</span>
+      <span class="s">p, role:global-admin, accounts, *, *, allow</span>
+      <span class="s">p, role:global-admin, certificates, *, *, allow</span>
+      <span class="s">p, role:global-admin, gpgkeys, *, *, allow</span>
+      <span class="s">p, role:global-admin, logs, *, *, allow</span>
+      <span class="s">p, role:global-admin, exec, *, *, allow</span>
+      
+      <span class="s"># Platform Team - Infrastructure management</span>
+      <span class="s">p, role:platform-admin, applications, *, platform/*, allow</span>
+      <span class="s">p, role:platform-admin, applications, *, infrastructure/*, allow</span>
+      <span class="s">p, role:platform-admin, clusters, get, *, allow</span>
+      <span class="s">p, role:platform-admin, repositories, *, *, allow</span>
+      <span class="s">p, role:platform-admin, projects, get, *, allow</span>
+      <span class="s">p, role:platform-admin, logs, *, platform/*, allow</span>
+      <span class="s">p, role:platform-admin, logs, *, infrastructure/*, allow</span>
+      
+      <span class="s"># DevOps Team - Application deployment</span>
+      <span class="s">p, role:devops-engineer, applications, *, */prod, allow</span>
+      <span class="s">p, role:devops-engineer, applications, *, */staging, allow</span>
+      <span class="s">p, role:devops-engineer, applications, sync, */*, allow</span>
+      <span class="s">p, role:devops-engineer, repositories, get, *, allow</span>
+      <span class="s">p, role:devops-engineer, logs, *, */*, allow</span>
+      <span class="s">p, role:devops-engineer, exec, create, */staging, allow</span>
+      
+      <span class="s"># Senior Developers - Production read, staging full</span>
+      <span class="s">p, role:senior-developer, applications, get, */prod, allow</span>
+      <span class="s">p, role:senior-developer, applications, *, */staging, allow</span>
+      <span class="s">p, role:senior-developer, applications, *, */dev, allow</span>
+      <span class="s">p, role:senior-developer, logs, *, */*, allow</span>
+      <span class="s">p, role:senior-developer, exec, create, */dev, allow</span>
+      <span class="s">p, role:senior-developer, exec, create, */staging, allow</span>
+      
+      <span class="s"># Regular Developers - Development environment only</span>
+      <span class="s">p, role:developer, applications, get, */prod, allow</span>
+      <span class="s">p, role:developer, applications, get, */staging, allow</span>
+      <span class="s">p, role:developer, applications, *, */dev, allow</span>
+      <span class="s">p, role:developer, logs, *, */dev, allow</span>
+      <span class="s">p, role:developer, exec, create, */dev, allow</span>
+      
+      <span class="s"># Security Team - Read-only audit access</span>
+      <span class="s">p, role:security-auditor, applications, get, */*, allow</span>
+      <span class="s">p, role:security-auditor, logs, get, */*, allow</span>
+      <span class="s">p, role:security-auditor, repositories, get, *, allow</span>
+      <span class="s">p, role:security-auditor, clusters, get, *, allow</span>
+      
+      <span class="s"># Map GitLab groups to roles</span>
+      <span class="s">g, gitlab:platform-admins, role:global-admin</span>
+      <span class="s">g, gitlab:infrastructure-team, role:platform-admin</span>
+      <span class="s">g, gitlab:devops-engineers, role:devops-engineer</span>
+      <span class="s">g, gitlab:senior-developers, role:senior-developer</span>
+      <span class="s">g, gitlab:developers, role:developer</span>
+      <span class="s">g, gitlab:security-team, role:security-auditor</span>
+      
+    <span class="c1"># Default policy for authenticated users</span>
+    <span class="na">policy.default</span><span class="pi">:</span> <span class="s">role:readonly</span>
+    <span class="c1"># Required scopes for group mapping</span>
+    <span class="na">scopes</span><span class="pi">:</span> <span class="s2">"</span><span class="s">[groups,</span><span class="nv"> </span><span class="s">email,</span><span class="nv"> </span><span class="s">profile]"</span>
+</code></pre></div></div>
 
 <h3 id="role-based-access-control-with-gitlab-groups">Role-Based Access Control with GitLab Groups</h3>
 
@@ -721,9 +999,63 @@ kubectl get secret argocd-secret <span class="nt">-n</span> argocd <span class="
 
 <p><br /></p>
 
-<h3 id="automation-script">Automation Script</h3>
+<h3 id="advanced-security-configuration">Advanced Security Configuration</h3>
 
-<p>Here’s a script to automate GitLab SSO configuration:</p>
+<h4 id="network-policies-for-argocd">Network Policies for ArgoCD</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">NetworkPolicy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-security-policy</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">podSelector</span><span class="pi">:</span> <span class="pi">{}</span>
+  <span class="na">policyTypes</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">Ingress</span>
+  <span class="pi">-</span> <span class="s">Egress</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">from</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">namespaceSelector</span><span class="pi">:</span>
+        <span class="na">matchLabels</span><span class="pi">:</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">ingress-nginx</span>
+    <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">8080</span>
+  <span class="na">egress</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">to</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">namespaceSelector</span><span class="pi">:</span>
+        <span class="na">matchLabels</span><span class="pi">:</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">kube-system</span>
+    <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">443</span>
+  <span class="pi">-</span> <span class="na">to</span><span class="pi">:</span> <span class="pi">[]</span>
+    <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">443</span>  <span class="c1"># HTTPS to GitLab</span>
+</code></pre></div></div>
+
+<h4 id="external-secrets-integration">External Secrets Integration</h4>
+
+<script src="https://gist.github.com/somaz94/149d69f0c99ea802134e4ebb13964f6a.js"></script>
+
+<h4 id="pod-security-standards">Pod Security Standards</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Namespace</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">pod-security.kubernetes.io/enforce</span><span class="pi">:</span> <span class="s">restricted</span>
+    <span class="na">pod-security.kubernetes.io/audit</span><span class="pi">:</span> <span class="s">restricted</span>
+    <span class="na">pod-security.kubernetes.io/warn</span><span class="pi">:</span> <span class="s">restricted</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="enterprise-automation-framework">Enterprise Automation Framework</h3>
+
+<p>Here’s an enhanced automation script for enterprise GitLab SSO configuration:</p>
 
 <p><br /></p>
 
@@ -731,33 +1063,205 @@ kubectl get secret argocd-secret <span class="nt">-n</span> argocd <span class="
 
 <p><br /></p>
 
-<h3 id="authentication-processes">Authentication Processes</h3>
+<h3 id="monitoring-and-observability">Monitoring and Observability</h3>
+
+<h4 id="prometheus-metrics-configuration">Prometheus Metrics Configuration</h4>
+
+<script src="https://gist.github.com/somaz94/a33d7328fcb2613d7b2e8c1f2b7889d2.js"></script>
+
+<h4 id="grafana-dashboard-integration">Grafana Dashboard Integration</h4>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"dashboard"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ArgoCD SSO Monitoring"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"panels"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+      </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Login Success Rate"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"stat"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"targets"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+          </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"expr"</span><span class="p">:</span><span class="w"> </span><span class="s2">"rate(argocd_server_login_successes_total[5m]) / (rate(argocd_server_login_successes_total[5m]) + rate(argocd_server_login_failures_total[5m])) * 100"</span><span class="w">
+          </span><span class="p">}</span><span class="w">
+        </span><span class="p">]</span><span class="w">
+      </span><span class="p">},</span><span class="w">
+      </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Active Sessions"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"graph"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"targets"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+          </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"expr"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd_server_sessions_total"</span><span class="w">
+          </span><span class="p">}</span><span class="w">
+        </span><span class="p">]</span><span class="w">
+      </span><span class="p">}</span><span class="w">
+    </span><span class="p">]</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="multi-cluster-federation">Multi-Cluster Federation</h3>
+
+<h4 id="hub-cluster-configuration">Hub Cluster Configuration</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Hub cluster ArgoCD configuration</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">argoproj.io/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Application</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spoke-cluster-apps</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">project</span><span class="pi">:</span> <span class="s">default</span>
+  <span class="na">source</span><span class="pi">:</span>
+    <span class="na">repoURL</span><span class="pi">:</span> <span class="s">https://gitlab.your-domain.com/platform/cluster-configs</span>
+    <span class="na">targetRevision</span><span class="pi">:</span> <span class="s">HEAD</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">spoke-clusters</span>
+  <span class="na">destination</span><span class="pi">:</span>
+    <span class="na">server</span><span class="pi">:</span> <span class="s">https://kubernetes.default.svc</span>
+    <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+  <span class="na">syncPolicy</span><span class="pi">:</span>
+    <span class="na">automated</span><span class="pi">:</span>
+      <span class="na">prune</span><span class="pi">:</span> <span class="no">true</span>
+      <span class="na">selfHeal</span><span class="pi">:</span> <span class="no">true</span>
+</code></pre></div></div>
+
+<h4 id="spoke-cluster-integration">Spoke Cluster Integration</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Register spoke cluster with hub</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spoke-cluster-secret</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">argocd.argoproj.io/secret-type</span><span class="pi">:</span> <span class="s">cluster</span>
+<span class="na">type</span><span class="pi">:</span> <span class="s">Opaque</span>
+<span class="na">stringData</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">spoke-cluster-prod</span>
+  <span class="na">server</span><span class="pi">:</span> <span class="s">https://spoke-cluster-api.your-domain.com</span>
+  <span class="na">config</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">{</span>
+      <span class="s">"bearerToken": "spoke-cluster-token",</span>
+      <span class="s">"tlsClientConfig": {</span>
+        <span class="s">"insecure": false,</span>
+        <span class="s">"caData": "base64-encoded-ca-cert"</span>
+      <span class="s">}</span>
+    <span class="s">}</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="advanced-authentication-patterns">Advanced Authentication Patterns</h3>
+
+<h4 id="saml-integration-with-gitlab">SAML Integration with GitLab</h4>
+
+<p>For enterprise environments requiring SAML integration:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">configs</span><span class="pi">:</span>
+  <span class="na">cm</span><span class="pi">:</span>
+    <span class="na">dex.config</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">connectors:</span>
+        <span class="s">- type: gitlab</span>
+          <span class="s">id: gitlab</span>
+          <span class="s">name: GitLab</span>
+          <span class="s">config:</span>
+            <span class="s">baseURL: https://gitlab.your-domain.com</span>
+            <span class="s">clientID: $dex.gitlab.clientId</span>
+            <span class="s">clientSecret: $dex.gitlab.clientSecret</span>
+            <span class="s">redirectURI: https://argocd.your-domain.com/api/dex/callback</span>
+            <span class="s">groups:</span>
+              <span class="s">- engineering</span>
+              <span class="s">- platform</span>
+        <span class="s">- type: saml</span>
+          <span class="s">id: saml</span>
+          <span class="s">name: Enterprise SSO</span>
+          <span class="s">config:</span>
+            <span class="s">ssoURL: https://sso.your-domain.com/saml/login</span>
+            <span class="s">redirectURI: https://argocd.your-domain.com/api/dex/callback</span>
+            <span class="s">entityIssuer: https://argocd.your-domain.com/api/dex/callback</span>
+            <span class="s">caData: |</span>
+              <span class="s">-----BEGIN CERTIFICATE-----</span>
+              <span class="s">... enterprise CA certificate ...</span>
+              <span class="s">-----END CERTIFICATE-----</span>
+            <span class="s">usernameAttr: email</span>
+            <span class="s">emailAttr: email</span>
+            <span class="s">groupsAttr: groups</span>
+</code></pre></div></div>
+
+<h4 id="jwt-token-configuration">JWT Token Configuration</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">configs</span><span class="pi">:</span>
+  <span class="na">cm</span><span class="pi">:</span>
+    <span class="c1"># JWT token configuration</span>
+    <span class="na">oidc.config</span><span class="pi">:</span> <span class="pi">|</span>
+      <span class="s">name: GitLab</span>
+      <span class="s">issuer: https://gitlab.your-domain.com</span>
+      <span class="s">clientId: your-application-id</span>
+      <span class="s">clientSecret: $oidc.gitlab.clientSecret</span>
+      <span class="s">requestedScopes: ["openid", "profile", "email", "groups"]</span>
+      <span class="s">requestedIDTokenClaims: {"groups": {"essential": true}}</span>
+      <span class="s"># Token lifetime configuration</span>
+      <span class="s">skipClientIDCheck: false</span>
+      <span class="s">skipIssuerCheck: false</span>
+      <span class="s"># Custom claims mapping</span>
+      <span class="s">claimsMapping:</span>
+        <span class="s">groups: gitlab_groups</span>
+        <span class="s">email: email</span>
+        <span class="s">preferred_username: preferred_username</span>
+</code></pre></div></div>
+
 <ul>
   <li>OAuth Authentication</li>
   <li>SAML Authentication</li>
   <li>OpenID Connect Authentication</li>
+  <li>Multi-factor Authentication (MFA)</li>
+  <li>Certificate-based Authentication</li>
 </ul>
 
 <p><br /></p>
 
 <div class="info-box info-box-success-not-check">
-  <strong>Important Notes</strong>
+  <strong>Production Deployment Checklist</strong>
   <ul>
-    <li>Consider domain settings, security policies, and network configurations</li>
-    <li>Keep up with the latest documentation as GitLab and ArgoCD settings may change</li>
-    <li>Ensure proper backup before making configuration changes</li>
-    <li>Key points for SSO configuration:
+    <li><strong>Security Configuration:</strong>
       <ul>
-        <li>dex.config: Authentication configuration</li>
-        <li>rbac: Permission settings</li>
-        <li>Proper mapping between GitLab groups and ArgoCD roles</li>
+        <li>TLS/SSL certificates properly configured</li>
+        <li>Network policies implemented</li>
+        <li>RBAC policies tested and validated</li>
+        <li>Secret rotation strategy in place</li>
+        <li>Audit logging enabled</li>
       </ul>
     </li>
-    <li>For enterprise environments:
+    <li><strong>High Availability:</strong>
       <ul>
-        <li>Consider implementing session timeouts</li>
-        <li>Set up a disaster recovery plan for authentication</li>
-        <li>Document the SSO configuration and approval workflow</li>
+        <li>Multiple replicas for all components</li>
+        <li>Resource limits and requests defined</li>
+        <li>Pod disruption budgets configured</li>
+        <li>Health checks and readiness probes</li>
+      </ul>
+    </li>
+    <li><strong>Monitoring &amp; Observability:</strong>
+      <ul>
+        <li>Prometheus metrics collection</li>
+        <li>Grafana dashboards configured</li>
+        <li>Alert rules defined</li>
+        <li>Log aggregation setup</li>
+      </ul>
+    </li>
+    <li><strong>Operational Excellence:</strong>
+      <ul>
+        <li>Backup and disaster recovery plan</li>
+        <li>Documentation and runbooks</li>
+        <li>Incident response procedures</li>
+        <li>Performance testing completed</li>
+      </ul>
+    </li>
+    <li><strong>Compliance &amp; Governance:</strong>
+      <ul>
+        <li>Security policies enforced</li>
+        <li>Compliance requirements met</li>
+        <li>Change management process</li>
+        <li>Access control regularly audited</li>
       </ul>
     </li>
   </ul>
@@ -765,7 +1269,83 @@ kubectl get secret argocd-secret <span class="nt">-n</span> argocd <span class="
 
 <p><br /></p>
 
+<h3 id="enterprise-deployment-patterns">Enterprise Deployment Patterns</h3>
+
+<h4 id="blue-green-deployment-for-argocd">Blue-Green Deployment for ArgoCD</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Blue environment</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">argoproj.io/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Application</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-blue</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">destination</span><span class="pi">:</span>
+    <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd-blue</span>
+    <span class="na">server</span><span class="pi">:</span> <span class="s">https://kubernetes.default.svc</span>
+  <span class="na">source</span><span class="pi">:</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">argocd</span>
+    <span class="na">repoURL</span><span class="pi">:</span> <span class="s">https://gitlab.your-domain.com/platform/argocd-config</span>
+    <span class="na">targetRevision</span><span class="pi">:</span> <span class="s">v2.8.4</span>
+<span class="nn">---</span>
+<span class="c1"># Green environment  </span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">argoproj.io/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Application</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-green</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">destination</span><span class="pi">:</span>
+    <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd-green</span>
+    <span class="na">server</span><span class="pi">:</span> <span class="s">https://kubernetes.default.svc</span>
+  <span class="na">source</span><span class="pi">:</span>
+    <span class="na">path</span><span class="pi">:</span> <span class="s">argocd</span>
+    <span class="na">repoURL</span><span class="pi">:</span> <span class="s">https://gitlab.your-domain.com/platform/argocd-config</span>
+    <span class="na">targetRevision</span><span class="pi">:</span> <span class="s">v2.9.0</span>
+</code></pre></div></div>
+
+<h4 id="gitops-repository-structure">GitOps Repository Structure</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>├── clusters/
+│   ├── production/
+│   │   ├── cluster-config.yaml
+│   │   └── applications/
+│   ├── staging/
+│   │   ├── cluster-config.yaml
+│   │   └── applications/
+│   └── development/
+│       ├── cluster-config.yaml
+│       └── applications/
+├── applications/
+│   ├── base/
+│   ├── overlays/
+│   │   ├── production/
+│   │   ├── staging/
+│   │   └── development/
+├── projects/
+│   ├── platform.yaml
+│   ├── application-team-a.yaml
+│   └── application-team-b.yaml
+└── bootstrap/
+    └── argocd-apps.yaml
+</code></pre></div></div>
+
+<p><br /></p>
+
 <hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This comprehensive guide provides a production-ready approach to implementing enterprise-grade ArgoCD SSO with GitLab integration. By following these patterns and best practices, organizations can achieve:</p>
+
+<ul>
+  <li><strong>Scalable Authentication</strong>: Support for thousands of users across multiple clusters</li>
+  <li><strong>Enhanced Security</strong>: Zero-trust architecture with comprehensive audit trails</li>
+  <li><strong>Operational Excellence</strong>: Automated operations with robust monitoring and alerting</li>
+  <li><strong>Compliance Ready</strong>: Built-in governance and audit capabilities</li>
+</ul>
+
+<p>The integration between ArgoCD and GitLab creates a powerful platform for modern software delivery, enabling teams to maintain velocity while ensuring security and compliance requirements are met at scale.</p>
 
 <h2 id="references">References</h2>
 <ul>
@@ -774,6 +1354,11 @@ kubectl get secret argocd-secret <span class="nt">-n</span> argocd <span class="
   <li><a href="https://dexidp.io/docs/connectors/gitlab/">Dex Authenticator Documentation</a></li>
   <li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/">ArgoCD RBAC Configuration</a></li>
   <li><a href="https://kubernetes.io/docs/concepts/configuration/secret/">Kubernetes Secret Management</a></li>
+  <li><a href="https://external-secrets.io/">External Secrets Operator</a></li>
+  <li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/high_availability/">ArgoCD High Availability</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/">Kubernetes Network Policies</a></li>
+  <li><a href="https://opengitops.dev/">GitOps Principles</a></li>
+  <li><a href="https://github.com/cncf/sig-security/blob/master/security-whitepaper/CNCF_cloud-native-security-whitepaper-May2020.pdf">CNCF Security Whitepaper</a></li>
 </ul>
 
 
@@ -824,7 +1409,7 @@ kubectl get secret argocd-secret <span class="nt">-n</span> argocd <span class="
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="10">
+            <div class="time-bar" data-minutes="23">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -958,7 +1543,7 @@ window.addEventListener('scroll', function() {
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Learn how to set up and manage ArgoCD SSO with GitLab&quot;%20https://somaz.blog/category/cicd/argocd-sso-gitlab/%20via%20&#64;twitter_username&hashtags=gitlab,kubernetes,helm,cicd"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Complete guide to implementing enterprise ArgoCD SSO with GitLab, including security hardening, RBAC patterns, and operational best practices&quot;%20https://somaz.blog/category/cicd/argocd-sso-gitlab/%20via%20&#64;twitter_username&hashtags=argocd,gitlab,kubernetes,helm,sso,rbac,security,gitops,enterprise"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
@@ -1213,9 +1798,9 @@ window.addEventListener('scroll', function() {
         {
             "@context": "http://schema.org",
             "@type": "BlogPosting",
-            "name": "Setting up ArgoCD SSO with GitLab",
-            "headline": "A comprehensive guide to implementing ArgoCD SSO with GitLab",
-            "description": "Learn how to set up and manage ArgoCD SSO with GitLab",
+            "name": "Enterprise-Grade ArgoCD SSO with GitLab Integration",
+            "headline": "Production-ready guide to implementing secure ArgoCD SSO with GitLab including advanced RBAC and multi-cluster federation",
+            "description": "Complete guide to implementing enterprise ArgoCD SSO with GitLab, including security hardening, RBAC patterns, and operational best practices",
             "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1739943377/argocd-sso-gitlab_jzuunn.png",
             "url": "https://somaz.blog/category/cicd/argocd-sso-gitlab/",
             "articleBody": "
@@ -1227,6 +1812,49 @@ Overview
 In the last post, I tried configuring ArgoCD SSO using Google Oauth,
 
 This post explains how to configure Single Sign-On (SSO) for ArgoCD using GitLab. We’ll walk through the process of setting up GitLab OAuth and integrating it with ArgoCD.
+
+
+
+Enterprise GitOps Authentication Architecture
+
+Modern enterprise environments require sophisticated authentication strategies that can scale across multiple clusters while maintaining security and compliance. The integration between ArgoCD and GitLab provides a robust foundation for enterprise GitOps workflows.
+
+
+  
+    graph TB
+        subgraph &quot;Identity Provider Layer&quot;
+            GitLab[GitLab OAuth Provider]
+            SAML[Enterprise SAML/LDAP]
+        end
+        
+        subgraph &quot;Authentication Layer&quot;
+            Dex[Dex Identity Proxy]
+            OAuth[OAuth2 Flow]
+        end
+        
+        subgraph &quot;ArgoCD Platform&quot;
+            Server[ArgoCD Server]
+            RBAC[RBAC Engine]
+            JWT[JWT Validation]
+        end
+        
+        subgraph &quot;Multi-Cluster Environment&quot;
+            Prod[Production Cluster]
+            Staging[Staging Cluster]
+            Dev[Development Cluster]
+        end
+        
+        GitLab --&amp;gt; Dex
+        SAML --&amp;gt; GitLab
+        Dex --&amp;gt; OAuth
+        OAuth --&amp;gt; Server
+        Server --&amp;gt; RBAC
+        RBAC --&amp;gt; JWT
+        JWT --&amp;gt; Prod
+        JWT --&amp;gt; Staging
+        JWT --&amp;gt; Dev
+  
+
 
 
 
@@ -1257,10 +1885,46 @@ Benefits of GitLab SSO Integration
 
 Prerequisites
 
-  GitLab instance
-  ArgoCD installed on a Kubernetes cluster
+  GitLab instance (Self-hosted CE/EE 13.0+ or GitLab.com)
+  ArgoCD 2.8+ installed on a Kubernetes cluster
   Administrative access to both GitLab and ArgoCD
   Properly configured DNS for ArgoCD server
+  SSL/TLS certificates for secure communication
+  Kubernetes RBAC enabled cluster
+
+
+Security Planning Considerations
+
+Before implementing SSO, consider these enterprise security requirements:
+
+
+  
+    
+      Security Domain
+      Requirements
+      Implementation
+    
+    
+      Identity Provider
+      Multi-factor authentication, SAML integration
+      GitLab + Enterprise SSO
+    
+    
+      Network Security
+      TLS 1.3, Network policies, WAF
+      Ingress + cert-manager
+    
+    
+      Access Control
+      Least privilege, role separation
+      RBAC + Project isolation
+    
+    
+      Audit &amp;amp; Compliance
+      Complete audit trails, compliance reporting
+      Centralized logging + monitoring
+    
+  
 
 
 
@@ -1306,38 +1970,63 @@ If you’re using GitLab API to create the application:
 
 
 
-
-
 GitLab Application Security Considerations
 
-Application Security Tips:
+Application Security Best Practices:
 
   Scopes Selection:
     
       Only select required scopes (read_user, openid, profile, email)
-      Avoid adding unnecessary permissions
+      Avoid adding unnecessary permissions like api or write_repository
     
   
   Application Configuration:
     
       Use a descriptive application name for audit purposes
-      Consider setting application expiration date for security
-      Rotate client secrets periodically
+      Set application expiration date for security rotation
+      Rotate client secrets every 90 days in production
+      Use secure redirect URI validation
     
   
   Access Management:
     
       Limit admin access to GitLab application settings
       Document the integration for security reviews
+      Implement approval workflows for changes
     
   
+
+
+Enterprise Security Enhancements:
+# Enhanced security configuration
+dex.config: |
+  connectors:
+    - type: gitlab
+      id: gitlab
+      name: GitLab
+      config:
+        baseURL: https://gitlab.your-domain.com
+        clientID: $dex.gitlab.clientId
+        clientSecret: $dex.gitlab.clientSecret
+        redirectURI: https://argocd.your-domain.com/api/dex/callback
+        groups:
+          - engineering
+          - platform
+        # Enhanced security options
+        useLoginAsID: false
+        insecureSkipVerify: false
+        # Custom CA certificate for private GitLab
+        rootCAs: |
+          -----BEGIN CERTIFICATE-----
+          ... your CA certificate ...
+          -----END CERTIFICATE-----
 
 
 
 
 2. Configure ArgoCD Installation
 
-Create values/mgmt.yaml:
+Create values/mgmt.yaml with production-ready configuration:
 
 global:
   domain: argocd.your-domain.com
@@ -1345,42 +2034,144 @@ global:
 configs:
   params:
     create: true
-    server.insecure: true
+    server.insecure: false  # Always use TLS in production
+    # Security hardening
+    server.enable.grpc.web: true
+    server.grpc.keepalive.time: 60s
+    server.grpc.keepalive.timeout: 5s
 
   ssh:
     extraHosts: |
-      gitlab.concrit.us ssh-rsa AAAAB3N...
-      gitlab.concrit.us ecdsa-sha2-nistp256...
-      gitlab.concrit.us ssh-ed25519 AAAA..
+      gitlab.your-domain.com ssh-rsa AAAAB3N...
+      gitlab.your-domain.com ecdsa-sha2-nistp256...
+      gitlab.your-domain.com ssh-ed25519 AAAA..
+
+  # Global security configurations
+  cm:
+    # Session timeout for security
+    timeout.hard.reconciliation: 0
+    timeout.reconciliation: 180s
+    # Application source restrictions
+    application.instanceLabelKey: argocd.argoproj.io/instance
+    # Repository credentials template
+    repositories: |
+      - type: git
+        url: https://gitlab.your-domain.com
+        passwordSecret:
+          name: gitlab-secret
+          key: password
+        usernameSecret:
+          name: gitlab-secret
+          key: username
 
 controller:
-  replicas: 1
+  replicas: 3  # High availability
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  # Application controller metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 
 dex:
   enabled: true
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 250m
+      memory: 128Mi
 
 redis:
   enabled: true
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
 
 server:
-  replicas: 1
+  replicas: 3  # High availability
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
   ingress:
     enabled: true
     annotations:
-      nginx.ingress.kubernetes.io/force-ssl-redirect: &quot;false&quot;
-      nginx.ingress.kubernetes.io/ssl-passthrough: &quot;false&quot;
+      nginx.ingress.kubernetes.io/ssl-redirect: &quot;true&quot;
+      nginx.ingress.kubernetes.io/backend-protocol: &quot;GRPC&quot;
+      cert-manager.io/cluster-issuer: &quot;letsencrypt-prod&quot;
+      nginx.ingress.kubernetes.io/grpc-backend: &quot;true&quot;
     ingressClassName: &quot;nginx&quot;
     path: /
     pathType: Prefix
+    tls:
+      - secretName: argocd-server-tls
+        hosts:
+          - argocd.your-domain.com
+  # Server metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 
 repoServer:
-  replicas: 1
+  replicas: 3  # High availability
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  # Repo server metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 
 applicationSet:
-  replicas: 1
+  replicas: 2  # High availability
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
 notifications:
   enabled: true
+  resources:
+    limits:
+      cpu: 500m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  # Notification integrations
+  notifiers:
+    service.slack: |
+      token: $slack-token
+    service.email.gmail: |
+      username: $email-username
+      password: $email-password
+      host: smtp.gmail.com
+      port: 587
+      from: $email-username
 
 
 
@@ -1422,6 +2213,8 @@ configs:
     dex.gitlab.clientSecret: &quot;&amp;lt;secret&amp;gt;&quot;
 
 
+
+
 Apply the changes:
 
 helm upgrade argocd . -n argocd -f ./values/mgmt.yaml
@@ -1439,6 +2232,76 @@ Access your ArgoCD instance and verify GitLab SSO login works correctly.
 
 Advanced GitLab SSO Configuration
 
+
+
+Multi-Environment RBAC Strategy
+
+Implement a comprehensive RBAC strategy that scales across multiple environments:
+
+configs:
+  rbac:
+    policy.csv: |
+      # Global Admin Role - Full cluster access
+      p, role:global-admin, applications, *, */*, allow
+      p, role:global-admin, clusters, *, *, allow
+      p, role:global-admin, repositories, *, *, allow
+      p, role:global-admin, projects, *, *, allow
+      p, role:global-admin, accounts, *, *, allow
+      p, role:global-admin, certificates, *, *, allow
+      p, role:global-admin, gpgkeys, *, *, allow
+      p, role:global-admin, logs, *, *, allow
+      p, role:global-admin, exec, *, *, allow
+      
+      # Platform Team - Infrastructure management
+      p, role:platform-admin, applications, *, platform/*, allow
+      p, role:platform-admin, applications, *, infrastructure/*, allow
+      p, role:platform-admin, clusters, get, *, allow
+      p, role:platform-admin, repositories, *, *, allow
+      p, role:platform-admin, projects, get, *, allow
+      p, role:platform-admin, logs, *, platform/*, allow
+      p, role:platform-admin, logs, *, infrastructure/*, allow
+      
+      # DevOps Team - Application deployment
+      p, role:devops-engineer, applications, *, */prod, allow
+      p, role:devops-engineer, applications, *, */staging, allow
+      p, role:devops-engineer, applications, sync, */*, allow
+      p, role:devops-engineer, repositories, get, *, allow
+      p, role:devops-engineer, logs, *, */*, allow
+      p, role:devops-engineer, exec, create, */staging, allow
+      
+      # Senior Developers - Production read, staging full
+      p, role:senior-developer, applications, get, */prod, allow
+      p, role:senior-developer, applications, *, */staging, allow
+      p, role:senior-developer, applications, *, */dev, allow
+      p, role:senior-developer, logs, *, */*, allow
+      p, role:senior-developer, exec, create, */dev, allow
+      p, role:senior-developer, exec, create, */staging, allow
+      
+      # Regular Developers - Development environment only
+      p, role:developer, applications, get, */prod, allow
+      p, role:developer, applications, get, */staging, allow
+      p, role:developer, applications, *, */dev, allow
+      p, role:developer, logs, *, */dev, allow
+      p, role:developer, exec, create, */dev, allow
+      
+      # Security Team - Read-only audit access
+      p, role:security-auditor, applications, get, */*, allow
+      p, role:security-auditor, logs, get, */*, allow
+      p, role:security-auditor, repositories, get, *, allow
+      p, role:security-auditor, clusters, get, *, allow
+      
+      # Map GitLab groups to roles
+      g, gitlab:platform-admins, role:global-admin
+      g, gitlab:infrastructure-team, role:platform-admin
+      g, gitlab:devops-engineers, role:devops-engineer
+      g, gitlab:senior-developers, role:senior-developer
+      g, gitlab:developers, role:developer
+      g, gitlab:security-team, role:security-auditor
+      
+    # Default policy for authenticated users
+    policy.default: role:readonly
+    # Required scopes for group mapping
+    scopes: &quot;[groups, email, profile]&quot;
 
 
 Role-Based Access Control with GitLab Groups
@@ -1703,9 +2566,63 @@ Security Best Practices
 
 
 
-Automation Script
+Advanced Security Configuration
 
-Here’s a script to automate GitLab SSO configuration:
+Network Policies for ArgoCD
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: argocd-security-policy
+  namespace: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 443
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443  # HTTPS to GitLab
+
+
+External Secrets Integration
+
+
+
+Pod Security Standards
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+
+
+
+Enterprise Automation Framework
+
+Here’s an enhanced automation script for enterprise GitLab SSO configuration:
 
 
 
@@ -1713,33 +2630,205 @@ Here’s a script to automate GitLab SSO configuration:
 
 
 
-Authentication Processes
+Monitoring and Observability
+
+Prometheus Metrics Configuration
+
+
+
+Grafana Dashboard Integration
+
+{
+  &quot;dashboard&quot;: {
+    &quot;title&quot;: &quot;ArgoCD SSO Monitoring&quot;,
+    &quot;panels&quot;: [
+      {
+        &quot;title&quot;: &quot;Login Success Rate&quot;,
+        &quot;type&quot;: &quot;stat&quot;,
+        &quot;targets&quot;: [
+          {
+            &quot;expr&quot;: &quot;rate(argocd_server_login_successes_total[5m]) / (rate(argocd_server_login_successes_total[5m]) + rate(argocd_server_login_failures_total[5m])) * 100&quot;
+          }
+        ]
+      },
+      {
+        &quot;title&quot;: &quot;Active Sessions&quot;,
+        &quot;type&quot;: &quot;graph&quot;,
+        &quot;targets&quot;: [
+          {
+            &quot;expr&quot;: &quot;argocd_server_sessions_total&quot;
+          }
+        ]
+      }
+    ]
+  }
+}
+
+
+
+
+Multi-Cluster Federation
+
+Hub Cluster Configuration
+
+# Hub cluster ArgoCD configuration
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spoke-cluster-apps
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://gitlab.your-domain.com/platform/cluster-configs
+    targetRevision: HEAD
+    path: spoke-clusters
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+
+Spoke Cluster Integration
+
+# Register spoke cluster with hub
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spoke-cluster-secret
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+type: Opaque
+stringData:
+  name: spoke-cluster-prod
+  server: https://spoke-cluster-api.your-domain.com
+  config: |
+    {
+      &quot;bearerToken&quot;: &quot;spoke-cluster-token&quot;,
+      &quot;tlsClientConfig&quot;: {
+        &quot;insecure&quot;: false,
+        &quot;caData&quot;: &quot;base64-encoded-ca-cert&quot;
+      }
+    }
+
+
+
+
+Advanced Authentication Patterns
+
+SAML Integration with GitLab
+
+For enterprise environments requiring SAML integration:
+
+configs:
+  cm:
+    dex.config: |
+      connectors:
+        - type: gitlab
+          id: gitlab
+          name: GitLab
+          config:
+            baseURL: https://gitlab.your-domain.com
+            clientID: $dex.gitlab.clientId
+            clientSecret: $dex.gitlab.clientSecret
+            redirectURI: https://argocd.your-domain.com/api/dex/callback
+            groups:
+              - engineering
+              - platform
+        - type: saml
+          id: saml
+          name: Enterprise SSO
+          config:
+            ssoURL: https://sso.your-domain.com/saml/login
+            redirectURI: https://argocd.your-domain.com/api/dex/callback
+            entityIssuer: https://argocd.your-domain.com/api/dex/callback
+            caData: |
+              -----BEGIN CERTIFICATE-----
+              ... enterprise CA certificate ...
+              -----END CERTIFICATE-----
+            usernameAttr: email
+            emailAttr: email
+            groupsAttr: groups
+
+
+JWT Token Configuration
+
+configs:
+  cm:
+    # JWT token configuration
+    oidc.config: |
+      name: GitLab
+      issuer: https://gitlab.your-domain.com
+      clientId: your-application-id
+      clientSecret: $oidc.gitlab.clientSecret
+      requestedScopes: [&quot;openid&quot;, &quot;profile&quot;, &quot;email&quot;, &quot;groups&quot;]
+      requestedIDTokenClaims: {&quot;groups&quot;: {&quot;essential&quot;: true}}
+      # Token lifetime configuration
+      skipClientIDCheck: false
+      skipIssuerCheck: false
+      # Custom claims mapping
+      claimsMapping:
+        groups: gitlab_groups
+        email: email
+        preferred_username: preferred_username
+
+
 
   OAuth Authentication
   SAML Authentication
   OpenID Connect Authentication
+  Multi-factor Authentication (MFA)
+  Certificate-based Authentication
 
 
 
 
 
-  Important Notes
+  Production Deployment Checklist
   
-    Consider domain settings, security policies, and network configurations
-    Keep up with the latest documentation as GitLab and ArgoCD settings may change
-    Ensure proper backup before making configuration changes
-    Key points for SSO configuration:
+    Security Configuration:
       
-        dex.config: Authentication configuration
-        rbac: Permission settings
-        Proper mapping between GitLab groups and ArgoCD roles
+        TLS/SSL certificates properly configured
+        Network policies implemented
+        RBAC policies tested and validated
+        Secret rotation strategy in place
+        Audit logging enabled
       
     
-    For enterprise environments:
+    High Availability:
       
-        Consider implementing session timeouts
-        Set up a disaster recovery plan for authentication
-        Document the SSO configuration and approval workflow
+        Multiple replicas for all components
+        Resource limits and requests defined
+        Pod disruption budgets configured
+        Health checks and readiness probes
+      
+    
+    Monitoring &amp;amp; Observability:
+      
+        Prometheus metrics collection
+        Grafana dashboards configured
+        Alert rules defined
+        Log aggregation setup
+      
+    
+    Operational Excellence:
+      
+        Backup and disaster recovery plan
+        Documentation and runbooks
+        Incident response procedures
+        Performance testing completed
+      
+    
+    Compliance &amp;amp; Governance:
+      
+        Security policies enforced
+        Compliance requirements met
+        Change management process
+        Access control regularly audited
       
     
   
@@ -1747,7 +2836,83 @@ Authentication Processes
 
 
 
+Enterprise Deployment Patterns
 
+Blue-Green Deployment for ArgoCD
+
+# Blue environment
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-blue
+  namespace: argocd-system
+spec:
+  destination:
+    namespace: argocd-blue
+    server: https://kubernetes.default.svc
+  source:
+    path: argocd
+    repoURL: https://gitlab.your-domain.com/platform/argocd-config
+    targetRevision: v2.8.4
+---
+# Green environment  
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-green
+  namespace: argocd-system
+spec:
+  destination:
+    namespace: argocd-green
+    server: https://kubernetes.default.svc
+  source:
+    path: argocd
+    repoURL: https://gitlab.your-domain.com/platform/argocd-config
+    targetRevision: v2.9.0
+
+
+GitOps Repository Structure
+
+├── clusters/
+│   ├── production/
+│   │   ├── cluster-config.yaml
+│   │   └── applications/
+│   ├── staging/
+│   │   ├── cluster-config.yaml
+│   │   └── applications/
+│   └── development/
+│       ├── cluster-config.yaml
+│       └── applications/
+├── applications/
+│   ├── base/
+│   ├── overlays/
+│   │   ├── production/
+│   │   ├── staging/
+│   │   └── development/
+├── projects/
+│   ├── platform.yaml
+│   ├── application-team-a.yaml
+│   └── application-team-b.yaml
+└── bootstrap/
+    └── argocd-apps.yaml
+
+
+
+
+
+
+Conclusion
+
+This comprehensive guide provides a production-ready approach to implementing enterprise-grade ArgoCD SSO with GitLab integration. By following these patterns and best practices, organizations can achieve:
+
+
+  Scalable Authentication: Support for thousands of users across multiple clusters
+  Enhanced Security: Zero-trust architecture with comprehensive audit trails
+  Operational Excellence: Automated operations with robust monitoring and alerting
+  Compliance Ready: Built-in governance and audit capabilities
+
+
+The integration between ArgoCD and GitLab creates a powerful platform for modern software delivery, enabling teams to maintain velocity while ensuring security and compliance requirements are met at scale.
 
 References
 
@@ -1756,9 +2921,14 @@ References
   Dex Authenticator Documentation
   ArgoCD RBAC Configuration
   Kubernetes Secret Management
+  External Secrets Operator
+  ArgoCD High Availability
+  Kubernetes Network Policies
+  GitOps Principles
+  CNCF Security Whitepaper
 
 ",
-            "wordcount": "1911",
+            "wordcount": "4168",
             "inLanguage": "en",
             "dateCreated": "2025-06-15/",
             "datePublished": "2025-06-15/",
@@ -1789,7 +2959,7 @@ References
             "mainEntityOfPage": "True",
             "genre": "CICD",
             "articleSection": "CICD",
-            "keywords": ["gitlab","kubernetes","helm","cicd"]
+            "keywords": ["argocd","gitlab","kubernetes","helm","sso","rbac","security","gitops","enterprise"]
         }
         </script>
     </body>
