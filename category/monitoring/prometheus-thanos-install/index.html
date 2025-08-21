@@ -220,7 +220,7 @@ June 4, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>46 min to read</span>
+                    <span>36 min to read</span>
                 </p>
                 <h1 class="post-title">Installing Prometheus and Thanos with Helm</h1>
                 <p class="post-subtitle">Complete guide to deploying, securing, and operating Prometheus and Thanos from basic setup to enterprise-grade production deployments</p>
@@ -498,9 +498,7 @@ kubectl config set-context <span class="nt">--current</span> <span class="nt">--
 <h4 id="3-install-required-crds">3. Install Required CRDs</h4>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install Prometheus Operator CRDs</span>
-helm <span class="nb">install </span>prometheus-operator-crds <span class="se">\</span>
-  prometheus-community/prometheus-operator-crds <span class="se">\</span>
-  <span class="nt">--namespace</span> monitoring
+helm <span class="nb">install </span>prometheus-operator-crds prometheus-community/prometheus-operator-crds <span class="nt">--namespace</span> monitoring
 </code></pre></div></div>
 
 <p><br /></p>
@@ -564,10 +562,7 @@ helm <span class="nb">install </span>prometheus-operator-crds <span class="se">\
 
 <p><strong>Installation:</strong></p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>prometheus prometheus-community/prometheus <span class="se">\</span>
-  <span class="nt">--namespace</span> monitoring <span class="se">\</span>
-  <span class="nt">--values</span> values/prometheus-basic.yaml <span class="se">\</span>
-  <span class="nt">--create-namespace</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>prometheus prometheus-community/prometheus <span class="nt">--namespace</span> monitoring <span class="nt">--values</span> values/prometheus-basic.yaml <span class="nt">--create-namespace</span>
 </code></pre></div></div>
 
 <p><br /></p>
@@ -578,199 +573,13 @@ helm <span class="nb">install </span>prometheus-operator-crds <span class="se">\
 
 <p>Create <code class="language-plaintext highlighter-rouge">values/kube-prometheus-stack.yaml</code>:</p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Production-ready Prometheus configuration</span>
-<span class="na">global</span><span class="pi">:</span>
-  <span class="na">scrape_interval</span><span class="pi">:</span> <span class="s">15s</span>
-  <span class="na">evaluation_interval</span><span class="pi">:</span> <span class="s">15s</span>
-
-<span class="c1"># Disable Grafana (we'll install separately)</span>
-<span class="na">grafana</span><span class="pi">:</span>
-  <span class="na">enabled</span><span class="pi">:</span> <span class="no">false</span>
-
-<span class="c1"># Configure Alertmanager</span>
-<span class="na">alertmanager</span><span class="pi">:</span>
-  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-  <span class="na">config</span><span class="pi">:</span>
-    <span class="na">global</span><span class="pi">:</span>
-      <span class="na">resolve_timeout</span><span class="pi">:</span> <span class="s">5m</span>
-      <span class="na">smtp_smarthost</span><span class="pi">:</span> <span class="s1">'</span><span class="s">localhost:587'</span>
-      <span class="na">smtp_from</span><span class="pi">:</span> <span class="s1">'</span><span class="s">alerts@company.com'</span>
-    
-    <span class="na">templates</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="s1">'</span><span class="s">/etc/alertmanager/config/*.tmpl'</span>
-    
-    <span class="na">route</span><span class="pi">:</span>
-      <span class="na">group_by</span><span class="pi">:</span> <span class="pi">[</span><span class="s1">'</span><span class="s">alertname'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">cluster'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">service'</span><span class="pi">]</span>
-      <span class="na">group_wait</span><span class="pi">:</span> <span class="s">10s</span>
-      <span class="na">group_interval</span><span class="pi">:</span> <span class="s">10s</span>
-      <span class="na">repeat_interval</span><span class="pi">:</span> <span class="s">12h</span>
-      <span class="na">receiver</span><span class="pi">:</span> <span class="s1">'</span><span class="s">default'</span>
-      <span class="na">routes</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="na">match</span><span class="pi">:</span>
-          <span class="na">alertname</span><span class="pi">:</span> <span class="s">DeadMansSwitch</span>
-        <span class="na">receiver</span><span class="pi">:</span> <span class="s1">'</span><span class="s">null'</span>
-    
-    <span class="na">receivers</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s1">'</span><span class="s">null'</span>
-    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s1">'</span><span class="s">default'</span>
-      <span class="na">slack_configs</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="na">api_url</span><span class="pi">:</span> <span class="s1">'</span><span class="s">YOUR_SLACK_WEBHOOK_URL'</span>
-        <span class="na">channel</span><span class="pi">:</span> <span class="s1">'</span><span class="s">#alerts'</span>
-        <span class="na">title</span><span class="pi">:</span> <span class="s1">'</span><span class="s">'</span>
-        <span class="na">text</span><span class="pi">:</span> <span class="s1">'</span><span class="s">'</span>
-  
-  <span class="na">service</span><span class="pi">:</span>
-    <span class="na">type</span><span class="pi">:</span> <span class="s">ClusterIP</span>
-  
-  <span class="na">persistentVolume</span><span class="pi">:</span>
-    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">size</span><span class="pi">:</span> <span class="s">10Gi</span>
-
-<span class="c1"># Configure Prometheus</span>
-<span class="na">prometheus</span><span class="pi">:</span>
-  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-  
-  <span class="c1"># Service configuration</span>
-  <span class="na">service</span><span class="pi">:</span>
-    <span class="na">type</span><span class="pi">:</span> <span class="s">ClusterIP</span>
-  
-  <span class="c1"># Ingress configuration</span>
-  <span class="na">ingress</span><span class="pi">:</span>
-    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">ingressClassName</span><span class="pi">:</span> <span class="s">nginx</span>
-    <span class="na">annotations</span><span class="pi">:</span>
-      <span class="na">nginx.ingress.kubernetes.io/ssl-redirect</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
-    <span class="na">hosts</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="s">prometheus.your-domain.com</span>
-    <span class="na">tls</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="na">secretName</span><span class="pi">:</span> <span class="s">prometheus-tls</span>
-      <span class="na">hosts</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="s">prometheus.your-domain.com</span>
-  
-  <span class="c1"># Thanos sidecar configuration</span>
-  <span class="na">thanosService</span><span class="pi">:</span>
-    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-  <span class="na">thanosServiceMonitor</span><span class="pi">:</span>
-    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-  <span class="na">thanosServiceExternal</span><span class="pi">:</span>
-    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">type</span><span class="pi">:</span> <span class="s">ClusterIP</span>
-  
-  <span class="na">prometheusSpec</span><span class="pi">:</span>
-    <span class="c1"># High availability</span>
-    <span class="na">replicas</span><span class="pi">:</span> <span class="m">2</span>
-    
-    <span class="c1"># Retention and storage</span>
-    <span class="na">retention</span><span class="pi">:</span> <span class="s2">"</span><span class="s">15d"</span>
-    <span class="na">retentionSize</span><span class="pi">:</span> <span class="s2">"</span><span class="s">50GB"</span>
-    
-    <span class="c1"># Thanos sidecar configuration</span>
-    <span class="na">thanos</span><span class="pi">:</span>
-      <span class="na">baseImage</span><span class="pi">:</span> <span class="s">quay.io/thanos/thanos</span>
-      <span class="na">version</span><span class="pi">:</span> <span class="s">v0.36.1</span>
-      <span class="na">objectStorageConfig</span><span class="pi">:</span>
-        <span class="na">existingSecret</span><span class="pi">:</span>
-          <span class="na">name</span><span class="pi">:</span> <span class="s">thanos-objstore</span>
-          <span class="na">key</span><span class="pi">:</span> <span class="s">objstore.yml</span>
-    
-    <span class="c1"># Storage configuration</span>
-    <span class="na">storageSpec</span><span class="pi">:</span>
-      <span class="na">volumeClaimTemplate</span><span class="pi">:</span>
-        <span class="na">spec</span><span class="pi">:</span>
-          <span class="na">storageClassName</span><span class="pi">:</span> <span class="s">fast-ssd</span>
-          <span class="na">accessModes</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">ReadWriteOnce"</span><span class="pi">]</span>
-          <span class="na">resources</span><span class="pi">:</span>
-            <span class="na">requests</span><span class="pi">:</span>
-              <span class="na">storage</span><span class="pi">:</span> <span class="s">100Gi</span>
-    
-    <span class="c1"># External labels for multi-cluster identification</span>
-    <span class="na">externalLabels</span><span class="pi">:</span>
-      <span class="na">cluster</span><span class="pi">:</span> <span class="s">production</span>
-      <span class="na">region</span><span class="pi">:</span> <span class="s">us-west-2</span>
-      <span class="na">environment</span><span class="pi">:</span> <span class="s">prod</span>
-    
-    <span class="c1"># Resource allocation</span>
-    <span class="na">resources</span><span class="pi">:</span>
-      <span class="na">requests</span><span class="pi">:</span>
-        <span class="na">cpu</span><span class="pi">:</span> <span class="s">2000m</span>
-        <span class="na">memory</span><span class="pi">:</span> <span class="s">4Gi</span>
-      <span class="na">limits</span><span class="pi">:</span>
-        <span class="na">cpu</span><span class="pi">:</span> <span class="s">4000m</span>
-        <span class="na">memory</span><span class="pi">:</span> <span class="s">8Gi</span>
-    
-    <span class="c1"># Service monitoring</span>
-    <span class="na">serviceMonitorSelectorNilUsesHelmValues</span><span class="pi">:</span> <span class="no">false</span>
-    <span class="na">podMonitorSelectorNilUsesHelmValues</span><span class="pi">:</span> <span class="no">false</span>
-    <span class="na">ruleSelectorNilUsesHelmValues</span><span class="pi">:</span> <span class="no">false</span>
-    
-    <span class="c1"># Security context</span>
-    <span class="na">securityContext</span><span class="pi">:</span>
-      <span class="na">runAsNonRoot</span><span class="pi">:</span> <span class="no">true</span>
-      <span class="na">runAsUser</span><span class="pi">:</span> <span class="m">65534</span>
-      <span class="na">fsGroup</span><span class="pi">:</span> <span class="m">65534</span>
-    
-    <span class="c1"># Node affinity for production deployment</span>
-    <span class="na">affinity</span><span class="pi">:</span>
-      <span class="na">podAntiAffinity</span><span class="pi">:</span>
-        <span class="na">preferredDuringSchedulingIgnoredDuringExecution</span><span class="pi">:</span>
-        <span class="pi">-</span> <span class="na">weight</span><span class="pi">:</span> <span class="m">100</span>
-          <span class="na">podAffinityTerm</span><span class="pi">:</span>
-            <span class="na">labelSelector</span><span class="pi">:</span>
-              <span class="na">matchExpressions</span><span class="pi">:</span>
-              <span class="pi">-</span> <span class="na">key</span><span class="pi">:</span> <span class="s">app.kubernetes.io/name</span>
-                <span class="na">operator</span><span class="pi">:</span> <span class="s">In</span>
-                <span class="na">values</span><span class="pi">:</span>
-                <span class="pi">-</span> <span class="s">prometheus</span>
-            <span class="na">topologyKey</span><span class="pi">:</span> <span class="s">kubernetes.io/hostname</span>
-
-<span class="c1"># Node exporter configuration</span>
-<span class="na">nodeExporter</span><span class="pi">:</span>
-  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-
-<span class="c1"># Kube-state-metrics configuration</span>
-<span class="na">kubeStateMetrics</span><span class="pi">:</span>
-  <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
-
-<span class="c1"># Default service monitors</span>
-<span class="na">defaultRules</span><span class="pi">:</span>
-  <span class="na">create</span><span class="pi">:</span> <span class="no">true</span>
-  <span class="na">rules</span><span class="pi">:</span>
-    <span class="na">alertmanager</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">etcd</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">configReloaders</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">general</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">k8s</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubeApiserverAvailability</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubeApiserverBurnrate</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubeApiserverHistogram</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubeApiserverSlos</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubelet</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubeProxy</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubePrometheusGeneral</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubePrometheusNodeRecording</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubernetesApps</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubernetesResources</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubernetesStorage</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubernetesSystem</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubeScheduler</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">kubeStateMetrics</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">network</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">node</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">nodeExporterAlerting</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">nodeExporterRecording</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">prometheus</span><span class="pi">:</span> <span class="no">true</span>
-    <span class="na">prometheusOperator</span><span class="pi">:</span> <span class="no">true</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/73e65f000f54a5a5978128f07042775d.js"></script>
 
 <p><br /></p>
 
 <h4 id="installation">Installation:</h4>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>kube-prometheus-stack <span class="se">\</span>
-  prometheus-community/kube-prometheus-stack <span class="se">\</span>
-  <span class="nt">--namespace</span> monitoring <span class="se">\</span>
-  <span class="nt">--values</span> values/kube-prometheus-stack.yaml <span class="se">\</span>
-  <span class="nt">--create-namespace</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>kube-prometheus-stack prometheus-community/kube-prometheus-stack <span class="nt">--namespace</span> monitoring <span class="nt">--values</span> values/kube-prometheus-stack.yaml <span class="nt">--create-namespace</span>
 </code></pre></div></div>
 
 <p><br /></p>
@@ -837,9 +646,7 @@ helm <span class="nb">install </span>prometheus-operator-crds <span class="se">\
 <h4 id="create-kubernetes-secret">Create Kubernetes Secret</h4>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create the object storage secret</span>
-kubectl create secret generic thanos-objstore <span class="se">\</span>
-  <span class="nt">--from-file</span><span class="o">=</span>objstore.yml <span class="se">\</span>
-  <span class="nt">--namespace</span> monitoring
+kubectl create secret generic thanos-objstore <span class="nt">--from-file</span><span class="o">=</span>objstore.yml <span class="nt">--namespace</span> monitoring
 </code></pre></div></div>
 
 <p><br /></p>
@@ -1024,9 +831,7 @@ kubectl create secret generic thanos-objstore <span class="se">\</span>
 
 <h4 id="install-thanos">Install Thanos</h4>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>thanos bitnami/thanos <span class="se">\</span>
-  <span class="nt">--namespace</span> monitoring <span class="se">\</span>
-  <span class="nt">--values</span> values/thanos-single-cluster.yaml
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>thanos bitnami/thanos <span class="nt">--namespace</span> monitoring <span class="nt">--values</span> values/thanos-single-cluster.yaml
 </code></pre></div></div>
 
 <p><br /></p>
@@ -2015,86 +1820,7 @@ curl http://localhost:10902/-/healthy
 
 <p>Create <code class="language-plaintext highlighter-rouge">monitoring/self-monitoring-rules.yaml</code>:</p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">monitoring.coreos.com/v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">PrometheusRule</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">monitoring-infrastructure-alerts</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
-<span class="na">spec</span><span class="pi">:</span>
-  <span class="na">groups</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">thanos.rules</span>
-    <span class="na">interval</span><span class="pi">:</span> <span class="s">30s</span>
-    <span class="na">rules</span><span class="pi">:</span>
-    <span class="c1"># Thanos Query availability</span>
-    <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">ThanosQueryDown</span>
-      <span class="na">expr</span><span class="pi">:</span> <span class="s">up{job="thanos-query"} == </span><span class="m">0</span>
-      <span class="na">for</span><span class="pi">:</span> <span class="s">5m</span>
-      <span class="na">labels</span><span class="pi">:</span>
-        <span class="na">severity</span><span class="pi">:</span> <span class="s">critical</span>
-        <span class="na">component</span><span class="pi">:</span> <span class="s">thanos-query</span>
-      <span class="na">annotations</span><span class="pi">:</span>
-        <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Thanos</span><span class="nv"> </span><span class="s">Query</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">down"</span>
-        <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Thanos</span><span class="nv"> </span><span class="s">Query</span><span class="nv">  </span><span class="s">has</span><span class="nv"> </span><span class="s">been</span><span class="nv"> </span><span class="s">down</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">more</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">5</span><span class="nv"> </span><span class="s">minutes."</span>
-        <span class="na">runbook_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">https://runbooks.monitoring.company.com/thanos-query-down"</span>
-    
-    <span class="c1"># Thanos Query high latency</span>
-    <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">ThanosQueryHighLatency</span>
-      <span class="na">expr</span><span class="pi">:</span> <span class="s">histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="thanos-query",handler="query"}[5m])) by (le)) &gt; </span><span class="m">10</span>
-      <span class="na">for</span><span class="pi">:</span> <span class="s">5m</span>
-      <span class="na">labels</span><span class="pi">:</span>
-        <span class="na">severity</span><span class="pi">:</span> <span class="s">warning</span>
-        <span class="na">component</span><span class="pi">:</span> <span class="s">thanos-query</span>
-      <span class="na">annotations</span><span class="pi">:</span>
-        <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Thanos</span><span class="nv"> </span><span class="s">Query</span><span class="nv"> </span><span class="s">high</span><span class="nv"> </span><span class="s">latency"</span>
-        <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Thanos</span><span class="nv"> </span><span class="s">Query</span><span class="nv"> </span><span class="s">99th</span><span class="nv"> </span><span class="s">percentile</span><span class="nv"> </span><span class="s">latency</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">s</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">more</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">5</span><span class="nv"> </span><span class="s">minutes."</span>
-    
-    <span class="c1"># Thanos Store gateway issues</span>
-    <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">ThanosStoreGrpcErrorRate</span>
-      <span class="na">expr</span><span class="pi">:</span> <span class="s">rate(grpc_server_handled_total{grpc_code!="OK",job="thanos-store"}[5m]) &gt; </span><span class="m">0.05</span>
-      <span class="na">for</span><span class="pi">:</span> <span class="s">5m</span>
-      <span class="na">labels</span><span class="pi">:</span>
-        <span class="na">severity</span><span class="pi">:</span> <span class="s">warning</span>
-        <span class="na">component</span><span class="pi">:</span> <span class="s">thanos-store</span>
-      <span class="na">annotations</span><span class="pi">:</span>
-        <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Thanos</span><span class="nv"> </span><span class="s">Store</span><span class="nv"> </span><span class="s">gRPC</span><span class="nv"> </span><span class="s">error</span><span class="nv"> </span><span class="s">rate</span><span class="nv"> </span><span class="s">high"</span>
-        <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Thanos</span><span class="nv"> </span><span class="s">Store</span><span class="nv">  </span><span class="s">gRPC</span><span class="nv"> </span><span class="s">error</span><span class="nv"> </span><span class="s">rate</span><span class="nv"> </span><span class="s">is</span><span class="nv">  </span><span class="s">for</span><span class="nv"> </span><span class="s">more</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">5</span><span class="nv"> </span><span class="s">minutes."</span>
-    
-    <span class="c1"># Object storage connectivity</span>
-    <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">ThanosObjectStorageErrors</span>
-      <span class="na">expr</span><span class="pi">:</span> <span class="s">rate(thanos_objstore_bucket_operation_failures_total[5m]) &gt; </span><span class="m">0.01</span>
-      <span class="na">for</span><span class="pi">:</span> <span class="s">10m</span>
-      <span class="na">labels</span><span class="pi">:</span>
-        <span class="na">severity</span><span class="pi">:</span> <span class="s">warning</span>
-        <span class="na">component</span><span class="pi">:</span> <span class="s">object-storage</span>
-      <span class="na">annotations</span><span class="pi">:</span>
-        <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Thanos</span><span class="nv"> </span><span class="s">object</span><span class="nv"> </span><span class="s">storage</span><span class="nv"> </span><span class="s">errors"</span>
-        <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Thanos</span><span class="nv"> </span><span class="s">components</span><span class="nv"> </span><span class="s">are</span><span class="nv"> </span><span class="s">experiencing</span><span class="nv"> </span><span class="s">object</span><span class="nv"> </span><span class="s">storage</span><span class="nv"> </span><span class="s">errors</span><span class="nv"> </span><span class="s">at</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">rate</span><span class="nv"> </span><span class="s">of</span><span class="nv">  </span><span class="s">per</span><span class="nv"> </span><span class="s">second."</span>
-
-  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">prometheus.rules</span>
-    <span class="na">interval</span><span class="pi">:</span> <span class="s">30s</span>
-    <span class="na">rules</span><span class="pi">:</span>
-    <span class="c1"># Prometheus targets down</span>
-    <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">PrometheusTargetMissing</span>
-      <span class="na">expr</span><span class="pi">:</span> <span class="s">up == </span><span class="m">0</span>
-      <span class="na">for</span><span class="pi">:</span> <span class="s">5m</span>
-      <span class="na">labels</span><span class="pi">:</span>
-        <span class="na">severity</span><span class="pi">:</span> <span class="s">warning</span>
-        <span class="na">component</span><span class="pi">:</span> <span class="s">prometheus</span>
-      <span class="na">annotations</span><span class="pi">:</span>
-        <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Prometheus</span><span class="nv"> </span><span class="s">target</span><span class="nv"> </span><span class="s">missing"</span>
-        <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Target</span><span class="nv">  </span><span class="s">of</span><span class="nv"> </span><span class="s">job</span><span class="nv">  </span><span class="s">has</span><span class="nv"> </span><span class="s">been</span><span class="nv"> </span><span class="s">down</span><span class="nv"> </span><span class="s">for</span><span class="nv"> </span><span class="s">more</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">5</span><span class="nv"> </span><span class="s">minutes."</span>
-    
-    <span class="c1"># Prometheus configuration reload failed</span>
-    <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">PrometheusConfigurationReloadFailure</span>
-      <span class="na">expr</span><span class="pi">:</span> <span class="s">prometheus_config_last_reload_successful != </span><span class="m">1</span>
-      <span class="na">for</span><span class="pi">:</span> <span class="s">5m</span>
-      <span class="na">labels</span><span class="pi">:</span>
-        <span class="na">severity</span><span class="pi">:</span> <span class="s">warning</span>
-        <span class="na">component</span><span class="pi">:</span> <span class="s">prometheus</span>
-      <span class="na">annotations</span><span class="pi">:</span>
-        <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Prometheus</span><span class="nv"> </span><span class="s">configuration</span><span class="nv"> </span><span class="s">reload</span><span class="nv"> </span><span class="s">failure"</span>
-        <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Prometheus</span><span class="nv">  </span><span class="s">configuration</span><span class="nv"> </span><span class="s">reload</span><span class="nv"> </span><span class="s">has</span><span class="nv"> </span><span class="s">failed."</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/0c12022e0439990a5111fed8863f8017.js"></script>
 
 <p><br /></p>
 
@@ -2104,72 +1830,7 @@ curl http://localhost:10902/-/healthy
 
 <p>Create <code class="language-plaintext highlighter-rouge">backup/backup-job.yaml</code>:</p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">CronJob</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">monitoring-backup</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
-<span class="na">spec</span><span class="pi">:</span>
-  <span class="na">schedule</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0</span><span class="nv"> </span><span class="s">2</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>  <span class="c1"># Daily at 2 AM</span>
-  <span class="na">jobTemplate</span><span class="pi">:</span>
-    <span class="na">spec</span><span class="pi">:</span>
-      <span class="na">template</span><span class="pi">:</span>
-        <span class="na">spec</span><span class="pi">:</span>
-          <span class="na">serviceAccountName</span><span class="pi">:</span> <span class="s">backup-operator</span>
-          <span class="na">containers</span><span class="pi">:</span>
-          <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">backup</span>
-            <span class="na">image</span><span class="pi">:</span> <span class="s">quay.io/thanos/thanos:v0.36.1</span>
-            <span class="na">command</span><span class="pi">:</span>
-            <span class="pi">-</span> <span class="s">/bin/sh</span>
-            <span class="pi">-</span> <span class="s">-c</span>
-            <span class="pi">-</span> <span class="pi">|</span>
-              <span class="s">#!/bin/sh</span>
-              <span class="s">echo "Starting monitoring backup..."</span>
-              
-              <span class="s"># Backup Prometheus configuration</span>
-              <span class="s">kubectl get configmaps -n monitoring -o yaml &gt; /backup/configmaps-$(date +%Y%m%d).yaml</span>
-              <span class="s">kubectl get secrets -n monitoring -o yaml &gt; /backup/secrets-$(date +%Y%m%d).yaml</span>
-              <span class="s">kubectl get prometheusrules -n monitoring -o yaml &gt; /backup/rules-$(date +%Y%m%d).yaml</span>
-              
-              <span class="s"># Verify object storage data integrity</span>
-              <span class="s">thanos tools bucket verify \</span>
-                <span class="s">--objstore.config-file=/etc/thanos/objstore.yml \</span>
-                <span class="s">--repair</span>
-              
-              <span class="s"># Generate backup report</span>
-              <span class="s">thanos tools bucket inspect \</span>
-                <span class="s">--objstore.config-file=/etc/thanos/objstore.yml \</span>
-                <span class="s">--output=json &gt; /backup/storage-report-$(date +%Y%m%d).json</span>
-              
-              <span class="s"># Upload backup to secure location</span>
-              <span class="s">aws s3 sync /backup/ s3://monitoring-backups/$(date +%Y%m%d)/</span>
-              
-              <span class="s">echo "Backup completed successfully"</span>
-            
-            <span class="na">volumeMounts</span><span class="pi">:</span>
-            <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">backup-storage</span>
-              <span class="na">mountPath</span><span class="pi">:</span> <span class="s">/backup</span>
-            <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">objstore-config</span>
-              <span class="na">mountPath</span><span class="pi">:</span> <span class="s">/etc/thanos</span>
-              <span class="na">readOnly</span><span class="pi">:</span> <span class="no">true</span>
-            
-            <span class="na">resources</span><span class="pi">:</span>
-              <span class="na">requests</span><span class="pi">:</span>
-                <span class="na">cpu</span><span class="pi">:</span> <span class="s">500m</span>
-                <span class="na">memory</span><span class="pi">:</span> <span class="s">1Gi</span>
-              <span class="na">limits</span><span class="pi">:</span>
-                <span class="na">cpu</span><span class="pi">:</span> <span class="s">2000m</span>
-                <span class="na">memory</span><span class="pi">:</span> <span class="s">4Gi</span>
-          
-          <span class="na">volumes</span><span class="pi">:</span>
-          <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">backup-storage</span>
-            <span class="na">emptyDir</span><span class="pi">:</span> <span class="pi">{}</span>
-          <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">objstore-config</span>
-            <span class="na">secret</span><span class="pi">:</span>
-              <span class="na">secretName</span><span class="pi">:</span> <span class="s">thanos-objstore</span>
-          
-          <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">OnFailure</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/98efa62834106d84707b85ab888c6cde.js"></script>
 
 <hr />
 
@@ -2225,78 +1886,7 @@ curl http://localhost:10902/-/healthy
 
 <p>Create <code class="language-plaintext highlighter-rouge">dr/dr-test-job.yaml</code>:</p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">CronJob</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">dr-testing</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
-<span class="na">spec</span><span class="pi">:</span>
-  <span class="na">schedule</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0</span><span class="nv"> </span><span class="s">3</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">0"</span>  <span class="c1"># Weekly on Sunday at 3 AM</span>
-  <span class="na">jobTemplate</span><span class="pi">:</span>
-    <span class="na">spec</span><span class="pi">:</span>
-      <span class="na">template</span><span class="pi">:</span>
-        <span class="na">spec</span><span class="pi">:</span>
-          <span class="na">serviceAccountName</span><span class="pi">:</span> <span class="s">dr-tester</span>
-          <span class="na">containers</span><span class="pi">:</span>
-          <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">dr-tester</span>
-            <span class="na">image</span><span class="pi">:</span> <span class="s">dr-orchestrator:latest</span>
-            <span class="na">command</span><span class="pi">:</span>
-            <span class="pi">-</span> <span class="s">/bin/sh</span>
-            <span class="pi">-</span> <span class="s">-c</span>
-            <span class="pi">-</span> <span class="pi">|</span>
-              <span class="s">#!/bin/sh</span>
-              <span class="s">echo "Starting DR testing procedure..."</span>
-              
-              <span class="s">TEST_ID="dr-test-$(date +%Y%m%d-%H%M%S)"</span>
-              <span class="s">echo "Test ID: $TEST_ID"</span>
-              
-              <span class="s"># Test cross-region data consistency</span>
-              <span class="s">echo "Testing cross-region data consistency..."</span>
-              <span class="s">CONSISTENCY_RESULT=$(/scripts/test-data-consistency.sh)</span>
-              
-              <span class="s"># Test failover simulation (non-disruptive)</span>
-              <span class="s">echo "Testing failover simulation..."</span>
-              <span class="s">FAILOVER_RESULT=$(/scripts/simulate-failover.sh --dry-run)</span>
-              
-              <span class="s"># Test recovery time estimation</span>
-              <span class="s">echo "Testing recovery time estimation..."</span>
-              <span class="s">RECOVERY_TIME=$(/scripts/estimate-recovery-time.sh)</span>
-              
-              <span class="s"># Generate test report</span>
-              <span class="s">cat &gt; /tmp/dr-test-report.json &lt;&lt;EOF</span>
-              <span class="s">{</span>
-                <span class="s">"test_id": "$TEST_ID",</span>
-                <span class="s">"timestamp": "$(date -Iseconds)",</span>
-                <span class="s">"tests": {</span>
-                  <span class="s">"data_consistency": {</span>
-                    <span class="s">"status": "$CONSISTENCY_RESULT"</span>
-                  <span class="s">},</span>
-                  <span class="s">"failover_simulation": {</span>
-                    <span class="s">"status": "$FAILOVER_RESULT"</span>
-                  <span class="s">},</span>
-                  <span class="s">"recovery_time": {</span>
-                    <span class="s">"estimated_time": "$RECOVERY_TIME"</span>
-                  <span class="s">}</span>
-                <span class="s">}</span>
-              <span class="s">}</span>
-              <span class="s">EOF</span>
-              
-              <span class="s">kubectl create configmap dr-test-results-$TEST_ID \</span>
-                <span class="s">--from-file=/tmp/dr-test-report.json \</span>
-                <span class="s">-n monitoring</span>
-              
-              <span class="s">echo "DR testing completed: $TEST_ID"</span>
-            
-            <span class="na">resources</span><span class="pi">:</span>
-              <span class="na">requests</span><span class="pi">:</span>
-                <span class="na">cpu</span><span class="pi">:</span> <span class="s">500m</span>
-                <span class="na">memory</span><span class="pi">:</span> <span class="s">1Gi</span>
-              <span class="na">limits</span><span class="pi">:</span>
-                <span class="na">cpu</span><span class="pi">:</span> <span class="s">2000m</span>
-                <span class="na">memory</span><span class="pi">:</span> <span class="s">4Gi</span>
-          
-          <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">OnFailure</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/5cfff3169ef841a3602e81e3d372531c.js"></script>
 
 <hr />
 
@@ -2314,8 +1904,7 @@ curl http://localhost:10902/-/healthy
 
 <p><strong>Solution</strong>:</p>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check DNS resolution</span>
-kubectl run <span class="nt">-it</span> <span class="nt">--rm</span> dns-test <span class="nt">--image</span><span class="o">=</span>nicolaka/netshoot <span class="nt">--restart</span><span class="o">=</span>Never <span class="nt">--</span> <span class="se">\</span>
-  dig _grpc._tcp.kube-prometheus-stack-thanos-discovery.monitoring.svc.cluster.local
+kubectl run <span class="nt">-it</span> <span class="nt">--rm</span> dns-test <span class="nt">--image</span><span class="o">=</span>nicolaka/netshoot <span class="nt">--restart</span><span class="o">=</span>Never <span class="nt">--</span> dig _grpc._tcp.kube-prometheus-stack-thanos-discovery.monitoring.svc.cluster.local
 
 <span class="c"># Verify service endpoints</span>
 kubectl get endpoints <span class="nt">-n</span> monitoring | <span class="nb">grep </span>thanos
@@ -2334,8 +1923,7 @@ kubectl get service kube-prometheus-stack-thanos-discovery <span class="nt">-n</
 
 <p><strong>Diagnosis</strong>:</p>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Test object storage connectivity</span>
-kubectl <span class="nb">exec</span> <span class="nt">-it</span> thanos-query-0 <span class="nt">-n</span> monitoring <span class="nt">--</span> <span class="se">\</span>
-  thanos tools bucket <span class="nb">ls</span> <span class="nt">--objstore</span>.config-file<span class="o">=</span>/etc/bucket/objstore.yml
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> thanos-query-0 <span class="nt">-n</span> monitoring <span class="nt">--</span> thanos tools bucket <span class="nb">ls</span> <span class="nt">--objstore</span>.config-file<span class="o">=</span>/etc/bucket/objstore.yml
 
 <span class="c"># Check secret configuration</span>
 kubectl get secret thanos-objstore <span class="nt">-n</span> monitoring <span class="nt">-o</span> yaml
@@ -2440,12 +2028,10 @@ kubectl get pvc <span class="nt">-n</span> monitoring <span class="nt">-o</span>
 helm upgrade prometheus-operator-crds prometheus-community/prometheus-operator-crds <span class="nt">-n</span> monitoring
    
 <span class="c"># Upgrade kube-prometheus-stack</span>
-helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack <span class="se">\</span>
-  <span class="nt">-n</span> monitoring <span class="nt">-f</span> values/kube-prometheus-stack.yaml
+helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack <span class="nt">-n</span> monitoring <span class="nt">-f</span> values/kube-prometheus-stack.yaml
    
 <span class="c"># Upgrade Thanos</span>
-helm upgrade thanos bitnami/thanos <span class="se">\</span>
-  <span class="nt">-n</span> monitoring <span class="nt">-f</span> values/thanos.yaml
+helm upgrade thanos bitnami/thanos <span class="nt">-n</span> monitoring <span class="nt">-f</span> values/thanos.yaml
 </code></pre></div>    </div>
   </li>
   <li><strong>Verification after upgrade</strong>:
@@ -2571,7 +2157,7 @@ curl <span class="s2">"http://localhost:9090/api/v1/query?query=up"</span>
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="46">
+            <div class="time-bar" data-minutes="36">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -3227,9 +2813,7 @@ kubectl config set-context --current --namespace=monitoring
 3. Install Required CRDs
 
 # Install Prometheus Operator CRDs
-helm install prometheus-operator-crds \
-  prometheus-community/prometheus-operator-crds \
-  --namespace monitoring
+helm install prometheus-operator-crds prometheus-community/prometheus-operator-crds --namespace monitoring
 
 
 
@@ -3293,10 +2877,7 @@ prometheus-pushgateway:
 
 Installation:
 
-helm install prometheus prometheus-community/prometheus \
-  --namespace monitoring \
-  --values values/prometheus-basic.yaml \
-  --create-namespace
+helm install prometheus prometheus-community/prometheus --namespace monitoring --values values/prometheus-basic.yaml --create-namespace
 
 
 
@@ -3307,199 +2888,13 @@ Use Case: Production environments with comprehensive monitoring
 
 Create values/kube-prometheus-stack.yaml:
 
-# Production-ready Prometheus configuration
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-# Disable Grafana (we&apos;ll install separately)
-grafana:
-  enabled: false
-
-# Configure Alertmanager
-alertmanager:
-  enabled: true
-  config:
-    global:
-      resolve_timeout: 5m
-      smtp_smarthost: &apos;localhost:587&apos;
-      smtp_from: &apos;alerts@company.com&apos;
-    
-    templates:
-      - &apos;/etc/alertmanager/config/*.tmpl&apos;
-    
-    route:
-      group_by: [&apos;alertname&apos;, &apos;cluster&apos;, &apos;service&apos;]
-      group_wait: 10s
-      group_interval: 10s
-      repeat_interval: 12h
-      receiver: &apos;default&apos;
-      routes:
-      - match:
-          alertname: DeadMansSwitch
-        receiver: &apos;null&apos;
-    
-    receivers:
-    - name: &apos;null&apos;
-    - name: &apos;default&apos;
-      slack_configs:
-      - api_url: &apos;YOUR_SLACK_WEBHOOK_URL&apos;
-        channel: &apos;#alerts&apos;
-        title: &apos;&apos;
-        text: &apos;&apos;
-  
-  service:
-    type: ClusterIP
-  
-  persistentVolume:
-    enabled: true
-    size: 10Gi
-
-# Configure Prometheus
-prometheus:
-  enabled: true
-  
-  # Service configuration
-  service:
-    type: ClusterIP
-  
-  # Ingress configuration
-  ingress:
-    enabled: true
-    ingressClassName: nginx
-    annotations:
-      nginx.ingress.kubernetes.io/ssl-redirect: &quot;true&quot;
-    hosts:
-      - prometheus.your-domain.com
-    tls:
-    - secretName: prometheus-tls
-      hosts:
-      - prometheus.your-domain.com
-  
-  # Thanos sidecar configuration
-  thanosService:
-    enabled: true
-  thanosServiceMonitor:
-    enabled: true
-  thanosServiceExternal:
-    enabled: true
-    type: ClusterIP
-  
-  prometheusSpec:
-    # High availability
-    replicas: 2
-    
-    # Retention and storage
-    retention: &quot;15d&quot;
-    retentionSize: &quot;50GB&quot;
-    
-    # Thanos sidecar configuration
-    thanos:
-      baseImage: quay.io/thanos/thanos
-      version: v0.36.1
-      objectStorageConfig:
-        existingSecret:
-          name: thanos-objstore
-          key: objstore.yml
-    
-    # Storage configuration
-    storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: fast-ssd
-          accessModes: [&quot;ReadWriteOnce&quot;]
-          resources:
-            requests:
-              storage: 100Gi
-    
-    # External labels for multi-cluster identification
-    externalLabels:
-      cluster: production
-      region: us-west-2
-      environment: prod
-    
-    # Resource allocation
-    resources:
-      requests:
-        cpu: 2000m
-        memory: 4Gi
-      limits:
-        cpu: 4000m
-        memory: 8Gi
-    
-    # Service monitoring
-    serviceMonitorSelectorNilUsesHelmValues: false
-    podMonitorSelectorNilUsesHelmValues: false
-    ruleSelectorNilUsesHelmValues: false
-    
-    # Security context
-    securityContext:
-      runAsNonRoot: true
-      runAsUser: 65534
-      fsGroup: 65534
-    
-    # Node affinity for production deployment
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                - prometheus
-            topologyKey: kubernetes.io/hostname
-
-# Node exporter configuration
-nodeExporter:
-  enabled: true
-
-# Kube-state-metrics configuration
-kubeStateMetrics:
-  enabled: true
-
-# Default service monitors
-defaultRules:
-  create: true
-  rules:
-    alertmanager: true
-    etcd: true
-    configReloaders: true
-    general: true
-    k8s: true
-    kubeApiserverAvailability: true
-    kubeApiserverBurnrate: true
-    kubeApiserverHistogram: true
-    kubeApiserverSlos: true
-    kubelet: true
-    kubeProxy: true
-    kubePrometheusGeneral: true
-    kubePrometheusNodeRecording: true
-    kubernetesApps: true
-    kubernetesResources: true
-    kubernetesStorage: true
-    kubernetesSystem: true
-    kubeScheduler: true
-    kubeStateMetrics: true
-    network: true
-    node: true
-    nodeExporterAlerting: true
-    nodeExporterRecording: true
-    prometheus: true
-    prometheusOperator: true
 
 
 
 
 Installation:
 
-helm install kube-prometheus-stack \
-  prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --values values/kube-prometheus-stack.yaml \
-  --create-namespace
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack --namespace monitoring --values values/kube-prometheus-stack.yaml --create-namespace
 
 
 
@@ -3566,9 +2961,7 @@ config:
 Create Kubernetes Secret
 
 # Create the object storage secret
-kubectl create secret generic thanos-objstore \
-  --from-file=objstore.yml \
-  --namespace monitoring
+kubectl create secret generic thanos-objstore --from-file=objstore.yml --namespace monitoring
 
 
 
@@ -3753,9 +3146,7 @@ receive:
 
 Install Thanos
 
-helm install thanos bitnami/thanos \
-  --namespace monitoring \
-  --values values/thanos-single-cluster.yaml
+helm install thanos bitnami/thanos --namespace monitoring --values values/thanos-single-cluster.yaml
 
 
 
@@ -4744,85 +4135,6 @@ Self-Monitoring Configuration
 
 Create monitoring/self-monitoring-rules.yaml:
 
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  name: monitoring-infrastructure-alerts
-  namespace: monitoring
-spec:
-  groups:
-  - name: thanos.rules
-    interval: 30s
-    rules:
-    # Thanos Query availability
-    - alert: ThanosQueryDown
-      expr: up{job=&quot;thanos-query&quot;} == 0
-      for: 5m
-      labels:
-        severity: critical
-        component: thanos-query
-      annotations:
-        summary: &quot;Thanos Query is down&quot;
-        description: &quot;Thanos Query  has been down for more than 5 minutes.&quot;
-        runbook_url: &quot;https://runbooks.monitoring.company.com/thanos-query-down&quot;
-    
-    # Thanos Query high latency
-    - alert: ThanosQueryHighLatency
-      expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=&quot;thanos-query&quot;,handler=&quot;query&quot;}[5m])) by (le)) &amp;gt; 10
-      for: 5m
-      labels:
-        severity: warning
-        component: thanos-query
-      annotations:
-        summary: &quot;Thanos Query high latency&quot;
-        description: &quot;Thanos Query 99th percentile latency is s for more than 5 minutes.&quot;
-    
-    # Thanos Store gateway issues
-    - alert: ThanosStoreGrpcErrorRate
-      expr: rate(grpc_server_handled_total{grpc_code!=&quot;OK&quot;,job=&quot;thanos-store&quot;}[5m]) &amp;gt; 0.05
-      for: 5m
-      labels:
-        severity: warning
-        component: thanos-store
-      annotations:
-        summary: &quot;Thanos Store gRPC error rate high&quot;
-        description: &quot;Thanos Store  gRPC error rate is  for more than 5 minutes.&quot;
-    
-    # Object storage connectivity
-    - alert: ThanosObjectStorageErrors
-      expr: rate(thanos_objstore_bucket_operation_failures_total[5m]) &amp;gt; 0.01
-      for: 10m
-      labels:
-        severity: warning
-        component: object-storage
-      annotations:
-        summary: &quot;Thanos object storage errors&quot;
-        description: &quot;Thanos components are experiencing object storage errors at a rate of  per second.&quot;
-
-  - name: prometheus.rules
-    interval: 30s
-    rules:
-    # Prometheus targets down
-    - alert: PrometheusTargetMissing
-      expr: up == 0
-      for: 5m
-      labels:
-        severity: warning
-        component: prometheus
-      annotations:
-        summary: &quot;Prometheus target missing&quot;
-        description: &quot;Target  of job  has been down for more than 5 minutes.&quot;
-    
-    # Prometheus configuration reload failed
-    - alert: PrometheusConfigurationReloadFailure
-      expr: prometheus_config_last_reload_successful != 1
-      for: 5m
-      labels:
-        severity: warning
-        component: prometheus
-      annotations:
-        summary: &quot;Prometheus configuration reload failure&quot;
-        description: &quot;Prometheus  configuration reload has failed.&quot;
 
 
 
@@ -4833,71 +4145,6 @@ Backup and Recovery
 
 Create backup/backup-job.yaml:
 
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: monitoring-backup
-  namespace: monitoring
-spec:
-  schedule: &quot;0 2 * * *&quot;  # Daily at 2 AM
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          serviceAccountName: backup-operator
-          containers:
-          - name: backup
-            image: quay.io/thanos/thanos:v0.36.1
-            command:
-            - /bin/sh
-            - -c
-            - |
-              #!/bin/sh
-              echo &quot;Starting monitoring backup...&quot;
-              
-              # Backup Prometheus configuration
-              kubectl get configmaps -n monitoring -o yaml &amp;gt; /backup/configmaps-$(date +%Y%m%d).yaml
-              kubectl get secrets -n monitoring -o yaml &amp;gt; /backup/secrets-$(date +%Y%m%d).yaml
-              kubectl get prometheusrules -n monitoring -o yaml &amp;gt; /backup/rules-$(date +%Y%m%d).yaml
-              
-              # Verify object storage data integrity
-              thanos tools bucket verify \
-                --objstore.config-file=/etc/thanos/objstore.yml \
-                --repair
-              
-              # Generate backup report
-              thanos tools bucket inspect \
-                --objstore.config-file=/etc/thanos/objstore.yml \
-                --output=json &amp;gt; /backup/storage-report-$(date +%Y%m%d).json
-              
-              # Upload backup to secure location
-              aws s3 sync /backup/ s3://monitoring-backups/$(date +%Y%m%d)/
-              
-              echo &quot;Backup completed successfully&quot;
-            
-            volumeMounts:
-            - name: backup-storage
-              mountPath: /backup
-            - name: objstore-config
-              mountPath: /etc/thanos
-              readOnly: true
-            
-            resources:
-              requests:
-                cpu: 500m
-                memory: 1Gi
-              limits:
-                cpu: 2000m
-                memory: 4Gi
-          
-          volumes:
-          - name: backup-storage
-            emptyDir: {}
-          - name: objstore-config
-            secret:
-              secretName: thanos-objstore
-          
-          restartPolicy: OnFailure
 
 
 
@@ -4954,77 +4201,6 @@ DR Testing
 
 Create dr/dr-test-job.yaml:
 
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: dr-testing
-  namespace: monitoring
-spec:
-  schedule: &quot;0 3 * * 0&quot;  # Weekly on Sunday at 3 AM
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          serviceAccountName: dr-tester
-          containers:
-          - name: dr-tester
-            image: dr-orchestrator:latest
-            command:
-            - /bin/sh
-            - -c
-            - |
-              #!/bin/sh
-              echo &quot;Starting DR testing procedure...&quot;
-              
-              TEST_ID=&quot;dr-test-$(date +%Y%m%d-%H%M%S)&quot;
-              echo &quot;Test ID: $TEST_ID&quot;
-              
-              # Test cross-region data consistency
-              echo &quot;Testing cross-region data consistency...&quot;
-              CONSISTENCY_RESULT=$(/scripts/test-data-consistency.sh)
-              
-              # Test failover simulation (non-disruptive)
-              echo &quot;Testing failover simulation...&quot;
-              FAILOVER_RESULT=$(/scripts/simulate-failover.sh --dry-run)
-              
-              # Test recovery time estimation
-              echo &quot;Testing recovery time estimation...&quot;
-              RECOVERY_TIME=$(/scripts/estimate-recovery-time.sh)
-              
-              # Generate test report
-              cat &amp;gt; /tmp/dr-test-report.json &amp;lt;&amp;lt;EOF
-              {
-                &quot;test_id&quot;: &quot;$TEST_ID&quot;,
-                &quot;timestamp&quot;: &quot;$(date -Iseconds)&quot;,
-                &quot;tests&quot;: {
-                  &quot;data_consistency&quot;: {
-                    &quot;status&quot;: &quot;$CONSISTENCY_RESULT&quot;
-                  },
-                  &quot;failover_simulation&quot;: {
-                    &quot;status&quot;: &quot;$FAILOVER_RESULT&quot;
-                  },
-                  &quot;recovery_time&quot;: {
-                    &quot;estimated_time&quot;: &quot;$RECOVERY_TIME&quot;
-                  }
-                }
-              }
-              EOF
-              
-              kubectl create configmap dr-test-results-$TEST_ID \
-                --from-file=/tmp/dr-test-report.json \
-                -n monitoring
-              
-              echo &quot;DR testing completed: $TEST_ID&quot;
-            
-            resources:
-              requests:
-                cpu: 500m
-                memory: 1Gi
-              limits:
-                cpu: 2000m
-                memory: 4Gi
-          
-          restartPolicy: OnFailure
 
 
 
@@ -5043,8 +4219,7 @@ Problem: Thanos Query cannot discover stores
 
 Solution:
 # Check DNS resolution
-kubectl run -it --rm dns-test --image=nicolaka/netshoot --restart=Never -- \
-  dig _grpc._tcp.kube-prometheus-stack-thanos-discovery.monitoring.svc.cluster.local
+kubectl run -it --rm dns-test --image=nicolaka/netshoot --restart=Never -- dig _grpc._tcp.kube-prometheus-stack-thanos-discovery.monitoring.svc.cluster.local
 
 # Verify service endpoints
 kubectl get endpoints -n monitoring | grep thanos
@@ -5063,8 +4238,7 @@ Problem: Thanos components cannot access object storage
 
 Diagnosis:
 # Test object storage connectivity
-kubectl exec -it thanos-query-0 -n monitoring -- \
-  thanos tools bucket ls --objstore.config-file=/etc/bucket/objstore.yml
+kubectl exec -it thanos-query-0 -n monitoring -- thanos tools bucket ls --objstore.config-file=/etc/bucket/objstore.yml
 
 # Check secret configuration
 kubectl get secret thanos-objstore -n monitoring -o yaml
@@ -5169,12 +4343,10 @@ kubectl get pvc -n monitoring -o yaml &amp;gt; pvc-backup-$(date +%Y%m%d).yaml
 helm upgrade prometheus-operator-crds prometheus-community/prometheus-operator-crds -n monitoring
    
 # Upgrade kube-prometheus-stack
-helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  -n monitoring -f values/kube-prometheus-stack.yaml
+helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring -f values/kube-prometheus-stack.yaml
    
 # Upgrade Thanos
-helm upgrade thanos bitnami/thanos \
-  -n monitoring -f values/thanos.yaml
+helm upgrade thanos bitnami/thanos -n monitoring -f values/thanos.yaml
     
   
   Verification after upgrade:
@@ -5252,7 +4424,7 @@ Advanced Topics
   Kubernetes Monitoring Guide
 
 ",
-            "wordcount": "8445",
+            "wordcount": "6497",
             "inLanguage": "en",
             "dateCreated": "2025-06-04/",
             "datePublished": "2025-06-04/",
