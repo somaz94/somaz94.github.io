@@ -220,7 +220,7 @@ June 14, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>5 min to read</span>
+                    <span>16 min to read</span>
                 </p>
                 <h1 class="post-title">Deep Dive into OpenStack Glance</h1>
                 <p class="post-subtitle">Understanding OpenStack's Image Service</p>
@@ -504,6 +504,651 @@ June 14, 2025
 
 <hr />
 
+<h2 id="api-usage-and-cli-examples">API Usage and CLI Examples</h2>
+
+<p>Understanding how to interact with Glance through its API and CLI is essential for effective image management. Here are practical examples and common usage patterns.</p>
+
+<p><br /></p>
+
+<h3 id="glance-cli-commands">Glance CLI Commands</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 40%;">Command</th>
+      <th style="width: 60%;">Description</th>
+    </tr>
+    <tr>
+      <td><code>openstack image list</code></td>
+      <td>List all available images in the cloud</td>
+    </tr>
+    <tr>
+      <td><code>openstack image show &lt;image-id&gt;</code></td>
+      <td>Show detailed information about a specific image</td>
+    </tr>
+    <tr>
+      <td><code>openstack image create --file &lt;path&gt; &lt;name&gt;</code></td>
+      <td>Upload a new image from file</td>
+    </tr>
+    <tr>
+      <td><code>openstack image save --file &lt;path&gt; &lt;image-id&gt;</code></td>
+      <td>Download an image to local file</td>
+    </tr>
+    <tr>
+      <td><code>openstack image delete &lt;image-id&gt;</code></td>
+      <td>Delete an image from Glance</td>
+    </tr>
+    <tr>
+      <td><code>openstack image set --property &lt;key=value&gt; &lt;image-id&gt;</code></td>
+      <td>Set metadata properties for an image</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="image-upload-examples">Image Upload Examples</h3>
+
+<h4 id="upload-ubuntu-cloud-image">Upload Ubuntu Cloud Image:</h4>
+<script src="https://gist.github.com/somaz94/b94af890ff76a686b4ae90ecc0be3d99.js"></script>
+
+<h4 id="upload-windows-server-image">Upload Windows Server Image:</h4>
+<script src="https://gist.github.com/somaz94/a5b71404c75db2b2974f1036f6390b82.js"></script>
+
+<h4 id="create-image-from-instance-snapshot">Create Image from Instance Snapshot:</h4>
+<script src="https://gist.github.com/somaz94/5bfd8186f17a119b2c239348e6fb0e98.js"></script>
+
+<p><br /></p>
+
+<h3 id="api-request-examples">API Request Examples</h3>
+
+<h4 id="list-images">List Images:</h4>
+<script src="https://gist.github.com/somaz94/9d85061e32f837f7f71c6de404540f89.js"></script>
+
+<h4 id="upload-image-two-step-process">Upload Image (two-step process):</h4>
+<script src="https://gist.github.com/somaz94/ffb52f4e07eda4175678a906d54f9462.js"></script>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="real-world-use-cases-and-scenarios">Real-World Use Cases and Scenarios</h2>
+
+<p>Understanding practical applications of Glance helps in designing efficient image management strategies and solving common deployment challenges.</p>
+
+<p><br /></p>
+
+<h3 id="common-deployment-scenarios">Common Deployment Scenarios</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Scenario</th>
+      <th style="width: 35%;">Challenge</th>
+      <th style="width: 40%;">Glance Solution</th>
+    </tr>
+    <tr>
+      <td><strong>Golden Image Management</strong></td>
+      <td>Maintaining standardized OS images</td>
+      <td>
+        <ul>
+          <li>Centralized image repository</li>
+          <li>Version control with metadata</li>
+          <li>Automated image updates</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Multi-Site Deployment</strong></td>
+      <td>Image distribution across regions</td>
+      <td>
+        <ul>
+          <li>Image replication strategies</li>
+          <li>Regional image caching</li>
+          <li>Bandwidth optimization</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Compliance and Security</strong></td>
+      <td>Secure image distribution</td>
+      <td>
+        <ul>
+          <li>Image signing and verification</li>
+          <li>Encrypted storage backends</li>
+          <li>Access control policies</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>DevOps Integration</strong></td>
+      <td>Automated image lifecycle</td>
+      <td>
+        <ul>
+          <li>CI/CD pipeline integration</li>
+          <li>Automated testing workflows</li>
+          <li>Image promotion strategies</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="image-optimization-strategies">Image Optimization Strategies</h3>
+
+<h4 id="disk-format-selection">Disk Format Selection:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># QCOW2 for development (supports snapshots, copy-on-write)</span>
+openstack image create <span class="nt">--disk-format</span> qcow2 <span class="nt">--file</span> image.qcow2 <span class="s2">"dev-image"</span>
+
+<span class="c"># RAW for production (better performance, no overhead)</span>
+openstack image create <span class="nt">--disk-format</span> raw <span class="nt">--file</span> image.raw <span class="s2">"prod-image"</span>
+
+<span class="c"># Convert between formats using qemu-img</span>
+qemu-img convert <span class="nt">-f</span> qcow2 <span class="nt">-O</span> raw image.qcow2 image.raw
+qemu-img convert <span class="nt">-f</span> raw <span class="nt">-O</span> qcow2 image.raw image.qcow2
+</code></pre></div></div>
+
+<h4 id="image-size-optimization">Image Size Optimization:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Compress QCOW2 images</span>
+qemu-img convert <span class="nt">-f</span> qcow2 <span class="nt">-O</span> qcow2 <span class="nt">-c</span> source.qcow2 compressed.qcow2
+
+<span class="c"># Sparse file creation for better storage efficiency</span>
+qemu-img create <span class="nt">-f</span> qcow2 optimized.qcow2 20G
+
+<span class="c"># Zero out unused space before upload</span>
+<span class="nb">dd </span><span class="k">if</span><span class="o">=</span>/dev/zero <span class="nv">of</span><span class="o">=</span>/mnt/zerofile <span class="nv">bs</span><span class="o">=</span>1M
+<span class="nb">rm</span> /mnt/zerofile
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="performance-optimization-and-monitoring">Performance Optimization and Monitoring</h2>
+
+<p>Optimizing Glance performance is crucial for efficient image operations and overall cloud performance. Here are key strategies and monitoring approaches.</p>
+
+<p><br /></p>
+
+<h3 id="performance-optimization-strategies">Performance Optimization Strategies</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Optimization Area</th>
+      <th style="width: 35%;">Strategy</th>
+      <th style="width: 40%;">Implementation</th>
+    </tr>
+    <tr>
+      <td><strong>Storage Performance</strong></td>
+      <td>Optimize storage backend performance</td>
+      <td>
+        <ul>
+          <li>Use high-performance storage</li>
+          <li>Enable caching mechanisms</li>
+          <li>Implement storage tiering</li>
+          <li>Use parallel uploads</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Network Optimization</strong></td>
+      <td>Minimize network bottlenecks</td>
+      <td>
+        <ul>
+          <li>Enable image caching</li>
+          <li>Use compression</li>
+          <li>Implement CDN strategies</li>
+          <li>Optimize network topology</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>API Performance</strong></td>
+      <td>Improve API response times</td>
+      <td>
+        <ul>
+          <li>Database optimization</li>
+          <li>Connection pooling</li>
+          <li>Load balancing</li>
+          <li>Response caching</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="configuration-optimization">Configuration Optimization</h3>
+
+<h4 id="glance-api-configuration">Glance API Configuration:</h4>
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[DEFAULT]</span>
+<span class="c"># Enable multi-store support
+</span><span class="py">enabled_backends</span> <span class="p">=</span> <span class="s">file:file, swift:swift, s3:s3</span>
+
+<span class="c"># Optimize worker processes
+</span><span class="py">workers</span> <span class="p">=</span> <span class="s">4</span>
+
+<span class="c"># Enable image caching
+</span><span class="py">flavor</span> <span class="p">=</span> <span class="s">keystone+cachemanagement</span>
+
+<span class="nn">[glance_store]</span>
+<span class="c"># Configure storage backends
+</span><span class="py">default_backend</span> <span class="p">=</span> <span class="s">swift</span>
+
+<span class="c"># File store configuration
+</span><span class="py">filesystem_store_datadir</span> <span class="p">=</span> <span class="s">/var/lib/glance/images</span>
+<span class="py">filesystem_store_file_perm</span> <span class="p">=</span> <span class="s">0644</span>
+
+<span class="c"># Swift store configuration
+</span><span class="py">swift_store_auth_version</span> <span class="p">=</span> <span class="s">3</span>
+<span class="py">swift_store_create_container_on_put</span> <span class="p">=</span> <span class="s">True</span>
+<span class="py">swift_store_large_object_size</span> <span class="p">=</span> <span class="s">5120</span>
+<span class="py">swift_store_large_object_chunk_size</span> <span class="p">=</span> <span class="s">200</span>
+
+<span class="nn">[image_cache]</span>
+<span class="c"># Enable and configure caching
+</span><span class="py">use_tpool</span> <span class="p">=</span> <span class="s">True</span>
+<span class="py">image_cache_max_size</span> <span class="p">=</span> <span class="s">10737418240  # 10GB</span>
+<span class="py">image_cache_stall_time</span> <span class="p">=</span> <span class="s">86400      # 24 hours</span>
+</code></pre></div></div>
+
+<h4 id="performance-monitoring-metrics">Performance Monitoring Metrics:</h4>
+
+<ul>
+  <li><strong>Image Upload/Download Times</strong>: Track transfer speeds</li>
+  <li><strong>Storage Utilization</strong>: Monitor storage capacity and growth</li>
+  <li><strong>API Response Times</strong>: Track Glance API latency</li>
+  <li><strong>Cache Hit Rates</strong>: Monitor image cache effectiveness</li>
+  <li><strong>Error Rates</strong>: Track failed operations</li>
+</ul>
+
+<h4 id="sample-monitoring-script">Sample Monitoring Script:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Simple Glance performance monitoring</span>
+
+<span class="c"># Check image upload time</span>
+<span class="nb">time </span>openstack image create <span class="nt">--file</span> test.qcow2 test-image
+
+<span class="c"># Monitor storage usage</span>
+<span class="nb">df</span> <span class="nt">-h</span> /var/lib/glance/images/
+
+<span class="c"># Check API response time</span>
+<span class="nb">time </span>openstack image list
+
+<span class="c"># Monitor cache statistics</span>
+glance-cache-manage list-cached
+glance-cache-manage list-queued
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="security-and-image-management">Security and Image Management</h2>
+
+<p>Implementing proper security measures ensures safe image distribution and protects against malicious images in the cloud environment.</p>
+
+<p><br /></p>
+
+<h3 id="security-features">Security Features</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Security Feature</th>
+      <th style="width: 75%;">Implementation</th>
+    </tr>
+    <tr>
+      <td><strong>Image Signing</strong></td>
+      <td>
+        <ul>
+          <li>Generate GPG keys for image signing</li>
+          <li>Sign images before upload to verify integrity</li>
+          <li>Configure Nova to verify image signatures</li>
+          <li>Implement automated signature validation</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Access Control</strong></td>
+      <td>
+        <ul>
+          <li>Configure image visibility (public, private, shared)</li>
+          <li>Implement role-based access control</li>
+          <li>Use project isolation for multi-tenancy</li>
+          <li>Regular access review and cleanup</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Encryption</strong></td>
+      <td>
+        <ul>
+          <li>Encrypt images at rest in storage backends</li>
+          <li>Use HTTPS for all API communications</li>
+          <li>Implement storage-level encryption</li>
+          <li>Secure key management practices</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="image-signing-example">Image Signing Example</h3>
+
+<h4 id="generate-signing-key">Generate Signing Key:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generate GPG key for image signing</span>
+gpg <span class="nt">--gen-key</span>
+
+<span class="c"># Export public key</span>
+gpg <span class="nt">--armor</span> <span class="nt">--export</span> user@example.com <span class="o">&gt;</span> image-signing-key.pub
+
+<span class="c"># Configure Nova to trust the key</span>
+openstack keypair create <span class="nt">--public-key</span> image-signing-key.pub image-signing-key
+</code></pre></div></div>
+
+<h4 id="sign-and-upload-image">Sign and Upload Image:</h4>
+<script src="https://gist.github.com/somaz94/3bb6448f6dcc6b198cad71b94636dd97.js"></script>
+
+<h4 id="security-configuration">Security Configuration:</h4>
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[DEFAULT]</span>
+<span class="c"># Enable image signature verification
+</span><span class="py">verify_glance_signatures</span> <span class="p">=</span> <span class="s">True</span>
+
+<span class="c"># Require signed images for certain flavors
+</span><span class="nn">[signature_verification]</span>
+<span class="py">enforced_image_properties</span> <span class="p">=</span> <span class="s">img_signature_verified:True</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="troubleshooting-common-issues">Troubleshooting Common Issues</h2>
+
+<p>Understanding common Glance issues and their solutions helps maintain a healthy image service and resolve problems quickly.</p>
+
+<p><br /></p>
+
+<h3 id="common-problems-and-solutions">Common Problems and Solutions</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Problem</th>
+      <th style="width: 35%;">Symptoms</th>
+      <th style="width: 40%;">Solution</th>
+    </tr>
+    <tr>
+      <td><strong>Image Upload Failures</strong></td>
+      <td>
+        <ul>
+          <li>Upload timeouts</li>
+          <li>Insufficient storage space</li>
+          <li>Permission errors</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Check storage backend connectivity</li>
+          <li>Verify disk space availability</li>
+          <li>Review file permissions</li>
+          <li>Check network connectivity</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Image Corruption</strong></td>
+      <td>
+        <ul>
+          <li>Checksum mismatches</li>
+          <li>Image validation failures</li>
+          <li>Instance boot failures</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Verify image integrity</li>
+          <li>Re-upload corrupted images</li>
+          <li>Check storage backend health</li>
+          <li>Implement checksum validation</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Performance Issues</strong></td>
+      <td>
+        <ul>
+          <li>Slow image downloads</li>
+          <li>High API latency</li>
+          <li>Storage bottlenecks</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Enable image caching</li>
+          <li>Optimize storage backend</li>
+          <li>Review network configuration</li>
+          <li>Scale API workers</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="diagnostic-commands">Diagnostic Commands</h3>
+
+<h4 id="check-glance-service-health">Check Glance Service Health:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Test Glance API connectivity</span>
+curl <span class="nt">-H</span> <span class="s2">"X-Auth-Token: </span><span class="nv">$OS_TOKEN</span><span class="s2">"</span> http://glance-api:9292/
+
+<span class="c"># Check service status</span>
+systemctl status openstack-glance-api
+systemctl status openstack-glance-registry
+
+<span class="c"># Review service logs</span>
+journalctl <span class="nt">-u</span> openstack-glance-api <span class="nt">-f</span>
+<span class="nb">tail</span> <span class="nt">-f</span> /var/log/glance/api.log
+</code></pre></div></div>
+
+<h4 id="debug-image-issues">Debug Image Issues:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify image integrity</span>
+openstack image show <span class="nv">$IMAGE_ID</span> <span class="nt">--fit-width</span>
+
+<span class="c"># Check image properties</span>
+glance image-show <span class="nv">$IMAGE_ID</span>
+
+<span class="c"># Test image download</span>
+openstack image save <span class="nt">--file</span> test-download.img <span class="nv">$IMAGE_ID</span>
+
+<span class="c"># Verify image format</span>
+qemu-img info test-download.img
+</code></pre></div></div>
+
+<h4 id="storage-backend-diagnostics">Storage Backend Diagnostics:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check filesystem storage</span>
+<span class="nb">df</span> <span class="nt">-h</span> /var/lib/glance/images/
+<span class="nb">ls</span> <span class="nt">-la</span> /var/lib/glance/images/
+
+<span class="c"># Test Swift connectivity (if using Swift)</span>
+swift <span class="nb">stat
+</span>swift list glance
+
+<span class="c"># Check S3 connectivity (if using S3)</span>
+aws s3 <span class="nb">ls </span>s3://glance-images/
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="migration-and-backup-strategies">Migration and Backup Strategies</h2>
+
+<p>Planning and executing image migrations and backups is essential for disaster recovery and service continuity.</p>
+
+<p><br /></p>
+
+<h3 id="migration-strategies">Migration Strategies</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Migration Type</th>
+      <th style="width: 40%;">Approach</th>
+      <th style="width: 40%;">Considerations</th>
+    </tr>
+    <tr>
+      <td><strong>Storage Backend Migration</strong></td>
+      <td>
+        <ul>
+          <li>Configure new storage backend</li>
+          <li>Copy images to new location</li>
+          <li>Update image locations</li>
+          <li>Verify image accessibility</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Downtime requirements</li>
+          <li>Storage capacity planning</li>
+          <li>Network bandwidth</li>
+          <li>Data integrity verification</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Cross-Region Migration</strong></td>
+      <td>
+        <ul>
+          <li>Export image metadata</li>
+          <li>Transfer image files</li>
+          <li>Import to target region</li>
+          <li>Update references</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Network latency</li>
+          <li>Bandwidth limitations</li>
+          <li>Security during transfer</li>
+          <li>Metadata consistency</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Version Upgrade</strong></td>
+      <td>
+        <ul>
+          <li>Backup current deployment</li>
+          <li>Test upgrade procedure</li>
+          <li>Perform database migration</li>
+          <li>Validate functionality</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Compatibility requirements</li>
+          <li>Feature changes</li>
+          <li>Rollback planning</li>
+          <li>Service dependencies</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="backup-and-recovery">Backup and Recovery</h3>
+
+<h4 id="image-backup-script">Image Backup Script:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Automated image backup script</span>
+
+<span class="nv">BACKUP_DIR</span><span class="o">=</span><span class="s2">"/backup/glance-images"</span>
+<span class="nv">DATE</span><span class="o">=</span><span class="si">$(</span><span class="nb">date</span> +%Y%m%d_%H%M%S<span class="si">)</span>
+
+<span class="c"># Create backup directory</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> <span class="nv">$BACKUP_DIR</span>/<span class="nv">$DATE</span>
+
+<span class="c"># Backup image metadata</span>
+openstack image list <span class="nt">--format</span> json <span class="o">&gt;</span> <span class="nv">$BACKUP_DIR</span>/<span class="nv">$DATE</span>/image-metadata.json
+
+<span class="c"># Backup individual images</span>
+<span class="k">while </span><span class="nb">read</span> <span class="nt">-r</span> image_id name<span class="p">;</span> <span class="k">do
+    </span><span class="nb">echo</span> <span class="s2">"Backing up image: </span><span class="nv">$name</span><span class="s2"> (</span><span class="nv">$image_id</span><span class="s2">)"</span>
+    openstack image save <span class="nt">--file</span> <span class="s2">"</span><span class="nv">$BACKUP_DIR</span><span class="s2">/</span><span class="nv">$DATE</span><span class="s2">/</span><span class="k">${</span><span class="nv">name</span><span class="k">}</span><span class="s2">_</span><span class="k">${</span><span class="nv">image_id</span><span class="k">}</span><span class="s2">.img"</span> <span class="nv">$image_id</span>
+<span class="k">done</span> &lt; &lt;<span class="o">(</span>openstack image list <span class="nt">-c</span> ID <span class="nt">-c</span> Name <span class="nt">-f</span> value<span class="o">)</span>
+
+<span class="c"># Compress backup</span>
+<span class="nb">tar</span> <span class="nt">-czf</span> <span class="nv">$BACKUP_DIR</span>/glance-backup-<span class="nv">$DATE</span>.tar.gz <span class="nt">-C</span> <span class="nv">$BACKUP_DIR</span>/<span class="nv">$DATE</span> <span class="nb">.</span>
+<span class="nb">rm</span> <span class="nt">-rf</span> <span class="nv">$BACKUP_DIR</span>/<span class="nv">$DATE</span>
+
+<span class="nb">echo</span> <span class="s2">"Backup completed: glance-backup-</span><span class="nv">$DATE</span><span class="s2">.tar.gz"</span>
+</code></pre></div></div>
+
+<h4 id="recovery-procedure">Recovery Procedure:</h4>
+<script src="https://gist.github.com/somaz94/52278f2e0c6eca11cbb4b98eb1381390.js"></script>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="advanced-features-and-integrations">Advanced Features and Integrations</h2>
+
+<p>Glance provides advanced features for enterprise deployments and integration with external systems.</p>
+
+<p><br /></p>
+
+<h3 id="multi-store-configuration">Multi-Store Configuration</h3>
+
+<h4 id="configure-multiple-storage-backends">Configure Multiple Storage Backends:</h4>
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">[DEFAULT]</span>
+<span class="py">enabled_backends</span> <span class="p">=</span> <span class="s">fast:file, slow:file, object:swift</span>
+
+<span class="nn">[fast]</span>
+<span class="py">store_description</span> <span class="p">=</span> <span class="s">"Fast SSD storage for frequently accessed images"</span>
+<span class="py">filesystem_store_datadir</span> <span class="p">=</span> <span class="s">/fast-storage/glance/images</span>
+
+<span class="nn">[slow]</span>
+<span class="py">store_description</span> <span class="p">=</span> <span class="s">"Slower storage for archived images"</span> 
+<span class="s">filesystem_store_datadir = /slow-storage/glance/images</span>
+
+<span class="nn">[object]</span>
+<span class="py">store_description</span> <span class="p">=</span> <span class="s">"Swift object storage for backup"</span>
+<span class="py">swift_store_config_file</span> <span class="p">=</span> <span class="s">/etc/glance/swift-store.conf</span>
+</code></pre></div></div>
+
+<p><strong>Image Store Selection:</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Upload to specific store</span>
+openstack image create <span class="nt">--store</span> fast <span class="nt">--file</span> image.qcow2 <span class="s2">"production-image"</span>
+
+<span class="c"># Move image between stores</span>
+glance-manage db migrate_location <span class="nt">--from</span> slow <span class="nt">--to</span> fast <span class="nv">$IMAGE_ID</span>
+</code></pre></div></div>
+
+<h3 id="image-import-and-conversion">Image Import and Conversion</h3>
+
+<h4 id="import-from-external-sources">Import from External Sources:</h4>
+<script src="https://gist.github.com/somaz94/99658e1c8454614596bb6287012d6cac.js"></script>
+
+<h3 id="integration-with-cicd">Integration with CI/CD</h3>
+
+<h4 id="jenkins-pipeline-example">Jenkins Pipeline Example:</h4>
+<script src="https://gist.github.com/somaz94/ea82e4c46ed87087f0aa462221db7726.js"></script>
+
+<p><br /></p>
+
+<hr />
+
 <h2 id="usage-and-best-practices">Usage and Best Practices</h2>
 
 <p>Effective use of Glance requires understanding its capabilities and implementing appropriate image management strategies. Here are key considerations and best practices for utilizing Glance effectively.</p>
@@ -576,8 +1221,8 @@ June 14, 2025
 
 <h2 id="key-points">Key Points</h2>
 
-<div class="info-box info-box-success-not-check">
-  <strong>💡 Glance Essentials</strong>
+<div class="quote-box">
+  <strong>Glance Essentials</strong>
   <ul>
     <li>
       <strong>Core Functionality</strong><br />
@@ -600,6 +1245,13 @@ June 14, 2025
       - Metadata management<br />
       - Storage backend flexibility
     </li>
+    <li>
+      <strong>Best Practices</strong><br />
+      - Implement security measures (signing, encryption)<br />
+      - Optimize for performance and storage efficiency<br />
+      - Plan for backup and disaster recovery<br />
+      - Monitor and maintain image lifecycle
+    </li>
   </ul>
 </div>
 
@@ -614,6 +1266,8 @@ June 14, 2025
   <li><a href="https://wiki.openstack.org/wiki/Glance">OpenStack Wiki - Glance</a></li>
   <li><a href="https://docs.openstack.org/api-ref/image/">Glance API Reference</a></li>
   <li><a href="https://docs.openstack.org/glance/latest/admin/index.html">OpenStack Image Management Guide</a></li>
+  <li><a href="https://docs.openstack.org/glance/latest/configuration/index.html">Glance Configuration Reference</a></li>
+  <li><a href="https://docs.openstack.org/security-guide/image/index.html">OpenStack Security Guide - Image Service</a></li>
 </ul>
 
 
@@ -664,7 +1318,7 @@ June 14, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="5">
+            <div class="time-bar" data-minutes="16">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1326,6 +1980,651 @@ This integration enables seamless image management across the OpenStack cloud.
 
 
 
+API Usage and CLI Examples
+
+Understanding how to interact with Glance through its API and CLI is essential for effective image management. Here are practical examples and common usage patterns.
+
+
+
+Glance CLI Commands
+
+
+  
+    
+      Command
+      Description
+    
+    
+      openstack image list
+      List all available images in the cloud
+    
+    
+      openstack image show &amp;lt;image-id&amp;gt;
+      Show detailed information about a specific image
+    
+    
+      openstack image create --file &amp;lt;path&amp;gt; &amp;lt;name&amp;gt;
+      Upload a new image from file
+    
+    
+      openstack image save --file &amp;lt;path&amp;gt; &amp;lt;image-id&amp;gt;
+      Download an image to local file
+    
+    
+      openstack image delete &amp;lt;image-id&amp;gt;
+      Delete an image from Glance
+    
+    
+      openstack image set --property &amp;lt;key=value&amp;gt; &amp;lt;image-id&amp;gt;
+      Set metadata properties for an image
+    
+  
+
+
+
+
+Image Upload Examples
+
+Upload Ubuntu Cloud Image:
+
+
+Upload Windows Server Image:
+
+
+Create Image from Instance Snapshot:
+
+
+
+
+API Request Examples
+
+List Images:
+
+
+Upload Image (two-step process):
+
+
+
+
+
+
+Real-World Use Cases and Scenarios
+
+Understanding practical applications of Glance helps in designing efficient image management strategies and solving common deployment challenges.
+
+
+
+Common Deployment Scenarios
+
+
+  
+    
+      Scenario
+      Challenge
+      Glance Solution
+    
+    
+      Golden Image Management
+      Maintaining standardized OS images
+      
+        
+          Centralized image repository
+          Version control with metadata
+          Automated image updates
+        
+      
+    
+    
+      Multi-Site Deployment
+      Image distribution across regions
+      
+        
+          Image replication strategies
+          Regional image caching
+          Bandwidth optimization
+        
+      
+    
+    
+      Compliance and Security
+      Secure image distribution
+      
+        
+          Image signing and verification
+          Encrypted storage backends
+          Access control policies
+        
+      
+    
+    
+      DevOps Integration
+      Automated image lifecycle
+      
+        
+          CI/CD pipeline integration
+          Automated testing workflows
+          Image promotion strategies
+        
+      
+    
+  
+
+
+
+
+Image Optimization Strategies
+
+Disk Format Selection:
+# QCOW2 for development (supports snapshots, copy-on-write)
+openstack image create --disk-format qcow2 --file image.qcow2 &quot;dev-image&quot;
+
+# RAW for production (better performance, no overhead)
+openstack image create --disk-format raw --file image.raw &quot;prod-image&quot;
+
+# Convert between formats using qemu-img
+qemu-img convert -f qcow2 -O raw image.qcow2 image.raw
+qemu-img convert -f raw -O qcow2 image.raw image.qcow2
+
+
+Image Size Optimization:
+# Compress QCOW2 images
+qemu-img convert -f qcow2 -O qcow2 -c source.qcow2 compressed.qcow2
+
+# Sparse file creation for better storage efficiency
+qemu-img create -f qcow2 optimized.qcow2 20G
+
+# Zero out unused space before upload
+dd if=/dev/zero of=/mnt/zerofile bs=1M
+rm /mnt/zerofile
+
+
+
+
+
+
+Performance Optimization and Monitoring
+
+Optimizing Glance performance is crucial for efficient image operations and overall cloud performance. Here are key strategies and monitoring approaches.
+
+
+
+Performance Optimization Strategies
+
+
+  
+    
+      Optimization Area
+      Strategy
+      Implementation
+    
+    
+      Storage Performance
+      Optimize storage backend performance
+      
+        
+          Use high-performance storage
+          Enable caching mechanisms
+          Implement storage tiering
+          Use parallel uploads
+        
+      
+    
+    
+      Network Optimization
+      Minimize network bottlenecks
+      
+        
+          Enable image caching
+          Use compression
+          Implement CDN strategies
+          Optimize network topology
+        
+      
+    
+    
+      API Performance
+      Improve API response times
+      
+        
+          Database optimization
+          Connection pooling
+          Load balancing
+          Response caching
+        
+      
+    
+  
+
+
+
+
+Configuration Optimization
+
+Glance API Configuration:
+[DEFAULT]
+# Enable multi-store support
+enabled_backends = file:file, swift:swift, s3:s3
+
+# Optimize worker processes
+workers = 4
+
+# Enable image caching
+flavor = keystone+cachemanagement
+
+[glance_store]
+# Configure storage backends
+default_backend = swift
+
+# File store configuration
+filesystem_store_datadir = /var/lib/glance/images
+filesystem_store_file_perm = 0644
+
+# Swift store configuration
+swift_store_auth_version = 3
+swift_store_create_container_on_put = True
+swift_store_large_object_size = 5120
+swift_store_large_object_chunk_size = 200
+
+[image_cache]
+# Enable and configure caching
+use_tpool = True
+image_cache_max_size = 10737418240  # 10GB
+image_cache_stall_time = 86400      # 24 hours
+
+
+Performance Monitoring Metrics:
+
+
+  Image Upload/Download Times: Track transfer speeds
+  Storage Utilization: Monitor storage capacity and growth
+  API Response Times: Track Glance API latency
+  Cache Hit Rates: Monitor image cache effectiveness
+  Error Rates: Track failed operations
+
+
+Sample Monitoring Script:
+#!/bin/bash
+# Simple Glance performance monitoring
+
+# Check image upload time
+time openstack image create --file test.qcow2 test-image
+
+# Monitor storage usage
+df -h /var/lib/glance/images/
+
+# Check API response time
+time openstack image list
+
+# Monitor cache statistics
+glance-cache-manage list-cached
+glance-cache-manage list-queued
+
+
+
+
+
+
+Security and Image Management
+
+Implementing proper security measures ensures safe image distribution and protects against malicious images in the cloud environment.
+
+
+
+Security Features
+
+
+  
+    
+      Security Feature
+      Implementation
+    
+    
+      Image Signing
+      
+        
+          Generate GPG keys for image signing
+          Sign images before upload to verify integrity
+          Configure Nova to verify image signatures
+          Implement automated signature validation
+        
+      
+    
+    
+      Access Control
+      
+        
+          Configure image visibility (public, private, shared)
+          Implement role-based access control
+          Use project isolation for multi-tenancy
+          Regular access review and cleanup
+        
+      
+    
+    
+      Encryption
+      
+        
+          Encrypt images at rest in storage backends
+          Use HTTPS for all API communications
+          Implement storage-level encryption
+          Secure key management practices
+        
+      
+    
+  
+
+
+
+
+Image Signing Example
+
+Generate Signing Key:
+# Generate GPG key for image signing
+gpg --gen-key
+
+# Export public key
+gpg --armor --export user@example.com &amp;gt; image-signing-key.pub
+
+# Configure Nova to trust the key
+openstack keypair create --public-key image-signing-key.pub image-signing-key
+
+
+Sign and Upload Image:
+
+
+Security Configuration:
+[DEFAULT]
+# Enable image signature verification
+verify_glance_signatures = True
+
+# Require signed images for certain flavors
+[signature_verification]
+enforced_image_properties = img_signature_verified:True
+
+
+
+
+
+
+Troubleshooting Common Issues
+
+Understanding common Glance issues and their solutions helps maintain a healthy image service and resolve problems quickly.
+
+
+
+Common Problems and Solutions
+
+
+  
+    
+      Problem
+      Symptoms
+      Solution
+    
+    
+      Image Upload Failures
+      
+        
+          Upload timeouts
+          Insufficient storage space
+          Permission errors
+        
+      
+      
+        
+          Check storage backend connectivity
+          Verify disk space availability
+          Review file permissions
+          Check network connectivity
+        
+      
+    
+    
+      Image Corruption
+      
+        
+          Checksum mismatches
+          Image validation failures
+          Instance boot failures
+        
+      
+      
+        
+          Verify image integrity
+          Re-upload corrupted images
+          Check storage backend health
+          Implement checksum validation
+        
+      
+    
+    
+      Performance Issues
+      
+        
+          Slow image downloads
+          High API latency
+          Storage bottlenecks
+        
+      
+      
+        
+          Enable image caching
+          Optimize storage backend
+          Review network configuration
+          Scale API workers
+        
+      
+    
+  
+
+
+
+
+Diagnostic Commands
+
+Check Glance Service Health:
+# Test Glance API connectivity
+curl -H &quot;X-Auth-Token: $OS_TOKEN&quot; http://glance-api:9292/
+
+# Check service status
+systemctl status openstack-glance-api
+systemctl status openstack-glance-registry
+
+# Review service logs
+journalctl -u openstack-glance-api -f
+tail -f /var/log/glance/api.log
+
+
+Debug Image Issues:
+# Verify image integrity
+openstack image show $IMAGE_ID --fit-width
+
+# Check image properties
+glance image-show $IMAGE_ID
+
+# Test image download
+openstack image save --file test-download.img $IMAGE_ID
+
+# Verify image format
+qemu-img info test-download.img
+
+
+Storage Backend Diagnostics:
+# Check filesystem storage
+df -h /var/lib/glance/images/
+ls -la /var/lib/glance/images/
+
+# Test Swift connectivity (if using Swift)
+swift stat
+swift list glance
+
+# Check S3 connectivity (if using S3)
+aws s3 ls s3://glance-images/
+
+
+
+
+
+
+Migration and Backup Strategies
+
+Planning and executing image migrations and backups is essential for disaster recovery and service continuity.
+
+
+
+Migration Strategies
+
+
+  
+    
+      Migration Type
+      Approach
+      Considerations
+    
+    
+      Storage Backend Migration
+      
+        
+          Configure new storage backend
+          Copy images to new location
+          Update image locations
+          Verify image accessibility
+        
+      
+      
+        
+          Downtime requirements
+          Storage capacity planning
+          Network bandwidth
+          Data integrity verification
+        
+      
+    
+    
+      Cross-Region Migration
+      
+        
+          Export image metadata
+          Transfer image files
+          Import to target region
+          Update references
+        
+      
+      
+        
+          Network latency
+          Bandwidth limitations
+          Security during transfer
+          Metadata consistency
+        
+      
+    
+    
+      Version Upgrade
+      
+        
+          Backup current deployment
+          Test upgrade procedure
+          Perform database migration
+          Validate functionality
+        
+      
+      
+        
+          Compatibility requirements
+          Feature changes
+          Rollback planning
+          Service dependencies
+        
+      
+    
+  
+
+
+
+
+Backup and Recovery
+
+Image Backup Script:
+#!/bin/bash
+# Automated image backup script
+
+BACKUP_DIR=&quot;/backup/glance-images&quot;
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Create backup directory
+mkdir -p $BACKUP_DIR/$DATE
+
+# Backup image metadata
+openstack image list --format json &amp;gt; $BACKUP_DIR/$DATE/image-metadata.json
+
+# Backup individual images
+while read -r image_id name; do
+    echo &quot;Backing up image: $name ($image_id)&quot;
+    openstack image save --file &quot;$BACKUP_DIR/$DATE/${name}_${image_id}.img&quot; $image_id
+done &amp;lt; &amp;lt;(openstack image list -c ID -c Name -f value)
+
+# Compress backup
+tar -czf $BACKUP_DIR/glance-backup-$DATE.tar.gz -C $BACKUP_DIR/$DATE .
+rm -rf $BACKUP_DIR/$DATE
+
+echo &quot;Backup completed: glance-backup-$DATE.tar.gz&quot;
+
+
+Recovery Procedure:
+
+
+
+
+
+
+Advanced Features and Integrations
+
+Glance provides advanced features for enterprise deployments and integration with external systems.
+
+
+
+Multi-Store Configuration
+
+Configure Multiple Storage Backends:
+[DEFAULT]
+enabled_backends = fast:file, slow:file, object:swift
+
+[fast]
+store_description = &quot;Fast SSD storage for frequently accessed images&quot;
+filesystem_store_datadir = /fast-storage/glance/images
+
+[slow]
+store_description = &quot;Slower storage for archived images&quot; 
+filesystem_store_datadir = /slow-storage/glance/images
+
+[object]
+store_description = &quot;Swift object storage for backup&quot;
+swift_store_config_file = /etc/glance/swift-store.conf
+
+
+Image Store Selection:
+# Upload to specific store
+openstack image create --store fast --file image.qcow2 &quot;production-image&quot;
+
+# Move image between stores
+glance-manage db migrate_location --from slow --to fast $IMAGE_ID
+
+
+Image Import and Conversion
+
+Import from External Sources:
+
+
+Integration with CI/CD
+
+Jenkins Pipeline Example:
+
+
+
+
+
+
 Usage and Best Practices
 
 Effective use of Glance requires understanding its capabilities and implementing appropriate image management strategies. Here are key considerations and best practices for utilizing Glance effectively.
@@ -1399,7 +2698,7 @@ Following these guidelines helps ensure efficient image management and optimal c
 Key Points
 
 
-  💡 Glance Essentials
+  Glance Essentials
   
     
       Core Functionality
@@ -1422,6 +2721,13 @@ Key Points
       - Metadata management
       - Storage backend flexibility
     
+    
+      Best Practices
+      - Implement security measures (signing, encryption)
+      - Optimize for performance and storage efficiency
+      - Plan for backup and disaster recovery
+      - Monitor and maintain image lifecycle
+    
   
 
 
@@ -1436,9 +2742,11 @@ References
   OpenStack Wiki - Glance
   Glance API Reference
   OpenStack Image Management Guide
+  Glance Configuration Reference
+  OpenStack Security Guide - Image Service
 
 ",
-            "wordcount": "1044",
+            "wordcount": "2925",
             "inLanguage": "en",
             "dateCreated": "2025-06-14/",
             "datePublished": "2025-06-14/",
