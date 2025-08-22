@@ -220,7 +220,7 @@ March 1, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>15 min to read</span>
+                    <span>13 min to read</span>
                 </p>
                 <h1 class="post-title">Understanding Helm - The Kubernetes Package Manager</h1>
                 <p class="post-subtitle">Simplify and streamline your Kubernetes application deployments</p>
@@ -268,7 +268,7 @@ March 1, 2025
 
 <p>Charts are easy to create, version, share, and publish — making them valuable for streamlining deployments in a Kubernetes environment.</p>
 
-<div class="info-box info-box-default">
+<div class="quote-box">
   <strong>Helm Evolution</strong>
   <p>Helm was initially created by Deis (later acquired by Microsoft) and was donated to the Cloud Native Computing Foundation (CNCF) in 2018. Helm v3, released in November 2019, represented a significant architectural change from Helm v2, removing the server-side Tiller component and improving security.</p>
 </div>
@@ -460,32 +460,7 @@ helm repo list
 </code></pre></div></div>
 
 <h4 id="templatesdeploymentyaml"><code class="language-plaintext highlighter-rouge">templates/deployment.yaml</code></h4>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">include "mychart.fullname" .</span> <span class="pi">}}</span>
-  <span class="na">labels</span><span class="pi">:</span>
-    <span class="pi">{{</span><span class="nv">- include "mychart.labels" . | nindent 4</span> <span class="pi">}}</span>
-<span class="na">spec</span><span class="pi">:</span>
-  <span class="na">replicas</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.replicaCount</span> <span class="pi">}}</span>
-  <span class="na">selector</span><span class="pi">:</span>
-    <span class="na">matchLabels</span><span class="pi">:</span>
-      <span class="pi">{{</span><span class="nv">- include "mychart.selectorLabels" . | nindent 6</span> <span class="pi">}}</span>
-  <span class="na">template</span><span class="pi">:</span>
-    <span class="na">metadata</span><span class="pi">:</span>
-      <span class="na">labels</span><span class="pi">:</span>
-        <span class="pi">{{</span><span class="nv">- include "mychart.selectorLabels" . | nindent 8</span> <span class="pi">}}</span>
-    <span class="na">spec</span><span class="pi">:</span>
-      <span class="na">containers</span><span class="pi">:</span>
-        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Chart.Name</span> <span class="pi">}}</span>
-          <span class="na">image</span><span class="pi">:</span> <span class="s2">"</span><span class="s">{{</span><span class="nv"> </span><span class="s">.Values.image.repository</span><span class="nv"> </span><span class="s">}}:{{</span><span class="nv"> </span><span class="s">.Values.image.tag</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">default</span><span class="nv"> </span><span class="s">.Chart.AppVersion</span><span class="nv"> </span><span class="s">}}"</span>
-          <span class="na">imagePullPolicy</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Values.image.pullPolicy</span> <span class="pi">}}</span>
-          <span class="na">ports</span><span class="pi">:</span>
-            <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">http</span>
-              <span class="na">containerPort</span><span class="pi">:</span> <span class="m">80</span>
-              <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/68cd12e22285d86fecfc6f8cfb205996.js"></script>
 
 <p><br /></p>
 
@@ -501,29 +476,11 @@ helm repo list
   <li><strong>Named Templates</strong>: Create reusable components with <code class="language-plaintext highlighter-rouge">define</code> and <code class="language-plaintext highlighter-rouge">template</code></li>
 </ol>
 
+<p><br /></p>
+
 <p>Example template with control flow:</p>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-configmap</span>
-<span class="na">data</span><span class="pi">:</span>
-  <span class="pi">{{</span><span class="nv">- if eq .Values.environment "production"</span> <span class="pi">}}</span>
-  <span class="na">log-level</span><span class="pi">:</span> <span class="s2">"</span><span class="s">error"</span>
-  <span class="pi">{{</span><span class="nv">- else</span> <span class="pi">}}</span>
-  <span class="na">log-level</span><span class="pi">:</span> <span class="s2">"</span><span class="s">debug"</span>
-  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
-  
-  <span class="pi">{{</span><span class="nv">- with .Values.config</span> <span class="pi">}}</span>
-  <span class="na">database-url</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.dbUrl | quote</span> <span class="pi">}}</span>
-  <span class="na">timeout</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.timeout | default 30</span> <span class="pi">}}</span>
-  <span class="pi">{{</span><span class="nv">- end</span> <span class="pi">}}</span>
-  
-  <span class="na">settings</span><span class="pi">:</span> <span class="pi">|</span>
-    <span class="s">{{- range $key, $val := .Values.settings }}</span>
-    <span class="s">{{ $key }}: {{ $val | quote }}</span>
-    <span class="s">{{- end }}</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/7fecea87d9be9a5292057b6b25feb5dc.js"></script>
 
 <p><br /></p>
 
@@ -553,17 +510,17 @@ helm repo list
       <td><code>helm install my-release bitnami/wordpress</code><br /><code>helm install -f values.yaml my-app ./mychart</code></td>
     </tr>
     <tr>
-      <td>📊 <code>status</code></td>
+      <td><code>status</code></td>
       <td>Check release status</td>
       <td><code>helm status my-release</code></td>
     </tr>
     <tr>
-      <td>⬆ <code>upgrade</code></td>
+      <td><code>upgrade</code></td>
       <td>Upgrade a release</td>
       <td><code>helm upgrade --set image.tag=v2 my-release ./chart</code></td>
     </tr>
     <tr>
-      <td>↩ <code>rollback</code></td>
+      <td><code>rollback</code></td>
       <td>Rollback to previous version</td>
       <td><code>helm rollback my-release 1</code></td>
     </tr>
@@ -740,23 +697,7 @@ helm repo add myrepo https://example.com/charts
 
 <h4 id="example-hook">Example hook:</h4>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">batch/v1</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">Job</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="pi">{{</span> <span class="nv">.Release.Name</span> <span class="pi">}}</span><span class="s">-database-init</span>
-  <span class="na">annotations</span><span class="pi">:</span>
-    <span class="s2">"</span><span class="s">helm.sh/hook"</span><span class="err">:</span> <span class="s">post-install</span>
-    <span class="s">"helm.sh/hook-weight"</span><span class="err">:</span> <span class="s2">"</span><span class="s">5"</span>
-    <span class="s2">"</span><span class="s">helm.sh/hook-delete-policy"</span><span class="err">:</span> <span class="s">hook-succeeded</span>
-<span class="na">spec</span><span class="pi">:</span>
-  <span class="na">template</span><span class="pi">:</span>
-    <span class="na">spec</span><span class="pi">:</span>
-      <span class="na">containers</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">db-init-job</span>
-        <span class="na">image</span><span class="pi">:</span> <span class="s2">"</span><span class="s">{{</span><span class="nv"> </span><span class="s">.Values.initImage.repository</span><span class="nv"> </span><span class="s">}}:{{</span><span class="nv"> </span><span class="s">.Values.initImage.tag</span><span class="nv"> </span><span class="s">}}"</span>
-        <span class="na">command</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">./init-db.sh"</span><span class="pi">]</span>
-      <span class="na">restartPolicy</span><span class="pi">:</span> <span class="s">Never</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/83b0ed912732c04768e75f884369796f.js"></script>
 
 <p><br /></p>
 
@@ -971,6 +912,15 @@ helm diff upgrade my-release bitnami/wordpress
                         
                         
                             <li>
+                                <a href="/category/openstack/openstack-zun/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1742267532/openstack_t2tmoc.png">
+                                    
+                                    <h3>Deep Dive into OpenStack Zun</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
                                 <a href="/category/network/bgp-border-gateway-protocol-complete-guide/">
                                     
                                         <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755074091/bgp-1_i4oqyf.png">
@@ -988,15 +938,6 @@ helm diff upgrade my-release bitnami/wordpress
                                 </a>
                             </li>
                         
-                            <li>
-                                <a href="/category/network/what-is-ssid-complete-guide/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755067573/ssid-1_gp9ncy.png">
-                                    
-                                    <h3>What is SSID? Complete Guide to Service Set Identifier</h3>
-                                </a>
-                            </li>
-                        
                     </ul>
                 </aside>
             
@@ -1005,7 +946,7 @@ helm diff upgrade my-release bitnami/wordpress
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="15">
+            <div class="time-bar" data-minutes="13">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1624,31 +1565,6 @@ mongodb:
 
 templates/deployment.yaml
 
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include &quot;mychart.fullname&quot; . }}
-  labels:
-    {{- include &quot;mychart.labels&quot; . | nindent 4 }}
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      {{- include &quot;mychart.selectorLabels&quot; . | nindent 6 }}
-  template:
-    metadata:
-      labels:
-        {{- include &quot;mychart.selectorLabels&quot; . | nindent 8 }}
-    spec:
-      containers:
-        - name: {{ .Chart.Name }}
-          image: &quot;{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}&quot;
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: 80
-              protocol: TCP
-
 
 
 
@@ -1664,28 +1580,10 @@ Helm uses Go templates to enable dynamic manifest generation. Some key templatin
   Named Templates: Create reusable components with define and template
 
 
+
+
 Example template with control flow:
 
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ .Release.Name }}-configmap
-data:
-  {{- if eq .Values.environment &quot;production&quot; }}
-  log-level: &quot;error&quot;
-  {{- else }}
-  log-level: &quot;debug&quot;
-  {{- end }}
-  
-  {{- with .Values.config }}
-  database-url: {{ .dbUrl | quote }}
-  timeout: {{ .timeout | default 30 }}
-  {{- end }}
-  
-  settings: |
-    {{- range $key, $val := .Values.settings }}
-    {{ $key }}: {{ $val | quote }}
-    {{- end }}
 
 
 
@@ -1716,17 +1614,17 @@ Common Helm Commands
       helm install my-release bitnami/wordpresshelm install -f values.yaml my-app ./mychart
     
     
-      📊 status
+      status
       Check release status
       helm status my-release
     
     
-      ⬆ upgrade
+      upgrade
       Upgrade a release
       helm upgrade --set image.tag=v2 my-release ./chart
     
     
-      ↩ rollback
+      rollback
       Rollback to previous version
       helm rollback my-release 1
     
@@ -1903,22 +1801,6 @@ Helm provides hooks that allow chart developers to intervene at certain points i
 
 Example hook:
 
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: {{ .Release.Name }}-database-init
-  annotations:
-    &quot;helm.sh/hook&quot;: post-install
-    &quot;helm.sh/hook-weight&quot;: &quot;5&quot;
-    &quot;helm.sh/hook-delete-policy&quot;: hook-succeeded
-spec:
-  template:
-    spec:
-      containers:
-      - name: db-init-job
-        image: &quot;{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}&quot;
-        command: [&quot;./init-db.sh&quot;]
-      restartPolicy: Never
 
 
 
@@ -2120,7 +2002,7 @@ Related Tools
   Helm Dashboard - Web UI for Helm
 
 ",
-            "wordcount": "2744",
+            "wordcount": "2358",
             "inLanguage": "en",
             "dateCreated": "2025-03-01/",
             "datePublished": "2025-03-01/",
