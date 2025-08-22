@@ -220,7 +220,7 @@ June 21, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>5 min to read</span>
+                    <span>19 min to read</span>
                 </p>
                 <h1 class="post-title">Deep Dive into OpenStack Keystone</h1>
                 <p class="post-subtitle">Understanding OpenStack's Identity Service</p>
@@ -261,6 +261,8 @@ June 21, 2025
   <li><strong>Authorization</strong>: Manages access control and permissions</li>
   <li><strong>Service Catalog</strong>: Maintains service endpoints and URLs</li>
   <li><strong>Token Management</strong>: Issues and validates access tokens</li>
+  <li><strong>Multi-tenancy</strong>: Enables resource isolation through projects and domains</li>
+  <li><strong>Federation</strong>: Supports identity federation with external systems</li>
 </ul>
 
 <p>As the security backbone of OpenStack, Keystone ensures secure access to cloud resources while maintaining multi-tenancy and role-based access control.</p>
@@ -312,6 +314,51 @@ June 21, 2025
       style D stroke:#333,stroke-width:1px,fill:#ffcc80
       style E stroke:#333,stroke-width:1px,fill:#ce93d8
   </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="keystone-vs-other-identity-systems">Keystone vs Other Identity Systems</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Aspect</th>
+      <th style="width: 25%;">OpenStack Keystone</th>
+      <th style="width: 25%;">AWS IAM</th>
+      <th style="width: 30%;">Azure Active Directory</th>
+    </tr>
+    <tr>
+      <td><strong>Primary Focus</strong></td>
+      <td>OpenStack cloud identity management</td>
+      <td>AWS service access control</td>
+      <td>Enterprise directory services</td>
+    </tr>
+    <tr>
+      <td><strong>Authentication</strong></td>
+      <td>Token-based, LDAP, Database</td>
+      <td>Access keys, temporary credentials</td>
+      <td>SAML, OAuth, OpenID Connect</td>
+    </tr>
+    <tr>
+      <td><strong>Multi-tenancy</strong></td>
+      <td>Projects and domains</td>
+      <td>AWS accounts</td>
+      <td>Tenants and directories</td>
+    </tr>
+    <tr>
+      <td><strong>Federation</strong></td>
+      <td>SAML, OIDC support</td>
+      <td>Cross-account roles</td>
+      <td>Native federation capabilities</td>
+    </tr>
+    <tr>
+      <td><strong>Use Case</strong></td>
+      <td>Private/hybrid cloud</td>
+      <td>Public cloud services</td>
+      <td>Enterprise applications</td>
+    </tr>
+  </table>
 </div>
 
 <p><br /></p>
@@ -431,8 +478,244 @@ June 21, 2025
   <li><strong>Endpoints</strong>: Service access points</li>
 </ul>
 
-<p>These concepts work together to provide comprehensive identity and access management.
-<br /></p>
+<p>These concepts work together to provide comprehensive identity and access management.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="installation-and-configuration">Installation and Configuration</h2>
+
+<p>Setting up Keystone requires careful planning and configuration. This section covers installation methods, database setup, and initial configuration for production environments.</p>
+
+<p><br /></p>
+
+<h3 id="prerequisites-and-requirements">Prerequisites and Requirements</h3>
+
+<h4 id="system-requirements">System Requirements</h4>
+<script src="https://gist.github.com/somaz94/2025cad2ef2c75d3dfd2d2d7f3a36d62.js"></script>
+
+<h4 id="configuration-file-setup">Configuration File Setup</h4>
+<script src="https://gist.github.com/somaz94/f8221653601fd8ae5aff6dbeed946d1d.js"></script>
+
+<h4 id="apache-http-server-configuration">Apache HTTP Server Configuration</h4>
+<div class="language-apache highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/apache2/sites-available/keystone.conf</span>
+<span class="nc">Listen</span> 5000
+
+<span class="p">&lt;</span><span class="nl">VirtualHost</span><span class="sr"> *:5000</span><span class="p">&gt;
+</span>    WSGIDaemonProcess keystone-public processes=5 threads=1 user=keystone group=keystone display-name=%{GROUP}
+    WSGIProcessGroup keystone-public
+    WSGIScriptAlias / /usr/bin/keystone-wsgi-public
+    WSGIApplicationGroup %{GLOBAL}
+    WSGIPassAuthorization <span class="ss">On</span>
+    <span class="nc">LimitRequestBody</span> 114688
+    
+    <span class="nc">ErrorLogFormat</span> "%{cu}t %M"
+    <span class="nc">ErrorLog</span> /var/log/apache2/keystone.log
+    <span class="nc">CustomLog</span> /var/log/apache2/keystone_access.log combined
+    
+    <span class="p">&lt;</span><span class="nl">Directory</span><span class="sr"> /usr/bin</span><span class="p">&gt;
+</span>        <span class="nc">Require</span> <span class="ss">all</span> granted
+    <span class="p">&lt;/</span><span class="nl">Directory</span><span class="p">&gt;
+&lt;/</span><span class="nl">VirtualHost</span><span class="p">&gt;
+</span>
+<span class="c"># Enable the site and restart Apache</span>
+sudo a2ensite keystone
+sudo systemctl restart apache2
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="advanced-configuration-and-integration">Advanced Configuration and Integration</h2>
+
+<p>Advanced Keystone deployments require integration with external systems, high availability setup, and comprehensive security configurations.</p>
+
+<p><br /></p>
+
+<h3 id="ldap-integration">LDAP Integration</h3>
+
+<h4 id="active-directory-integration">Active Directory Integration</h4>
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/keystone/keystone.conf - LDAP configuration
+</span><span class="nn">[identity]</span>
+<span class="py">driver</span> <span class="p">=</span> <span class="s">ldap</span>
+<span class="py">default_domain_id</span> <span class="p">=</span> <span class="s">default</span>
+
+<span class="nn">[ldap]</span>
+<span class="py">url</span> <span class="p">=</span> <span class="s">ldap://ad.example.com:389</span>
+<span class="py">user</span> <span class="p">=</span> <span class="s">cn=keystone,ou=service-accounts,dc=example,dc=com</span>
+<span class="py">password</span> <span class="p">=</span> <span class="s">service_account_password</span>
+<span class="py">suffix</span> <span class="p">=</span> <span class="s">dc=example,dc=com</span>
+
+<span class="c"># User configuration
+</span><span class="py">user_tree_dn</span> <span class="p">=</span> <span class="s">ou=users,dc=example,dc=com</span>
+<span class="py">user_objectclass</span> <span class="p">=</span> <span class="s">person</span>
+<span class="py">user_id_attribute</span> <span class="p">=</span> <span class="s">sAMAccountName</span>
+<span class="py">user_name_attribute</span> <span class="p">=</span> <span class="s">sAMAccountName</span>
+<span class="py">user_mail_attribute</span> <span class="p">=</span> <span class="s">mail</span>
+<span class="py">user_enabled_attribute</span> <span class="p">=</span> <span class="s">userAccountControl</span>
+<span class="py">user_enabled_mask</span> <span class="p">=</span> <span class="s">2</span>
+<span class="py">user_enabled_default</span> <span class="p">=</span> <span class="s">512</span>
+
+<span class="c"># Group configuration
+</span><span class="py">group_tree_dn</span> <span class="p">=</span> <span class="s">ou=groups,dc=example,dc=com</span>
+<span class="py">group_objectclass</span> <span class="p">=</span> <span class="s">group</span>
+<span class="py">group_id_attribute</span> <span class="p">=</span> <span class="s">cn</span>
+<span class="py">group_name_attribute</span> <span class="p">=</span> <span class="s">cn</span>
+<span class="py">group_member_attribute</span> <span class="p">=</span> <span class="s">member</span>
+<span class="py">group_desc_attribute</span> <span class="p">=</span> <span class="s">description</span>
+
+<span class="c"># Query configuration
+</span><span class="py">query_scope</span> <span class="p">=</span> <span class="s">sub</span>
+<span class="py">page_size</span> <span class="p">=</span> <span class="s">1000</span>
+<span class="py">alias_dereferencing</span> <span class="p">=</span> <span class="s">never</span>
+<span class="py">debug_level</span> <span class="p">=</span> <span class="s">0</span>
+
+<span class="c"># Connection pool
+</span><span class="py">use_pool</span> <span class="p">=</span> <span class="s">true</span>
+<span class="py">pool_size</span> <span class="p">=</span> <span class="s">10</span>
+<span class="py">pool_retry_max</span> <span class="p">=</span> <span class="s">3</span>
+<span class="py">pool_retry_delay</span> <span class="p">=</span> <span class="s">0.1</span>
+<span class="py">pool_connection_timeout</span> <span class="p">=</span> <span class="s">-1</span>
+<span class="py">pool_connection_lifetime</span> <span class="p">=</span> <span class="s">600</span>
+
+<span class="c"># TLS configuration
+</span><span class="py">use_tls</span> <span class="p">=</span> <span class="s">true</span>
+<span class="py">tls_cacertfile</span> <span class="p">=</span> <span class="s">/etc/ssl/certs/ca-certificates.crt</span>
+<span class="py">tls_req_cert</span> <span class="p">=</span> <span class="s">demand</span>
+</code></pre></div></div>
+
+<h4 id="multi-domain-ldap-setup">Multi-Domain LDAP Setup</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Script to configure multiple LDAP domains</span>
+
+<span class="c"># Create domain-specific configuration files</span>
+<span class="nb">sudo mkdir</span> <span class="nt">-p</span> /etc/keystone/domains
+
+<span class="c"># Engineering domain</span>
+<span class="nb">cat</span> <span class="o">&gt;</span> /etc/keystone/domains/keystone.engineering.conf <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+[ldap]
+url = ldap://engineering.example.com:389
+user = cn=keystone,ou=service,dc=engineering,dc=example,dc=com
+password = eng_service_password
+suffix = dc=engineering,dc=example,dc=com
+user_tree_dn = ou=users,dc=engineering,dc=example,dc=com
+group_tree_dn = ou=groups,dc=engineering,dc=example,dc=com
+</span><span class="no">EOF
+
+</span><span class="c"># Sales domain</span>
+<span class="nb">cat</span> <span class="o">&gt;</span> /etc/keystone/domains/keystone.sales.conf <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+[ldap]
+url = ldap://sales.example.com:389
+user = cn=keystone,ou=service,dc=sales,dc=example,dc=com
+password = sales_service_password
+suffix = dc=sales,dc=example,dc=com
+user_tree_dn = ou=users,dc=sales,dc=example,dc=com
+group_tree_dn = ou=groups,dc=sales,dc=example,dc=com
+</span><span class="no">EOF
+
+</span><span class="c"># Set proper permissions</span>
+<span class="nb">sudo chown </span>keystone:keystone /etc/keystone/domains/<span class="k">*</span>
+<span class="nb">sudo chmod </span>640 /etc/keystone/domains/<span class="k">*</span>
+
+<span class="c"># Create domains in Keystone</span>
+openstack domain create <span class="nt">--description</span> <span class="s2">"Engineering Department"</span> engineering
+openstack domain create <span class="nt">--description</span> <span class="s2">"Sales Department"</span> sales
+</code></pre></div></div>
+
+<h3 id="high-availability-configuration">High Availability Configuration</h3>
+
+<h4 id="multi-node-keystone-setup">Multi-Node Keystone Setup</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># High availability Keystone deployment script</span>
+
+<span class="c"># Configure shared database (Galera cluster)</span>
+<span class="c"># /etc/mysql/mariadb.conf.d/99-galera.cnf</span>
+<span class="nb">cat</span> <span class="o">&gt;</span> /etc/mysql/mariadb.conf.d/99-galera.cnf <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+[galera]
+wsrep_on=ON
+wsrep_provider=/usr/lib/galera/libgalera_smm.so
+wsrep_cluster_address="gcomm://controller1,controller2,controller3"
+wsrep_cluster_name="openstack"
+wsrep_node_address="</span><span class="si">$(</span><span class="nb">hostname</span> <span class="nt">-I</span> | <span class="nb">awk</span> <span class="s1">'{print $1}'</span><span class="si">)</span><span class="sh">"
+wsrep_node_name="</span><span class="si">$(</span><span class="nb">hostname</span><span class="si">)</span><span class="sh">"
+wsrep_sst_method=rsync
+binlog_format=row
+default_storage_engine=InnoDB
+innodb_autoinc_lock_mode=2
+bind-address=0.0.0.0
+</span><span class="no">EOF
+
+</span><span class="c"># Shared Fernet keys setup</span>
+<span class="c"># Sync Fernet keys across all nodes</span>
+rsync <span class="nt">-av</span> /etc/keystone/fernet-keys/ controller2:/etc/keystone/fernet-keys/
+rsync <span class="nt">-av</span> /etc/keystone/fernet-keys/ controller3:/etc/keystone/fernet-keys/
+
+<span class="c"># Load balancer configuration (HAProxy)</span>
+<span class="nb">cat</span> <span class="o">&gt;&gt;</span> /etc/haproxy/haproxy.cfg <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+listen keystone_admin_cluster
+  bind 10.0.0.100:35357
+  balance source
+  option httpchk
+  option httplog
+  option httpclose
+  server controller1 10.0.0.11:35357 check inter 2000 rise 2 fall 5
+  server controller2 10.0.0.12:35357 check inter 2000 rise 2 fall 5
+  server controller3 10.0.0.13:35357 check inter 2000 rise 2 fall 5
+
+listen keystone_public_cluster
+  bind 10.0.0.100:5000
+  balance source
+  option httpchk
+  option httplog
+  option httpclose
+  server controller1 10.0.0.11:5000 check inter 2000 rise 2 fall 5
+  server controller2 10.0.0.12:5000 check inter 2000 rise 2 fall 5
+  server controller3 10.0.0.13:5000 check inter 2000 rise 2 fall 5
+</span><span class="no">EOF
+
+</span>systemctl restart haproxy
+</code></pre></div></div>
+
+<h3 id="federation-and-saml-integration">Federation and SAML Integration</h3>
+
+<h4 id="saml2-federation-setup">SAML2 Federation Setup</h4>
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">&lt;!-- /etc/keystone/saml2_idp_metadata.xml --&gt;</span>
+<span class="cp">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+<span class="nt">&lt;md:EntityDescriptor</span> <span class="na">xmlns:md=</span><span class="s">"urn:oasis:names:tc:SAML:2.0:metadata"</span>
+                     <span class="na">entityID=</span><span class="s">"https://idp.example.com/simplesaml/saml2/idp/metadata.php"</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;md:IDPSSODescriptor</span> <span class="na">WantAuthnRequestsSigned=</span><span class="s">"false"</span>
+                       <span class="na">protocolSupportEnumeration=</span><span class="s">"urn:oasis:names:tc:SAML:2.0:protocol"</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;md:SingleSignOnService</span> <span class="na">Binding=</span><span class="s">"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"</span>
+                            <span class="na">Location=</span><span class="s">"https://idp.example.com/simplesaml/saml2/idp/SSOService.php"</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;md:SingleSignOnService</span> <span class="na">Binding=</span><span class="s">"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"</span>
+                            <span class="na">Location=</span><span class="s">"https://idp.example.com/simplesaml/saml2/idp/SSOService.php"</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;/md:IDPSSODescriptor&gt;</span>
+<span class="nt">&lt;/md:EntityDescriptor&gt;</span>
+</code></pre></div></div>
+
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Federation configuration in keystone.conf
+</span><span class="nn">[federation]</span>
+<span class="py">driver</span> <span class="p">=</span> <span class="s">sql</span>
+<span class="py">assertion_prefix</span> <span class="p">=</span> <span class="s">ADFS_</span>
+<span class="py">remote_id_attribute</span> <span class="p">=</span> <span class="s">ADFS_CLAIMS</span>
+
+<span class="nn">[saml]</span>
+<span class="py">certfile</span> <span class="p">=</span> <span class="s">/etc/keystone/ssl/certs/keystone.pem</span>
+<span class="py">keyfile</span> <span class="p">=</span> <span class="s">/etc/keystone/ssl/private/keystone.key</span>
+<span class="py">idp_entity_id</span> <span class="p">=</span> <span class="s">https://idp.example.com/simplesaml/saml2/idp/metadata.php</span>
+<span class="py">idp_sso_endpoint</span> <span class="p">=</span> <span class="s">https://idp.example.com/simplesaml/saml2/idp/SSOService.php</span>
+<span class="py">idp_metadata_path</span> <span class="p">=</span> <span class="s">/etc/keystone/saml2_idp_metadata.xml</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Configure federation</span>
+openstack identity provider create <span class="nt">--remote-id</span> https://idp.example.com/simplesaml/saml2/idp/metadata.php saml2_idp
+
+openstack mapping create <span class="nt">--rules</span> mapping_rules.json saml_mapping
+
+openstack federation protocol create <span class="nt">--identity-provider</span> saml2_idp <span class="nt">--mapping</span> saml_mapping saml2
+</code></pre></div></div>
 
 <hr />
 
@@ -506,6 +789,32 @@ June 21, 2025
 
 <hr />
 
+<h2 id="practical-operations-and-management">Practical Operations and Management</h2>
+
+<p>Effective Keystone management requires understanding daily operations, troubleshooting techniques, and performance optimization strategies for production environments.</p>
+
+<p><br /></p>
+
+<h3 id="user-and-project-management">User and Project Management</h3>
+
+<h4 id="command-line-administration">Command-Line Administration</h4>
+<script src="https://gist.github.com/somaz94/32904ad247f236e86e460e297105e529.js"></script>
+
+<h4 id="user-lifecycle-management">User Lifecycle Management</h4>
+<script src="https://gist.github.com/somaz94/5fde353ec5b1dad8e48d8ebb9fd347cc.js"></script>
+
+<h3 id="token-management-and-security">Token Management and Security</h3>
+
+<h4 id="token-lifecycle-management">Token Lifecycle Management</h4>
+<script src="https://gist.github.com/somaz94/976f0b27f530b771c6f3153510beeb92.js"></script>
+
+<h3 id="performance-monitoring-and-optimization">Performance Monitoring and Optimization</h3>
+
+<h4 id="performance-metrics-collection">Performance Metrics Collection</h4>
+<script src="https://gist.github.com/somaz94/065a34c373f8863491eed2d584466339.js"></script>
+
+<hr />
+
 <h2 id="usage-and-best-practices">Usage and Best Practices</h2>
 
 <p>Effective use of Keystone requires understanding its capabilities and implementing appropriate security practices. Here are key considerations and best practices for utilizing Keystone effectively.</p>
@@ -576,33 +885,251 @@ June 21, 2025
 
 <hr />
 
+<h2 id="troubleshooting-and-maintenance">Troubleshooting and Maintenance</h2>
+
+<p>Effective troubleshooting requires understanding common issues, log analysis techniques, and maintenance procedures for Keystone deployments.</p>
+
+<p><br /></p>
+
+<h3 id="common-issues-and-solutions">Common Issues and Solutions</h3>
+
+<h4 id="authentication-and-token-issues">Authentication and Token Issues</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Keystone troubleshooting toolkit</span>
+
+<span class="c"># Diagnose authentication failures</span>
+diagnose_auth_failures<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">local </span><span class="nv">log_file</span><span class="o">=</span><span class="s2">"/var/log/keystone/keystone.log"</span>
+    <span class="nb">local </span><span class="nv">user_name</span><span class="o">=</span><span class="nv">$1</span>
+    
+    <span class="nb">echo</span> <span class="s2">"Diagnosing authentication issues for user: </span><span class="nv">$user_name</span><span class="s2">"</span>
+    
+    <span class="c"># Check recent authentication attempts</span>
+    <span class="nb">echo</span> <span class="s2">"Recent authentication attempts:"</span>
+    <span class="nb">grep</span> <span class="s2">"</span><span class="nv">$user_name</span><span class="s2">"</span> <span class="nv">$log_file</span> | <span class="nb">grep</span> <span class="nt">-E</span> <span class="s2">"(authentication|failed|success)"</span> | <span class="nb">tail</span> <span class="nt">-10</span>
+    
+    <span class="c"># Check user status</span>
+    <span class="nv">user_info</span><span class="o">=</span><span class="si">$(</span>openstack user show <span class="nv">$user_name</span> <span class="nt">--format</span> json 2&gt;/dev/null<span class="si">)</span>
+    <span class="k">if</span> <span class="o">[[</span> <span class="nv">$?</span> <span class="nt">-eq</span> 0 <span class="o">]]</span><span class="p">;</span> <span class="k">then
+        </span><span class="nv">enabled</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="nv">$user_info</span> | jq <span class="nt">-r</span> <span class="s1">'.enabled'</span><span class="si">)</span>
+        <span class="nb">echo</span> <span class="s2">"User enabled: </span><span class="nv">$enabled</span><span class="s2">"</span>
+        
+        <span class="k">if</span> <span class="o">[[</span> <span class="nv">$enabled</span> <span class="o">==</span> <span class="s2">"false"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
+            </span><span class="nb">echo</span> <span class="s2">"ISSUE: User account is disabled"</span>
+        <span class="k">fi
+    else
+        </span><span class="nb">echo</span> <span class="s2">"ISSUE: User not found"</span>
+    <span class="k">fi</span>
+    
+    <span class="c"># Check password policy violations</span>
+    <span class="nb">echo</span> <span class="s2">"Checking password policy violations:"</span>
+    <span class="nb">grep</span> <span class="s2">"</span><span class="nv">$user_name</span><span class="s2">"</span> <span class="nv">$log_file</span> | <span class="nb">grep</span> <span class="nt">-i</span> <span class="s2">"password"</span> | <span class="nb">grep</span> <span class="nt">-E</span> <span class="s2">"(expired|policy|violation)"</span> | <span class="nb">tail</span> <span class="nt">-5</span>
+    
+    <span class="c"># Check account lockout</span>
+    <span class="nv">lockout_count</span><span class="o">=</span><span class="si">$(</span><span class="nb">grep</span> <span class="s2">"</span><span class="nv">$user_name</span><span class="s2">"</span> <span class="nv">$log_file</span> | <span class="nb">grep</span> <span class="s2">"lockout"</span> | <span class="nb">wc</span> <span class="nt">-l</span><span class="si">)</span>
+    <span class="k">if</span> <span class="o">[[</span> <span class="nv">$lockout_count</span> <span class="nt">-gt</span> 0 <span class="o">]]</span><span class="p">;</span> <span class="k">then
+        </span><span class="nb">echo</span> <span class="s2">"WARNING: Account lockout detected (</span><span class="nv">$lockout_count</span><span class="s2"> occurrences)"</span>
+    <span class="k">fi</span>
+<span class="o">}</span>
+
+<span class="c"># Fix common token issues</span>
+fix_token_issues<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">echo</span> <span class="s2">"Checking and fixing token-related issues..."</span>
+    
+    <span class="c"># Check Fernet key permissions</span>
+    <span class="nb">echo</span> <span class="s2">"Checking Fernet key permissions:"</span>
+    <span class="nb">ls</span> <span class="nt">-la</span> /etc/keystone/fernet-keys/
+    
+    <span class="c"># Fix permissions if needed</span>
+    <span class="nb">sudo chown</span> <span class="nt">-R</span> keystone:keystone /etc/keystone/fernet-keys/
+    <span class="nb">sudo chmod </span>600 /etc/keystone/fernet-keys/<span class="k">*</span>
+    
+    <span class="c"># Check key rotation status</span>
+    <span class="nb">echo</span> <span class="s2">"Fernet key rotation status:"</span>
+    <span class="nv">key_count</span><span class="o">=</span><span class="si">$(</span><span class="nb">ls</span> /etc/keystone/fernet-keys/ | <span class="nb">wc</span> <span class="nt">-l</span><span class="si">)</span>
+    <span class="nb">echo</span> <span class="s2">"Number of Fernet keys: </span><span class="nv">$key_count</span><span class="s2">"</span>
+    
+    <span class="k">if</span> <span class="o">[[</span> <span class="nv">$key_count</span> <span class="nt">-lt</span> 2 <span class="o">]]</span><span class="p">;</span> <span class="k">then
+        </span><span class="nb">echo</span> <span class="s2">"WARNING: Insufficient Fernet keys, rotating..."</span>
+        <span class="nb">sudo </span>keystone-manage fernet_rotate <span class="nt">--keystone-user</span> keystone <span class="nt">--keystone-group</span> keystone
+    <span class="k">fi</span>
+    
+    <span class="c"># Clean token cache</span>
+    <span class="nb">echo</span> <span class="s2">"Cleaning token cache..."</span>
+    <span class="k">if </span><span class="nb">command</span> <span class="nt">-v</span> memcached &amp;&gt; /dev/null<span class="p">;</span> <span class="k">then
+        </span><span class="nb">echo</span> <span class="s2">"flush_all"</span> | nc localhost 11211
+        <span class="nb">echo</span> <span class="s2">"Memcached cache cleared"</span>
+    <span class="k">fi</span>
+    
+    <span class="c"># Restart Keystone services</span>
+    <span class="nb">echo</span> <span class="s2">"Restarting Keystone services..."</span>
+    <span class="nb">sudo </span>systemctl restart apache2
+    <span class="nb">echo</span> <span class="s2">"Services restarted"</span>
+<span class="o">}</span>
+
+<span class="c"># Database connectivity check</span>
+check_database_connectivity<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">local </span><span class="nv">db_host</span><span class="o">=</span><span class="s2">"localhost"</span>
+    <span class="nb">local </span><span class="nv">db_user</span><span class="o">=</span><span class="s2">"keystone"</span>
+    <span class="nb">local </span><span class="nv">db_pass</span><span class="o">=</span><span class="s2">"</span><span class="nv">$KEYSTONE_DB_PASS</span><span class="s2">"</span>
+    <span class="nb">local </span><span class="nv">db_name</span><span class="o">=</span><span class="s2">"keystone"</span>
+    
+    <span class="nb">echo</span> <span class="s2">"Checking database connectivity..."</span>
+    
+    <span class="c"># Test connection</span>
+    <span class="k">if </span>mysql <span class="nt">-h</span> <span class="nv">$db_host</span> <span class="nt">-u</span> <span class="nv">$db_user</span> <span class="nt">-p</span><span class="nv">$db_pass</span> <span class="nt">-e</span> <span class="s2">"USE </span><span class="nv">$db_name</span><span class="s2">; SELECT 1;"</span> &amp;&gt;/dev/null<span class="p">;</span> <span class="k">then
+        </span><span class="nb">echo</span> <span class="s2">"Database connection: OK"</span>
+        
+        <span class="c"># Check table integrity</span>
+        <span class="nb">echo</span> <span class="s2">"Checking table integrity:"</span>
+        <span class="nv">tables</span><span class="o">=</span><span class="si">$(</span>mysql <span class="nt">-h</span> <span class="nv">$db_host</span> <span class="nt">-u</span> <span class="nv">$db_user</span> <span class="nt">-p</span><span class="nv">$db_pass</span> <span class="nv">$db_name</span> <span class="nt">-e</span> <span class="s2">"SHOW TABLES;"</span> | <span class="nb">grep</span> <span class="nt">-v</span> Tables<span class="si">)</span>
+        
+        <span class="k">for </span>table <span class="k">in</span> <span class="nv">$tables</span><span class="p">;</span> <span class="k">do
+            </span><span class="nv">count</span><span class="o">=</span><span class="si">$(</span>mysql <span class="nt">-h</span> <span class="nv">$db_host</span> <span class="nt">-u</span> <span class="nv">$db_user</span> <span class="nt">-p</span><span class="nv">$db_pass</span> <span class="nv">$db_name</span> <span class="nt">-e</span> <span class="s2">"SELECT COUNT(*) FROM </span><span class="nv">$table</span><span class="s2">;"</span> | <span class="nb">tail</span> <span class="nt">-1</span><span class="si">)</span>
+            <span class="nb">echo</span> <span class="s2">"Table </span><span class="nv">$table</span><span class="s2">: </span><span class="nv">$count</span><span class="s2"> rows"</span>
+        <span class="k">done
+    else
+        </span><span class="nb">echo</span> <span class="s2">"ERROR: Database connection failed"</span>
+        <span class="nb">echo</span> <span class="s2">"Check database credentials and network connectivity"</span>
+    <span class="k">fi</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="service-integration-problems">Service Integration Problems</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Service integration troubleshooting</span>
+
+<span class="c"># Check service catalog issues</span>
+check_service_catalog<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">echo</span> <span class="s2">"Checking service catalog configuration..."</span>
+    
+    <span class="c"># List all services</span>
+    openstack service list <span class="nt">--format</span> table
+    
+    <span class="c"># Check for missing endpoints</span>
+    <span class="nv">services</span><span class="o">=</span><span class="si">$(</span>openstack service list <span class="nt">-f</span> value <span class="nt">-c</span> ID<span class="si">)</span>
+    
+    <span class="k">for </span>service_id <span class="k">in</span> <span class="nv">$services</span><span class="p">;</span> <span class="k">do
+        </span><span class="nv">service_name</span><span class="o">=</span><span class="si">$(</span>openstack service show <span class="nv">$service_id</span> <span class="nt">-f</span> value <span class="nt">-c</span> name<span class="si">)</span>
+        <span class="nv">endpoint_count</span><span class="o">=</span><span class="si">$(</span>openstack endpoint list <span class="nt">--service</span> <span class="nv">$service_id</span> <span class="nt">-f</span> value | <span class="nb">wc</span> <span class="nt">-l</span><span class="si">)</span>
+        
+        <span class="k">if</span> <span class="o">[[</span> <span class="nv">$endpoint_count</span> <span class="nt">-eq</span> 0 <span class="o">]]</span><span class="p">;</span> <span class="k">then
+            </span><span class="nb">echo</span> <span class="s2">"WARNING: Service '</span><span class="nv">$service_name</span><span class="s2">' has no endpoints"</span>
+        <span class="k">elif</span> <span class="o">[[</span> <span class="nv">$endpoint_count</span> <span class="nt">-lt</span> 3 <span class="o">]]</span><span class="p">;</span> <span class="k">then
+            </span><span class="nb">echo</span> <span class="s2">"WARNING: Service '</span><span class="nv">$service_name</span><span class="s2">' missing some endpoint types"</span>
+        <span class="k">fi
+    done</span>
+<span class="o">}</span>
+
+<span class="c"># Test service connectivity</span>
+test_service_connectivity<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">local </span><span class="nv">service_name</span><span class="o">=</span><span class="nv">$1</span>
+    
+    <span class="nb">echo</span> <span class="s2">"Testing connectivity to </span><span class="nv">$service_name</span><span class="s2"> service..."</span>
+    
+    <span class="c"># Get service endpoints</span>
+    <span class="nv">endpoints</span><span class="o">=</span><span class="si">$(</span>openstack endpoint list <span class="nt">--service</span> <span class="nv">$service_name</span> <span class="nt">-f</span> value <span class="nt">-c</span> URL<span class="si">)</span>
+    
+    <span class="k">for </span>endpoint <span class="k">in</span> <span class="nv">$endpoints</span><span class="p">;</span> <span class="k">do
+        </span><span class="nb">echo</span> <span class="s2">"Testing endpoint: </span><span class="nv">$endpoint</span><span class="s2">"</span>
+        
+        <span class="c"># Test HTTP connectivity</span>
+        <span class="k">if </span>curl <span class="nt">-s</span> <span class="nt">--connect-timeout</span> 5 <span class="s2">"</span><span class="nv">$endpoint</span><span class="s2">/health"</span> &amp;&gt;/dev/null<span class="p">;</span> <span class="k">then
+            </span><span class="nb">echo</span> <span class="s2">"  Status: OK"</span>
+        <span class="k">elif </span>curl <span class="nt">-s</span> <span class="nt">--connect-timeout</span> 5 <span class="s2">"</span><span class="nv">$endpoint</span><span class="s2">"</span> &amp;&gt;/dev/null<span class="p">;</span> <span class="k">then
+            </span><span class="nb">echo</span> <span class="s2">"  Status: Reachable (no health endpoint)"</span>
+        <span class="k">else
+            </span><span class="nb">echo</span> <span class="s2">"  Status: FAILED"</span>
+        <span class="k">fi
+    done</span>
+<span class="o">}</span>
+
+<span class="c"># Fix endpoint URLs</span>
+fix_endpoint_urls<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">local </span><span class="nv">old_url</span><span class="o">=</span><span class="nv">$1</span>
+    <span class="nb">local </span><span class="nv">new_url</span><span class="o">=</span><span class="nv">$2</span>
+    
+    <span class="nb">echo</span> <span class="s2">"Updating endpoint URLs from </span><span class="nv">$old_url</span><span class="s2"> to </span><span class="nv">$new_url</span><span class="s2">"</span>
+    
+    <span class="c"># Find endpoints with old URL</span>
+    <span class="nv">endpoints</span><span class="o">=</span><span class="si">$(</span>openstack endpoint list <span class="nt">-f</span> value <span class="nt">-c</span> ID <span class="nt">-c</span> URL | <span class="nb">grep</span> <span class="s2">"</span><span class="nv">$old_url</span><span class="s2">"</span> | <span class="nb">cut</span> <span class="nt">-d</span><span class="s1">' '</span> <span class="nt">-f1</span><span class="si">)</span>
+    
+    <span class="k">for </span>endpoint_id <span class="k">in</span> <span class="nv">$endpoints</span><span class="p">;</span> <span class="k">do
+        </span><span class="nv">current_url</span><span class="o">=</span><span class="si">$(</span>openstack endpoint show <span class="nv">$endpoint_id</span> <span class="nt">-f</span> value <span class="nt">-c</span> url<span class="si">)</span>
+        <span class="nv">updated_url</span><span class="o">=</span><span class="k">${</span><span class="nv">current_url</span><span class="p">/</span><span class="nv">$old_url</span><span class="p">/</span><span class="nv">$new_url</span><span class="k">}</span>
+        
+        openstack endpoint <span class="nb">set</span> <span class="nt">--url</span> <span class="s2">"</span><span class="nv">$updated_url</span><span class="s2">"</span> <span class="nv">$endpoint_id</span>
+        <span class="nb">echo</span> <span class="s2">"Updated endpoint </span><span class="nv">$endpoint_id</span><span class="s2">: </span><span class="nv">$current_url</span><span class="s2"> -&gt; </span><span class="nv">$updated_url</span><span class="s2">"</span>
+    <span class="k">done</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="log-analysis-and-monitoring">Log Analysis and Monitoring</h3>
+
+<h4 id="comprehensive-log-analysis">Comprehensive Log Analysis</h4>
+<script src="https://gist.github.com/somaz94/5d525f92599dd273cc90085af3b9803f.js"></script>
+
+<h3 id="backup-and-recovery-procedures">Backup and Recovery Procedures</h3>
+
+<h4 id="database-backup-and-recovery">Database Backup and Recovery</h4>
+<script src="https://gist.github.com/somaz94/53a0c807a58d21874e7f807530b32f94.js"></script>
+
+<hr />
+
 <h2 id="key-points">Key Points</h2>
 
 <div class="info-box info-box-success-not-check">
-  <strong>💡 Keystone Essentials</strong>
+  <strong>Keystone Essentials</strong>
   <ul>
     <li>
       <strong>Core Functionality</strong><br />
       - Centralized authentication and authorization<br />
       - Role-based access control<br />
       - Service endpoint management<br />
-      - Token-based security
+      - Token-based security<br />
+      - Multi-domain support for organization isolation
     </li>
     <li>
       <strong>Architecture</strong><br />
       - Modular backend design<br />
       - Flexible authentication methods<br />
       - Comprehensive policy engine<br />
-      - Service catalog management
+      - Service catalog management<br />
+      - High availability clustering support
     </li>
     <li>
       <strong>Key Features</strong><br />
       - User and group management<br />
       - Project and domain isolation<br />
       - Token-based authentication<br />
-      - Service endpoint discovery
+      - Service endpoint discovery<br />
+      - LDAP and federation integration
+    </li>
+    <li>
+      <strong>Production Considerations</strong><br />
+      - Database optimization and monitoring<br />
+      - Fernet key rotation automation<br />
+      - Security compliance and auditing<br />
+      - Performance monitoring and tuning<br />
+      - Comprehensive backup and recovery procedures
     </li>
   </ul>
+</div>
+
+<p><br /></p>
+
+<h3 id="best-practices-summary">Best Practices Summary</h3>
+
+<div class="quote-box">
+  <strong>Enterprise Keystone Deployment Guidelines:</strong>
+  
+  <p><strong>Security First:</strong> Implement comprehensive security measures including strong authentication, proper access controls, and regular security audits. Use federated identity when possible to leverage existing enterprise identity systems.</p>
+  
+  <p><strong>High Availability:</strong> Deploy Keystone in a clustered configuration with database replication, load balancing, and proper failover mechanisms to ensure service continuity.</p>
+  
+  <p><strong>Performance Optimization:</strong> Monitor and optimize database performance, implement proper caching strategies, and tune token expiration policies based on your organization's security requirements.</p>
+  
+  <p><strong>Operational Excellence:</strong> Establish automated backup procedures, implement comprehensive monitoring, and create detailed runbooks for common operational tasks and troubleshooting scenarios.</p>
 </div>
 
 <p><br /></p>
@@ -610,12 +1137,44 @@ June 21, 2025
 <hr />
 
 <h2 id="references">References</h2>
+
 <ul>
   <li><a href="https://docs.openstack.org/keystone/latest/">OpenStack Keystone Documentation</a></li>
   <li><a href="https://docs.redhat.com/openstack/">Red Hat OpenStack Platform Documentation</a></li>
   <li><a href="https://wiki.openstack.org/wiki/Keystone">OpenStack Wiki - Keystone</a></li>
   <li><a href="https://docs.openstack.org/api-ref/identity/">Keystone API Reference</a></li>
   <li><a href="https://docs.openstack.org/keystone/latest/admin/index.html">OpenStack Identity Management Guide</a></li>
+  <li><a href="https://docs.openstack.org/keystone/latest/configuration/">Keystone Configuration Reference</a></li>
+  <li><a href="https://docs.openstack.org/security-guide/">OpenStack Security Guide</a></li>
+  <li><a href="https://docs.openstack.org/keystone/latest/admin/federation/introduction.html">Keystone Federation Documentation</a></li>
+  <li><a href="https://docs.openstack.org/keystone/latest/admin/identity-ldap.html">LDAP Integration Guide</a></li>
+  <li><a href="https://docs.openstack.org/keystone/latest/admin/tokens.html">Token Management Best Practices</a></li>
+</ul>
+
+<h2 id="additional-resources">Additional Resources</h2>
+
+<h3 id="tools-and-utilities">Tools and Utilities</h3>
+<ul>
+  <li><strong>OpenStack CLI</strong>: <a href="https://docs.openstack.org/python-openstackclient/latest/">python-openstackclient</a></li>
+  <li><strong>Keystone Management</strong>: <a href="https://docs.openstack.org/python-keystoneclient/latest/">python-keystoneclient</a></li>
+  <li><strong>Federation Tools</strong>: <a href="https://pysaml2.readthedocs.io/">pysaml2</a>, <a href="https://github.com/Uninett/mod_auth_mellon">mod_auth_mellon</a></li>
+  <li><strong>Monitoring</strong>: <a href="https://docs.openstack.org/operations-guide/ops-monitoring.html">OpenStack Monitoring Guide</a></li>
+</ul>
+
+<h3 id="training-and-certification">Training and Certification</h3>
+<ul>
+  <li><a href="https://www.openstack.org/marketplace/training/">OpenStack Foundation Training</a></li>
+  <li><a href="https://www.openstack.org/coa/">Certified OpenStack Administrator (COA)</a></li>
+  <li><a href="https://www.redhat.com/en/services/training/rh124-red-hat-system-administration-i">Red Hat OpenStack Training</a></li>
+  <li><a href="https://www.suse.com/training/">SUSE OpenStack Cloud Training</a></li>
+</ul>
+
+<h3 id="community-resources">Community Resources</h3>
+<ul>
+  <li><a href="https://lists.openstack.org/">OpenStack Mailing Lists</a></li>
+  <li><a href="https://docs.openstack.org/contributors/common/irc.html">OpenStack IRC Channels</a></li>
+  <li><a href="https://bugs.launchpad.net/keystone">OpenStack Bug Tracker</a></li>
+  <li><a href="https://www.openstack.org/summit/">OpenStack Summit Presentations</a></li>
 </ul>
 
 
@@ -666,7 +1225,7 @@ June 21, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="5">
+            <div class="time-bar" data-minutes="19">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -1085,6 +1644,8 @@ Keystone serves as the central identity service in OpenStack, providing essentia
   Authorization: Manages access control and permissions
   Service Catalog: Maintains service endpoints and URLs
   Token Management: Issues and validates access tokens
+  Multi-tenancy: Enables resource isolation through projects and domains
+  Federation: Supports identity federation with external systems
 
 
 As the security backbone of OpenStack, Keystone ensures secure access to cloud resources while maintaining multi-tenancy and role-based access control.
@@ -1135,6 +1696,51 @@ Keystone Architecture Overview (Diagram Description)
       style C stroke:#333,stroke-width:1px,fill:#64b5f6
       style D stroke:#333,stroke-width:1px,fill:#ffcc80
       style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  
+
+
+
+
+Keystone vs Other Identity Systems
+
+
+  
+    
+      Aspect
+      OpenStack Keystone
+      AWS IAM
+      Azure Active Directory
+    
+    
+      Primary Focus
+      OpenStack cloud identity management
+      AWS service access control
+      Enterprise directory services
+    
+    
+      Authentication
+      Token-based, LDAP, Database
+      Access keys, temporary credentials
+      SAML, OAuth, OpenID Connect
+    
+    
+      Multi-tenancy
+      Projects and domains
+      AWS accounts
+      Tenants and directories
+    
+    
+      Federation
+      SAML, OIDC support
+      Cross-account roles
+      Native federation capabilities
+    
+    
+      Use Case
+      Private/hybrid cloud
+      Public cloud services
+      Enterprise applications
+    
   
 
 
@@ -1260,6 +1866,242 @@ These concepts work together to provide comprehensive identity and access manage
 
 
 
+
+Installation and Configuration
+
+Setting up Keystone requires careful planning and configuration. This section covers installation methods, database setup, and initial configuration for production environments.
+
+
+
+Prerequisites and Requirements
+
+System Requirements
+
+
+Configuration File Setup
+
+
+Apache HTTP Server Configuration
+# /etc/apache2/sites-available/keystone.conf
+Listen 5000
+
+&amp;lt;VirtualHost *:5000&amp;gt;
+    WSGIDaemonProcess keystone-public processes=5 threads=1 user=keystone group=keystone display-name=%{GROUP}
+    WSGIProcessGroup keystone-public
+    WSGIScriptAlias / /usr/bin/keystone-wsgi-public
+    WSGIApplicationGroup %{GLOBAL}
+    WSGIPassAuthorization On
+    LimitRequestBody 114688
+    
+    ErrorLogFormat &quot;%{cu}t %M&quot;
+    ErrorLog /var/log/apache2/keystone.log
+    CustomLog /var/log/apache2/keystone_access.log combined
+    
+    &amp;lt;Directory /usr/bin&amp;gt;
+        Require all granted
+    &amp;lt;/Directory&amp;gt;
+&amp;lt;/VirtualHost&amp;gt;
+
+# Enable the site and restart Apache
+sudo a2ensite keystone
+sudo systemctl restart apache2
+
+
+
+
+
+
+Advanced Configuration and Integration
+
+Advanced Keystone deployments require integration with external systems, high availability setup, and comprehensive security configurations.
+
+
+
+LDAP Integration
+
+Active Directory Integration
+# /etc/keystone/keystone.conf - LDAP configuration
+[identity]
+driver = ldap
+default_domain_id = default
+
+[ldap]
+url = ldap://ad.example.com:389
+user = cn=keystone,ou=service-accounts,dc=example,dc=com
+password = service_account_password
+suffix = dc=example,dc=com
+
+# User configuration
+user_tree_dn = ou=users,dc=example,dc=com
+user_objectclass = person
+user_id_attribute = sAMAccountName
+user_name_attribute = sAMAccountName
+user_mail_attribute = mail
+user_enabled_attribute = userAccountControl
+user_enabled_mask = 2
+user_enabled_default = 512
+
+# Group configuration
+group_tree_dn = ou=groups,dc=example,dc=com
+group_objectclass = group
+group_id_attribute = cn
+group_name_attribute = cn
+group_member_attribute = member
+group_desc_attribute = description
+
+# Query configuration
+query_scope = sub
+page_size = 1000
+alias_dereferencing = never
+debug_level = 0
+
+# Connection pool
+use_pool = true
+pool_size = 10
+pool_retry_max = 3
+pool_retry_delay = 0.1
+pool_connection_timeout = -1
+pool_connection_lifetime = 600
+
+# TLS configuration
+use_tls = true
+tls_cacertfile = /etc/ssl/certs/ca-certificates.crt
+tls_req_cert = demand
+
+
+Multi-Domain LDAP Setup
+#!/bin/bash
+# Script to configure multiple LDAP domains
+
+# Create domain-specific configuration files
+sudo mkdir -p /etc/keystone/domains
+
+# Engineering domain
+cat &amp;gt; /etc/keystone/domains/keystone.engineering.conf &amp;lt;&amp;lt; EOF
+[ldap]
+url = ldap://engineering.example.com:389
+user = cn=keystone,ou=service,dc=engineering,dc=example,dc=com
+password = eng_service_password
+suffix = dc=engineering,dc=example,dc=com
+user_tree_dn = ou=users,dc=engineering,dc=example,dc=com
+group_tree_dn = ou=groups,dc=engineering,dc=example,dc=com
+EOF
+
+# Sales domain
+cat &amp;gt; /etc/keystone/domains/keystone.sales.conf &amp;lt;&amp;lt; EOF
+[ldap]
+url = ldap://sales.example.com:389
+user = cn=keystone,ou=service,dc=sales,dc=example,dc=com
+password = sales_service_password
+suffix = dc=sales,dc=example,dc=com
+user_tree_dn = ou=users,dc=sales,dc=example,dc=com
+group_tree_dn = ou=groups,dc=sales,dc=example,dc=com
+EOF
+
+# Set proper permissions
+sudo chown keystone:keystone /etc/keystone/domains/*
+sudo chmod 640 /etc/keystone/domains/*
+
+# Create domains in Keystone
+openstack domain create --description &quot;Engineering Department&quot; engineering
+openstack domain create --description &quot;Sales Department&quot; sales
+
+
+High Availability Configuration
+
+Multi-Node Keystone Setup
+#!/bin/bash
+# High availability Keystone deployment script
+
+# Configure shared database (Galera cluster)
+# /etc/mysql/mariadb.conf.d/99-galera.cnf
+cat &amp;gt; /etc/mysql/mariadb.conf.d/99-galera.cnf &amp;lt;&amp;lt; EOF
+[galera]
+wsrep_on=ON
+wsrep_provider=/usr/lib/galera/libgalera_smm.so
+wsrep_cluster_address=&quot;gcomm://controller1,controller2,controller3&quot;
+wsrep_cluster_name=&quot;openstack&quot;
+wsrep_node_address=&quot;$(hostname -I | awk &apos;{print $1}&apos;)&quot;
+wsrep_node_name=&quot;$(hostname)&quot;
+wsrep_sst_method=rsync
+binlog_format=row
+default_storage_engine=InnoDB
+innodb_autoinc_lock_mode=2
+bind-address=0.0.0.0
+EOF
+
+# Shared Fernet keys setup
+# Sync Fernet keys across all nodes
+rsync -av /etc/keystone/fernet-keys/ controller2:/etc/keystone/fernet-keys/
+rsync -av /etc/keystone/fernet-keys/ controller3:/etc/keystone/fernet-keys/
+
+# Load balancer configuration (HAProxy)
+cat &amp;gt;&amp;gt; /etc/haproxy/haproxy.cfg &amp;lt;&amp;lt; EOF
+listen keystone_admin_cluster
+  bind 10.0.0.100:35357
+  balance source
+  option httpchk
+  option httplog
+  option httpclose
+  server controller1 10.0.0.11:35357 check inter 2000 rise 2 fall 5
+  server controller2 10.0.0.12:35357 check inter 2000 rise 2 fall 5
+  server controller3 10.0.0.13:35357 check inter 2000 rise 2 fall 5
+
+listen keystone_public_cluster
+  bind 10.0.0.100:5000
+  balance source
+  option httpchk
+  option httplog
+  option httpclose
+  server controller1 10.0.0.11:5000 check inter 2000 rise 2 fall 5
+  server controller2 10.0.0.12:5000 check inter 2000 rise 2 fall 5
+  server controller3 10.0.0.13:5000 check inter 2000 rise 2 fall 5
+EOF
+
+systemctl restart haproxy
+
+
+Federation and SAML Integration
+
+SAML2 Federation Setup
+&amp;lt;!-- /etc/keystone/saml2_idp_metadata.xml --&amp;gt;
+&amp;lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&amp;gt;
+&amp;lt;md:EntityDescriptor xmlns:md=&quot;urn:oasis:names:tc:SAML:2.0:metadata&quot;
+                     entityID=&quot;https://idp.example.com/simplesaml/saml2/idp/metadata.php&quot;&amp;gt;
+  &amp;lt;md:IDPSSODescriptor WantAuthnRequestsSigned=&quot;false&quot;
+                       protocolSupportEnumeration=&quot;urn:oasis:names:tc:SAML:2.0:protocol&quot;&amp;gt;
+    &amp;lt;md:SingleSignOnService Binding=&quot;urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect&quot;
+                            Location=&quot;https://idp.example.com/simplesaml/saml2/idp/SSOService.php&quot;/&amp;gt;
+    &amp;lt;md:SingleSignOnService Binding=&quot;urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST&quot;
+                            Location=&quot;https://idp.example.com/simplesaml/saml2/idp/SSOService.php&quot;/&amp;gt;
+  &amp;lt;/md:IDPSSODescriptor&amp;gt;
+&amp;lt;/md:EntityDescriptor&amp;gt;
+
+
+# Federation configuration in keystone.conf
+[federation]
+driver = sql
+assertion_prefix = ADFS_
+remote_id_attribute = ADFS_CLAIMS
+
+[saml]
+certfile = /etc/keystone/ssl/certs/keystone.pem
+keyfile = /etc/keystone/ssl/private/keystone.key
+idp_entity_id = https://idp.example.com/simplesaml/saml2/idp/metadata.php
+idp_sso_endpoint = https://idp.example.com/simplesaml/saml2/idp/SSOService.php
+idp_metadata_path = /etc/keystone/saml2_idp_metadata.xml
+
+
+# Configure federation
+openstack identity provider create --remote-id https://idp.example.com/simplesaml/saml2/idp/metadata.php saml2_idp
+
+openstack mapping create --rules mapping_rules.json saml_mapping
+
+openstack federation protocol create --identity-provider saml2_idp --mapping saml_mapping saml2
+
+
+
+
 Access Control and Authorization
 
 Keystone provides robust access control mechanisms through role-based access control (RBAC) and policy-based authorization. This enables fine-grained control over resource access while maintaining security and compliance.
@@ -1326,6 +2168,32 @@ Keystone integrates with various OpenStack services:
 
 This integration ensures consistent authentication and authorization across all OpenStack services.
 
+
+
+
+
+Practical Operations and Management
+
+Effective Keystone management requires understanding daily operations, troubleshooting techniques, and performance optimization strategies for production environments.
+
+
+
+User and Project Management
+
+Command-Line Administration
+
+
+User Lifecycle Management
+
+
+Token Management and Security
+
+Token Lifecycle Management
+
+
+Performance Monitoring and Optimization
+
+Performance Metrics Collection
 
 
 
@@ -1400,10 +2268,201 @@ Following these guidelines helps ensure secure and efficient identity management
 
 
 
+Troubleshooting and Maintenance
+
+Effective troubleshooting requires understanding common issues, log analysis techniques, and maintenance procedures for Keystone deployments.
+
+
+
+Common Issues and Solutions
+
+Authentication and Token Issues
+#!/bin/bash
+# Keystone troubleshooting toolkit
+
+# Diagnose authentication failures
+diagnose_auth_failures() {
+    local log_file=&quot;/var/log/keystone/keystone.log&quot;
+    local user_name=$1
+    
+    echo &quot;Diagnosing authentication issues for user: $user_name&quot;
+    
+    # Check recent authentication attempts
+    echo &quot;Recent authentication attempts:&quot;
+    grep &quot;$user_name&quot; $log_file | grep -E &quot;(authentication|failed|success)&quot; | tail -10
+    
+    # Check user status
+    user_info=$(openstack user show $user_name --format json 2&amp;gt;/dev/null)
+    if [[ $? -eq 0 ]]; then
+        enabled=$(echo $user_info | jq -r &apos;.enabled&apos;)
+        echo &quot;User enabled: $enabled&quot;
+        
+        if [[ $enabled == &quot;false&quot; ]]; then
+            echo &quot;ISSUE: User account is disabled&quot;
+        fi
+    else
+        echo &quot;ISSUE: User not found&quot;
+    fi
+    
+    # Check password policy violations
+    echo &quot;Checking password policy violations:&quot;
+    grep &quot;$user_name&quot; $log_file | grep -i &quot;password&quot; | grep -E &quot;(expired|policy|violation)&quot; | tail -5
+    
+    # Check account lockout
+    lockout_count=$(grep &quot;$user_name&quot; $log_file | grep &quot;lockout&quot; | wc -l)
+    if [[ $lockout_count -gt 0 ]]; then
+        echo &quot;WARNING: Account lockout detected ($lockout_count occurrences)&quot;
+    fi
+}
+
+# Fix common token issues
+fix_token_issues() {
+    echo &quot;Checking and fixing token-related issues...&quot;
+    
+    # Check Fernet key permissions
+    echo &quot;Checking Fernet key permissions:&quot;
+    ls -la /etc/keystone/fernet-keys/
+    
+    # Fix permissions if needed
+    sudo chown -R keystone:keystone /etc/keystone/fernet-keys/
+    sudo chmod 600 /etc/keystone/fernet-keys/*
+    
+    # Check key rotation status
+    echo &quot;Fernet key rotation status:&quot;
+    key_count=$(ls /etc/keystone/fernet-keys/ | wc -l)
+    echo &quot;Number of Fernet keys: $key_count&quot;
+    
+    if [[ $key_count -lt 2 ]]; then
+        echo &quot;WARNING: Insufficient Fernet keys, rotating...&quot;
+        sudo keystone-manage fernet_rotate --keystone-user keystone --keystone-group keystone
+    fi
+    
+    # Clean token cache
+    echo &quot;Cleaning token cache...&quot;
+    if command -v memcached &amp;amp;&amp;gt; /dev/null; then
+        echo &quot;flush_all&quot; | nc localhost 11211
+        echo &quot;Memcached cache cleared&quot;
+    fi
+    
+    # Restart Keystone services
+    echo &quot;Restarting Keystone services...&quot;
+    sudo systemctl restart apache2
+    echo &quot;Services restarted&quot;
+}
+
+# Database connectivity check
+check_database_connectivity() {
+    local db_host=&quot;localhost&quot;
+    local db_user=&quot;keystone&quot;
+    local db_pass=&quot;$KEYSTONE_DB_PASS&quot;
+    local db_name=&quot;keystone&quot;
+    
+    echo &quot;Checking database connectivity...&quot;
+    
+    # Test connection
+    if mysql -h $db_host -u $db_user -p$db_pass -e &quot;USE $db_name; SELECT 1;&quot; &amp;amp;&amp;gt;/dev/null; then
+        echo &quot;Database connection: OK&quot;
+        
+        # Check table integrity
+        echo &quot;Checking table integrity:&quot;
+        tables=$(mysql -h $db_host -u $db_user -p$db_pass $db_name -e &quot;SHOW TABLES;&quot; | grep -v Tables)
+        
+        for table in $tables; do
+            count=$(mysql -h $db_host -u $db_user -p$db_pass $db_name -e &quot;SELECT COUNT(*) FROM $table;&quot; | tail -1)
+            echo &quot;Table $table: $count rows&quot;
+        done
+    else
+        echo &quot;ERROR: Database connection failed&quot;
+        echo &quot;Check database credentials and network connectivity&quot;
+    fi
+}
+
+
+Service Integration Problems
+#!/bin/bash
+# Service integration troubleshooting
+
+# Check service catalog issues
+check_service_catalog() {
+    echo &quot;Checking service catalog configuration...&quot;
+    
+    # List all services
+    openstack service list --format table
+    
+    # Check for missing endpoints
+    services=$(openstack service list -f value -c ID)
+    
+    for service_id in $services; do
+        service_name=$(openstack service show $service_id -f value -c name)
+        endpoint_count=$(openstack endpoint list --service $service_id -f value | wc -l)
+        
+        if [[ $endpoint_count -eq 0 ]]; then
+            echo &quot;WARNING: Service &apos;$service_name&apos; has no endpoints&quot;
+        elif [[ $endpoint_count -lt 3 ]]; then
+            echo &quot;WARNING: Service &apos;$service_name&apos; missing some endpoint types&quot;
+        fi
+    done
+}
+
+# Test service connectivity
+test_service_connectivity() {
+    local service_name=$1
+    
+    echo &quot;Testing connectivity to $service_name service...&quot;
+    
+    # Get service endpoints
+    endpoints=$(openstack endpoint list --service $service_name -f value -c URL)
+    
+    for endpoint in $endpoints; do
+        echo &quot;Testing endpoint: $endpoint&quot;
+        
+        # Test HTTP connectivity
+        if curl -s --connect-timeout 5 &quot;$endpoint/health&quot; &amp;amp;&amp;gt;/dev/null; then
+            echo &quot;  Status: OK&quot;
+        elif curl -s --connect-timeout 5 &quot;$endpoint&quot; &amp;amp;&amp;gt;/dev/null; then
+            echo &quot;  Status: Reachable (no health endpoint)&quot;
+        else
+            echo &quot;  Status: FAILED&quot;
+        fi
+    done
+}
+
+# Fix endpoint URLs
+fix_endpoint_urls() {
+    local old_url=$1
+    local new_url=$2
+    
+    echo &quot;Updating endpoint URLs from $old_url to $new_url&quot;
+    
+    # Find endpoints with old URL
+    endpoints=$(openstack endpoint list -f value -c ID -c URL | grep &quot;$old_url&quot; | cut -d&apos; &apos; -f1)
+    
+    for endpoint_id in $endpoints; do
+        current_url=$(openstack endpoint show $endpoint_id -f value -c url)
+        updated_url=${current_url/$old_url/$new_url}
+        
+        openstack endpoint set --url &quot;$updated_url&quot; $endpoint_id
+        echo &quot;Updated endpoint $endpoint_id: $current_url -&amp;gt; $updated_url&quot;
+    done
+}
+
+
+Log Analysis and Monitoring
+
+Comprehensive Log Analysis
+
+
+Backup and Recovery Procedures
+
+Database Backup and Recovery
+
+
+
+
 Key Points
 
 
-  💡 Keystone Essentials
+  Keystone Essentials
   
     
       Core Functionality
@@ -1411,6 +2470,7 @@ Key Points
       - Role-based access control
       - Service endpoint management
       - Token-based security
+      - Multi-domain support for organization isolation
     
     
       Architecture
@@ -1418,6 +2478,7 @@ Key Points
       - Flexible authentication methods
       - Comprehensive policy engine
       - Service catalog management
+      - High availability clustering support
     
     
       Key Features
@@ -1425,8 +2486,33 @@ Key Points
       - Project and domain isolation
       - Token-based authentication
       - Service endpoint discovery
+      - LDAP and federation integration
+    
+    
+      Production Considerations
+      - Database optimization and monitoring
+      - Fernet key rotation automation
+      - Security compliance and auditing
+      - Performance monitoring and tuning
+      - Comprehensive backup and recovery procedures
     
   
+
+
+
+
+Best Practices Summary
+
+
+  Enterprise Keystone Deployment Guidelines:
+  
+  Security First: Implement comprehensive security measures including strong authentication, proper access controls, and regular security audits. Use federated identity when possible to leverage existing enterprise identity systems.
+  
+  High Availability: Deploy Keystone in a clustered configuration with database replication, load balancing, and proper failover mechanisms to ensure service continuity.
+  
+  Performance Optimization: Monitor and optimize database performance, implement proper caching strategies, and tune token expiration policies based on your organization&apos;s security requirements.
+  
+  Operational Excellence: Establish automated backup procedures, implement comprehensive monitoring, and create detailed runbooks for common operational tasks and troubleshooting scenarios.
 
 
 
@@ -1435,14 +2521,46 @@ Key Points
 
 References
 
+
   OpenStack Keystone Documentation
   Red Hat OpenStack Platform Documentation
   OpenStack Wiki - Keystone
   Keystone API Reference
   OpenStack Identity Management Guide
+  Keystone Configuration Reference
+  OpenStack Security Guide
+  Keystone Federation Documentation
+  LDAP Integration Guide
+  Token Management Best Practices
+
+
+Additional Resources
+
+Tools and Utilities
+
+  OpenStack CLI: python-openstackclient
+  Keystone Management: python-keystoneclient
+  Federation Tools: pysaml2, mod_auth_mellon
+  Monitoring: OpenStack Monitoring Guide
+
+
+Training and Certification
+
+  OpenStack Foundation Training
+  Certified OpenStack Administrator (COA)
+  Red Hat OpenStack Training
+  SUSE OpenStack Cloud Training
+
+
+Community Resources
+
+  OpenStack Mailing Lists
+  OpenStack IRC Channels
+  OpenStack Bug Tracker
+  OpenStack Summit Presentations
 
 ",
-            "wordcount": "994",
+            "wordcount": "3449",
             "inLanguage": "en",
             "dateCreated": "2025-06-21/",
             "datePublished": "2025-06-21/",
