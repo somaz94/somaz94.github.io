@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>이동형 - DevOps Engineer Resume</title>
     <link rel="stylesheet" href="/css/resume-style.css">
+    <style>
+        /* PDF 생성 시 페이지 나누기 최적화 */
+        @media print {
+            .section {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            
+            .experience-item {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            
+            .intro-text {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="resume-container">
@@ -22,6 +41,21 @@
             <span>📄</span>
             <span data-ko="PDF 다운로드" data-en="Download PDF">PDF 다운로드</span>
         </button>
+        
+        <!-- 비밀번호 입력 모달 -->
+        <div id="password-modal">
+            <div class="modal-content">
+                <h3 data-ko="🔒 연락처 보기" data-en="🔒 View Contact">🔒 연락처 보기</h3>
+                <p data-ko="비밀번호를 입력하세요." data-en="Please enter the password">비밀번호를 입력하세요.</p>
+                <p data-ko="메일로 연락 주시면, 비밀번호 알려드립니다." data-en="Contact me via email for the password.">메일로 연락 주시면, 비밀번호 알려드립니다.</p>
+                <input type="password" id="password-input" placeholder="비밀번호 입력" data-ko="비밀번호 입력" data-en="Enter password">
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="checkPassword()" data-ko="확인" data-en="Confirm">확인</button>
+                    <button class="btn btn-secondary" onclick="closePasswordModal()" data-ko="취소" data-en="Cancel">취소</button>
+                </div>
+                <p id="password-error" data-ko="비밀번호가 올바르지 않습니다." data-en="Incorrect password.">비밀번호가 올바르지 않습니다.</p>
+            </div>
+        </div>
 
         <!-- Header -->
         <div class="header">
@@ -36,10 +70,16 @@
                 <div class="contact-icon">✉️</div>
                 <a href="mailto:genius5711@gmail.com" class="contact-link">genius5711@gmail.com</a>
             </div>
-            <!-- <div class="contact-item">
+            <div class="contact-item" id="phone-contact" style="display: none;">
                 <div class="contact-icon">📞</div>
-                <span>+82 10-****-****</span>
-            </div> -->
+                <span id="phone-number"></span>
+            </div>
+            
+            <!-- 비밀번호 입력 버튼 -->
+            <div class="contact-item" id="password-trigger">
+                <div class="contact-icon">🔒</div>
+                <span onclick="showPasswordInput()" data-ko="연락처 보기" data-en="View Contact">연락처 보기</span>
+            </div>
             <div class="contact-item">
                 <div class="contact-icon">📖</div>
                 <a href="https://somaz.tistory.com/" class="contact-link" target="_blank">somaz.tistory.com</a>
@@ -507,64 +547,96 @@ Going forward, I aim to become an engineer who can contribute to infrastructure 
     <script>
         // PDF 다운로드 함수
         function downloadPDF() {
-            // PDF 다운로드 전에 버튼들을 숨김
-            const languageToggle = document.querySelector('.language-toggle');
-            const careerYears = document.querySelector('#career-years');
-            const pdfBtn = document.querySelector('.pdf-download-btn');
-            
-            const originalLanguageDisplay = languageToggle.style.display;
-            const originalCareerDisplay = careerYears.style.display;
-            const originalPdfDisplay = pdfBtn.style.display;
-            
-            languageToggle.style.display = 'none';
-            careerYears.style.display = 'none';
-            pdfBtn.style.display = 'none';
-            
-            // 페이지 상단으로 스크롤
-            window.scrollTo(0, 0);
-            
-            // 현재 언어에 따라 파일명 결정
+            // 현재 언어에 따라 Google Drive 링크로 이동
             const currentLang = document.documentElement.lang;
-            const filename = currentLang === 'ko' ? '이동형_이력서.pdf' : 'Donghyung_Lee_Resume.pdf';
             
-            // PDF 생성을 위한 설정
-            const element = document.querySelector('.resume-container');
-            const opt = {
-                margin: [0.4, 0.4, 0.4, 0.4],
-                filename: filename,
-                image: { 
-                    type: 'jpeg', 
-                    quality: 0.98 
-                },
-                html2canvas: { 
-                    scale: 2,
-                    useCORS: true,
-                    letterRendering: true,
-                    allowTaint: false,
-                    backgroundColor: '#ffffff',
-                    scrollX: 0,
-                    scrollY: 0
-                },
-                jsPDF: { 
-                    unit: 'in', 
-                    format: 'a4', 
-                    orientation: 'portrait',
-                    compress: true
-                },
-                pagebreak: {
-                    mode: ['avoid-all', 'css', 'legacy'],
-                    before: '.section'
-                }
-            };
-            
-            // PDF 생성 후 버튼들을 다시 표시
-            html2pdf().set(opt).from(element).save().then(() => {
-                languageToggle.style.display = originalLanguageDisplay;
-                careerYears.style.display = originalCareerDisplay;
-                pdfBtn.style.display = originalPdfDisplay;
-            });
+            if (currentLang === 'ko') {
+                // 한국어 버전 다운로드
+                window.open('https://drive.google.com/uc?export=download&id=1q_nxCn6cDENvCvQQ-WEKjc8R4YSuJwz-', '_blank');
+            } else {
+                // 영어 버전 다운로드
+                window.open('https://drive.google.com/uc?export=download&id=1wGmVCjaNhz2iUy--I31CQq0ZfKh692OU', '_blank');
+            }
         }
 
+        // 비밀번호 관련 함수들
+        function showPasswordInput() {
+            document.getElementById('password-modal').style.display = 'flex';
+            document.getElementById('password-input').focus();
+            document.getElementById('password-error').style.display = 'none';
+        }
+        
+        function closePasswordModal() {
+            document.getElementById('password-modal').style.display = 'none';
+            document.getElementById('password-input').value = '';
+        }
+        
+        function checkPassword() {
+            const password = document.getElementById('password-input').value;
+            // 인코딩된 비밀번호: 3820
+            const correctPassword = atob('MzgyMA==');
+            
+            // 사용자 입력값을 인코딩해서 비교
+            if (password === correctPassword) {
+                // 비밀번호가 맞으면 핸드폰번호 표시
+                document.getElementById('phone-contact').style.display = 'flex';
+                document.getElementById('password-trigger').style.display = 'none';
+                
+                // 인코딩된 핸드폰번호 디코딩하여 표시
+                const phoneNumber = atob('KzgyIDEwLTIwNzQtNjUwMg==');
+                document.getElementById('phone-number').textContent = phoneNumber;
+                
+                closePasswordModal();
+                
+                // 성공 메시지 표시 (선택사항)
+                showSuccessMessage();
+            } else {
+                // 비밀번호가 틀리면 에러 메시지 표시
+                document.getElementById('password-error').style.display = 'block';
+                document.getElementById('password-input').value = '';
+                document.getElementById('password-input').focus();
+            }
+        }
+        
+        function showSuccessMessage() {
+            // 성공 메시지 표시 (선택사항)
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #28a745;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                z-index: 10001;
+                animation: slideIn 0.3s ease;
+            `;
+            successMsg.textContent = '✅ 연락처가 표시되었습니다!';
+            document.body.appendChild(successMsg);
+            
+            // 3초 후 자동으로 제거
+            setTimeout(() => {
+                successMsg.remove();
+            }, 3000);
+        }
+        
+        // Enter 키로 비밀번호 입력
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('password-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    checkPassword();
+                }
+            });
+            
+            // 모달 외부 클릭 시 닫기
+            document.getElementById('password-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closePasswordModal();
+                }
+            });
+        });
+        
         // 경력 계산 함수
         function calculateCareerYears() {
             const experiences = [
@@ -619,9 +691,17 @@ Going forward, I aim to become an engineer who can contribute to infrastructure 
             // Update content with data attributes
             document.querySelectorAll('[data-ko][data-en]').forEach(element => {
                 if (lang === 'ko') {
-                    element.textContent = element.getAttribute('data-ko');
+                    if (element.tagName === 'INPUT') {
+                        element.placeholder = element.getAttribute('data-ko');
+                    } else {
+                        element.textContent = element.getAttribute('data-ko');
+                    }
                 } else {
-                    element.textContent = element.getAttribute('data-en');
+                    if (element.tagName === 'INPUT') {
+                        element.placeholder = element.getAttribute('data-en');
+                    } else {
+                        element.textContent = element.getAttribute('data-en');
+                    }
                 }
             });
 
