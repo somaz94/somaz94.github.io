@@ -220,7 +220,7 @@ August 5, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>4 min to read</span>
+                    <span>6 min to read</span>
                 </p>
                 <h1 class="post-title">Deep Dive into OpenStack Kuryr</h1>
                 <p class="post-subtitle">Understanding OpenStack's Container Networking Service</p>
@@ -244,7 +244,9 @@ August 5, 2025
 
 <h2 id="understanding-openstack-kuryr">Understanding OpenStack Kuryr</h2>
 
-<p>Kuryr is OpenStack’s container networking service that directly connects container networks with Neutron. It enables container environments like Kubernetes and Docker to utilize OpenStack’s native networking capabilities, providing consistent network policies and eliminating the need for separate network management.</p>
+<p>Kuryr is OpenStack’s container networking service that directly connects container networks with Neutron.</p>
+
+<p>It enables container environments like Kubernetes and Docker to utilize OpenStack’s native networking capabilities, providing consistent network policies and eliminating the need for separate network management.</p>
 
 <p><br /></p>
 
@@ -315,7 +317,9 @@ August 5, 2025
 
 <h2 id="kuryr-architecture-and-components">Kuryr Architecture and Components</h2>
 
-<p>Kuryr’s architecture consists of several key components that work together to provide container networking capabilities. Each component plays a specific role in network integration and management.</p>
+<p>Kuryr’s architecture consists of several key components that work together to provide container networking capabilities.</p>
+
+<p>Each component plays a specific role in network integration and management.</p>
 
 <p><br /></p>
 
@@ -387,7 +391,9 @@ August 5, 2025
 
 <h2 id="key-features-and-capabilities">Key Features and Capabilities</h2>
 
-<p>Kuryr provides comprehensive container networking capabilities that enable effective network management and integration. These features make it a powerful tool for container networking in OpenStack environments.</p>
+<p>Kuryr provides comprehensive container networking capabilities that enable effective network management and integration.</p>
+
+<p>These features make it a powerful tool for container networking in OpenStack environments.</p>
 
 <p><br /></p>
 
@@ -456,7 +462,9 @@ August 5, 2025
 
 <h2 id="implementation-and-usage">Implementation and Usage</h2>
 
-<p>Effective implementation of Kuryr requires proper configuration and integration with container platforms. Here are key considerations and best practices for utilizing Kuryr effectively.</p>
+<p>Effective implementation of Kuryr requires proper configuration and integration with container platforms.</p>
+
+<p>Here are key considerations and best practices for utilizing Kuryr effectively.</p>
 
 <p><br /></p>
 
@@ -506,10 +514,132 @@ August 5, 2025
 
 <hr />
 
+<h2 id="advanced-configuration-production-hardening">Advanced Configuration (Production Hardening)</h2>
+
+<p><br /></p>
+
+<h3 id="network-models-matrix">Network Models Matrix</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 22%;">Scenario</th>
+      <th style="width: 38%;">Recommendation</th>
+      <th style="width: 40%;">Notes</th>
+    </tr>
+    <tr>
+      <td><strong>High Throughput</strong></td>
+      <td>VIF Direct or SR‑IOV</td>
+      <td>Requires NIC/host support; bypasses kernel bridges</td>
+    </tr>
+    <tr>
+      <td><strong>Multi‑tenant Isolation</strong></td>
+      <td>Neutron provider networks + security groups</td>
+      <td>Project‑scoped subnets/routers; RBAC on SGs</td>
+    </tr>
+    <tr>
+      <td><strong>Policy Control</strong></td>
+      <td>Neutron security groups mapped from K8s NetworkPolicy</td>
+      <td>Define default‑deny and explicit allows</td>
+    </tr>
+    <tr>
+      <td><strong>North‑South Access</strong></td>
+      <td>Octavia LBaaS for Service type=LoadBalancer</td>
+      <td>Align health checks and timeouts with app SLOs</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="performance-tuning">Performance Tuning</h3>
+
+<ul>
+  <li>Align MTU across Neutron networks, Kuryr CNI, and node interfaces</li>
+  <li>Prefer direct VIF types (where safe) for data‑plane intensive workloads</li>
+  <li>Tune Neutron quotas and port security to reduce control‑plane contention</li>
+  <li>Batch port operations and enable async reconciliation in Kuryr controller</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="high-availability-ha">High Availability (HA)</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Layer</th>
+      <th style="width: 45%;">Recommendation</th>
+      <th style="width: 30%;">Notes</th>
+    </tr>
+    <tr>
+      <td><strong>Kuryr Controller</strong></td>
+      <td>2+ replicas with leader election</td>
+      <td>Monitor reconciliation lag</td>
+    </tr>
+    <tr>
+      <td><strong>Message/DB</strong></td>
+      <td>HA RabbitMQ / Galera (for Neutron)</td>
+      <td>Observe queue depth and DB latency</td>
+    </tr>
+    <tr>
+      <td><strong>LBaaS</strong></td>
+      <td>Octavia active/standby amphorae</td>
+      <td>Health checks, AZ spread</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="security--compliance">Security &amp; Compliance</h3>
+
+<ul>
+  <li>Enforce project isolation with Neutron RBAC and per‑namespace mapping</li>
+  <li>Default‑deny security posture; generate SG rules from NetworkPolicy</li>
+  <li>TLS for all APIs; restrict Kuryr controller credentials by scope</li>
+  <li>Audit port/SecurityGroup changes; retain logs per compliance policy</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="observability--operations">Observability &amp; Operations</h3>
+
+<ul>
+  <li>Metrics: port create/delete latency, failed bindings, SG rule churn, LB status</li>
+  <li>Logs: structured controller logs with resource UIDs</li>
+  <li>Runbooks: port leak cleanup, SG drift correction, LB failover procedures</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="cicd-for-manifests">CI/CD for Manifests</h3>
+
+<ul>
+  <li>Validate Kuryr/K8s manifests in CI (lint, policy checks)</li>
+  <li>Canary upgrades of Kuryr components; verify NetworkPolicy enforcement</li>
+  <li>Maintain compatibility matrix: Kuryr ↔ Neutron ↔ Kubernetes versions</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="troubleshooting-playbook-quick-checks">Troubleshooting Playbook (Quick Checks)</h3>
+
+<ul>
+  <li><strong>Pod Not Networking</strong>: Check Kuryr CNI DaemonSet, Neutron port status, SG rules</li>
+  <li><strong>MTU Mismatch</strong>: Verify end‑to‑end MTU; enable fragment or adjust CNI/Neutron MTU</li>
+  <li><strong>LB Not Ready</strong>: Inspect Octavia listener, pool members, health monitor</li>
+  <li><strong>Policy Not Applied</strong>: Confirm NetworkPolicy mapping and SG sync in controller</li>
+</ul>
+
+<p><br /></p>
+
+<hr />
+
 <h2 id="key-points">Key Points</h2>
 
 <div class="info-box info-box-success-not-check">
-  <strong>💡 Kuryr Essentials</strong>
+  <strong>Kuryr Essentials</strong>
   <ul>
     <li>
       <strong>Core Functionality</strong><br />
@@ -596,7 +726,7 @@ August 5, 2025
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="4">
+            <div class="time-bar" data-minutes="6">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -998,7 +1128,9 @@ window.addEventListener('scroll', function() {
 
 Understanding OpenStack Kuryr
 
-Kuryr is OpenStack’s container networking service that directly connects container networks with Neutron. It enables container environments like Kubernetes and Docker to utilize OpenStack’s native networking capabilities, providing consistent network policies and eliminating the need for separate network management.
+Kuryr is OpenStack’s container networking service that directly connects container networks with Neutron.
+
+It enables container environments like Kubernetes and Docker to utilize OpenStack’s native networking capabilities, providing consistent network policies and eliminating the need for separate network management.
 
 
 
@@ -1069,7 +1201,9 @@ Kuryr Architecture Overview (Diagram Description)
 
 Kuryr Architecture and Components
 
-Kuryr’s architecture consists of several key components that work together to provide container networking capabilities. Each component plays a specific role in network integration and management.
+Kuryr’s architecture consists of several key components that work together to provide container networking capabilities.
+
+Each component plays a specific role in network integration and management.
 
 
 
@@ -1141,7 +1275,9 @@ This integration enables comprehensive container networking within the OpenStack
 
 Key Features and Capabilities
 
-Kuryr provides comprehensive container networking capabilities that enable effective network management and integration. These features make it a powerful tool for container networking in OpenStack environments.
+Kuryr provides comprehensive container networking capabilities that enable effective network management and integration.
+
+These features make it a powerful tool for container networking in OpenStack environments.
 
 
 
@@ -1210,7 +1346,9 @@ These practices ensure reliable and maintainable container networking.
 
 Implementation and Usage
 
-Effective implementation of Kuryr requires proper configuration and integration with container platforms. Here are key considerations and best practices for utilizing Kuryr effectively.
+Effective implementation of Kuryr requires proper configuration and integration with container platforms.
+
+Here are key considerations and best practices for utilizing Kuryr effectively.
 
 
 
@@ -1260,10 +1398,132 @@ These use cases demonstrate Kuryr’s flexibility and integration capabilities.
 
 
 
+Advanced Configuration (Production Hardening)
+
+
+
+Network Models Matrix
+
+
+  
+    
+      Scenario
+      Recommendation
+      Notes
+    
+    
+      High Throughput
+      VIF Direct or SR‑IOV
+      Requires NIC/host support; bypasses kernel bridges
+    
+    
+      Multi‑tenant Isolation
+      Neutron provider networks + security groups
+      Project‑scoped subnets/routers; RBAC on SGs
+    
+    
+      Policy Control
+      Neutron security groups mapped from K8s NetworkPolicy
+      Define default‑deny and explicit allows
+    
+    
+      North‑South Access
+      Octavia LBaaS for Service type=LoadBalancer
+      Align health checks and timeouts with app SLOs
+    
+  
+
+
+
+
+Performance Tuning
+
+
+  Align MTU across Neutron networks, Kuryr CNI, and node interfaces
+  Prefer direct VIF types (where safe) for data‑plane intensive workloads
+  Tune Neutron quotas and port security to reduce control‑plane contention
+  Batch port operations and enable async reconciliation in Kuryr controller
+
+
+
+
+High Availability (HA)
+
+
+  
+    
+      Layer
+      Recommendation
+      Notes
+    
+    
+      Kuryr Controller
+      2+ replicas with leader election
+      Monitor reconciliation lag
+    
+    
+      Message/DB
+      HA RabbitMQ / Galera (for Neutron)
+      Observe queue depth and DB latency
+    
+    
+      LBaaS
+      Octavia active/standby amphorae
+      Health checks, AZ spread
+    
+  
+
+
+
+
+Security &amp;amp; Compliance
+
+
+  Enforce project isolation with Neutron RBAC and per‑namespace mapping
+  Default‑deny security posture; generate SG rules from NetworkPolicy
+  TLS for all APIs; restrict Kuryr controller credentials by scope
+  Audit port/SecurityGroup changes; retain logs per compliance policy
+
+
+
+
+Observability &amp;amp; Operations
+
+
+  Metrics: port create/delete latency, failed bindings, SG rule churn, LB status
+  Logs: structured controller logs with resource UIDs
+  Runbooks: port leak cleanup, SG drift correction, LB failover procedures
+
+
+
+
+CI/CD for Manifests
+
+
+  Validate Kuryr/K8s manifests in CI (lint, policy checks)
+  Canary upgrades of Kuryr components; verify NetworkPolicy enforcement
+  Maintain compatibility matrix: Kuryr ↔ Neutron ↔ Kubernetes versions
+
+
+
+
+Troubleshooting Playbook (Quick Checks)
+
+
+  Pod Not Networking: Check Kuryr CNI DaemonSet, Neutron port status, SG rules
+  MTU Mismatch: Verify end‑to‑end MTU; enable fragment or adjust CNI/Neutron MTU
+  LB Not Ready: Inspect Octavia listener, pool members, health monitor
+  Policy Not Applied: Confirm NetworkPolicy mapping and SG sync in controller
+
+
+
+
+
+
 Key Points
 
 
-  💡 Kuryr Essentials
+  Kuryr Essentials
   
     
       Core Functionality
@@ -1302,7 +1562,7 @@ References
   Kuryr API Reference
 
 ",
-            "wordcount": "849",
+            "wordcount": "1214",
             "inLanguage": "en",
             "dateCreated": "2025-08-05/",
             "datePublished": "2025-08-05/",
