@@ -1,0 +1,3044 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- ✅ Google Tag Manager 추가 -->
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+      <!-- ✅ End Google Tag Manager -->
+
+    <!-- Mermaid.js 직접 로드 -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+
+    <title>Deep Dive into OpenStack Manila | somaz</title>
+    <meta name="description" content="A comprehensive guide to OpenStack Manila, its architecture, and how it provides shared file system capabilities in the cloud">
+    
+        <meta name="keywords" content="openstack, manila, storage, filesystem, cloud">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Deep Dive into OpenStack Manila | somaz">
+    <meta name="twitter:description" content="A comprehensive guide to OpenStack Manila, its architecture, and how it provides shared file system capabilities in the cloud">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1756180452/openstack-manila-1_qxm1na.png">
+    
+    
+    
+        <meta name="twitter:site" content="@twitter_username">
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/openstack/openstack-manila/">
+    <meta property="og:title" content="Deep Dive into OpenStack Manila | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1756180452/openstack-manila-1_qxm1na.png">
+    <meta property="og:description" content="A comprehensive guide to OpenStack Manila, its architecture, and how it provides shared file system capabilities in the cloud">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/openstack/openstack-manila/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
+    <!-- <link href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;700&display=swap" rel="stylesheet"> -->
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<!-- ✅ Google Tag Manager (noscript) -->
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+<!-- ✅ End Google Tag Manager (noscript) -->
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2025-09-03T00:00:00+00:00">
+                            
+
+
+September 3, 2025
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>16 min to read</span>
+                </p>
+                <h1 class="post-title">Deep Dive into OpenStack Manila</h1>
+                <p class="post-subtitle">Understanding OpenStack's Shared File System as a Service</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1756180452/openstack-manila-1_qxm1na.png" alt="Featured image" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="understanding-openstack-manila">Understanding OpenStack Manila</h2>
+
+<p><br /></p>
+
+<p>Manila is OpenStack’s Shared File System as a Service (SFaaS) that provides file sharing capabilities across multiple virtual machines and containers.</p>
+
+<p>It supports various file sharing protocols like NFS and CIFS, enabling flexible and scalable file storage solutions in the cloud.</p>
+
+<p><br /></p>
+
+<h3 id="what-is-manila">What is Manila?</h3>
+
+<p><br /></p>
+
+<h4 id="the-shared-file-system-service">The Shared File System Service</h4>
+
+<p>Manila serves as OpenStack’s file sharing service, providing essential functionality:</p>
+
+<ul>
+  <li><strong>File Sharing</strong>: Enables multiple VMs and containers to access shared storage simultaneously</li>
+  <li><strong>Protocol Support</strong>: Supports industry-standard protocols including NFS, CIFS/SMB, HDFS, and CephFS</li>
+  <li><strong>Multi-tenancy</strong>: Provides secure isolated file systems for different projects and users</li>
+  <li><strong>Storage Management</strong>: Manages complete file system lifecycle including creation, snapshots, and replication</li>
+  <li><strong>Enterprise Integration</strong>: Seamless integration with existing enterprise storage solutions</li>
+</ul>
+
+<p>By providing shared file system capabilities, Manila enables efficient data sharing and collaboration in cloud environments while maintaining security and performance.</p>
+
+<p><br /></p>
+
+<h4 id="why-use-manila">Why Use Manila?</h4>
+
+<p>Manila addresses critical challenges in cloud storage management:</p>
+
+<ul>
+  <li><strong>Shared Storage</strong>: Multiple instances can access the same data simultaneously</li>
+  <li><strong>Protocol Flexibility</strong>: Support for various file sharing protocols meets diverse application needs</li>
+  <li><strong>Scalability</strong>: Dynamic scaling of file systems based on demand</li>
+  <li><strong>Data Persistence</strong>: Persistent storage that survives instance lifecycle</li>
+  <li><strong>Enterprise Ready</strong>: Integration with enterprise storage arrays and NAS devices</li>
+  <li><strong>Cost Efficiency</strong>: Optimized resource utilization through shared access</li>
+</ul>
+
+<p><br /></p>
+
+<h4 id="supported-file-system-types">Supported File System Types</h4>
+
+<p>Manila supports various file system types and protocols:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Protocol/Type</th>
+      <th style="width: 35%;">Description</th>
+      <th style="width: 40%;">Use Cases</th>
+    </tr>
+    <tr>
+      <td><strong>NFS</strong></td>
+      <td>Network File System</td>
+      <td>Linux environments, container storage, shared application data</td>
+    </tr>
+    <tr>
+      <td><strong>CIFS/SMB</strong></td>
+      <td>Common Internet File System</td>
+      <td>Windows environments, mixed OS deployments, enterprise integration</td>
+    </tr>
+    <tr>
+      <td><strong>CephFS</strong></td>
+      <td>Ceph Distributed File System</td>
+      <td>High-performance computing, scalable storage, object storage</td>
+    </tr>
+    <tr>
+      <td><strong>HDFS</strong></td>
+      <td>Hadoop Distributed File System</td>
+      <td>Big data analytics, distributed computing, data lakes</td>
+    </tr>
+    <tr>
+      <td><strong>GlusterFS</strong></td>
+      <td>Scale-out Network File System</td>
+      <td>Distributed applications, high availability, scale-out storage</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h4 id="manila-architecture-overview-diagram-description">Manila Architecture Overview (Diagram Description)</h4>
+
+<ul>
+  <li>Core Features: File Sharing, Multi-tenancy, Access Control</li>
+  <li>Service Integration: Nova, Neutron, Keystone</li>
+  <li>Storage: Backend Storage, Snapshots, Replication</li>
+  <li>Protocols: NFS, CIFS, CephFS</li>
+</ul>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[OpenStack Manila]
+      A --&gt; B[Core Features]
+      A --&gt; C[Service Integration]
+      A --&gt; D[Storage]
+      A --&gt; E[Protocols]
+      
+      B --&gt; B1[File Sharing]
+      B --&gt; B2[Multi-tenancy]
+      B --&gt; B3[Access Control]
+      
+      C --&gt; C1[Nova]
+      C --&gt; C2[Neutron]
+      C --&gt; C3[Keystone]
+      
+      D --&gt; D1[Backend Storage]
+      D --&gt; D2[Snapshots]
+      D --&gt; D3[Replication]
+      
+      E --&gt; E1[NFS]
+      E --&gt; E2[CIFS]
+      E --&gt; E3[CephFS]
+
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  </div>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="manila-architecture-and-components">Manila Architecture and Components</h2>
+
+<p>Manila’s architecture is designed to provide flexible and scalable file sharing capabilities.</p>
+
+<p>Each component plays a specific role in managing and providing access to shared file systems.</p>
+
+<p><br /></p>
+
+<h3 id="detailed-architecture">Detailed Architecture</h3>
+
+<p>Manila follows a distributed architecture with clear separation of responsibilities:</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TB
+      subgraph "Client Layer"
+        CLI[OpenStack CLI]
+        HORIZON[Horizon Dashboard]
+        API_CLIENT[API Clients]
+        VMS[Virtual Machines]
+      end
+      
+      subgraph "Manila Services"
+        API[Manila API]
+        SCHEDULER[Manila Scheduler]
+        SHARE[Manila Share Service]
+        DATA[Manila Data Service]
+      end
+      
+      subgraph "Storage Backends"
+        NAS[Enterprise NAS]
+        CEPH[Ceph Storage]
+        NETAPP[NetApp Filers]
+        GENERIC[Generic Backend]
+      end
+      
+      subgraph "Network Layer"
+        NEUTRON[Neutron Networks]
+        SHARE_NET[Share Networks]
+      end
+      
+      CLI --&gt; API
+      HORIZON --&gt; API
+      API_CLIENT --&gt; API
+      VMS --&gt; SHARE_NET
+      
+      API --&gt; SCHEDULER
+      SCHEDULER --&gt; SHARE
+      SHARE --&gt; DATA
+      SHARE --&gt; NAS
+      SHARE --&gt; CEPH
+      SHARE --&gt; NETAPP
+      SHARE --&gt; GENERIC
+      
+      SHARE_NET --&gt; NEUTRON
+      NEUTRON --&gt; SHARE
+
+      style API stroke:#333,stroke-width:2px,fill:#4CAF50
+      style SCHEDULER stroke:#333,stroke-width:2px,fill:#2196F3
+      style SHARE stroke:#333,stroke-width:2px,fill:#FF9800
+      style DATA stroke:#333,stroke-width:2px,fill:#9C27B0
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="core-components">Core Components</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Component</th>
+      <th style="width: 25%;">Role</th>
+      <th style="width: 55%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Manila API</strong></td>
+      <td>API Service</td>
+      <td>
+        <ul>
+          <li>Handles RESTful API requests for share management</li>
+          <li>Provides authentication and authorization via Keystone</li>
+          <li>Manages share lifecycle operations</li>
+          <li>Handles quota management and tenant isolation</li>
+          <li>Supports multiple API versions for backward compatibility</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Manila Scheduler</strong></td>
+      <td>Resource Management</td>
+      <td>
+        <ul>
+          <li>Selects optimal storage backend based on policies</li>
+          <li>Manages capacity planning and resource allocation</li>
+          <li>Handles share type mapping to backends</li>
+          <li>Optimizes placement for performance and availability</li>
+          <li>Supports custom scheduling filters and weighers</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Manila Share</strong></td>
+      <td>Share Service</td>
+      <td>
+        <ul>
+          <li>Manages file system operations on storage backends</li>
+          <li>Handles protocol-specific share creation and management</li>
+          <li>Controls access permissions and export rules</li>
+          <li>Manages share exports and mount points</li>
+          <li>Handles share snapshots and replication</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Manila Data</strong></td>
+      <td>Data Service</td>
+      <td>
+        <ul>
+          <li>Handles data plane operations like copy and migration</li>
+          <li>Manages share data replication between backends</li>
+          <li>Performs data transformation and migration tasks</li>
+          <li>Handles backup and restore operations</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="storage-backend-types">Storage Backend Types</h3>
+
+<p>Manila supports multiple storage backend architectures:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Backend Type</th>
+      <th style="width: 35%;">Description</th>
+      <th style="width: 40%;">Examples</th>
+    </tr>
+    <tr>
+      <td><strong>Driver-only</strong></td>
+      <td>Direct integration with storage arrays</td>
+      <td>NetApp, EMC, HPE 3PAR, Pure Storage</td>
+    </tr>
+    <tr>
+      <td><strong>Generic Driver</strong></td>
+      <td>Uses Nova instances as share servers</td>
+      <td>Generic NFS/CIFS servers, development environments</td>
+    </tr>
+    <tr>
+      <td><strong>Container Driver</strong></td>
+      <td>Container-based share servers</td>
+      <td>Docker-based NFS servers, lightweight deployments</td>
+    </tr>
+    <tr>
+      <td><strong>Native Drivers</strong></td>
+      <td>Purpose-built distributed file systems</td>
+      <td>CephFS, GlusterFS, HDFS</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="service-integration">Service Integration</h3>
+
+<p>Manila integrates seamlessly with several OpenStack services to provide comprehensive file sharing:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Service</th>
+      <th style="width: 40%;">Integration Type</th>
+      <th style="width: 40%;">Benefits</th>
+    </tr>
+    <tr>
+      <td><strong>Nova</strong></td>
+      <td>Compute integration for share servers</td>
+      <td>
+        <ul>
+          <li>Automatic share server provisioning</li>
+          <li>Instance-based file sharing</li>
+          <li>Dynamic scaling of share servers</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Neutron</strong></td>
+      <td>Network connectivity and isolation</td>
+      <td>
+        <ul>
+          <li>Share network creation and management</li>
+          <li>Network isolation between tenants</li>
+          <li>Security group integration</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Keystone</strong></td>
+      <td>Identity and access management</td>
+      <td>
+        <ul>
+          <li>User authentication and authorization</li>
+          <li>Project-based access control</li>
+          <li>Role-based permissions</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Cinder</strong></td>
+      <td>Block storage backend integration</td>
+      <td>
+        <ul>
+          <li>Shared block storage volumes</li>
+          <li>Snapshot and backup integration</li>
+          <li>Volume-based share servers</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Glance</strong></td>
+      <td>Share server image management</td>
+      <td>
+        <ul>
+          <li>Custom share server images</li>
+          <li>Pre-configured NFS/CIFS images</li>
+          <li>Image lifecycle management</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Barbican</strong></td>
+      <td>Encryption and key management</td>
+      <td>
+        <ul>
+          <li>Share encryption at rest</li>
+          <li>Key management for encrypted shares</li>
+          <li>Certificate management for secure protocols</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p>This comprehensive integration enables robust file sharing within the complete OpenStack ecosystem.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="key-features-and-capabilities">Key Features and Capabilities</h2>
+
+<p>Manila provides comprehensive file sharing capabilities that enable efficient data sharing and collaboration.</p>
+
+<p>These features make it a powerful tool for file system management in OpenStack environments.</p>
+
+<p><br /></p>
+
+<h3 id="core-features">Core Features</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Feature</th>
+      <th style="width: 40%;">Description</th>
+      <th style="width: 40%;">Benefits</th>
+    </tr>
+    <tr>
+      <td><strong>Protocol Support</strong></td>
+      <td>Multiple file sharing protocols</td>
+      <td>
+        <ul>
+          <li>NFS support</li>
+          <li>CIFS/SMB support</li>
+          <li>CephFS integration</li>
+          <li>Protocol flexibility</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Storage Management</strong></td>
+      <td>Flexible storage options</td>
+      <td>
+        <ul>
+          <li>Multiple backends</li>
+          <li>Dynamic resizing</li>
+          <li>Snapshot support</li>
+          <li>Replication</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Access Control</strong></td>
+      <td>Security features</td>
+      <td>
+        <ul>
+          <li>ACL management</li>
+          <li>Export rules</li>
+          <li>Multi-tenancy</li>
+          <li>Security groups</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="best-practices">Best Practices</h3>
+
+<p>Key considerations for Manila deployment and operation:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Category</th>
+      <th style="width: 35%;">Best Practice</th>
+      <th style="width: 40%;">Implementation</th>
+    </tr>
+    <tr>
+      <td><strong>Protocol Selection</strong></td>
+      <td>Choose appropriate file sharing protocol</td>
+      <td>
+        <ul>
+          <li>NFS for Linux-heavy environments</li>
+          <li>CIFS/SMB for Windows integration</li>
+          <li>CephFS for high-performance needs</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Backend Selection</strong></td>
+      <td>Select suitable storage backend</td>
+      <td>
+        <ul>
+          <li>Enterprise arrays for production</li>
+          <li>Generic driver for development</li>
+          <li>Distributed filesystems for scale</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Network Design</strong></td>
+      <td>Plan network architecture carefully</td>
+      <td>
+        <ul>
+          <li>Dedicated share networks</li>
+          <li>Proper VLAN segmentation</li>
+          <li>Network performance optimization</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Access Control</strong></td>
+      <td>Implement comprehensive security</td>
+      <td>
+        <ul>
+          <li>IP-based access restrictions</li>
+          <li>User/certificate authentication</li>
+          <li>Share-level permissions</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Performance Tuning</strong></td>
+      <td>Optimize for workload requirements</td>
+      <td>
+        <ul>
+          <li>Share type QoS settings</li>
+          <li>Network bandwidth allocation</li>
+          <li>Backend performance tuning</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Monitoring</strong></td>
+      <td>Set up comprehensive monitoring</td>
+      <td>
+        <ul>
+          <li>Share availability monitoring</li>
+          <li>Performance metrics tracking</li>
+          <li>Capacity utilization alerts</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="share-types-and-capabilities">Share Types and Capabilities</h3>
+
+<p>Understanding share types is crucial for optimal Manila deployment:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Capability</th>
+      <th style="width: 35%;">Description</th>
+      <th style="width: 35%;">Use Cases</th>
+    </tr>
+    <tr>
+      <td><strong>Snapshot Support</strong></td>
+      <td>Point-in-time share snapshots</td>
+      <td>Data protection, testing, rollback scenarios</td>
+    </tr>
+    <tr>
+      <td><strong>Replication</strong></td>
+      <td>Share data replication across sites</td>
+      <td>Disaster recovery, geographic distribution</td>
+    </tr>
+    <tr>
+      <td><strong>Extend Size</strong></td>
+      <td>Dynamic share size expansion</td>
+      <td>Growing datasets, elastic storage needs</td>
+    </tr>
+    <tr>
+      <td><strong>Shrink Size</strong></td>
+      <td>Dynamic share size reduction</td>
+      <td>Cost optimization, resource management</td>
+    </tr>
+    <tr>
+      <td><strong>QoS Support</strong></td>
+      <td>Quality of Service controls</td>
+      <td>Performance guarantees, multi-tenant isolation</td>
+    </tr>
+  </table>
+</div>
+
+<p>These practices ensure reliable, secure, and maintainable file sharing in production environments.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="implementation-and-usage">Implementation and Usage</h2>
+
+<p>Effective implementation of Manila requires proper configuration and integration with other OpenStack services.</p>
+
+<p>Here are key considerations and best practices for utilizing Manila effectively.</p>
+
+<p><br /></p>
+
+<h3 id="configuration-and-setup">Configuration and Setup</h3>
+
+<p><br /></p>
+
+<h4 id="basic-configuration">Basic Configuration</h4>
+
+<p>Key configuration files and settings:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># /etc/manila/manila.conf</span>
+<span class="pi">[</span><span class="nv">DEFAULT</span><span class="pi">]</span>
+<span class="c1"># API Configuration</span>
+<span class="s">osapi_share_listen = 0.0.0.0</span>
+<span class="s">osapi_share_listen_port = </span><span class="m">8786</span>
+<span class="s">api_paste_config = /etc/manila/api-paste.ini</span>
+
+<span class="c1"># Database Configuration</span>
+<span class="s">sql_connection = mysql+pymysql://manila:password@localhost/manila</span>
+
+<span class="c1"># RabbitMQ Configuration</span>
+<span class="s">transport_url = rabbit://manila:password@controller:5672/</span>
+
+<span class="c1"># Keystone Authentication</span>
+<span class="s">auth_strategy = keystone</span>
+
+<span class="pi">[</span><span class="nv">keystone_authtoken</span><span class="pi">]</span>
+<span class="s">www_authenticate_uri = http://controller:5000</span>
+<span class="s">auth_url = http://controller:5000</span>
+<span class="s">memcached_servers = controller:11211</span>
+<span class="s">auth_type = password</span>
+<span class="s">project_domain_name = default</span>
+<span class="s">user_domain_name = default</span>
+<span class="s">project_name = service</span>
+<span class="s">username = manila</span>
+<span class="s">password = manila_password</span>
+
+<span class="c1"># Share Backend Configuration</span>
+<span class="s">enabled_share_backends = generic,cephfs,netapp</span>
+<span class="s">enabled_share_protocols = NFS,CIFS,CEPHFS</span>
+
+<span class="pi">[</span><span class="nv">generic</span><span class="pi">]</span>
+<span class="s">share_driver = manila.share.drivers.generic.GenericShareDriver</span>
+<span class="s">interface_driver = manila.network.linux.interface.OVSInterfaceDriver</span>
+<span class="s">service_instance_flavor_id = </span><span class="m">100</span>
+<span class="s">service_image_name = manila-service-image</span>
+<span class="s">service_instance_user = manila</span>
+<span class="s">service_instance_password = manila</span>
+<span class="s">connect_share_server_to_tenant_network = True</span>
+
+<span class="pi">[</span><span class="nv">cephfs</span><span class="pi">]</span>
+<span class="s">share_driver = manila.share.drivers.cephfs.driver.CephFSDriver</span>
+<span class="s">driver_handles_share_servers = False</span>
+<span class="s">cephfs_conf_path = /etc/ceph/ceph.conf</span>
+<span class="s">cephfs_auth_id = manila</span>
+<span class="s">cephfs_cluster_name = ceph</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h4 id="advanced-backend-configuration">Advanced Backend Configuration</h4>
+
+<p>Example configuration for enterprise storage arrays:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># NetApp ONTAP Backend</span>
+<span class="pi">[</span><span class="nv">netapp</span><span class="pi">]</span>
+<span class="s">share_driver = manila.share.drivers.netapp.dataontap.cluster_mode.drv.NetAppCmodeMultiSVMShareDriver</span>
+<span class="s">driver_handles_share_servers = True</span>
+<span class="s">netapp_server_hostname = 192.168.1.100</span>
+<span class="s">netapp_server_port = </span><span class="m">443</span>
+<span class="s">netapp_login = admin</span>
+<span class="s">netapp_password = password</span>
+<span class="s">netapp_vserver = manila_vserver</span>
+<span class="s">netapp_aggregate_name_search_pattern = ^aggr.*</span>
+<span class="s">netapp_root_volume_aggregate = aggr1</span>
+<span class="s">netapp_port_name_search_pattern = ^e.*</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="share-network-management">Share Network Management</h3>
+
+<p><br /></p>
+
+<h4 id="creating-share-networks">Creating Share Networks</h4>
+
+<p>Share networks provide network connectivity for shares:</p>
+
+<script src="https://gist.github.com/somaz94/4f9c0806a82d4fbe82e93994af594427.js"></script>
+
+<p><br /></p>
+
+<h4 id="security-services">Security Services</h4>
+
+<p>Configure authentication and access control:</p>
+
+<script src="https://gist.github.com/somaz94/4d5f226c3d8ea6a7271715d8867f0662.js"></script>
+
+<p><br /></p>
+
+<h3 id="advanced-usage-examples">Advanced Usage Examples</h3>
+
+<h4 id="share-replication-setup">Share Replication Setup</h4>
+
+<p>Configure disaster recovery with share replication:</p>
+
+<script src="https://gist.github.com/somaz94/09c0c611c0cee1bf0241abbb59fa9970.js"></script>
+
+<p><br /></p>
+
+<h4 id="share-groups-management">Share Groups Management</h4>
+
+<p>Manage related shares as a group:</p>
+
+<script src="https://gist.github.com/somaz94/13a47c28d0d764588c08b0f6e8334ee8.js"></script>
+
+<p><br /></p>
+
+<h4 id="mount-share-examples">Mount Share Examples</h4>
+
+<p>Examples of mounting shares on different platforms:</p>
+
+<script src="https://gist.github.com/somaz94/a36a546bf38fd358b8352da8c618b240.js"></script>
+
+<p><br /></p>
+
+<h3 id="api-usage-examples">API Usage Examples</h3>
+
+<p><br /></p>
+
+<h4 id="using-rest-api">Using REST API</h4>
+
+<p>Direct API calls for automation and integration:</p>
+
+<script src="https://gist.github.com/somaz94/2da769e372ccb593c8983589c5b73e70.js"></script>
+
+<p><br /></p>
+
+<h4 id="python-client-usage">Python Client Usage</h4>
+
+<p>Programmatic access using Python Manila client:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">manilaclient</span> <span class="kn">import</span> <span class="n">client</span>
+<span class="kn">from</span> <span class="nn">keystoneauth1.identity</span> <span class="kn">import</span> <span class="n">v3</span>
+<span class="kn">from</span> <span class="nn">keystoneauth1</span> <span class="kn">import</span> <span class="n">session</span>
+
+<span class="c1"># Authentication
+</span><span class="n">auth</span> <span class="o">=</span> <span class="n">v3</span><span class="p">.</span><span class="n">Password</span><span class="p">(</span>
+    <span class="n">auth_url</span><span class="o">=</span><span class="s">'http://keystone.example.com:5000/v3'</span><span class="p">,</span>
+    <span class="n">username</span><span class="o">=</span><span class="s">'admin'</span><span class="p">,</span>
+    <span class="n">password</span><span class="o">=</span><span class="s">'password'</span><span class="p">,</span>
+    <span class="n">project_name</span><span class="o">=</span><span class="s">'admin'</span><span class="p">,</span>
+    <span class="n">user_domain_name</span><span class="o">=</span><span class="s">'default'</span><span class="p">,</span>
+    <span class="n">project_domain_name</span><span class="o">=</span><span class="s">'default'</span>
+<span class="p">)</span>
+<span class="n">sess</span> <span class="o">=</span> <span class="n">session</span><span class="p">.</span><span class="n">Session</span><span class="p">(</span><span class="n">auth</span><span class="o">=</span><span class="n">auth</span><span class="p">)</span>
+<span class="n">manila</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="n">Client</span><span class="p">(</span><span class="s">'2'</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">sess</span><span class="p">)</span>
+
+<span class="c1"># Create share
+</span><span class="n">share</span> <span class="o">=</span> <span class="n">manila</span><span class="p">.</span><span class="n">shares</span><span class="p">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">share_proto</span><span class="o">=</span><span class="s">'NFS'</span><span class="p">,</span>
+    <span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s">'python-share'</span><span class="p">,</span>
+    <span class="n">share_type</span><span class="o">=</span><span class="s">'default'</span><span class="p">,</span>
+    <span class="n">share_network</span><span class="o">=</span><span class="s">'&lt;share-network-id&gt;'</span>
+<span class="p">)</span>
+
+<span class="c1"># Wait for share to be available
+</span><span class="n">manila</span><span class="p">.</span><span class="n">shares</span><span class="p">.</span><span class="n">wait_for_share_to_become_available</span><span class="p">(</span><span class="n">share</span><span class="p">.</span><span class="nb">id</span><span class="p">)</span>
+
+<span class="c1"># Allow access
+</span><span class="n">manila</span><span class="p">.</span><span class="n">shares</span><span class="p">.</span><span class="n">allow</span><span class="p">(</span>
+    <span class="n">share</span><span class="p">.</span><span class="nb">id</span><span class="p">,</span>
+    <span class="n">access_type</span><span class="o">=</span><span class="s">'ip'</span><span class="p">,</span>
+    <span class="n">access</span><span class="o">=</span><span class="s">'192.168.1.0/24'</span><span class="p">,</span>
+    <span class="n">access_level</span><span class="o">=</span><span class="s">'rw'</span>
+<span class="p">)</span>
+
+<span class="c1"># Create snapshot
+</span><span class="n">snapshot</span> <span class="o">=</span> <span class="n">manila</span><span class="p">.</span><span class="n">share_snapshots</span><span class="p">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">share</span><span class="p">.</span><span class="nb">id</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s">'python-snapshot'</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s">'Created via Python client'</span>
+<span class="p">)</span>
+
+<span class="c1"># List shares
+</span><span class="n">shares</span> <span class="o">=</span> <span class="n">manila</span><span class="p">.</span><span class="n">shares</span><span class="p">.</span><span class="nb">list</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">share</span> <span class="ow">in</span> <span class="n">shares</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"Share: </span><span class="si">{</span><span class="n">share</span><span class="p">.</span><span class="n">name</span><span class="si">}</span><span class="s">, Status: </span><span class="si">{</span><span class="n">share</span><span class="p">.</span><span class="n">status</span><span class="si">}</span><span class="s">, Size: </span><span class="si">{</span><span class="n">share</span><span class="p">.</span><span class="n">size</span><span class="si">}</span><span class="s">GB"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="use-cases">Use Cases</h3>
+
+<p>Manila is particularly useful for various enterprise and cloud scenarios:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Use Case</th>
+      <th style="width: 35%;">Description</th>
+      <th style="width: 40%;">Benefits</th>
+    </tr>
+    <tr>
+      <td><strong>Multi-VM Applications</strong></td>
+      <td>Applications requiring shared data access</td>
+      <td>
+        <ul>
+          <li>Shared configuration files</li>
+          <li>Log aggregation</li>
+          <li>Distributed application data</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Container Storage</strong></td>
+      <td>Persistent storage for containerized apps</td>
+      <td>
+        <ul>
+          <li>Kubernetes persistent volumes</li>
+          <li>Docker volume plugins</li>
+          <li>Stateful application data</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Content Management</strong></td>
+      <td>Web content and media storage</td>
+      <td>
+        <ul>
+          <li>Website assets sharing</li>
+          <li>Media file distribution</li>
+          <li>Content delivery optimization</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Development Environments</strong></td>
+      <td>Shared development resources</td>
+      <td>
+        <ul>
+          <li>Source code repositories</li>
+          <li>Build artifacts sharing</li>
+          <li>Development tool assets</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Enterprise Integration</strong></td>
+      <td>Legacy application modernization</td>
+      <td>
+        <ul>
+          <li>Lift-and-shift migrations</li>
+          <li>Hybrid cloud scenarios</li>
+          <li>Enterprise NAS integration</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Big Data Analytics</strong></td>
+      <td>Large-scale data processing</td>
+      <td>
+        <ul>
+          <li>Hadoop/Spark data lakes</li>
+          <li>Analytics input datasets</li>
+          <li>ML training data storage</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p>These use cases demonstrate Manila’s versatility and enterprise readiness across various deployment scenarios.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="monitoring-and-troubleshooting">Monitoring and Troubleshooting</h2>
+
+<p>Effective monitoring and troubleshooting are essential for maintaining reliable Manila file sharing services.</p>
+
+<p><br /></p>
+
+<h3 id="performance-monitoring">Performance Monitoring</h3>
+
+<p><br /></p>
+
+<h4 id="key-metrics-to-monitor">Key Metrics to Monitor</h4>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Metric Category</th>
+      <th style="width: 35%;">Key Metrics</th>
+      <th style="width: 40%;">Monitoring Tools</th>
+    </tr>
+    <tr>
+      <td><strong>Share Performance</strong></td>
+      <td>
+        <ul>
+          <li>I/O operations per second (IOPS)</li>
+          <li>Throughput (MB/s)</li>
+          <li>Latency and response time</li>
+          <li>Queue depth</li>
+        </ul>
+      </td>
+      <td>Prometheus, Grafana, Manila metrics</td>
+    </tr>
+    <tr>
+      <td><strong>Service Health</strong></td>
+      <td>
+        <ul>
+          <li>API response times</li>
+          <li>Share server availability</li>
+          <li>Backend connectivity</li>
+          <li>Service process status</li>
+        </ul>
+      </td>
+      <td>Nagios, Zabbix, OpenStack Health Monitor</td>
+    </tr>
+    <tr>
+      <td><strong>Capacity Utilization</strong></td>
+      <td>
+        <ul>
+          <li>Share space usage</li>
+          <li>Backend capacity utilization</li>
+          <li>Network bandwidth usage</li>
+          <li>Connection counts</li>
+        </ul>
+      </td>
+      <td>Manila dashboards, Storage array tools</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h4 id="log-analysis">Log Analysis</h4>
+
+<p>Key log files and monitoring patterns:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Manila service logs</span>
+<span class="nb">tail</span> <span class="nt">-f</span> /var/log/manila/manila-api.log
+<span class="nb">tail</span> <span class="nt">-f</span> /var/log/manila/manila-scheduler.log
+<span class="nb">tail</span> <span class="nt">-f</span> /var/log/manila/manila-share.log
+<span class="nb">tail</span> <span class="nt">-f</span> /var/log/manila/manila-data.log
+
+<span class="c"># Key patterns to monitor:</span>
+<span class="c"># - Share creation/deletion operations</span>
+<span class="c"># - Access rule modifications</span>
+<span class="c"># - Backend communication errors</span>
+<span class="c"># - Network connectivity issues</span>
+<span class="c"># - Authentication failures</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="common-issues-and-solutions">Common Issues and Solutions</h3>
+
+<p><br /></p>
+
+<h4 id="troubleshooting-guide">Troubleshooting Guide</h4>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Issue</th>
+      <th style="width: 35%;">Symptoms</th>
+      <th style="width: 35%;">Solution</th>
+    </tr>
+    <tr>
+      <td><strong>Share Creation Failures</strong></td>
+      <td>
+        <ul>
+          <li>Shares stuck in "creating" state</li>
+          <li>Backend communication errors</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Check backend connectivity</li>
+          <li>Verify driver configuration</li>
+          <li>Review scheduler logs</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Mount Issues</strong></td>
+      <td>
+        <ul>
+          <li>Unable to mount shares</li>
+          <li>Permission denied errors</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Verify access rules</li>
+          <li>Check network connectivity</li>
+          <li>Review export paths</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Performance Problems</strong></td>
+      <td>
+        <ul>
+          <li>Slow file operations</li>
+          <li>High latency</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Analyze network performance</li>
+          <li>Check backend storage load</li>
+          <li>Review share server resources</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="performance-optimization">Performance Optimization</h3>
+
+<p>Strategies for optimizing Manila performance:</p>
+
+<ul>
+  <li><strong>Network Optimization</strong>: Use dedicated networks for storage traffic</li>
+  <li><strong>Backend Tuning</strong>: Optimize storage array settings</li>
+  <li><strong>Share Server Sizing</strong>: Right-size share server instances</li>
+  <li><strong>Protocol Selection</strong>: Choose optimal protocols for workloads</li>
+  <li><strong>Caching</strong>: Implement client-side caching where appropriate</li>
+</ul>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="security-and-access-control">Security and Access Control</h2>
+
+<p>Comprehensive security guidelines for Manila deployments in production environments.</p>
+
+<p><br /></p>
+
+<h3 id="access-control-models">Access Control Models</h3>
+
+<p><br /></p>
+
+<h4 id="access-types">Access Types</h4>
+
+<p>Manila supports multiple access control mechanisms:</p>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Access Type</th>
+      <th style="width: 35%;">Description</th>
+      <th style="width: 40%;">Use Cases</th>
+    </tr>
+    <tr>
+      <td><strong>IP-based</strong></td>
+      <td>Control access by IP address or subnet</td>
+      <td>Network-based security, simple deployments</td>
+    </tr>
+    <tr>
+      <td><strong>User-based</strong></td>
+      <td>Control access by username</td>
+      <td>Individual user access, fine-grained control</td>
+    </tr>
+    <tr>
+      <td><strong>Certificate-based</strong></td>
+      <td>Control access using client certificates</td>
+      <td>High-security environments, PKI integration</td>
+    </tr>
+    <tr>
+      <td><strong>Kerberos</strong></td>
+      <td>Kerberos-based authentication</td>
+      <td>Enterprise environments, Active Directory</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h4 id="security-services-integration">Security Services Integration</h4>
+
+<p>Configure enterprise authentication:</p>
+
+<script src="https://gist.github.com/somaz94/eae61ff2eda10898d53caf62da1a1c28.js"></script>
+
+<p><br /></p>
+
+<h3 id="network-security">Network Security</h3>
+
+<p>Best practices for securing Manila network traffic:</p>
+
+<ul>
+  <li><strong>Network Isolation</strong>: Use dedicated share networks</li>
+  <li><strong>VLAN Segmentation</strong>: Separate storage traffic from general network</li>
+  <li><strong>Firewall Rules</strong>: Restrict access to necessary ports only</li>
+  <li><strong>VPN Access</strong>: Use VPN for remote access to shares</li>
+  <li><strong>Encryption</strong>: Enable encryption in transit where supported</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="data-protection">Data Protection</h3>
+
+<p>Comprehensive data protection strategies:</p>
+
+<ul>
+  <li><strong>Encryption at Rest</strong>: Use backend encryption capabilities</li>
+  <li><strong>Snapshot Policies</strong>: Regular automated snapshots</li>
+  <li><strong>Replication</strong>: Cross-site data replication for DR</li>
+  <li><strong>Access Auditing</strong>: Log and monitor all share access</li>
+  <li><strong>Backup Integration</strong>: Regular backup to external systems</li>
+</ul>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="key-points">Key Points</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>Manila Essentials</strong>
+  <ul>
+    <li>
+      <strong>Core Functionality</strong><br />
+      - Shared file system as a service<br />
+      - Multi-protocol support (NFS, CIFS, CephFS)<br />
+      - Enterprise storage integration<br />
+      - Share lifecycle management
+    </li>
+    <li>
+      <strong>Advanced Features</strong><br />
+      - Share networks and security services<br />
+      - Snapshot and replication capabilities<br />
+      - Dynamic resizing and QoS controls<br />
+      - Multi-backend support<br />
+      - API and CLI management interfaces
+    </li>
+    <li>
+      <strong>Enterprise Benefits</strong><br />
+      - Seamless legacy integration<br />
+      - Active Directory authentication<br />
+      - High availability and disaster recovery<br />
+      - Performance optimization<br />
+      - Comprehensive access control
+    </li>
+    <li>
+      <strong>Operational Excellence</strong><br />
+      - Automated share server management<br />
+      - Comprehensive monitoring and alerting<br />
+      - Backup and disaster recovery<br />
+      - Security and compliance features<br />
+      - Scalable multi-tenant architecture
+    </li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+<ul>
+  <li><a href="https://docs.openstack.org/manila/latest/">OpenStack Manila Documentation</a></li>
+  <li><a href="https://docs.redhat.com/openstack/">Red Hat OpenStack Platform Documentation</a></li>
+  <li><a href="https://wiki.openstack.org/wiki/Manila">OpenStack Wiki - Manila</a></li>
+  <li><a href="https://docs.openstack.org/api-ref/shared-file-system/">Manila API Reference</a></li>
+  <li><a href="https://docs.openstack.org/manila/latest/configuration/">Manila Configuration Reference</a></li>
+  <li><a href="https://docs.openstack.org/python-manilaclient/latest/">OpenStack Manila Client Documentation</a></li>
+  <li><a href="https://docs.openstack.org/manila/latest/admin/drivers.html">Manila Driver Documentation</a></li>
+  <li><a href="https://tools.ietf.org/html/rfc7530">NFS Protocol Specification</a></li>
+  <li><a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cifs/">CIFS/SMB Protocol Documentation</a></li>
+  <li><a href="https://docs.ceph.com/en/latest/cephfs/">CephFS Integration Guide</a></li>
+  <li><a href="https://docs.openstack.org/manila/latest/admin/security.html">Manila Security Guide</a></li>
+  <li><a href="https://docs.openstack.org/manila/latest/admin/">OpenStack Shared File System Service Admin Guide</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/troubleshooting/terraform-state-debugging/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1745823546/terraform-error_duccgn.png">
+                                    
+                                    <h3>Complete Terraform State Management Troubleshooting Guide</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/database/nosql-data-modeling/">
+                                    
+                                        <img src="https://blog.kakaocdn.net/dn/2zEse/btsM0w4F848/EJO0OKPuXbjUSYdpEkyipK/img.png">
+                                    
+                                    <h3>NoSQL Data Modeling: A Comprehensive Guide</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/iac/what-is-vagrant/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755134513/vagrant-1_y7g1uh.png">
+                                    
+                                    <h3>Vagrant with KVM: Complete Infrastructure Automation for Development Environments</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="16">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/troubleshooting/terraform-state-debugging/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1745823546/terraform-error_duccgn.png">
+                
+            </div>
+            <h3 class="title">Complete Terraform State Management Troubleshooting Guide</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to OpenStack Manila, its architecture, and how it provides shared file system capabilities in the cloud&quot;%20https://somaz.blog/category/openstack/openstack-manila/%20via%20&#64;twitter_username&hashtags=openstack,manila,storage,filesystem,cloud"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/openstack/openstack-manila/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile.png" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  <script type="application/ld+json">
+  {
+      "@context": "http://schema.org",
+      "@type": "Person",
+      "name": "Somaz",
+      
+      "image": "/assets/img/uploads/profile.png",
+      
+      "jobTitle": "DevOps Engineer",
+      "url": "https://somaz.blog/authors/somaz/",
+      "sameAs": [
+        "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://{{ author.tistory_username }}.tistory.com"
+      ]
+  }
+  </script>
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/openstack/openstack-manila/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.facebook.com/facebook_username" title="Facebook">
+          <svg><use xlink:href="#icon-facebook"></use></svg>
+        </a>
+      
+      
+        <a href="https://twitter.com/twitter_username" title="Twitter">
+          <svg><use xlink:href="#icon-twitter"></use></svg>
+        </a>
+      
+      
+        <a href="https://medium.com/@medium_username" title="Medium">
+          <svg><use xlink:href="#icon-medium"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.instagram.com/instagram_username" title="Instagram">
+          <svg><use xlink:href="#icon-instagram"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "Organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": "600",
+      "height": "315"
+  },
+  "sameAs": [
+    "https://github.com/somaz94","https://www.facebook.com/facebook_username","https://twitter.com/twitter_username","https://medium.com/@medium_username","https://www.instagram.com/instagram_username","https://www.linkedin.com/in/somaz","https://{{ site.tistory_username }}.tistory.com"
+  ]
+}
+</script>
+
+<!-- Include the script that allows Netlify CMS login -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-XXXXXXXX-X"></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-XXXXXXXX-X');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "http://schema.org",
+            "@type": "BlogPosting",
+            "name": "Deep Dive into OpenStack Manila",
+            "headline": "Understanding OpenStack's Shared File System as a Service",
+            "description": "A comprehensive guide to OpenStack Manila, its architecture, and how it provides shared file system capabilities in the cloud",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1756180452/openstack-manila-1_qxm1na.png",
+            "url": "https://somaz.blog/category/openstack/openstack-manila/",
+            "articleBody": "
+
+
+
+Understanding OpenStack Manila
+
+
+
+Manila is OpenStack’s Shared File System as a Service (SFaaS) that provides file sharing capabilities across multiple virtual machines and containers.
+
+It supports various file sharing protocols like NFS and CIFS, enabling flexible and scalable file storage solutions in the cloud.
+
+
+
+What is Manila?
+
+
+
+The Shared File System Service
+
+Manila serves as OpenStack’s file sharing service, providing essential functionality:
+
+
+  File Sharing: Enables multiple VMs and containers to access shared storage simultaneously
+  Protocol Support: Supports industry-standard protocols including NFS, CIFS/SMB, HDFS, and CephFS
+  Multi-tenancy: Provides secure isolated file systems for different projects and users
+  Storage Management: Manages complete file system lifecycle including creation, snapshots, and replication
+  Enterprise Integration: Seamless integration with existing enterprise storage solutions
+
+
+By providing shared file system capabilities, Manila enables efficient data sharing and collaboration in cloud environments while maintaining security and performance.
+
+
+
+Why Use Manila?
+
+Manila addresses critical challenges in cloud storage management:
+
+
+  Shared Storage: Multiple instances can access the same data simultaneously
+  Protocol Flexibility: Support for various file sharing protocols meets diverse application needs
+  Scalability: Dynamic scaling of file systems based on demand
+  Data Persistence: Persistent storage that survives instance lifecycle
+  Enterprise Ready: Integration with enterprise storage arrays and NAS devices
+  Cost Efficiency: Optimized resource utilization through shared access
+
+
+
+
+Supported File System Types
+
+Manila supports various file system types and protocols:
+
+
+  
+    
+      Protocol/Type
+      Description
+      Use Cases
+    
+    
+      NFS
+      Network File System
+      Linux environments, container storage, shared application data
+    
+    
+      CIFS/SMB
+      Common Internet File System
+      Windows environments, mixed OS deployments, enterprise integration
+    
+    
+      CephFS
+      Ceph Distributed File System
+      High-performance computing, scalable storage, object storage
+    
+    
+      HDFS
+      Hadoop Distributed File System
+      Big data analytics, distributed computing, data lakes
+    
+    
+      GlusterFS
+      Scale-out Network File System
+      Distributed applications, high availability, scale-out storage
+    
+  
+
+
+
+
+Manila Architecture Overview (Diagram Description)
+
+
+  Core Features: File Sharing, Multi-tenancy, Access Control
+  Service Integration: Nova, Neutron, Keystone
+  Storage: Backend Storage, Snapshots, Replication
+  Protocols: NFS, CIFS, CephFS
+
+
+
+  
+    graph LR
+      A[OpenStack Manila]
+      A --&amp;gt; B[Core Features]
+      A --&amp;gt; C[Service Integration]
+      A --&amp;gt; D[Storage]
+      A --&amp;gt; E[Protocols]
+      
+      B --&amp;gt; B1[File Sharing]
+      B --&amp;gt; B2[Multi-tenancy]
+      B --&amp;gt; B3[Access Control]
+      
+      C --&amp;gt; C1[Nova]
+      C --&amp;gt; C2[Neutron]
+      C --&amp;gt; C3[Keystone]
+      
+      D --&amp;gt; D1[Backend Storage]
+      D --&amp;gt; D2[Snapshots]
+      D --&amp;gt; D3[Replication]
+      
+      E --&amp;gt; E1[NFS]
+      E --&amp;gt; E2[CIFS]
+      E --&amp;gt; E3[CephFS]
+
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  
+
+
+
+
+
+
+Manila Architecture and Components
+
+Manila’s architecture is designed to provide flexible and scalable file sharing capabilities.
+
+Each component plays a specific role in managing and providing access to shared file systems.
+
+
+
+Detailed Architecture
+
+Manila follows a distributed architecture with clear separation of responsibilities:
+
+
+  
+    graph TB
+      subgraph &quot;Client Layer&quot;
+        CLI[OpenStack CLI]
+        HORIZON[Horizon Dashboard]
+        API_CLIENT[API Clients]
+        VMS[Virtual Machines]
+      end
+      
+      subgraph &quot;Manila Services&quot;
+        API[Manila API]
+        SCHEDULER[Manila Scheduler]
+        SHARE[Manila Share Service]
+        DATA[Manila Data Service]
+      end
+      
+      subgraph &quot;Storage Backends&quot;
+        NAS[Enterprise NAS]
+        CEPH[Ceph Storage]
+        NETAPP[NetApp Filers]
+        GENERIC[Generic Backend]
+      end
+      
+      subgraph &quot;Network Layer&quot;
+        NEUTRON[Neutron Networks]
+        SHARE_NET[Share Networks]
+      end
+      
+      CLI --&amp;gt; API
+      HORIZON --&amp;gt; API
+      API_CLIENT --&amp;gt; API
+      VMS --&amp;gt; SHARE_NET
+      
+      API --&amp;gt; SCHEDULER
+      SCHEDULER --&amp;gt; SHARE
+      SHARE --&amp;gt; DATA
+      SHARE --&amp;gt; NAS
+      SHARE --&amp;gt; CEPH
+      SHARE --&amp;gt; NETAPP
+      SHARE --&amp;gt; GENERIC
+      
+      SHARE_NET --&amp;gt; NEUTRON
+      NEUTRON --&amp;gt; SHARE
+
+      style API stroke:#333,stroke-width:2px,fill:#4CAF50
+      style SCHEDULER stroke:#333,stroke-width:2px,fill:#2196F3
+      style SHARE stroke:#333,stroke-width:2px,fill:#FF9800
+      style DATA stroke:#333,stroke-width:2px,fill:#9C27B0
+  
+
+
+
+
+Core Components
+
+
+  
+    
+      Component
+      Role
+      Description
+    
+    
+      Manila API
+      API Service
+      
+        
+          Handles RESTful API requests for share management
+          Provides authentication and authorization via Keystone
+          Manages share lifecycle operations
+          Handles quota management and tenant isolation
+          Supports multiple API versions for backward compatibility
+        
+      
+    
+    
+      Manila Scheduler
+      Resource Management
+      
+        
+          Selects optimal storage backend based on policies
+          Manages capacity planning and resource allocation
+          Handles share type mapping to backends
+          Optimizes placement for performance and availability
+          Supports custom scheduling filters and weighers
+        
+      
+    
+    
+      Manila Share
+      Share Service
+      
+        
+          Manages file system operations on storage backends
+          Handles protocol-specific share creation and management
+          Controls access permissions and export rules
+          Manages share exports and mount points
+          Handles share snapshots and replication
+        
+      
+    
+    
+      Manila Data
+      Data Service
+      
+        
+          Handles data plane operations like copy and migration
+          Manages share data replication between backends
+          Performs data transformation and migration tasks
+          Handles backup and restore operations
+        
+      
+    
+  
+
+
+
+
+Storage Backend Types
+
+Manila supports multiple storage backend architectures:
+
+
+  
+    
+      Backend Type
+      Description
+      Examples
+    
+    
+      Driver-only
+      Direct integration with storage arrays
+      NetApp, EMC, HPE 3PAR, Pure Storage
+    
+    
+      Generic Driver
+      Uses Nova instances as share servers
+      Generic NFS/CIFS servers, development environments
+    
+    
+      Container Driver
+      Container-based share servers
+      Docker-based NFS servers, lightweight deployments
+    
+    
+      Native Drivers
+      Purpose-built distributed file systems
+      CephFS, GlusterFS, HDFS
+    
+  
+
+
+
+
+Service Integration
+
+Manila integrates seamlessly with several OpenStack services to provide comprehensive file sharing:
+
+
+  
+    
+      Service
+      Integration Type
+      Benefits
+    
+    
+      Nova
+      Compute integration for share servers
+      
+        
+          Automatic share server provisioning
+          Instance-based file sharing
+          Dynamic scaling of share servers
+        
+      
+    
+    
+      Neutron
+      Network connectivity and isolation
+      
+        
+          Share network creation and management
+          Network isolation between tenants
+          Security group integration
+        
+      
+    
+    
+      Keystone
+      Identity and access management
+      
+        
+          User authentication and authorization
+          Project-based access control
+          Role-based permissions
+        
+      
+    
+    
+      Cinder
+      Block storage backend integration
+      
+        
+          Shared block storage volumes
+          Snapshot and backup integration
+          Volume-based share servers
+        
+      
+    
+    
+      Glance
+      Share server image management
+      
+        
+          Custom share server images
+          Pre-configured NFS/CIFS images
+          Image lifecycle management
+        
+      
+    
+    
+      Barbican
+      Encryption and key management
+      
+        
+          Share encryption at rest
+          Key management for encrypted shares
+          Certificate management for secure protocols
+        
+      
+    
+  
+
+
+This comprehensive integration enables robust file sharing within the complete OpenStack ecosystem.
+
+
+
+
+
+Key Features and Capabilities
+
+Manila provides comprehensive file sharing capabilities that enable efficient data sharing and collaboration.
+
+These features make it a powerful tool for file system management in OpenStack environments.
+
+
+
+Core Features
+
+
+  
+    
+      Feature
+      Description
+      Benefits
+    
+    
+      Protocol Support
+      Multiple file sharing protocols
+      
+        
+          NFS support
+          CIFS/SMB support
+          CephFS integration
+          Protocol flexibility
+        
+      
+    
+    
+      Storage Management
+      Flexible storage options
+      
+        
+          Multiple backends
+          Dynamic resizing
+          Snapshot support
+          Replication
+        
+      
+    
+    
+      Access Control
+      Security features
+      
+        
+          ACL management
+          Export rules
+          Multi-tenancy
+          Security groups
+        
+      
+    
+  
+
+
+
+
+Best Practices
+
+Key considerations for Manila deployment and operation:
+
+
+  
+    
+      Category
+      Best Practice
+      Implementation
+    
+    
+      Protocol Selection
+      Choose appropriate file sharing protocol
+      
+        
+          NFS for Linux-heavy environments
+          CIFS/SMB for Windows integration
+          CephFS for high-performance needs
+        
+      
+    
+    
+      Backend Selection
+      Select suitable storage backend
+      
+        
+          Enterprise arrays for production
+          Generic driver for development
+          Distributed filesystems for scale
+        
+      
+    
+    
+      Network Design
+      Plan network architecture carefully
+      
+        
+          Dedicated share networks
+          Proper VLAN segmentation
+          Network performance optimization
+        
+      
+    
+    
+      Access Control
+      Implement comprehensive security
+      
+        
+          IP-based access restrictions
+          User/certificate authentication
+          Share-level permissions
+        
+      
+    
+    
+      Performance Tuning
+      Optimize for workload requirements
+      
+        
+          Share type QoS settings
+          Network bandwidth allocation
+          Backend performance tuning
+        
+      
+    
+    
+      Monitoring
+      Set up comprehensive monitoring
+      
+        
+          Share availability monitoring
+          Performance metrics tracking
+          Capacity utilization alerts
+        
+      
+    
+  
+
+
+
+
+Share Types and Capabilities
+
+Understanding share types is crucial for optimal Manila deployment:
+
+
+  
+    
+      Capability
+      Description
+      Use Cases
+    
+    
+      Snapshot Support
+      Point-in-time share snapshots
+      Data protection, testing, rollback scenarios
+    
+    
+      Replication
+      Share data replication across sites
+      Disaster recovery, geographic distribution
+    
+    
+      Extend Size
+      Dynamic share size expansion
+      Growing datasets, elastic storage needs
+    
+    
+      Shrink Size
+      Dynamic share size reduction
+      Cost optimization, resource management
+    
+    
+      QoS Support
+      Quality of Service controls
+      Performance guarantees, multi-tenant isolation
+    
+  
+
+
+These practices ensure reliable, secure, and maintainable file sharing in production environments.
+
+
+
+
+
+Implementation and Usage
+
+Effective implementation of Manila requires proper configuration and integration with other OpenStack services.
+
+Here are key considerations and best practices for utilizing Manila effectively.
+
+
+
+Configuration and Setup
+
+
+
+Basic Configuration
+
+Key configuration files and settings:
+
+# /etc/manila/manila.conf
+[DEFAULT]
+# API Configuration
+osapi_share_listen = 0.0.0.0
+osapi_share_listen_port = 8786
+api_paste_config = /etc/manila/api-paste.ini
+
+# Database Configuration
+sql_connection = mysql+pymysql://manila:password@localhost/manila
+
+# RabbitMQ Configuration
+transport_url = rabbit://manila:password@controller:5672/
+
+# Keystone Authentication
+auth_strategy = keystone
+
+[keystone_authtoken]
+www_authenticate_uri = http://controller:5000
+auth_url = http://controller:5000
+memcached_servers = controller:11211
+auth_type = password
+project_domain_name = default
+user_domain_name = default
+project_name = service
+username = manila
+password = manila_password
+
+# Share Backend Configuration
+enabled_share_backends = generic,cephfs,netapp
+enabled_share_protocols = NFS,CIFS,CEPHFS
+
+[generic]
+share_driver = manila.share.drivers.generic.GenericShareDriver
+interface_driver = manila.network.linux.interface.OVSInterfaceDriver
+service_instance_flavor_id = 100
+service_image_name = manila-service-image
+service_instance_user = manila
+service_instance_password = manila
+connect_share_server_to_tenant_network = True
+
+[cephfs]
+share_driver = manila.share.drivers.cephfs.driver.CephFSDriver
+driver_handles_share_servers = False
+cephfs_conf_path = /etc/ceph/ceph.conf
+cephfs_auth_id = manila
+cephfs_cluster_name = ceph
+
+
+
+
+Advanced Backend Configuration
+
+Example configuration for enterprise storage arrays:
+
+# NetApp ONTAP Backend
+[netapp]
+share_driver = manila.share.drivers.netapp.dataontap.cluster_mode.drv.NetAppCmodeMultiSVMShareDriver
+driver_handles_share_servers = True
+netapp_server_hostname = 192.168.1.100
+netapp_server_port = 443
+netapp_login = admin
+netapp_password = password
+netapp_vserver = manila_vserver
+netapp_aggregate_name_search_pattern = ^aggr.*
+netapp_root_volume_aggregate = aggr1
+netapp_port_name_search_pattern = ^e.*
+
+
+
+
+Share Network Management
+
+
+
+Creating Share Networks
+
+Share networks provide network connectivity for shares:
+
+
+
+
+
+Security Services
+
+Configure authentication and access control:
+
+
+
+
+
+Advanced Usage Examples
+
+Share Replication Setup
+
+Configure disaster recovery with share replication:
+
+
+
+
+
+Share Groups Management
+
+Manage related shares as a group:
+
+
+
+
+
+Mount Share Examples
+
+Examples of mounting shares on different platforms:
+
+
+
+
+
+API Usage Examples
+
+
+
+Using REST API
+
+Direct API calls for automation and integration:
+
+
+
+
+
+Python Client Usage
+
+Programmatic access using Python Manila client:
+
+from manilaclient import client
+from keystoneauth1.identity import v3
+from keystoneauth1 import session
+
+# Authentication
+auth = v3.Password(
+    auth_url=&apos;http://keystone.example.com:5000/v3&apos;,
+    username=&apos;admin&apos;,
+    password=&apos;password&apos;,
+    project_name=&apos;admin&apos;,
+    user_domain_name=&apos;default&apos;,
+    project_domain_name=&apos;default&apos;
+)
+sess = session.Session(auth=auth)
+manila = client.Client(&apos;2&apos;, session=sess)
+
+# Create share
+share = manila.shares.create(
+    share_proto=&apos;NFS&apos;,
+    size=100,
+    name=&apos;python-share&apos;,
+    share_type=&apos;default&apos;,
+    share_network=&apos;&amp;lt;share-network-id&amp;gt;&apos;
+)
+
+# Wait for share to be available
+manila.shares.wait_for_share_to_become_available(share.id)
+
+# Allow access
+manila.shares.allow(
+    share.id,
+    access_type=&apos;ip&apos;,
+    access=&apos;192.168.1.0/24&apos;,
+    access_level=&apos;rw&apos;
+)
+
+# Create snapshot
+snapshot = manila.share_snapshots.create(
+    share.id,
+    name=&apos;python-snapshot&apos;,
+    description=&apos;Created via Python client&apos;
+)
+
+# List shares
+shares = manila.shares.list()
+for share in shares:
+    print(f&quot;Share: {share.name}, Status: {share.status}, Size: {share.size}GB&quot;)
+
+
+
+
+Use Cases
+
+Manila is particularly useful for various enterprise and cloud scenarios:
+
+
+  
+    
+      Use Case
+      Description
+      Benefits
+    
+    
+      Multi-VM Applications
+      Applications requiring shared data access
+      
+        
+          Shared configuration files
+          Log aggregation
+          Distributed application data
+        
+      
+    
+    
+      Container Storage
+      Persistent storage for containerized apps
+      
+        
+          Kubernetes persistent volumes
+          Docker volume plugins
+          Stateful application data
+        
+      
+    
+    
+      Content Management
+      Web content and media storage
+      
+        
+          Website assets sharing
+          Media file distribution
+          Content delivery optimization
+        
+      
+    
+    
+      Development Environments
+      Shared development resources
+      
+        
+          Source code repositories
+          Build artifacts sharing
+          Development tool assets
+        
+      
+    
+    
+      Enterprise Integration
+      Legacy application modernization
+      
+        
+          Lift-and-shift migrations
+          Hybrid cloud scenarios
+          Enterprise NAS integration
+        
+      
+    
+    
+      Big Data Analytics
+      Large-scale data processing
+      
+        
+          Hadoop/Spark data lakes
+          Analytics input datasets
+          ML training data storage
+        
+      
+    
+  
+
+
+These use cases demonstrate Manila’s versatility and enterprise readiness across various deployment scenarios.
+
+
+
+
+
+Monitoring and Troubleshooting
+
+Effective monitoring and troubleshooting are essential for maintaining reliable Manila file sharing services.
+
+
+
+Performance Monitoring
+
+
+
+Key Metrics to Monitor
+
+
+  
+    
+      Metric Category
+      Key Metrics
+      Monitoring Tools
+    
+    
+      Share Performance
+      
+        
+          I/O operations per second (IOPS)
+          Throughput (MB/s)
+          Latency and response time
+          Queue depth
+        
+      
+      Prometheus, Grafana, Manila metrics
+    
+    
+      Service Health
+      
+        
+          API response times
+          Share server availability
+          Backend connectivity
+          Service process status
+        
+      
+      Nagios, Zabbix, OpenStack Health Monitor
+    
+    
+      Capacity Utilization
+      
+        
+          Share space usage
+          Backend capacity utilization
+          Network bandwidth usage
+          Connection counts
+        
+      
+      Manila dashboards, Storage array tools
+    
+  
+
+
+
+
+Log Analysis
+
+Key log files and monitoring patterns:
+
+# Manila service logs
+tail -f /var/log/manila/manila-api.log
+tail -f /var/log/manila/manila-scheduler.log
+tail -f /var/log/manila/manila-share.log
+tail -f /var/log/manila/manila-data.log
+
+# Key patterns to monitor:
+# - Share creation/deletion operations
+# - Access rule modifications
+# - Backend communication errors
+# - Network connectivity issues
+# - Authentication failures
+
+
+
+
+Common Issues and Solutions
+
+
+
+Troubleshooting Guide
+
+
+  
+    
+      Issue
+      Symptoms
+      Solution
+    
+    
+      Share Creation Failures
+      
+        
+          Shares stuck in &quot;creating&quot; state
+          Backend communication errors
+        
+      
+      
+        
+          Check backend connectivity
+          Verify driver configuration
+          Review scheduler logs
+        
+      
+    
+    
+      Mount Issues
+      
+        
+          Unable to mount shares
+          Permission denied errors
+        
+      
+      
+        
+          Verify access rules
+          Check network connectivity
+          Review export paths
+        
+      
+    
+    
+      Performance Problems
+      
+        
+          Slow file operations
+          High latency
+        
+      
+      
+        
+          Analyze network performance
+          Check backend storage load
+          Review share server resources
+        
+      
+    
+  
+
+
+
+
+Performance Optimization
+
+Strategies for optimizing Manila performance:
+
+
+  Network Optimization: Use dedicated networks for storage traffic
+  Backend Tuning: Optimize storage array settings
+  Share Server Sizing: Right-size share server instances
+  Protocol Selection: Choose optimal protocols for workloads
+  Caching: Implement client-side caching where appropriate
+
+
+
+
+
+
+Security and Access Control
+
+Comprehensive security guidelines for Manila deployments in production environments.
+
+
+
+Access Control Models
+
+
+
+Access Types
+
+Manila supports multiple access control mechanisms:
+
+
+  
+    
+      Access Type
+      Description
+      Use Cases
+    
+    
+      IP-based
+      Control access by IP address or subnet
+      Network-based security, simple deployments
+    
+    
+      User-based
+      Control access by username
+      Individual user access, fine-grained control
+    
+    
+      Certificate-based
+      Control access using client certificates
+      High-security environments, PKI integration
+    
+    
+      Kerberos
+      Kerberos-based authentication
+      Enterprise environments, Active Directory
+    
+  
+
+
+
+
+Security Services Integration
+
+Configure enterprise authentication:
+
+
+
+
+
+Network Security
+
+Best practices for securing Manila network traffic:
+
+
+  Network Isolation: Use dedicated share networks
+  VLAN Segmentation: Separate storage traffic from general network
+  Firewall Rules: Restrict access to necessary ports only
+  VPN Access: Use VPN for remote access to shares
+  Encryption: Enable encryption in transit where supported
+
+
+
+
+Data Protection
+
+Comprehensive data protection strategies:
+
+
+  Encryption at Rest: Use backend encryption capabilities
+  Snapshot Policies: Regular automated snapshots
+  Replication: Cross-site data replication for DR
+  Access Auditing: Log and monitor all share access
+  Backup Integration: Regular backup to external systems
+
+
+
+
+
+
+Key Points
+
+
+  Manila Essentials
+  
+    
+      Core Functionality
+      - Shared file system as a service
+      - Multi-protocol support (NFS, CIFS, CephFS)
+      - Enterprise storage integration
+      - Share lifecycle management
+    
+    
+      Advanced Features
+      - Share networks and security services
+      - Snapshot and replication capabilities
+      - Dynamic resizing and QoS controls
+      - Multi-backend support
+      - API and CLI management interfaces
+    
+    
+      Enterprise Benefits
+      - Seamless legacy integration
+      - Active Directory authentication
+      - High availability and disaster recovery
+      - Performance optimization
+      - Comprehensive access control
+    
+    
+      Operational Excellence
+      - Automated share server management
+      - Comprehensive monitoring and alerting
+      - Backup and disaster recovery
+      - Security and compliance features
+      - Scalable multi-tenant architecture
+    
+  
+
+
+
+
+
+
+References
+
+  OpenStack Manila Documentation
+  Red Hat OpenStack Platform Documentation
+  OpenStack Wiki - Manila
+  Manila API Reference
+  Manila Configuration Reference
+  OpenStack Manila Client Documentation
+  Manila Driver Documentation
+  NFS Protocol Specification
+  CIFS/SMB Protocol Documentation
+  CephFS Integration Guide
+  Manila Security Guide
+  OpenStack Shared File System Service Admin Guide
+
+",
+            "wordcount": "3041",
+            "inLanguage": "en",
+            "dateCreated": "2025-09-03/",
+            "datePublished": "2025-09-03/",
+            "dateModified": "2025-09-03/",
+            "author": {
+                "@type": "Person",
+                "name": "Somaz",
+                
+                "image": "/assets/img/uploads/profile.png",
+                
+                "jobTitle": "DevOps Engineer",
+                "url": "https://somaz.blog/authors/somaz/",
+                "sameAs": [
+                    "https://github.com/somaz94","https://www.linkedin.com/in/somaz"
+                ]
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "somaz",
+                "url": "https://somaz.blog/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://somaz.blog/assets/img/blog-image.png",
+                    "width": "600",
+                    "height": "315"
+                }
+            },
+            "mainEntityOfPage": "True",
+            "genre": "OPENSTACK",
+            "articleSection": "OPENSTACK",
+            "keywords": ["openstack","manila","storage","filesystem","cloud"]
+        }
+        </script>
+    </body>
+</html>
