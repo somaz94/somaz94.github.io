@@ -220,7 +220,7 @@ May 15, 2025
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
-                    <span>53 min to read</span>
+                    <span>51 min to read</span>
                 </p>
                 <h1 class="post-title">AWS IRSA (IAM Roles for Service Accounts) - Complete Enterprise Guide</h1>
                 <p class="post-subtitle">Master secure AWS service access in EKS with advanced IRSA implementation patterns</p>
@@ -1812,46 +1812,7 @@ export </span><span class="nv">AWS_CREDENTIAL_CACHE_MAX_ITEMS</span><span class=
 
 <h3 id="3-alerting-rules">3. Alerting Rules</h3>
 
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Prometheus alerting rules for IRSA</span>
-<span class="na">groups</span><span class="pi">:</span>
-<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">irsa-alerts</span>
-  <span class="na">rules</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">IRSAHighTokenRefreshRate</span>
-    <span class="na">expr</span><span class="pi">:</span> <span class="s">rate(aws_sdk_token_refresh_total[5m]) &gt; </span><span class="m">0.1</span>
-    <span class="na">for</span><span class="pi">:</span> <span class="s">5m</span>
-    <span class="na">labels</span><span class="pi">:</span>
-      <span class="na">severity</span><span class="pi">:</span> <span class="s">warning</span>
-    <span class="na">annotations</span><span class="pi">:</span>
-      <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">High</span><span class="nv"> </span><span class="s">IRSA</span><span class="nv"> </span><span class="s">token</span><span class="nv"> </span><span class="s">refresh</span><span class="nv"> </span><span class="s">rate</span><span class="nv"> </span><span class="s">detected"</span>
-      <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Pod</span><span class="nv">  </span><span class="s">in</span><span class="nv"> </span><span class="s">namespace</span><span class="nv">  </span><span class="s">is</span><span class="nv"> </span><span class="s">refreshing</span><span class="nv"> </span><span class="s">tokens</span><span class="nv"> </span><span class="s">too</span><span class="nv"> </span><span class="s">frequently"</span>
-
-  <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">IRSAAuthenticationFailures</span>
-    <span class="na">expr</span><span class="pi">:</span> <span class="s">rate(aws_sts_assume_role_failed_total[5m]) &gt; </span><span class="m">0.01</span>
-    <span class="na">for</span><span class="pi">:</span> <span class="s">2m</span>
-    <span class="na">labels</span><span class="pi">:</span>
-      <span class="na">severity</span><span class="pi">:</span> <span class="s">critical</span>
-    <span class="na">annotations</span><span class="pi">:</span>
-      <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">IRSA</span><span class="nv"> </span><span class="s">authentication</span><span class="nv"> </span><span class="s">failures</span><span class="nv"> </span><span class="s">detected"</span>
-      <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">ServiceAccount</span><span class="nv">  </span><span class="s">failing</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">authenticate</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">AWS</span><span class="nv"> </span><span class="s">STS"</span>
-
-  <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">IRSATokenNearExpiry</span>
-    <span class="na">expr</span><span class="pi">:</span> <span class="s">aws_sdk_token_expiry_seconds &lt; </span><span class="m">300</span>
-    <span class="na">for</span><span class="pi">:</span> <span class="s">1m</span>
-    <span class="na">labels</span><span class="pi">:</span>
-      <span class="na">severity</span><span class="pi">:</span> <span class="s">warning</span>
-    <span class="na">annotations</span><span class="pi">:</span>
-      <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">IRSA</span><span class="nv"> </span><span class="s">token</span><span class="nv"> </span><span class="s">approaching</span><span class="nv"> </span><span class="s">expiry"</span>
-      <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Token</span><span class="nv"> </span><span class="s">for</span><span class="nv">  </span><span class="s">expires</span><span class="nv"> </span><span class="s">in</span><span class="nv"> </span><span class="s">less</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">5</span><span class="nv"> </span><span class="s">minutes"</span>
-
-  <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">IRSAUnauthorizedAccess</span>
-    <span class="na">expr</span><span class="pi">:</span> <span class="s">increase(aws_api_unauthorized_total[5m]) &gt; </span><span class="m">0</span>
-    <span class="na">for</span><span class="pi">:</span> <span class="s">0m</span>
-    <span class="na">labels</span><span class="pi">:</span>
-      <span class="na">severity</span><span class="pi">:</span> <span class="s">critical</span>
-    <span class="na">annotations</span><span class="pi">:</span>
-      <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Unauthorized</span><span class="nv"> </span><span class="s">AWS</span><span class="nv"> </span><span class="s">API</span><span class="nv"> </span><span class="s">access</span><span class="nv"> </span><span class="s">detected"</span>
-      <span class="na">description</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Pod</span><span class="nv">  </span><span class="s">attempted</span><span class="nv"> </span><span class="s">unauthorized</span><span class="nv"> </span><span class="s">access</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">"</span>
-</code></pre></div></div>
+<script src="https://gist.github.com/somaz94/56bde45d77f859fd8ec34f5faf6b5f69.js"></script>
 
 <p><br /></p>
 
@@ -2555,7 +2516,7 @@ kubectl delete namespace <span class="nv">$NAMESPACE</span>
 
         <!-- Add time bar only for pages without pagination -->
         
-            <div class="time-bar" data-minutes="53">
+            <div class="time-bar" data-minutes="51">
     <span class="time-completed"></span>
     <span class="time-remaining"></span>
     <div class="bar">
@@ -4525,45 +4486,6 @@ aws_sts_regional_endpoint_usage_total
 
 3. Alerting Rules
 
-# Prometheus alerting rules for IRSA
-groups:
-- name: irsa-alerts
-  rules:
-  - alert: IRSAHighTokenRefreshRate
-    expr: rate(aws_sdk_token_refresh_total[5m]) &amp;gt; 0.1
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: &quot;High IRSA token refresh rate detected&quot;
-      description: &quot;Pod  in namespace  is refreshing tokens too frequently&quot;
-
-  - alert: IRSAAuthenticationFailures
-    expr: rate(aws_sts_assume_role_failed_total[5m]) &amp;gt; 0.01
-    for: 2m
-    labels:
-      severity: critical
-    annotations:
-      summary: &quot;IRSA authentication failures detected&quot;
-      description: &quot;ServiceAccount  failing to authenticate with AWS STS&quot;
-
-  - alert: IRSATokenNearExpiry
-    expr: aws_sdk_token_expiry_seconds &amp;lt; 300
-    for: 1m
-    labels:
-      severity: warning
-    annotations:
-      summary: &quot;IRSA token approaching expiry&quot;
-      description: &quot;Token for  expires in less than 5 minutes&quot;
-
-  - alert: IRSAUnauthorizedAccess
-    expr: increase(aws_api_unauthorized_total[5m]) &amp;gt; 0
-    for: 0m
-    labels:
-      severity: critical
-    annotations:
-      summary: &quot;Unauthorized AWS API access detected&quot;
-      description: &quot;Pod  attempted unauthorized access to &quot;
 
 
 
@@ -5220,7 +5142,7 @@ Sample Code and Examples
   Kubernetes Examples
 
 ",
-            "wordcount": "9669",
+            "wordcount": "9354",
             "inLanguage": "en",
             "dateCreated": "2025-05-15/",
             "datePublished": "2025-05-15/",
