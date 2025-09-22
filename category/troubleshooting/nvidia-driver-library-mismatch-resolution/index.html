@@ -37,19 +37,19 @@
         mermaid.initialize({ startOnLoad: true });
     </script>
 
-    <title>ArgoCD Ingress Error Resolution Guide (GKE) | somaz</title>
-    <meta name="description" content="A detailed guide on resolving 502 Server Error and LoadBalancer Health Check failures when configuring ArgoCD Ingress in GKE environment">
+    <title>Resolving NVIDIA Driver/Library Version Mismatch Errors | somaz</title>
+    <meta name="description" content="A step-by-step troubleshooting guide for resolving NVIDIA driver and library version mismatch errors, including root cause analysis, recovery, and prevention...">
     
-        <meta name="keywords" content="argocd, kubernetes, gke, ingress, troubleshooting">
+        <meta name="keywords" content="nvidia, gpu, driver, linux, troubleshooting, dkms, unattended-upgrades">
     
 
     <!-- Social: Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="ArgoCD Ingress Error Resolution Guide (GKE) | somaz">
-    <meta name="twitter:description" content="A detailed guide on resolving 502 Server Error and LoadBalancer Health Check failures when configuring ArgoCD Ingress in GKE environment">
+    <meta name="twitter:title" content="Resolving NVIDIA Driver/Library Version Mismatch Errors | somaz">
+    <meta name="twitter:description" content="A step-by-step troubleshooting guide for resolving NVIDIA driver and library version mismatch errors, including root cause analysis, recovery, and prevention...">
 
     
-        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1757928364/argocd-ingress-gke-1_ziyp3n.png">
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754459069/nvidia-troubleshooting_audqe2.png">
     
     
     
@@ -57,10 +57,10 @@
     
 
     <!-- Social: Facebook / Open Graph -->
-    <meta property="og:url" content="https://somaz.blog/category/troubleshooting/argocd-ingress-gke/">
-    <meta property="og:title" content="ArgoCD Ingress Error Resolution Guide (GKE) | somaz">
-    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1757928364/argocd-ingress-gke-1_ziyp3n.png">
-    <meta property="og:description" content="A detailed guide on resolving 502 Server Error and LoadBalancer Health Check failures when configuring ArgoCD Ingress in GKE environment">
+    <meta property="og:url" content="https://somaz.blog/category/troubleshooting/nvidia-driver-library-mismatch-resolution/">
+    <meta property="og:title" content="Resolving NVIDIA Driver/Library Version Mismatch Errors | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754459069/nvidia-troubleshooting_audqe2.png">
+    <meta property="og:description" content="A step-by-step troubleshooting guide for resolving NVIDIA driver and library version mismatch errors, including root cause analysis, recovery, and prevention...">
     <meta property="og:site_name" content="Somaz Tech Blog">
 
     <!-- Favicon -->
@@ -92,7 +92,7 @@
     <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
 
     <link rel="stylesheet" href="/assets/css/styles.css">
-    <link rel="canonical" href="https://somaz.blog/category/troubleshooting/argocd-ingress-gke/">
+    <link rel="canonical" href="https://somaz.blog/category/troubleshooting/nvidia-driver-library-mismatch-resolution/">
     <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
 
     <!-- Include extra styles -->
@@ -211,22 +211,22 @@
                 <p class="post-info">
                     
                         <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
-                        <time class="date" datetime="2025-08-10T00:00:00+00:00">
+                        <time class="date" datetime="2025-09-22T00:00:00+00:00">
                             
 
 
-August 10, 2025
+September 22, 2025
 
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
                     <span>2 min to read</span>
                 </p>
-                <h1 class="post-title">ArgoCD Ingress Error Resolution Guide (GKE)</h1>
-                <p class="post-subtitle">Resolving 502 Server Error and LoadBalancer Health Check Failures in GKE ArgoCD Ingress Configuration</p>
+                <h1 class="post-title">Resolving NVIDIA Driver/Library Version Mismatch Errors</h1>
+                <p class="post-subtitle">How to fix 'Failed to initialize NVML Driver/library version mismatch' on GPU servers</p>
 
                 
-                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1757928364/argocd-ingress-gke-1_ziyp3n.png" alt="Featured image" class="post-cover">
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1754459069/nvidia-troubleshooting_audqe2.png" alt="Featured image" class="post-cover">
                 
 
                 <!-- Pagination links -->
@@ -242,129 +242,142 @@ August 10, 2025
 
 <h2 id="overview">Overview</h2>
 
-<blockquote>
-  <p>This article addresses the 502 Server Error and LoadBalancer Health Check failures that occur when configuring ArgoCD Ingress in GKE (Google Kubernetes Engine) environment. <br /><br /> Google Cloud Load Balancer distributes traffic through health checks of backend services, but when configuring ArgoCD Ingress, internal HTTP → HTTPS redirection can cause health check failures, preventing external access to the ArgoCD UI.</p>
-</blockquote>
+<p>Have you ever installed a GPU driver on your server and encountered the following error when running <code class="language-plaintext highlighter-rouge">nvidia-smi</code>?</p>
 
-<h3 id="troubleshooting-flow">Troubleshooting Flow</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nvidia-smi
+Failed to initialize NVML: Driver/library version mismatch
+</code></pre></div></div>
 
-<h4 id="troubleshooting-steps">Troubleshooting Steps:</h4>
-
-<ol>
-  <li>Analyze 502 errors in GKE LoadBalancer and ArgoCD Ingress configuration</li>
-  <li>Verify redirection through internal curl testing (Temporary Redirect)</li>
-  <li>Configure <code class="language-plaintext highlighter-rouge">--insecure</code> setting through <code class="language-plaintext highlighter-rouge">argocd-cmd-params-cm</code> ConfigMap</li>
-  <li>Verify health check recovery and ArgoCD UI exposure</li>
-</ol>
+<p>This error is usually caused by a version mismatch between the NVIDIA driver kernel module and the utility library. This post explains the root cause, step-by-step resolution, and tips to prevent recurrence.</p>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="argocd-ingress-error-with-gke">ArgoCD Ingress Error (With GKE)</h2>
+<h2 id="problem-symptoms">Problem Symptoms</h2>
 
-<blockquote>
-  <p>When checking the LoadBalancer’s backend service, Server Error occurs due to failed Health Checks in the regional network endpoint groups (equivalent to AWS Target Groups).</p>
-</blockquote>
-
-<h3 id="error-verification">Error Verification</h3>
-
-<p>External Access Test:</p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>curl https://argocd.somaz.link/healthz
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nvidia-smi
+Failed to initialize NVML: Driver/library version mismatch
 </code></pre></div></div>
-
-<p>Response:
-<img src="https://blog.kakaocdn.net/dn/bKcnd6/btsGPQvILQP/fPm5VbOT5k0DyHOhAogtF1/img.png" alt="502 Server Error Response" /></p>
 
 <p><br /></p>
 
-<h3 id="internal-testing">Internal Testing</h3>
+<p>Check with dmesg:</p>
 
-<h4 id="kubernetes-internal-curl-test">Kubernetes Internal curl Test:</h4>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl run curl <span class="nt">-it</span> <span class="nt">--rm</span> <span class="nt">--image</span> curlimages/curl <span class="nt">--</span> sh
-
-curl 10.31.0.134:8080/healthz
-<span class="c"># Temporary Redirect</span>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dmesg | <span class="nb">grep </span>NVRM
+...
+NVRM: API mismatch: the client has the version 535.183.06,
+NVRM: but this kernel module has the version 535.183.01.
 </code></pre></div></div>
+
+<p>In this example, the utility is version 535.183.06, but the kernel module is 535.183.01—a clear version mismatch.</p>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="problem-resolution">Problem Resolution</h2>
-
-<p>According to the ArgoCD Ingress documentation, the API server must be run with TLS disabled to prevent internal redirection loops from HTTP to HTTPS.</p>
-
-<p><br /></p>
-
-<h3 id="configmap-modification">ConfigMap Modification</h3>
-
-<h4 id="argocd-cmd-params-cm-configmap-configuration">argocd-cmd-params-cm ConfigMap Configuration:</h4>
-
-<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
-<span class="na">data</span><span class="pi">:</span>
-  <span class="na">redis.server</span><span class="pi">:</span> <span class="s">argocd-redis-ha-haproxy:6379</span>
-  <span class="na">server.insecure</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
-<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
-<span class="na">metadata</span><span class="pi">:</span>
-  <span class="na">labels</span><span class="pi">:</span>
-    <span class="na">app.kubernetes.io/name</span><span class="pi">:</span> <span class="s">argocd-cmd-params-cm</span>
-    <span class="na">app.kubernetes.io/part-of</span><span class="pi">:</span> <span class="s">argocd</span>
-  <span class="na">name</span><span class="pi">:</span> <span class="s">argocd-cmd-params-cm</span>
-  <span class="na">namespace</span><span class="pi">:</span> <span class="s">argocd</span>
-</code></pre></div></div>
-
-<p><br /></p>
-
-<h3 id="resolution-results">Resolution Results</h3>
-
-<div class="info-box info-box-success-not-check">
-  <strong>Health Check and UI Access Verification</strong>
-  <ul>
-    <li>Health Check functioning normally</li>
-    <li>ArgoCD UI properly exposed</li>
-    <li>External access enabled</li>
-  </ul>
-</div>
-
-<p><br /></p>
-
-<hr />
-
-<h2 id="key-points">Key Points</h2>
-
-<p>This section summarizes the main considerations and solutions for exposing ArgoCD through Ingress in GKE.</p>
-
-<p><br /></p>
-
-<h3 id="main-points">Main Points</h3>
-
-<h4 id="-key-points-summary">💡 Key Points Summary</h4>
+<h2 id="root-cause-analysis">Root Cause Analysis</h2>
 
 <ul>
-  <li><strong>Problem Cause</strong>
-    <ul>
-      <li>ArgoCD has HTTPS redirection enabled by default</li>
-      <li>GKE Ingress requires internal HTTP communication for Health Checks</li>
-    </ul>
-  </li>
-  <li><strong>Solution</strong>
-    <ul>
-      <li>Set <code class="language-plaintext highlighter-rouge">server.insecure</code> to <code class="language-plaintext highlighter-rouge">true</code> in ConfigMap (<code class="language-plaintext highlighter-rouge">argocd-cmd-params-cm</code>)</li>
-      <li>Restart or rollout argocd-server after configuration</li>
-    </ul>
-  </li>
+  <li><code class="language-plaintext highlighter-rouge">unattended-upgrade</code> automatically updated some NVIDIA packages, but not all components were replaced</li>
+  <li>The <code class="language-plaintext highlighter-rouge">nvidia-dkms</code> kernel module was not recompiled, so the old version remained loaded</li>
+  <li>The kernel module was not reloaded (or the system not rebooted), causing a conflict</li>
 </ul>
 
 <p><br /></p>
 
-<h3 id="conclusion">Conclusion</h3>
+<hr />
 
-<div class="info-box info-box-default-not-check">
-  <strong>Summary</strong>
-  <p>When exposing ArgoCD through Ingress in GKE, the internal TLS redirection in ArgoCD can cause GCP LoadBalancer health checks to fail. <br /><br /> By setting server.insecure: "true" in ArgoCD, internal TLS can be disabled, allowing GCP LoadBalancer to pass health checks and properly serve the ArgoCD UI through the Ingress path.</p>
-</div>
+<h2 id="resolution-steps">Resolution Steps</h2>
+
+<p><br /></p>
+
+<h3 id="1-check-loaded-nvidia-kernel-modules">1. Check Loaded NVIDIA Kernel Modules</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lsmod | <span class="nb">grep </span>nvidia
+...
+nvidia              56713216  ...
+nvidia_modeset       ...
+nvidia_uvm           ...
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="2-terminate-related-processes">2. Terminate Related Processes</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lsof /dev/nvidia<span class="k">*</span>
+<span class="nb">kill</span> <span class="nt">-9</span> &lt;PIDs&gt;
+lsof /dev/nvidia<span class="k">*</span>  <span class="c"># Repeat until no processes remain</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="3-unload-nvidia-modules">3. Unload NVIDIA Modules</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>modprobe <span class="nt">-r</span> nvidia_uvm nvidia_drm nvidia_modeset nvidia
+</code></pre></div></div>
+
+<blockquote>
+  <p><strong>Note:</strong> The unload order matters: <code class="language-plaintext highlighter-rouge">uvm</code> → <code class="language-plaintext highlighter-rouge">drm</code> → <code class="language-plaintext highlighter-rouge">modeset</code> → <code class="language-plaintext highlighter-rouge">nvidia</code></p>
+</blockquote>
+
+<p><br /></p>
+
+<h3 id="4-reinstall-dkms-or-reboot">4. Reinstall DKMS or Reboot</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>dpkg-reconfigure nvidia-dkms-535-server
+<span class="c"># or</span>
+<span class="nb">sudo </span>reboot
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="5-verify-normal-operation">5. Verify Normal Operation</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nvidia-smi
+<span class="c"># Should display driver and CUDA version, GPU list, and no errors</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="prevention-block-unattended-upgrades-for-nvidia-packages">Prevention: Block Unattended Upgrades for NVIDIA Packages</h2>
+
+<p><br /></p>
+
+<p>To prevent similar issues, exclude NVIDIA packages from automatic upgrades:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>vi /etc/apt/apt.conf.d/50unattended-upgrades
+...
+Unattended-Upgrade::Package-Blacklist <span class="o">{</span>
+  <span class="s2">"nvidia-*"</span><span class="p">;</span>
+<span class="o">}</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>Apply the changes:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>systemctl restart unattended-upgrades
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This troubleshooting scenario is common in GPU server operations. For machine learning and deep learning clusters, managing GPU driver versions is especially critical.</p>
+
+<h3 id="summary">Summary:</h3>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">nvidia-smi</code> error → kernel module and library mismatch</li>
+  <li>Terminate processes + unload modules → manual recovery</li>
+  <li>Add NVIDIA packages to unattended-upgrades blacklist to prevent recurrence</li>
+</ul>
+
+<p>By following these steps, you can resolve NVIDIA driver errors and ensure stable GPU operation in your server environment.</p>
 
 <p><br /></p>
 
@@ -372,9 +385,11 @@ curl 10.31.0.134:8080/healthz
 
 <h2 id="references">References</h2>
 <ul>
-  <li><a href="https://cloud.google.com/kubernetes-engine/docs/troubleshooting/troubleshoot-load-balancing">GKE Load Balancing Troubleshooting</a></li>
-  <li><a href="https://cloud.google.com/load-balancing/docs/https/troubleshooting-ext-https-lbs">External HTTPS Load Balancer Troubleshooting</a></li>
-  <li><a href="https://argo-cd.readthedocs.io/en/stable/">ArgoCD Documentation</a></li>
+  <li><a href="https://docs.nvidia.com/deploy/driver-version-mismatch.html">NVIDIA Official: Driver API Mismatch Error</a></li>
+  <li><a href="https://docs.nvidia.com/datacenter/tesla/tesla-installation-notes/index.html">NVIDIA Linux Driver Install Guide</a></li>
+  <li><a href="https://docs.nvidia.com/deploy/cuda-compatibility/">CUDA Compatibility Guide for Linux</a></li>
+  <li><a href="https://wiki.ubuntu.com/NvidiaDrivers">Ubuntu DKMS / NVIDIA Driver Troubleshooting</a></li>
+  <li><a href="https://wiki.debian.org/UnattendedUpgrades">Unattended Upgrades Official Documentation</a></li>
 </ul>
 
 
@@ -391,15 +406,6 @@ curl 10.31.0.134:8080/healthz
                         
                         
                             <li>
-                                <a href="/category/troubleshooting/nvidia-driver-library-mismatch-resolution/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1754459069/nvidia-troubleshooting_audqe2.png">
-                                    
-                                    <h3>Resolving NVIDIA Driver/Library Version Mismatch Errors</h3>
-                                </a>
-                            </li>
-                        
-                            <li>
                                 <a href="/category/iac/what-is-packer/">
                                     
                                         <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755135220/packer_lrlizr.png">
@@ -414,6 +420,15 @@ curl 10.31.0.134:8080/healthz
                                         <img src="https://blog.kakaocdn.net/dn/VDDO9/btsMRQChoDD/cEqm5BJuB0tQTS9Imr22fK/img.png">
                                     
                                     <h3>Understanding ACID and CAP: Database Design Principles</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/troubleshooting/db-connection-econnreset-resolution/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1757928232/db-connection-econnreset-1_odeqhz.png">
+                                    
+                                    <h3>Resolving DB Connection Error (ECONNRESET) Issues</h3>
                                 </a>
                             </li>
                         
@@ -450,13 +465,13 @@ curl 10.31.0.134:8080/healthz
     </div>
     <div id="previewSection" class="preview-section">
         
-        <a href="/category/openstack/openstack-octavia/" class="post-preview">
+        <a href="/category/iac/what-is-packer/" class="post-preview">
             <div class="image">
                 
-                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1742267532/openstack_t2tmoc.png">
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755135220/packer_lrlizr.png">
                 
             </div>
-            <h3 class="title">Deep Dive into OpenStack Octavia</h3>
+            <h3 class="title">HashiCorp Packer: Automated Multi-Platform Image Building and Golden Image Creation</h3>
         </a>
     </div>
 </div>
@@ -559,11 +574,11 @@ window.addEventListener('scroll', function() {
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A detailed guide on resolving 502 Server Error and LoadBalancer Health Check failures when configuring ArgoCD Ingress in GKE environment&quot;%20https://somaz.blog/category/troubleshooting/argocd-ingress-gke/%20via%20&#64;twitter_username&hashtags=argocd,kubernetes,gke,ingress,troubleshooting"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A step-by-step troubleshooting guide for resolving NVIDIA driver and library version mismatch errors, including root cause analysis, recovery, and prevention tips.&quot;%20https://somaz.blog/category/troubleshooting/nvidia-driver-library-mismatch-resolution/%20via%20&#64;twitter_username&hashtags=nvidia,gpu,driver,linux,troubleshooting,dkms,unattended-upgrades"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
-    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/troubleshooting/argocd-ingress-gke/"
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/troubleshooting/nvidia-driver-library-mismatch-resolution/"
     onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
         <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
     </a>
@@ -645,7 +660,7 @@ window.addEventListener('scroll', function() {
         disqus_loaded = true;
         var disqus_shortname = 'https-somaz94-github-io';
         var disqus_title = '';
-        var disqus_url = '/category/troubleshooting/argocd-ingress-gke/';
+        var disqus_url = '/category/troubleshooting/nvidia-driver-library-mismatch-resolution/';
         var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
         dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
         (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
@@ -814,140 +829,153 @@ window.addEventListener('scroll', function() {
         {
             "@context": "http://schema.org",
             "@type": "BlogPosting",
-            "name": "ArgoCD Ingress Error Resolution Guide (GKE)",
-            "headline": "Resolving 502 Server Error and LoadBalancer Health Check Failures in GKE ArgoCD Ingress Configuration",
-            "description": "A detailed guide on resolving 502 Server Error and LoadBalancer Health Check failures when configuring ArgoCD Ingress in GKE environment",
-            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1757928364/argocd-ingress-gke-1_ziyp3n.png",
-            "url": "https://somaz.blog/category/troubleshooting/argocd-ingress-gke/",
+            "name": "Resolving NVIDIA Driver/Library Version Mismatch Errors",
+            "headline": "How to fix 'Failed to initialize NVML Driver/library version mismatch' on GPU servers",
+            "description": "A step-by-step troubleshooting guide for resolving NVIDIA driver and library version mismatch errors, including root cause analysis, recovery, and prevention tips.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1754459069/nvidia-troubleshooting_audqe2.png",
+            "url": "https://somaz.blog/category/troubleshooting/nvidia-driver-library-mismatch-resolution/",
             "articleBody": "
 
 
 
 Overview
 
+Have you ever installed a GPU driver on your server and encountered the following error when running nvidia-smi?
 
-  This article addresses the 502 Server Error and LoadBalancer Health Check failures that occur when configuring ArgoCD Ingress in GKE (Google Kubernetes Engine) environment.  Google Cloud Load Balancer distributes traffic through health checks of backend services, but when configuring ArgoCD Ingress, internal HTTP → HTTPS redirection can cause health check failures, preventing external access to the ArgoCD UI.
-
-
-Troubleshooting Flow
-
-Troubleshooting Steps:
+nvidia-smi
+Failed to initialize NVML: Driver/library version mismatch
 
 
-  Analyze 502 errors in GKE LoadBalancer and ArgoCD Ingress configuration
-  Verify redirection through internal curl testing (Temporary Redirect)
-  Configure --insecure setting through argocd-cmd-params-cm ConfigMap
-  Verify health check recovery and ArgoCD UI exposure
+This error is usually caused by a version mismatch between the NVIDIA driver kernel module and the utility library. This post explains the root cause, step-by-step resolution, and tips to prevent recurrence.
 
 
 
 
 
+Problem Symptoms
 
-ArgoCD Ingress Error (With GKE)
-
-
-  When checking the LoadBalancer’s backend service, Server Error occurs due to failed Health Checks in the regional network endpoint groups (equivalent to AWS Target Groups).
-
-
-Error Verification
-
-External Access Test:
-$ curl https://argocd.somaz.link/healthz
-
-
-Response:
+nvidia-smi
+Failed to initialize NVML: Driver/library version mismatch
 
 
 
 
-Internal Testing
+Check with dmesg:
 
-Kubernetes Internal curl Test:
+dmesg | grep NVRM
+...
+NVRM: API mismatch: the client has the version 535.183.06,
+NVRM: but this kernel module has the version 535.183.01.
 
-kubectl run curl -it --rm --image curlimages/curl -- sh
 
-curl 10.31.0.134:8080/healthz
-# Temporary Redirect
+In this example, the utility is version 535.183.06, but the kernel module is 535.183.01—a clear version mismatch.
+
+
+
+
+
+Root Cause Analysis
+
+
+  unattended-upgrade automatically updated some NVIDIA packages, but not all components were replaced
+  The nvidia-dkms kernel module was not recompiled, so the old version remained loaded
+  The kernel module was not reloaded (or the system not rebooted), causing a conflict
 
 
 
 
 
 
-Problem Resolution
-
-According to the ArgoCD Ingress documentation, the API server must be run with TLS disabled to prevent internal redirection loops from HTTP to HTTPS.
+Resolution Steps
 
 
 
-ConfigMap Modification
+1. Check Loaded NVIDIA Kernel Modules
 
-argocd-cmd-params-cm ConfigMap Configuration:
-
-apiVersion: v1
-data:
-  redis.server: argocd-redis-ha-haproxy:6379
-  server.insecure: &quot;true&quot;
-kind: ConfigMap
-metadata:
-  labels:
-    app.kubernetes.io/name: argocd-cmd-params-cm
-    app.kubernetes.io/part-of: argocd
-  name: argocd-cmd-params-cm
-  namespace: argocd
+lsmod | grep nvidia
+...
+nvidia              56713216  ...
+nvidia_modeset       ...
+nvidia_uvm           ...
 
 
 
 
-Resolution Results
+2. Terminate Related Processes
 
-
-  Health Check and UI Access Verification
-  
-    Health Check functioning normally
-    ArgoCD UI properly exposed
-    External access enabled
-  
+lsof /dev/nvidia*
+kill -9 &amp;lt;PIDs&amp;gt;
+lsof /dev/nvidia*  # Repeat until no processes remain
 
 
 
 
+3. Unload NVIDIA Modules
 
-
-Key Points
-
-This section summarizes the main considerations and solutions for exposing ArgoCD through Ingress in GKE.
+sudo modprobe -r nvidia_uvm nvidia_drm nvidia_modeset nvidia
 
 
 
-Main Points
-
-💡 Key Points Summary
+  Note: The unload order matters: uvm → drm → modeset → nvidia
 
 
-  Problem Cause
-    
-      ArgoCD has HTTPS redirection enabled by default
-      GKE Ingress requires internal HTTP communication for Health Checks
-    
-  
-  Solution
-    
-      Set server.insecure to true in ConfigMap (argocd-cmd-params-cm)
-      Restart or rollout argocd-server after configuration
-    
-  
+
+
+4. Reinstall DKMS or Reboot
+
+sudo dpkg-reconfigure nvidia-dkms-535-server
+# or
+sudo reboot
+
+
+
+
+5. Verify Normal Operation
+
+nvidia-smi
+# Should display driver and CUDA version, GPU list, and no errors
+
+
+
+
+
+
+Prevention: Block Unattended Upgrades for NVIDIA Packages
+
+
+
+To prevent similar issues, exclude NVIDIA packages from automatic upgrades:
+
+sudo vi /etc/apt/apt.conf.d/50unattended-upgrades
+...
+Unattended-Upgrade::Package-Blacklist {
+  &quot;nvidia-*&quot;;
+};
+
+
+
+
+Apply the changes:
+
+sudo systemctl restart unattended-upgrades
+
+
 
 
 
 
 Conclusion
 
+This troubleshooting scenario is common in GPU server operations. For machine learning and deep learning clusters, managing GPU driver versions is especially critical.
 
-  Summary
-  When exposing ArgoCD through Ingress in GKE, the internal TLS redirection in ArgoCD can cause GCP LoadBalancer health checks to fail.  By setting server.insecure: &quot;true&quot; in ArgoCD, internal TLS can be disabled, allowing GCP LoadBalancer to pass health checks and properly serve the ArgoCD UI through the Ingress path.
+Summary:
 
+  nvidia-smi error → kernel module and library mismatch
+  Terminate processes + unload modules → manual recovery
+  Add NVIDIA packages to unattended-upgrades blacklist to prevent recurrence
+
+
+By following these steps, you can resolve NVIDIA driver errors and ensure stable GPU operation in your server environment.
 
 
 
@@ -955,16 +983,18 @@ Conclusion
 
 References
 
-  GKE Load Balancing Troubleshooting
-  External HTTPS Load Balancer Troubleshooting
-  ArgoCD Documentation
+  NVIDIA Official: Driver API Mismatch Error
+  NVIDIA Linux Driver Install Guide
+  CUDA Compatibility Guide for Linux
+  Ubuntu DKMS / NVIDIA Driver Troubleshooting
+  Unattended Upgrades Official Documentation
 
 ",
-            "wordcount": "491",
+            "wordcount": "527",
             "inLanguage": "en",
-            "dateCreated": "2025-08-10/",
-            "datePublished": "2025-08-10/",
-            "dateModified": "2025-08-10/",
+            "dateCreated": "2025-09-22/",
+            "datePublished": "2025-09-22/",
+            "dateModified": "2025-09-22/",
             "author": {
                 "@type": "Person",
                 "name": "Somaz",
@@ -991,7 +1021,7 @@ References
             "mainEntityOfPage": "True",
             "genre": "TROUBLESHOOTING",
             "articleSection": "TROUBLESHOOTING",
-            "keywords": ["argocd","kubernetes","gke","ingress","troubleshooting"]
+            "keywords": ["nvidia","gpu","driver","linux","troubleshooting","dkms","unattended-upgrades"]
         }
         </script>
     </body>
