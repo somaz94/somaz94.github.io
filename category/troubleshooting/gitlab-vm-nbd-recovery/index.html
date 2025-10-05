@@ -37,19 +37,19 @@
         mermaid.initialize({ startOnLoad: true });
     </script>
 
-    <title>Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration | somaz</title>
-    <meta name="description" content="A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID conf...">
+    <title>GitLab VM Disaster Recovery: Service Restoration with NBD Mount and Backup Restore | somaz</title>
+    <meta name="description" content="A step-by-step guide to recovering a failed GitLab VM by mounting a qcow2 disk with NBD, extracting backups, restoring GitLab, and resolving Prometheus/NFS p...">
     
-        <meta name="keywords" content="fluent-bit, opensearch, eks, kubernetes, logging, troubleshooting">
+        <meta name="keywords" content="gitlab, nbd, disaster-recovery, backup, nfs, prometheus, linux, troubleshooting">
     
 
     <!-- Social: Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration | somaz">
-    <meta name="twitter:description" content="A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID conf...">
+    <meta name="twitter:title" content="GitLab VM Disaster Recovery: Service Restoration with NBD Mount and Backup Restore | somaz">
+    <meta name="twitter:description" content="A step-by-step guide to recovering a failed GitLab VM by mounting a qcow2 disk with NBD, extracting backups, restoring GitLab, and resolving Prometheus/NFS p...">
 
     
-        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754458041/fluenbit-opensearch_lmr5hf.png">
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754460145/gitlab-recovery_q9gwuz.png">
     
     
     
@@ -57,10 +57,10 @@
     
 
     <!-- Social: Facebook / Open Graph -->
-    <meta property="og:url" content="https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/">
-    <meta property="og:title" content="Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration | somaz">
-    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754458041/fluenbit-opensearch_lmr5hf.png">
-    <meta property="og:description" content="A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID conf...">
+    <meta property="og:url" content="https://somaz.blog/category/troubleshooting/gitlab-vm-nbd-recovery/">
+    <meta property="og:title" content="GitLab VM Disaster Recovery: Service Restoration with NBD Mount and Backup Restore | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1754460145/gitlab-recovery_q9gwuz.png">
+    <meta property="og:description" content="A step-by-step guide to recovering a failed GitLab VM by mounting a qcow2 disk with NBD, extracting backups, restoring GitLab, and resolving Prometheus/NFS p...">
     <meta property="og:site_name" content="Somaz Tech Blog">
 
     <!-- Favicon -->
@@ -92,7 +92,7 @@
     <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
 
     <link rel="stylesheet" href="/assets/css/styles.css">
-    <link rel="canonical" href="https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/">
+    <link rel="canonical" href="https://somaz.blog/category/troubleshooting/gitlab-vm-nbd-recovery/">
     <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
 
     <!-- Include extra styles -->
@@ -211,22 +211,22 @@
                 <p class="post-info">
                     
                         <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
-                        <time class="date" datetime="2025-08-08T00:00:00+00:00">
+                        <time class="date" datetime="2025-10-05T00:00:00+00:00">
                             
 
 
-August 8, 2025
+October 5, 2025
 
                         </time>
                     
                     <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
                     <span>4 min to read</span>
                 </p>
-                <h1 class="post-title">Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration</h1>
-                <p class="post-subtitle">How to prevent duplicate log storage using Generate_ID configuration in EKS environment</p>
+                <h1 class="post-title">GitLab VM Disaster Recovery: Service Restoration with NBD Mount and Backup Restore</h1>
+                <p class="post-subtitle">How to recover a failed GitLab VM using NBD, backup extraction, and troubleshooting Prometheus/NFS issues</p>
 
                 
-                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1754458041/fluenbit-opensearch_lmr5hf.png" alt="Featured image" class="post-cover">
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1754460145/gitlab-recovery_q9gwuz.png" alt="Featured image" class="post-cover">
                 
 
                 <!-- Pagination links -->
@@ -242,136 +242,167 @@ August 8, 2025
 
 <h2 id="overview">Overview</h2>
 
-<p>Have you ever experienced duplicate logs being stored in OpenSearch when forwarding logs through Fluent Bit in an EKS environment?</p>
+<p>A critical outage occurred when the GitLab VM suddenly entered rescue mode, causing a complete service interruption. GRUB recovery was impossible, but fortunately, key data was stored on NFS, preventing total data loss.</p>
 
-<p>We faced a similar issue. Despite having identical log content and timestamps, logs were being stored twice in OpenSearch, causing metrics and search results to be artificially inflated.</p>
-
-<p>After investigation, we discovered that each log had different <code class="language-plaintext highlighter-rouge">_id</code> values, causing OpenSearch to recognize them as separate documents.</p>
-
-<p>This article shares a real case study of resolving this issue solely through Fluent Bit configuration. Specifically, we’ll explain the phenomenon where logs with identical content but different <code class="language-plaintext highlighter-rouge">_id</code> values get stored as duplicates, and how we resolved this using the <code class="language-plaintext highlighter-rouge">Generate_ID</code> setting.</p>
+<p>This post details the full process of mounting the damaged VM’s qcow2 disk using NBD (Network Block Device), extracting backup data, and restoring GitLab in a new environment. It also covers troubleshooting Prometheus permission issues and GitLab version downgrades encountered during recovery.</p>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="problem-situation">Problem Situation</h2>
-
-<p>While using aws-for-fluent-bit in an AWS EKS environment to forward Fluent Bit logs to OpenSearch, we encountered an issue where identical logs were being stored multiple times.</p>
-
-<p>In the OpenSearch dashboard, logs with identical messages and timestamps were being stored as duplicates, causing the following problems:</p>
+<h2 id="incident-analysis">Incident Analysis</h2>
 
 <p><br /></p>
 
-<h3 id="impact-of-duplicate-logs">Impact of Duplicate Logs:</h3>
-
+<h3 id="key-symptoms">Key Symptoms</h3>
 <ul>
-  <li>Search result counts became inflated beyond actual values</li>
-  <li>Log-based alerts were triggered multiple times</li>
-  <li>Visualization metrics became distorted</li>
+  <li>GitLab VM booted into rescue mode</li>
+  <li>GRUB recovery attempts failed</li>
+  <li>System was unbootable</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="positive-factors">Positive Factors</h3>
+<ul>
+  <li>Core data was safely stored on NFS</li>
+  <li>VM disk file (qcow2) was accessible</li>
 </ul>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="root-cause-analysis">Root Cause Analysis</h2>
-
-<p>When Fluent Bit sends logs to OpenSearch without specifying an <code class="language-plaintext highlighter-rouge">_id</code>, OpenSearch automatically generates a unique <code class="language-plaintext highlighter-rouge">_id</code> for each log. In this case, even if the content is identical, duplicate storage occurs due to different <code class="language-plaintext highlighter-rouge">_id</code> values.</p>
+<h2 id="recovery-process">Recovery Process</h2>
 
 <p><br /></p>
 
-<h3 id="problem-analysis">Problem Analysis</h3>
+<h3 id="1-mounting-the-gitlab-vm-disk-with-nbd">1. Mounting the GitLab VM Disk with NBD</h3>
 
-<p>In our environment, the <code class="language-plaintext highlighter-rouge">rewrite_tag</code> filter caused identical logs to propagate through multiple paths within Fluent Bit, with each path generating different <code class="language-plaintext highlighter-rouge">_id</code> values, resulting in storage as separate documents in OpenSearch.</p>
+<p>When direct access to the damaged VM was impossible, the qcow2 disk image was mounted using NBD.</p>
 
-<h4 id="conditions-where-this-problem-occurs-more-frequently">Conditions Where This Problem Occurs More Frequently:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Load NBD module</span>
+modprobe nbd <span class="nv">max_part</span><span class="o">=</span>8
 
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">Logstash_Format On</code> option is configured</li>
-  <li><code class="language-plaintext highlighter-rouge">Generate_ID</code> option is disabled</li>
-  <li>Identical logs are sent through multiple OUTPUT paths</li>
-</ul>
-
-<p>As a result, OpenSearch stores logs with identical content but different <code class="language-plaintext highlighter-rouge">_id</code> values as duplicate documents.</p>
-
-<p><br /></p>
-
-<hr />
-
-<h2 id="solution">Solution</h2>
-
-<p>This issue can be resolved by adding the following option to the Fluent Bit es Output configuration.</p>
-
-<p><br /></p>
-
-<h3 id="configuration-update">Configuration Update</h3>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>OUTPUT]
-    Name            es
-    Match           es.<span class="k">*</span>
-    ...
-    Generate_ID     On
+<span class="c"># Connect the GitLab VM qcow2 disk to an NBD device</span>
+qemu-nbd <span class="nt">--connect</span><span class="o">=</span>/dev/nbd0 /path/to/gitlab-vm.qcow2
 </code></pre></div></div>
 
-<h4 id="how-generate_id-works">How Generate_ID Works:</h4>
-<p>The <code class="language-plaintext highlighter-rouge">Generate_ID On</code> option forces Fluent Bit to generate a unique <code class="language-plaintext highlighter-rouge">_id</code> internally when sending logs to OpenSearch. This ensures that even if identical logs are forwarded through multiple paths, OpenSearch recognizes them as the same document and stores only one copy.</p>
+<p><br /></p>
+
+<h3 id="2-check-partitions-and-mount">2. Check Partitions and Mount</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check partitions on the connected disk</span>
+fdisk <span class="nt">-l</span> /dev/nbd0
+
+<span class="c"># Mount the GitLab root partition (usually /dev/nbd0p1)</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> /mnt/gitlab-root
+mount /dev/nbd0p1 /mnt/gitlab-root
+</code></pre></div></div>
 
 <p><br /></p>
 
-<h3 id="why-this-setting-is-essential">Why This Setting is Essential</h3>
+<h3 id="3-extract-backup-data">3. Extract Backup Data</h3>
 
-<p>This configuration is particularly essential when using <code class="language-plaintext highlighter-rouge">rewrite_tag</code> filters to forward logs through multiple Match paths. When identical logs are split and sent to <code class="language-plaintext highlighter-rouge">s3.*</code>, <code class="language-plaintext highlighter-rouge">es.*</code> paths, if <code class="language-plaintext highlighter-rouge">_id</code> is not forcibly generated, logs will have different <code class="language-plaintext highlighter-rouge">_id</code> values despite identical content. This results in the same log being stored 2 or more times in OpenSearch.</p>
+<p>Systematically extract important GitLab data from the mounted disk.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Backup GitLab configuration (8.7M)</span>
+<span class="nb">cp</span> <span class="nt">-r</span> /mnt/gitlab-root/etc/gitlab /tmp/gitlab-config-backup
+
+<span class="c"># Backup GitLab data (1.6G) - main database and repositories</span>
+<span class="nb">cp</span> <span class="nt">-r</span> /mnt/gitlab-root/var/opt/gitlab /tmp/gitlab-data-backup
+
+<span class="c"># Backup home directory (88K)</span>
+<span class="nb">cp</span> <span class="nt">-r</span> /mnt/gitlab-root/home /tmp/home-backup
+</code></pre></div></div>
+
+<h4 id="example-of-extracted-data-structure">Example of extracted data structure:</h4>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">gitlab-config-backup</code> (8.7M): <code class="language-plaintext highlighter-rouge">/etc/gitlab/</code> - GitLab configuration files</li>
+  <li><code class="language-plaintext highlighter-rouge">gitlab-data-backup</code> (1.6G): <code class="language-plaintext highlighter-rouge">/var/opt/gitlab/</code> - database, repositories, logs, etc.</li>
+  <li><code class="language-plaintext highlighter-rouge">home-backup</code> (88K): <code class="language-plaintext highlighter-rouge">/home/</code> - user home directories</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="4-unmount-and-clean-up">4. Unmount and Clean Up</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>umount /mnt/gitlab-root
+qemu-nbd <span class="nt">--disconnect</span> /dev/nbd0
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="5-restore-gitlab-backup">5. Restore GitLab Backup</h3>
+
+<p>Restore GitLab in a new environment using the extracted backup.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>gitlab-backup restore <span class="nv">BACKUP</span><span class="o">=</span>1754284731_2025_08_04_18.1.1
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="6-resolve-prometheus-permission-issues">6. Resolve Prometheus Permission Issues</h3>
+
+<p>During recovery, the Prometheus service failed with a permission error:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>caller=query_logger.go:114 level=error component=activeQueryTracker 
+msg="Error opening query log file" 
+file=/mnt/nfs/gitlab/prometheus/data/queries.active 
+err="open /mnt/nfs/gitlab/prometheus/data/queries.active: permission denied"
+panic: Unable to create mmap-ed active query log
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>This was caused by NFS mount directory ownership. Fixed with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo chown</span> <span class="nt">-R</span> gitlab-prometheus:gitlab-prometheus /mnt/nfs/gitlab/prometheus/
+</code></pre></div></div>
+
+<h3 id="7-gitlab-downgrade">7. GitLab Downgrade</h3>
+
+<p>The original version was 18.1.1, but the latest 18.2.1 was installed by mistake, causing backup restore to fail. Forced a downgrade and skipped auto-backup:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Skip auto-backup</span>
+<span class="nb">touch</span> /etc/gitlab/skip-auto-backup
+
+<span class="c"># Downgrade to a specific version</span>
+<span class="nb">sudo </span>apt-get <span class="nb">install</span> <span class="nt">-y</span> gitlab-ce<span class="o">=</span>18.1.1-ce.0 <span class="nt">--allow-downgrades</span>
+</code></pre></div></div>
 
 <p><br /></p>
 
 <hr />
 
-<h2 id="verification-and-follow-up-actions">Verification and Follow-up Actions</h2>
-
-<p>After applying the configuration, verify the following items to ensure the solution is working correctly.</p>
-
-<p><br /></p>
-
-<h3 id="verification-steps">Verification Steps</h3>
-
-<h4 id="post-implementation-verification">Post-Implementation Verification:</h4>
+<h2 id="lessons-learned-and-improvements">Lessons Learned and Improvements</h2>
 
 <ol>
-  <li>Confirm in the OpenSearch dashboard that logs with identical messages and timestamps are stored only once</li>
-  <li>Compare the <code class="language-plaintext highlighter-rouge">_id</code> patterns of logs with Generate_ID applied to verify that uniqueness is ensured</li>
-  <li>Continuously monitor through Health Check paths to ensure logs are being sent normally without errors or retries in Fluent Bit logs</li>
-  <li>If necessary, simplify rewrite_tag filter logic to reduce the possibility of duplicate tagging</li>
+  <li><strong>Enhanced Monitoring</strong>
+    <ul>
+      <li>Closely monitor services like Prometheus</li>
+      <li>Establish pre-checks for NFS permissions</li>
+    </ul>
+  </li>
+  <li><strong>Backup Strategy Improvement</strong>
+    <ul>
+      <li>Regular full system and config file backups</li>
+      <li>Validate backup data with recovery tests</li>
+    </ul>
+  </li>
+  <li><strong>Version Management Policy</strong>
+    <ul>
+      <li>Test upgrades in staging before production</li>
+      <li>Document rollback and downgrade procedures</li>
+    </ul>
+  </li>
+  <li><strong>Infrastructure Architecture</strong>
+    <ul>
+      <li>Consider high-availability to reduce single VM dependency</li>
+      <li>Evaluate migration to container-based deployments</li>
+    </ul>
+  </li>
 </ol>
-
-<p><br /></p>
-
-<hr />
-
-<h2 id="key-points">Key Points</h2>
-
-<div class="info-box info-box-success-not-check">
-  <strong>💡 Resolution Summary</strong>
-  <ul>
-    <li>
-      <strong>Problem Cause</strong><br />
-      - Different _id values for identical log content<br />
-      - OpenSearch treating them as separate documents<br />
-      - Multiple paths through rewrite_tag filters
-    </li>
-    <li>
-      <strong>Solution</strong><br />
-      - Enable Generate_ID in Fluent Bit OUTPUT configuration<br />
-      - Ensures consistent _id generation for identical logs<br />
-      - Prevents duplicate storage in OpenSearch
-    </li>
-    <li>
-      <strong>Prevention</strong><br />
-      - Proper _id management in multi-path logging<br />
-      - Regular monitoring of log storage patterns<br />
-      - Optimization of filtering and tagging strategies
-    </li>
-  </ul>
-</div>
 
 <p><br /></p>
 
@@ -379,14 +410,11 @@ August 8, 2025
 
 <h2 id="conclusion">Conclusion</h2>
 
-<p>This issue appeared to be a simple case of duplicate log storage, but the root cause lay in the <code class="language-plaintext highlighter-rouge">_id</code> generation mechanism between Fluent Bit and OpenSearch. Fortunately, we were able to completely resolve the problem with a single <code class="language-plaintext highlighter-rouge">Generate_ID</code> option provided by Fluent Bit.</p>
+<p>This GitLab incident demonstrated the value of NBD disk mounting for data recovery in extreme failure scenarios. Even when GRUB recovery was impossible, direct extraction from qcow2 disks is a major advantage of virtualization.</p>
 
-<div class="info-box info-box-default-not-check">
-  <strong>Lessons Learned</strong>
-  <p>When integrating Fluent Bit with OpenSearch in EKS environments, it's important to apply configurations that prevent <code>_id</code> conflicts or duplicate generation in advance, especially when considering multi-path log routing scenarios.</p>
-</div>
+<p>Thanks to NFS-based data distribution, total data loss was avoided, but the complexity of permission management was also highlighted. Issues like Prometheus permissions reinforce the need for detailed operational procedures.</p>
 
-<p>Moving forward, it’s necessary to continuously inspect log storage structures and refine filtering and tagging strategies. This experience reinforces how a small configuration change can make a significant difference in data quality and operational efficiency.</p>
+<p>Going forward, we plan to build a more robust backup and monitoring system and consider a more flexible, container-based architecture. While failures are inevitable, thorough preparation and systematic recovery can minimize downtime and ensure service continuity.</p>
 
 <p><br /></p>
 
@@ -394,10 +422,16 @@ August 8, 2025
 
 <h2 id="references">References</h2>
 <ul>
-  <li><a href="https://github.com/fluent/fluent-bit/issues/6272">Fluent Bit GitHub Issue #6272</a></li>
-  <li><a href="https://docs.fluentbit.io/manual/pipeline/outputs/opensearch">Fluent Bit OpenSearch Output Documentation</a></li>
-  <li><a href="https://github.com/aws/aws-for-fluent-bit">AWS for Fluent Bit Documentation</a></li>
-  <li><a href="https://opensearch.org/docs/latest/im-plugin/index/">OpenSearch Index Management</a></li>
+  <li><a href="https://serverfault.com/questions/362524/how-to-properly-set-permissions-for-nfs-folder-permission-denied-on-mounting-end">How to properly set permissions for NFS folder? Permission denied on mounting end - Server Fault</a></li>
+  <li><a href="https://unix.stackexchange.com/questions/115897/user-permissions-in-nfs-mounted-directory">User permissions in NFS mounted directory - Unix &amp; Linux Stack Exchange</a></li>
+  <li><a href="https://www.suse.com/support/kb/doc/?id=000018317">NFS clients getting ‘permission denied’, even when ownership and permissions are correct - SUSE Support</a></li>
+  <li><a href="https://github.com/prometheus/prometheus/issues/10408">Prometheus: err=”open /prometheus/queries.active: permission denied” - GitHub Issue</a></li>
+  <li><a href="https://stackoverflow.com/questions/61385813/permission-denied-on-etc-prometheus-prometheus-yml-cannot-deploy-prom-prometheus">Permission denied on /etc/prometheus/prometheus.yml; cannot deploy prom/prometheus container - Stack Overflow</a></li>
+  <li><a href="https://access.redhat.com/solutions/7009822">Prometheus pods not able to mount NFS volumes after upgrading the cluster - Red Hat Customer Portal</a></li>
+  <li><a href="https://docs.gitlab.com/ee/raketasks/backup_restore.html">GitLab Backup and Restore - Official Documentation</a></li>
+  <li><a href="https://docs.gitlab.com/ee/administration/monitoring/prometheus.html">GitLab Prometheus Monitoring - Official Documentation</a></li>
+  <li><a href="https://wiki.qemu.org/Features/NBD">QEMU NBD Documentation</a></li>
+  <li><a href="https://nbd.sourceforge.io/">Linux NBD - Network Block Device</a></li>
 </ul>
 
 
@@ -414,15 +448,6 @@ August 8, 2025
                         
                         
                             <li>
-                                <a href="/category/troubleshooting/gitlab-vm-nbd-recovery/">
-                                    
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1754460145/gitlab-recovery_q9gwuz.png">
-                                    
-                                    <h3>GitLab VM Disaster Recovery: Service Restoration with NBD Mount and Backup Restore</h3>
-                                </a>
-                            </li>
-                        
-                            <li>
                                 <a href="/category/ai/mlops-fundamentals-numpy-pandas-sklearn/">
                                     
                                         <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1750904968/mlops-demo_znwpz1.png">
@@ -437,6 +462,15 @@ August 8, 2025
                                         <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1750902309/grpc_cbvdvh.png">
                                     
                                     <h3>Understanding gRPC - Modern High-Performance RPC Framework</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/troubleshooting/nvidia-driver-library-mismatch-resolution/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1754459069/nvidia-troubleshooting_audqe2.png">
+                                    
+                                    <h3>Resolving NVIDIA Driver/Library Version Mismatch Errors</h3>
                                 </a>
                             </li>
                         
@@ -473,13 +507,13 @@ August 8, 2025
     </div>
     <div id="previewSection" class="preview-section">
         
-        <a href="/category/troubleshooting/argocd-ingress-gke/" class="post-preview">
+        <a href="/category/ai/mlops-fundamentals-numpy-pandas-sklearn/" class="post-preview">
             <div class="image">
                 
-                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1757928364/argocd-ingress-gke-1_ziyp3n.png">
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1750904968/mlops-demo_znwpz1.png">
                 
             </div>
-            <h3 class="title">ArgoCD Ingress Error Resolution Guide (GKE)</h3>
+            <h3 class="title">Mastering MLOps Essential Libraries: NumPy, Pandas, and Scikit-Learn Complete Guide</h3>
         </a>
     </div>
 </div>
@@ -582,11 +616,11 @@ window.addEventListener('scroll', function() {
 
         <section class="share">
     <h3>Share</h3>
-    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID configuration&quot;%20https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/%20via%20&#64;twitter_username&hashtags=fluent-bit,opensearch,eks,kubernetes,logging,troubleshooting"
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A step-by-step guide to recovering a failed GitLab VM by mounting a qcow2 disk with NBD, extracting backups, restoring GitLab, and resolving Prometheus/NFS permission and version issues.&quot;%20https://somaz.blog/category/troubleshooting/gitlab-vm-nbd-recovery/%20via%20&#64;twitter_username&hashtags=gitlab,nbd,disaster-recovery,backup,nfs,prometheus,linux,troubleshooting"
     onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
         <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
     </a>
-    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/"
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/troubleshooting/gitlab-vm-nbd-recovery/"
     onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
         <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
     </a>
@@ -668,7 +702,7 @@ window.addEventListener('scroll', function() {
         disqus_loaded = true;
         var disqus_shortname = 'https-somaz94-github-io';
         var disqus_title = '';
-        var disqus_url = '/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/';
+        var disqus_url = '/category/troubleshooting/gitlab-vm-nbd-recovery/';
         var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
         dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
         (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
@@ -837,144 +871,175 @@ window.addEventListener('scroll', function() {
         {
             "@context": "http://schema.org",
             "@type": "BlogPosting",
-            "name": "Resolving Duplicate Log Issues in Fluent Bit to OpenSearch Integration",
-            "headline": "How to prevent duplicate log storage using Generate_ID configuration in EKS environment",
-            "description": "A comprehensive guide to resolving duplicate log storage issues when using Fluent Bit with OpenSearch in EKS, focusing on _id generation and Generate_ID configuration",
-            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1754458041/fluenbit-opensearch_lmr5hf.png",
-            "url": "https://somaz.blog/category/troubleshooting/fluent-bit-opensearch-duplicate-logs/",
+            "name": "GitLab VM Disaster Recovery: Service Restoration with NBD Mount and Backup Restore",
+            "headline": "How to recover a failed GitLab VM using NBD, backup extraction, and troubleshooting Prometheus/NFS issues",
+            "description": "A step-by-step guide to recovering a failed GitLab VM by mounting a qcow2 disk with NBD, extracting backups, restoring GitLab, and resolving Prometheus/NFS permission and version issues.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1754460145/gitlab-recovery_q9gwuz.png",
+            "url": "https://somaz.blog/category/troubleshooting/gitlab-vm-nbd-recovery/",
             "articleBody": "
 
 
 
 Overview
 
-Have you ever experienced duplicate logs being stored in OpenSearch when forwarding logs through Fluent Bit in an EKS environment?
+A critical outage occurred when the GitLab VM suddenly entered rescue mode, causing a complete service interruption. GRUB recovery was impossible, but fortunately, key data was stored on NFS, preventing total data loss.
 
-We faced a similar issue. Despite having identical log content and timestamps, logs were being stored twice in OpenSearch, causing metrics and search results to be artificially inflated.
+This post details the full process of mounting the damaged VM’s qcow2 disk using NBD (Network Block Device), extracting backup data, and restoring GitLab in a new environment. It also covers troubleshooting Prometheus permission issues and GitLab version downgrades encountered during recovery.
 
-After investigation, we discovered that each log had different _id values, causing OpenSearch to recognize them as separate documents.
 
-This article shares a real case study of resolving this issue solely through Fluent Bit configuration. Specifically, we’ll explain the phenomenon where logs with identical content but different _id values get stored as duplicates, and how we resolved this using the Generate_ID setting.
 
 
 
+Incident Analysis
 
 
-Problem Situation
 
-While using aws-for-fluent-bit in an AWS EKS environment to forward Fluent Bit logs to OpenSearch, we encountered an issue where identical logs were being stored multiple times.
+Key Symptoms
 
-In the OpenSearch dashboard, logs with identical messages and timestamps were being stored as duplicates, causing the following problems:
+  GitLab VM booted into rescue mode
+  GRUB recovery attempts failed
+  System was unbootable
 
 
 
-Impact of Duplicate Logs:
 
+Positive Factors
 
-  Search result counts became inflated beyond actual values
-  Log-based alerts were triggered multiple times
-  Visualization metrics became distorted
+  Core data was safely stored on NFS
+  VM disk file (qcow2) was accessible
 
 
 
 
 
 
-Root Cause Analysis
+Recovery Process
 
-When Fluent Bit sends logs to OpenSearch without specifying an _id, OpenSearch automatically generates a unique _id for each log. In this case, even if the content is identical, duplicate storage occurs due to different _id values.
 
 
+1. Mounting the GitLab VM Disk with NBD
 
-Problem Analysis
+When direct access to the damaged VM was impossible, the qcow2 disk image was mounted using NBD.
 
-In our environment, the rewrite_tag filter caused identical logs to propagate through multiple paths within Fluent Bit, with each path generating different _id values, resulting in storage as separate documents in OpenSearch.
+# Load NBD module
+modprobe nbd max_part=8
 
-Conditions Where This Problem Occurs More Frequently:
+# Connect the GitLab VM qcow2 disk to an NBD device
+qemu-nbd --connect=/dev/nbd0 /path/to/gitlab-vm.qcow2
 
 
-  Logstash_Format On option is configured
-  Generate_ID option is disabled
-  Identical logs are sent through multiple OUTPUT paths
 
 
-As a result, OpenSearch stores logs with identical content but different _id values as duplicate documents.
+2. Check Partitions and Mount
 
+# Check partitions on the connected disk
+fdisk -l /dev/nbd0
 
+# Mount the GitLab root partition (usually /dev/nbd0p1)
+mkdir -p /mnt/gitlab-root
+mount /dev/nbd0p1 /mnt/gitlab-root
 
 
 
-Solution
 
-This issue can be resolved by adding the following option to the Fluent Bit es Output configuration.
+3. Extract Backup Data
 
+Systematically extract important GitLab data from the mounted disk.
 
+# Backup GitLab configuration (8.7M)
+cp -r /mnt/gitlab-root/etc/gitlab /tmp/gitlab-config-backup
 
-Configuration Update
+# Backup GitLab data (1.6G) - main database and repositories
+cp -r /mnt/gitlab-root/var/opt/gitlab /tmp/gitlab-data-backup
 
-[OUTPUT]
-    Name            es
-    Match           es.*
-    ...
-    Generate_ID     On
+# Backup home directory (88K)
+cp -r /mnt/gitlab-root/home /tmp/home-backup
 
 
-How Generate_ID Works:
-The Generate_ID On option forces Fluent Bit to generate a unique _id internally when sending logs to OpenSearch. This ensures that even if identical logs are forwarded through multiple paths, OpenSearch recognizes them as the same document and stores only one copy.
+Example of extracted data structure:
 
+  gitlab-config-backup (8.7M): /etc/gitlab/ - GitLab configuration files
+  gitlab-data-backup (1.6G): /var/opt/gitlab/ - database, repositories, logs, etc.
+  home-backup (88K): /home/ - user home directories
 
 
-Why This Setting is Essential
 
-This configuration is particularly essential when using rewrite_tag filters to forward logs through multiple Match paths. When identical logs are split and sent to s3.*, es.* paths, if _id is not forcibly generated, logs will have different _id values despite identical content. This results in the same log being stored 2 or more times in OpenSearch.
 
+4. Unmount and Clean Up
 
+umount /mnt/gitlab-root
+qemu-nbd --disconnect /dev/nbd0
 
 
 
-Verification and Follow-up Actions
 
-After applying the configuration, verify the following items to ensure the solution is working correctly.
+5. Restore GitLab Backup
 
+Restore GitLab in a new environment using the extracted backup.
 
+sudo gitlab-backup restore BACKUP=1754284731_2025_08_04_18.1.1
 
-Verification Steps
 
-Post-Implementation Verification:
 
 
-  Confirm in the OpenSearch dashboard that logs with identical messages and timestamps are stored only once
-  Compare the _id patterns of logs with Generate_ID applied to verify that uniqueness is ensured
-  Continuously monitor through Health Check paths to ensure logs are being sent normally without errors or retries in Fluent Bit logs
-  If necessary, simplify rewrite_tag filter logic to reduce the possibility of duplicate tagging
+6. Resolve Prometheus Permission Issues
 
+During recovery, the Prometheus service failed with a permission error:
 
+caller=query_logger.go:114 level=error component=activeQueryTracker 
+msg=&quot;Error opening query log file&quot; 
+file=/mnt/nfs/gitlab/prometheus/data/queries.active 
+err=&quot;open /mnt/nfs/gitlab/prometheus/data/queries.active: permission denied&quot;
+panic: Unable to create mmap-ed active query log
 
 
 
 
-Key Points
+This was caused by NFS mount directory ownership. Fixed with:
 
+sudo chown -R gitlab-prometheus:gitlab-prometheus /mnt/nfs/gitlab/prometheus/
 
-  💡 Resolution Summary
+
+7. GitLab Downgrade
+
+The original version was 18.1.1, but the latest 18.2.1 was installed by mistake, causing backup restore to fail. Forced a downgrade and skipped auto-backup:
+
+# Skip auto-backup
+touch /etc/gitlab/skip-auto-backup
+
+# Downgrade to a specific version
+sudo apt-get install -y gitlab-ce=18.1.1-ce.0 --allow-downgrades
+
+
+
+
+
+
+Lessons Learned and Improvements
+
+
+  Enhanced Monitoring
+    
+      Closely monitor services like Prometheus
+      Establish pre-checks for NFS permissions
+    
   
+  Backup Strategy Improvement
     
-      Problem Cause
-      - Different _id values for identical log content
-      - OpenSearch treating them as separate documents
-      - Multiple paths through rewrite_tag filters
+      Regular full system and config file backups
+      Validate backup data with recovery tests
     
+  
+  Version Management Policy
     
-      Solution
-      - Enable Generate_ID in Fluent Bit OUTPUT configuration
-      - Ensures consistent _id generation for identical logs
-      - Prevents duplicate storage in OpenSearch
+      Test upgrades in staging before production
+      Document rollback and downgrade procedures
     
+  
+  Infrastructure Architecture
     
-      Prevention
-      - Proper _id management in multi-path logging
-      - Regular monitoring of log storage patterns
-      - Optimization of filtering and tagging strategies
+      Consider high-availability to reduce single VM dependency
+      Evaluate migration to container-based deployments
     
   
 
@@ -985,14 +1050,11 @@ Key Points
 
 Conclusion
 
-This issue appeared to be a simple case of duplicate log storage, but the root cause lay in the _id generation mechanism between Fluent Bit and OpenSearch. Fortunately, we were able to completely resolve the problem with a single Generate_ID option provided by Fluent Bit.
+This GitLab incident demonstrated the value of NBD disk mounting for data recovery in extreme failure scenarios. Even when GRUB recovery was impossible, direct extraction from qcow2 disks is a major advantage of virtualization.
 
+Thanks to NFS-based data distribution, total data loss was avoided, but the complexity of permission management was also highlighted. Issues like Prometheus permissions reinforce the need for detailed operational procedures.
 
-  Lessons Learned
-  When integrating Fluent Bit with OpenSearch in EKS environments, it&apos;s important to apply configurations that prevent _id conflicts or duplicate generation in advance, especially when considering multi-path log routing scenarios.
-
-
-Moving forward, it’s necessary to continuously inspect log storage structures and refine filtering and tagging strategies. This experience reinforces how a small configuration change can make a significant difference in data quality and operational efficiency.
+Going forward, we plan to build a more robust backup and monitoring system and consider a more flexible, container-based architecture. While failures are inevitable, thorough preparation and systematic recovery can minimize downtime and ensure service continuity.
 
 
 
@@ -1000,17 +1062,23 @@ Moving forward, it’s necessary to continuously inspect log storage structures 
 
 References
 
-  Fluent Bit GitHub Issue #6272
-  Fluent Bit OpenSearch Output Documentation
-  AWS for Fluent Bit Documentation
-  OpenSearch Index Management
+  How to properly set permissions for NFS folder? Permission denied on mounting end - Server Fault
+  User permissions in NFS mounted directory - Unix &amp;amp; Linux Stack Exchange
+  NFS clients getting ‘permission denied’, even when ownership and permissions are correct - SUSE Support
+  Prometheus: err=”open /prometheus/queries.active: permission denied” - GitHub Issue
+  Permission denied on /etc/prometheus/prometheus.yml; cannot deploy prom/prometheus container - Stack Overflow
+  Prometheus pods not able to mount NFS volumes after upgrading the cluster - Red Hat Customer Portal
+  GitLab Backup and Restore - Official Documentation
+  GitLab Prometheus Monitoring - Official Documentation
+  QEMU NBD Documentation
+  Linux NBD - Network Block Device
 
 ",
-            "wordcount": "866",
+            "wordcount": "819",
             "inLanguage": "en",
-            "dateCreated": "2025-08-08/",
-            "datePublished": "2025-08-08/",
-            "dateModified": "2025-08-08/",
+            "dateCreated": "2025-10-05/",
+            "datePublished": "2025-10-05/",
+            "dateModified": "2025-10-05/",
             "author": {
                 "@type": "Person",
                 "name": "Somaz",
@@ -1037,7 +1105,7 @@ References
             "mainEntityOfPage": "True",
             "genre": "TROUBLESHOOTING",
             "articleSection": "TROUBLESHOOTING",
-            "keywords": ["fluent-bit","opensearch","eks","kubernetes","logging","troubleshooting"]
+            "keywords": ["gitlab","nbd","disaster-recovery","backup","nfs","prometheus","linux","troubleshooting"]
         }
         </script>
     </body>
