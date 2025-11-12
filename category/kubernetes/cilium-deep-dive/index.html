@@ -1,0 +1,3866 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- ✅ Google Tag Manager 추가 -->
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+      <!-- ✅ End Google Tag Manager -->
+
+    <!-- Mermaid.js 직접 로드 -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+
+    <title>Cilium Deep Dive - Advanced eBPF-based Kubernetes Networking and Security | somaz</title>
+    <meta name="description" content="Complete guide to Cilium covering eBPF fundamentals, Kubernetes CNI implementation, network policies, service mesh capabilities, and comprehensive observabil...">
+    
+        <meta name="keywords" content="kubernetes, cilium, ebpf, cni, networking, security, observability, hubble, service-mesh, network-policy">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cilium Deep Dive - Advanced eBPF-based Kubernetes Networking and Security | somaz">
+    <meta name="twitter:description" content="Complete guide to Cilium covering eBPF fundamentals, Kubernetes CNI implementation, network policies, service mesh capabilities, and comprehensive observabil...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1755056273/cilium-1_h8xe9p.png">
+    
+    
+    
+        <meta name="twitter:site" content="@twitter_username">
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/kubernetes/cilium-deep-dive/">
+    <meta property="og:title" content="Cilium Deep Dive - Advanced eBPF-based Kubernetes Networking and Security | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1755056273/cilium-1_h8xe9p.png">
+    <meta property="og:description" content="Complete guide to Cilium covering eBPF fundamentals, Kubernetes CNI implementation, network policies, service mesh capabilities, and comprehensive observabil...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/kubernetes/cilium-deep-dive/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
+    <!-- <link href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;700&display=swap" rel="stylesheet"> -->
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<!-- ✅ Google Tag Manager (noscript) -->
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+<!-- ✅ End Google Tag Manager (noscript) -->
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2025-11-12T00:00:00+00:00">
+                            
+
+
+November 12, 2025
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>28 min to read</span>
+                </p>
+                <h1 class="post-title">Cilium Deep Dive - Advanced eBPF-based Kubernetes Networking and Security</h1>
+                <p class="post-subtitle">From installation to advanced network policies, observability, and traffic analysis with Cilium and Hubble</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1755056273/cilium-1_h8xe9p.png" alt="Featured image" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><a href="https://cilium.io/">Image Reference</a></p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>This comprehensive guide explores Cilium, from basic concepts to installation, configuration, observability, policy implementation, and network traffic flow analysis through hands-on practice.</p>
+
+<p>Cilium is a Kubernetes networking and security solution that leverages eBPF (Extended Berkeley Packet Filter) technology to provide higher performance, enhanced security, and sophisticated observability compared to traditional iptables-based CNI solutions.</p>
+
+<p><br /></p>
+
+<p>Beyond being a simple CNI plugin, Cilium provides the following key capabilities:</p>
+
+<ul>
+  <li><strong>High-performance network policy control</strong></li>
+  <li><strong>L7 (HTTP/gRPC) based policy support</strong></li>
+  <li><strong>Real-time traffic observation and visualization through Hubble</strong></li>
+  <li><strong>Sidecar-free Kubernetes service mesh implementation</strong></li>
+  <li><strong>Seamless integration with Kubernetes</strong></li>
+</ul>
+
+<p><br /></p>
+
+<p>Through this hands-on guide, we’ll install Cilium with Kubespray, observe various network policies and traffic flows in real-time, and gain a practical understanding of Cilium’s operational model.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="what-is-cilium">What is Cilium?</h2>
+
+<p>Cilium is an open-source software solution designed to provide, secure, and observe network connectivity between container workloads. Developed with a focus on cloud-native environments, Cilium is particularly well-suited for applications running in Kubernetes.</p>
+
+<p><br /></p>
+
+<h3 id="core-architecture-and-ebpf-foundation">Core Architecture and eBPF Foundation</h3>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TB
+      subgraph "Cilium Architecture"
+        subgraph "User Space"
+          CLI[Cilium CLI]
+          Agent[Cilium Agent]
+          Operator[Cilium Operator]
+          Hubble[Hubble Relay]
+        end
+        
+        subgraph "Kernel Space"
+          eBPF[eBPF Programs]
+          NetFilter[Netfilter Hooks]
+          TC[Traffic Control]
+          XDP[XDP Layer]
+        end
+        
+        subgraph "Data Plane"
+          Pods[Pod Network]
+          Services[Service Load Balancing]
+          Policies[Network Policies]
+        end
+      end
+      
+      CLI --&gt; Agent
+      Agent --&gt; eBPF
+      Operator --&gt; Agent
+      eBPF --&gt; NetFilter
+      eBPF --&gt; TC
+      eBPF --&gt; XDP
+      eBPF --&gt; Pods
+      eBPF --&gt; Services
+      eBPF --&gt; Policies
+      
+      style Agent fill:#64b5f6
+      style eBPF fill:#a5d6a7
+      style Pods fill:#ffcc80
+      style Services fill:#ffcc80
+      style Policies fill:#ffcc80
+  </div>
+</div>
+
+<p><br /></p>
+
+<p>Cilium leverages eBPF (Extended Berkeley Packet Filter), a powerful technology that enables advanced networking, security, and load balancing functions to be performed directly within the Linux kernel without requiring traditional overlay networks.</p>
+
+<p><br /></p>
+
+<h3 id="key-features-and-capabilities">Key Features and Capabilities</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Feature Area</th>
+      <th style="width: 75%;">Capabilities</th>
+    </tr>
+    <tr>
+      <td><strong>Networking &amp; Security</strong></td>
+      <td>
+        <ul>
+          <li>Functions as CNI plugin for Kubernetes pod and external service networking</li>
+          <li>Replaces traditional iptables-based approaches with eBPF for efficient packet routing</li>
+          <li>Advanced bandwidth management and access control</li>
+          <li>API-aware network security with identity-based policies</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>eBPF Technology</strong></td>
+      <td>
+        <ul>
+          <li>Programmable packet processing within the Linux kernel</li>
+          <li>High-performance, low-latency networking impossible with traditional methods</li>
+          <li>Dynamic program loading without kernel recompilation</li>
+          <li>Safe execution with kernel verification</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Observability &amp; Monitoring</strong></td>
+      <td>
+        <ul>
+          <li>Comprehensive network behavior, security incident, and performance insights</li>
+          <li>Hubble for real-time network visibility and troubleshooting</li>
+          <li>Flow logs and metrics for distributed system debugging</li>
+          <li>Integration with Prometheus and Grafana</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Security Policies</strong></td>
+      <td>
+        <ul>
+          <li>Transparent security policy insertion and enforcement at packet level</li>
+          <li>Layer 7 (application layer) policy enforcement</li>
+          <li>Identity-based security with automatic service discovery</li>
+          <li>Encryption and mutual TLS capabilities</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Cloud Native Integration</strong></td>
+      <td>
+        <ul>
+          <li>Seamless integration with Kubernetes and popular orchestration tools</li>
+          <li>Support for network policies, service load balancing, and pod connectivity</li>
+          <li>Multi-cluster connectivity and service mesh capabilities</li>
+          <li>Integration with service discovery mechanisms</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Scalability &amp; Performance</strong></td>
+      <td>
+        <ul>
+          <li>High efficiency through eBPF utilization, suitable for high-load environments</li>
+          <li>Large-scale clusters and high-throughput networks without significant overhead</li>
+          <li>Horizontal scaling across multiple data centers</li>
+          <li>Optimized for microservices architectures</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="cilium-architecture-components">Cilium Architecture Components</h2>
+
+<p>Understanding Cilium’s architecture is crucial for effective deployment and troubleshooting. Each component has specific responsibilities in the overall networking and security infrastructure.</p>
+
+<p><br /></p>
+
+<h3 id="core-components">Core Components</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Component</th>
+      <th style="width: 30%;">Purpose</th>
+      <th style="width: 50%;">Functionality</th>
+    </tr>
+    <tr>
+      <td><strong>Cilium Agent</strong></td>
+      <td>Node-level networking and policy enforcement</td>
+      <td>
+        <ul>
+          <li>Runs on each cluster node as a DaemonSet</li>
+          <li>Accepts configuration describing networking, service load balancing, network policies</li>
+          <li>Compiles and loads eBPF programs into the kernel</li>
+          <li>Manages local endpoint connectivity</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Cilium Operator</strong></td>
+      <td>Cluster-wide operations and coordination</td>
+      <td>
+        <ul>
+          <li>Handles operations that need cluster-wide view</li>
+          <li>Manages IPAM (IP Address Management)</li>
+          <li>Coordinates with cloud provider APIs</li>
+          <li>Updates kvstore heartbeat keys</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Cilium CLI</strong></td>
+      <td>Administrative interface and debugging</td>
+      <td>
+        <ul>
+          <li>Command-line tool for interacting with Cilium agent</li>
+          <li>Local agent state inspection and validation</li>
+          <li>Direct eBPF map access for troubleshooting</li>
+          <li>Policy and connectivity testing</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>CNI Plugin</strong></td>
+      <td>Kubernetes integration interface</td>
+      <td>
+        <ul>
+          <li>Called by Kubernetes when pods are scheduled/terminated</li>
+          <li>Triggers data path configuration via Cilium API</li>
+          <li>Configures networking, load balancing, and network policies</li>
+          <li>Manages pod network namespace setup</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Hubble</strong></td>
+      <td>Network observability and monitoring</td>
+      <td>
+        <ul>
+          <li>Real-time visibility into network traffic</li>
+          <li>Service dependency mapping</li>
+          <li>Security policy violation detection</li>
+          <li>Performance metrics and flow logs</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="component-interaction-flow">Component Interaction Flow</h3>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant K8s as Kubernetes API
+      participant CNI as CNI Plugin
+      participant Agent as Cilium Agent
+      participant eBPF as eBPF Programs
+      participant Op as Cilium Operator
+      participant Hub as Hubble
+      
+      K8s-&gt;&gt;CNI: Pod scheduled
+      CNI-&gt;&gt;Agent: Configure networking
+      Agent-&gt;&gt;eBPF: Load/update programs
+      Agent-&gt;&gt;Hub: Send flow data
+      Op-&gt;&gt;Agent: Cluster-wide coordination
+      eBPF-&gt;&gt;Agent: Policy events
+      Agent-&gt;&gt;K8s: Status updates
+      Hub-&gt;&gt;Hub: Aggregate flow data
+  </div>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="understanding-ebpf-technology">Understanding eBPF Technology</h2>
+
+<p>eBPF (Extended Berkeley Packet Filter) forms the technological foundation of Cilium’s capabilities. Understanding eBPF is essential for comprehending Cilium’s advantages and operational model.</p>
+
+<p><br /></p>
+
+<h3 id="what-is-ebpf">What is eBPF?</h3>
+
+<blockquote>
+  <p><strong>Revolutionary Kernel Programming</strong></p>
+
+  <p>eBPF is a revolutionary technology that allows user-written programs to run safely within the Linux kernel without requiring kernel modifications or module loading.</p>
+
+  <ul>
+    <li><strong>Origin</strong>: Evolved from the original Berkeley Packet Filter for network packet inspection</li>
+    <li><strong>Evolution</strong>: Now a general-purpose kernel programming technology</li>
+    <li><strong>Safety</strong>: Kernel verifier ensures program safety before execution</li>
+    <li><strong>Performance</strong>: Minimal user-space to kernel-space context switching</li>
+  </ul>
+</blockquote>
+
+<p><br /></p>
+
+<h3 id="ebpf-characteristics-and-benefits">eBPF Characteristics and Benefits</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Characteristic</th>
+      <th style="width: 70%;">Description and Benefits</th>
+    </tr>
+    <tr>
+      <td><strong>High Performance</strong></td>
+      <td>
+        <ul>
+          <li>Minimal context switching between user and kernel space</li>
+          <li>Direct packet processing in kernel data path</li>
+          <li>JIT compilation for native performance</li>
+          <li>Optimized memory access patterns</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Kernel Stability</strong></td>
+      <td>
+        <ul>
+          <li>Verification ensures program safety before execution</li>
+          <li>Cannot crash or hang the kernel</li>
+          <li>Bounded execution prevents infinite loops</li>
+          <li>Memory access bounds checking</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Dynamic Updates</strong></td>
+      <td>
+        <ul>
+          <li>Programs can be loaded/unloaded without reboot</li>
+          <li>Real-time policy updates without service disruption</li>
+          <li>Hot-swappable network configurations</li>
+          <li>Gradual rollout capabilities</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>API Stability</strong></td>
+      <td>
+        <ul>
+          <li>Consistent interface across kernel versions</li>
+          <li>Feature detection and graceful degradation</li>
+          <li>Long-term application compatibility</li>
+          <li>Standardized helper functions</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="ebpf-use-cases-in-cilium">eBPF Use Cases in Cilium</h3>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TB
+      subgraph "eBPF Applications in Cilium"
+        A[Network Packet Processing] --&gt; B[Load Balancing]
+        A --&gt; C[Security Policy Enforcement]
+        A --&gt; D[Traffic Monitoring]
+        
+        B --&gt; E[Service Discovery]
+        B --&gt; F[Health Checking]
+        
+        C --&gt; G[L3/L4 Filtering]
+        C --&gt; H[L7 Protocol Parsing]
+        
+        D --&gt; I[Flow Logging]
+        D --&gt; J[Metrics Collection]
+      end
+      
+      style A fill:#64b5f6
+      style B fill:#a5d6a7
+      style C fill:#ffcc80
+      style D fill:#ef9a9a
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="traditional-vs-ebpf-based-networking">Traditional vs eBPF-based Networking</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 20%;">Aspect</th>
+      <th style="width: 40%;">Traditional (iptables)</th>
+      <th style="width: 40%;">eBPF-based (Cilium)</th>
+    </tr>
+    <tr>
+      <td><strong>Performance</strong></td>
+      <td>
+        <ul>
+          <li>Linear rule processing</li>
+          <li>Performance degrades with rule count</li>
+          <li>Context switching overhead</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>O(1) hash-based lookups</li>
+          <li>Consistent performance at scale</li>
+          <li>Kernel-native processing</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Flexibility</strong></td>
+      <td>
+        <ul>
+          <li>Fixed rule chains</li>
+          <li>Limited programmability</li>
+          <li>Complex rule management</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Programmable logic</li>
+          <li>Custom protocol support</li>
+          <li>Dynamic reconfiguration</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Observability</strong></td>
+      <td>
+        <ul>
+          <li>Limited visibility</li>
+          <li>Basic logging capabilities</li>
+          <li>Difficult troubleshooting</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Deep packet inspection</li>
+          <li>Rich telemetry data</li>
+          <li>Real-time monitoring</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="cilium-installation-with-kubespray">Cilium Installation with Kubespray</h2>
+
+<p>This section demonstrates how to install Kubernetes with Cilium as the CNI using Kubespray, providing a production-ready foundation for advanced networking capabilities.</p>
+
+<p><br /></p>
+
+<h3 id="system-requirements-and-configuration">System Requirements and Configuration</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Component</th>
+      <th style="width: 75%;">Specifications</th>
+    </tr>
+    <tr>
+      <td><strong>Operating System</strong></td>
+      <td>Ubuntu 20.04 LTS (Focal) on Google Compute Engine</td>
+    </tr>
+    <tr>
+      <td><strong>Master Node</strong></td>
+      <td>
+        <ul>
+          <li><strong>Hostname:</strong> test-server</li>
+          <li><strong>IP:</strong> 10.77.101.62</li>
+          <li><strong>CPU:</strong> 2 cores</li>
+          <li><strong>Memory:</strong> 8GB</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Worker Node</strong></td>
+      <td>
+        <ul>
+          <li><strong>Hostname:</strong> test-server-agent</li>
+          <li><strong>IP:</strong> 10.77.101.57</li>
+          <li><strong>CPU:</strong> 2 cores</li>
+          <li><strong>Memory:</strong> 8GB</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="infrastructure-setup-with-terraform">Infrastructure Setup with Terraform</h3>
+
+<script src="https://gist.github.com/somaz94/afe1dd112f5a8d696372a8b20846328f.js"></script>
+
+<p><br /></p>
+
+<h3 id="prerequisites-and-environment-setup">Prerequisites and Environment Setup</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># SSH key generation and distribution</span>
+ssh-keygen
+ssh-copy-id somaz@10.77.101.57
+
+<span class="c"># Configure /etc/hosts for hostname resolution</span>
+<span class="nb">cat</span> <span class="o">&gt;&gt;</span> /etc/hosts <span class="o">&lt;&lt;</span> <span class="no">EOF</span><span class="sh">
+10.77.101.62 test-server
+10.77.101.57 test-server-agent
+</span><span class="no">EOF
+
+</span><span class="c"># Verify SSH connectivity</span>
+ssh test-server-agent
+
+<span class="c"># Install Python 3.10 (Critical for Kubespray compatibility)</span>
+<span class="nb">sudo </span>add-apt-repository ppa:deadsnakes/ppa
+<span class="nb">sudo </span>apt-get update
+<span class="nb">sudo </span>apt <span class="nb">install</span> <span class="nt">-y</span> python3.10 python3-pip git python3.10-venv
+
+<span class="c"># Verify Python version</span>
+python3.10 <span class="nt">--version</span>  <span class="c"># Should output: Python 3.10.13</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="kubespray-deployment-process">Kubespray Deployment Process</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone Kubespray repository and setup environment</span>
+git clone https://github.com/kubernetes-sigs/kubespray.git
+
+<span class="nv">VENVDIR</span><span class="o">=</span>kubespray-venv
+<span class="nv">KUBESPRAYDIR</span><span class="o">=</span>kubespray
+python3.10 <span class="nt">-m</span> venv <span class="nv">$VENVDIR</span>
+<span class="nb">source</span> <span class="nv">$VENVDIR</span>/bin/activate
+<span class="nb">cd</span> <span class="nv">$KUBESPRAYDIR</span>
+
+<span class="c"># Install dependencies</span>
+pip <span class="nb">install</span> <span class="nt">-U</span> <span class="nt">-r</span> requirements.txt
+
+<span class="c"># Prepare Ansible inventory</span>
+<span class="nb">cp</span> <span class="nt">-rfp</span> inventory/sample inventory/somaz-cluster
+
+<span class="c"># Generate inventory with IP addresses</span>
+<span class="nb">declare</span> <span class="nt">-a</span> <span class="nv">IPS</span><span class="o">=(</span>10.77.101.62 10.77.101.57<span class="o">)</span>
+<span class="nv">CONFIG_FILE</span><span class="o">=</span>inventory/somaz-cluster/hosts.yaml python3 contrib/inventory_builder/inventory.py <span class="k">${</span><span class="nv">IPS</span><span class="p">[@]</span><span class="k">}</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="cilium-configuration">Cilium Configuration</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># inventory/somaz-cluster/group_vars/k8s_cluster/k8s-cluster.yml</span>
+<span class="c1"># Configure CNI to use Cilium instead of Calico</span>
+<span class="na">kube_network_plugin</span><span class="pi">:</span> <span class="s">cilium</span>
+
+<span class="c1"># inventory/somaz-cluster/group_vars/k8s_cluster/addons.yml</span>
+<span class="c1"># Enable essential addons</span>
+<span class="na">helm_enabled</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">ingress_nginx_enabled</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">metallb_enabled</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">metallb_protocol</span><span class="pi">:</span> <span class="s2">"</span><span class="s">layer2"</span>
+<span class="na">metallb_config</span><span class="pi">:</span>
+  <span class="na">address_pools</span><span class="pi">:</span>
+    <span class="na">primary</span><span class="pi">:</span>
+      <span class="na">ip_range</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">192.168.56.200-192.168.56.209</span>  <span class="c1"># Adjust IP range as needed</span>
+      <span class="na">auto_assign</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">layer2</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">primary</span>
+
+<span class="c1"># inventory/somaz-cluster/group_vars/k8s_cluster/k8s-net-cilium.yml</span>
+<span class="c1"># Enable Hubble for observability</span>
+<span class="na">cilium_enable_hubble</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">cilium_enable_hubble_metrics</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">cilium_hubble_metrics</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">dns</span>
+  <span class="pi">-</span> <span class="s">drop</span>
+  <span class="pi">-</span> <span class="s">tcp</span>
+  <span class="pi">-</span> <span class="s">flow</span>
+  <span class="pi">-</span> <span class="s">icmp</span>
+  <span class="pi">-</span> <span class="s">http</span>
+<span class="na">cilium_hubble_install</span><span class="pi">:</span> <span class="no">true</span>
+<span class="na">cilium_hubble_tls_generate</span><span class="pi">:</span> <span class="no">true</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="inventory-configuration">Inventory Configuration</h3>
+
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># inventory/somaz-cluster/inventory.ini
+</span><span class="nn">[all]</span>
+<span class="err">test-server</span> <span class="py">ansible_host</span><span class="p">=</span><span class="s">10.77.101.62  ip=10.77.101.62</span>
+<span class="err">test-server-agent</span> <span class="py">ansible_host</span><span class="p">=</span><span class="s">10.77.101.57  ip=10.77.101.57</span>
+
+<span class="nn">[kube_control_plane]</span>
+<span class="err">test-server</span>
+
+<span class="nn">[etcd]</span>
+<span class="err">test-server</span>
+
+<span class="nn">[kube_node]</span>
+<span class="err">test-server-agent</span>
+
+<span class="nn">[calico_rr]</span>
+
+<span class="nn">[k8s_cluster:children]</span>
+<span class="err">kube_control_plane</span>
+<span class="err">kube_node</span>
+<span class="err">calico_rr</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="deployment-execution">Deployment Execution</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Verify Ansible connectivity</span>
+ansible all <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini <span class="nt">-m</span> ping
+
+<span class="c"># Optional: Update apt cache on all nodes</span>
+ansible all <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini <span class="nt">-m</span> apt <span class="nt">-a</span> <span class="s1">'update_cache=yes'</span> <span class="nt">--become</span>
+
+<span class="c"># Execute the deployment playbook</span>
+ansible-playbook <span class="nt">-i</span> inventory/somaz-cluster/inventory.ini cluster.yml <span class="nt">--become</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="post-installation-setup">Post-Installation Setup</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Configure kubectl access</span>
+<span class="nb">mkdir</span> ~/.kube
+<span class="nb">sudo cp</span> /etc/kubernetes/admin.conf ~/.kube/config
+<span class="nb">sudo chown</span> <span class="nv">$USER</span>:<span class="nv">$USER</span> ~/.kube/config
+
+<span class="c"># Set up kubectl completion and aliases</span>
+<span class="nb">echo</span> <span class="s1">'# kubectl completion and alias'</span> <span class="o">&gt;&gt;</span> ~/.bashrc
+<span class="nb">echo</span> <span class="s1">'source &lt;(kubectl completion bash)'</span> <span class="o">&gt;&gt;</span> ~/.bashrc
+<span class="nb">echo</span> <span class="s1">'alias k=kubectl'</span> <span class="o">&gt;&gt;</span> ~/.bashrc
+<span class="nb">echo</span> <span class="s1">'complete -F __start_kubectl k'</span> <span class="o">&gt;&gt;</span> ~/.bashrc
+<span class="nb">source</span> ~/.bashrc
+
+<span class="c"># Verify cluster status</span>
+kubectl get nodes
+kubectl cluster-info
+kubectl get pods <span class="nt">-n</span> kube-system
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="cilium-cli-installation">Cilium CLI Installation</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Download and install Cilium CLI</span>
+curl <span class="nt">-LO</span> https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
+<span class="nb">sudo tar </span>xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
+<span class="nb">rm </span>cilium-linux-amd64.tar.gz
+
+<span class="c"># Verify Cilium status</span>
+cilium status
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="network-communication-with-cilium-cni">Network Communication with Cilium CNI</h2>
+
+<p>Understanding how Cilium handles pod-to-pod and pod-to-service communication is crucial for troubleshooting and optimization. This section explores the detailed packet forwarding paths within Cilium’s architecture.</p>
+
+<p><br /></p>
+
+<h3 id="cilium-network-interfaces">Cilium Network Interfaces</h3>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TB
+      subgraph "Node Network Stack"
+        subgraph "Host Network Namespace"
+          cilium_host[cilium_host]
+          cilium_net[cilium_net] 
+          eth0[eth0 - Node Interface]
+        end
+        
+        subgraph "Pod Network Namespace"
+          lxc[lxc interface]
+          eth0_pod[eth0 - Pod Interface]
+        end
+        
+        subgraph "eBPF Programs"
+          tc_ingress[TC Ingress Hook]
+          tc_egress[TC Egress Hook]
+          xdp[XDP Hook]
+        end
+      end
+      
+      cilium_host -.-&gt;|veth pair| cilium_net
+      lxc -.-&gt;|veth pair| cilium_host
+      eth0_pod -.-&gt;|namespace| lxc
+      
+      tc_ingress --&gt; cilium_host
+      tc_egress --&gt; cilium_net
+      xdp --&gt; eth0
+      
+      style cilium_host fill:#64b5f6
+      style cilium_net fill:#a5d6a7
+      style tc_ingress fill:#ffcc80
+      style tc_egress fill:#ffcc80
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="interface-roles-and-functions">Interface Roles and Functions</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">Interface</th>
+      <th style="width: 75%;">Purpose and Functionality</th>
+    </tr>
+    <tr>
+      <td><strong>cilium_net</strong></td>
+      <td>
+        <ul>
+          <li>eBPF-based virtual interface for managing networking</li>
+          <li>Handles packet encapsulation for cross-node communication</li>
+          <li>Provides efficient packet forwarding within the cluster</li>
+          <li>Acts as the gateway for pod-to-external communications</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>cilium_host</strong></td>
+      <td>
+        <ul>
+          <li>Bridge between cilium_net and host network namespace</li>
+          <li>Routes traffic from pods to external services and vice versa</li>
+          <li>Enforces security policies at the network boundary</li>
+          <li>Connected to cilium_net via veth pair relationship</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>lxc interfaces</strong></td>
+      <td>
+        <ul>
+          <li>Pod-specific virtual ethernet interfaces</li>
+          <li>Direct connection between pod and cilium_host</li>
+          <li>Enables per-pod network policy enforcement</li>
+          <li>Facilitates individual pod traffic monitoring</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="packet-flow-analysis">Packet Flow Analysis</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Set up Cilium pod aliases for easier management</span>
+<span class="nv">CILIUMPOD0</span><span class="o">=</span><span class="si">$(</span>kubectl get pods <span class="nt">-n</span> kube-system <span class="nt">-l</span> k8s-app<span class="o">=</span>cilium <span class="nt">--field-selector</span> spec.nodeName<span class="o">=</span>test-server <span class="nt">-o</span> <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.items[0].metadata.name}'</span><span class="si">)</span>
+<span class="nv">CILIUMPOD1</span><span class="o">=</span><span class="si">$(</span>kubectl get pods <span class="nt">-n</span> kube-system <span class="nt">-l</span> k8s-app<span class="o">=</span>cilium <span class="nt">--field-selector</span> spec.nodeName<span class="o">=</span>test-server-agent <span class="nt">-o</span> <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.items[0].metadata.name}'</span><span class="si">)</span>
+
+<span class="c"># Create convenient aliases for Cilium CLI access</span>
+<span class="nb">alias </span><span class="nv">c0</span><span class="o">=</span><span class="s2">"kubectl exec -it </span><span class="nv">$CILIUMPOD0</span><span class="s2"> -n kube-system -- cilium"</span>
+<span class="nb">alias </span><span class="nv">c1</span><span class="o">=</span><span class="s2">"kubectl exec -it </span><span class="nv">$CILIUMPOD1</span><span class="s2"> -n kube-system -- cilium"</span>
+
+<span class="c"># Examine IP cache mappings</span>
+c0 map get cilium_ipcache
+
+<span class="c"># View endpoint configurations</span>
+c0 endpoint list
+
+<span class="c"># Monitor network policies</span>
+c0 bpf policy list
+
+<span class="c"># Check endpoint health</span>
+c0 endpoint health &lt;endpoint-id&gt;
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="understanding-ipcache-and-routing">Understanding IPCache and Routing</h3>
+
+<p>The IPCache is a critical component that maintains mappings between IP addresses, security identities, and routing information.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Example IPCache output analysis</span>
+c0 map get cilium_ipcache
+<span class="c"># Key                Value                                                                  State   Error</span>
+<span class="c"># 0.0.0.0/0          identity=2 encryptkey=0 tunnelendpoint=0.0.0.0 nodeid=0                sync</span>
+<span class="c"># 10.233.64.153/32   identity=4 encryptkey=0 tunnelendpoint=10.77.101.57 nodeid=12111       sync</span>
+<span class="c"># 10.77.101.62/32    identity=1 encryptkey=0 tunnelendpoint=0.0.0.0 nodeid=0                sync</span>
+</code></pre></div></div>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 25%;">IPCache Field</th>
+      <th style="width: 75%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Identity</strong></td>
+      <td>Unique security identity assigned to endpoints based on labels</td>
+    </tr>
+    <tr>
+      <td><strong>Encryptkey</strong></td>
+      <td>Encryption key identifier for secure communication (0 = no encryption)</td>
+    </tr>
+    <tr>
+      <td><strong>Tunnelendpoint</strong></td>
+      <td>IP address of the tunnel endpoint for cross-node communication</td>
+    </tr>
+    <tr>
+      <td><strong>Nodeid</strong></td>
+      <td>Unique identifier for the node hosting the endpoint</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="network-policies-and-security">Network Policies and Security</h2>
+
+<p>Cilium provides sophisticated network policy capabilities that go beyond traditional Kubernetes NetworkPolicies, offering Layer 7 awareness and identity-based security.</p>
+
+<p><br /></p>
+
+<h3 id="creating-and-testing-network-policies">Creating and Testing Network Policies</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create a dedicated namespace for network policy testing</span>
+kubectl create namespace network-policy-test
+
+<span class="c"># Deploy a basic CiliumNetworkPolicy</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> &gt; frontend-backend-policy.yaml
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "allow-frontend"
+  namespace: network-policy-test
+spec:
+  endpointSelector:
+    matchLabels:
+      role: frontend
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        role: backend
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+</span><span class="no">EOF
+
+</span>kubectl apply <span class="nt">-f</span> frontend-backend-policy.yaml
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="application-deployment-for-testing">Application Deployment for Testing</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Frontend deployment with service</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">frontend</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">network-policy-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">2</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">role</span><span class="pi">:</span> <span class="s">frontend</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">role</span><span class="pi">:</span> <span class="s">frontend</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">nginx</span>
+        <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">80</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">frontend</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">network-policy-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">role</span><span class="pi">:</span> <span class="s">frontend</span>
+  <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">targetPort</span><span class="pi">:</span> <span class="m">80</span>
+<span class="nn">---</span>
+<span class="c1"># Backend pod for testing connectivity</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">backend</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">network-policy-test</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">role</span><span class="pi">:</span> <span class="s">backend</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">busybox</span>
+    <span class="na">image</span><span class="pi">:</span> <span class="s">busybox</span>
+    <span class="na">command</span><span class="pi">:</span> <span class="pi">[</span><span class="s1">'</span><span class="s">sh'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">-c'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">echo</span><span class="nv"> </span><span class="s">Backend</span><span class="nv"> </span><span class="s">Pod</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">Running;</span><span class="nv"> </span><span class="s">sleep</span><span class="nv"> </span><span class="s">3600'</span><span class="pi">]</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="policy-testing-and-validation">Policy Testing and Validation</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Test connectivity from backend to frontend (should work)</span>
+kubectl <span class="nb">exec</span> <span class="nt">-n</span> network-policy-test <span class="nt">-it</span> backend <span class="nt">--</span> wget <span class="nt">-qO-</span> http://frontend
+
+<span class="c"># Create a test pod without the backend label (should be blocked)</span>
+kubectl run test-pod <span class="nt">--image</span><span class="o">=</span>busybox <span class="nt">--namespace</span><span class="o">=</span>network-policy-test <span class="nt">--</span> <span class="nb">sleep </span>3600
+
+<span class="c"># Test connectivity from test-pod to frontend (should fail)</span>
+kubectl <span class="nb">exec</span> <span class="nt">-n</span> network-policy-test <span class="nt">-it</span> test-pod <span class="nt">--</span> wget <span class="nt">-qO-</span> http://frontend
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="advanced-policy-examples">Advanced Policy Examples</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># L7 HTTP policy with path-based routing</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s2">"</span><span class="s">cilium.io/v2"</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">CiliumNetworkPolicy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">l7-http-policy"</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">network-policy-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">endpointSelector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">api-server</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">fromEndpoints</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">matchLabels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">frontend</span>
+    <span class="na">toPorts</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">ports</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8080"</span>
+        <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">rules</span><span class="pi">:</span>
+        <span class="na">http</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">method</span><span class="pi">:</span> <span class="s2">"</span><span class="s">GET"</span>
+          <span class="na">path</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/api/v1/.*"</span>
+        <span class="pi">-</span> <span class="na">method</span><span class="pi">:</span> <span class="s2">"</span><span class="s">POST"</span>
+          <span class="na">path</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/api/v1/data"</span>
+<span class="nn">---</span>
+<span class="c1"># Database access policy with time-based restrictions</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s2">"</span><span class="s">cilium.io/v2"</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">CiliumNetworkPolicy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">database-access-policy"</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">network-policy-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">endpointSelector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">database</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">fromEndpoints</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">matchLabels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">webapp</span>
+    <span class="na">toPorts</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">ports</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="s2">"</span><span class="s">3306"</span>
+        <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+  <span class="pi">-</span> <span class="na">fromEndpoints</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">matchLabels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">admin-tools</span>
+    <span class="na">toPorts</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">ports</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="s2">"</span><span class="s">3306"</span>
+        <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">rules</span><span class="pi">:</span>
+        <span class="na">http</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">headers</span><span class="pi">:</span>
+          <span class="pi">-</span> <span class="s2">"</span><span class="s">X-Admin-Token:</span><span class="nv"> </span><span class="s">.*"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="policy-monitoring-and-troubleshooting">Policy Monitoring and Troubleshooting</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># View applied policies</span>
+c0 policy get
+
+<span class="c"># Monitor policy enforcement in real-time</span>
+c0 monitor <span class="nt">--type</span> policy-verdict
+
+<span class="c"># Check policy statistics</span>
+c0 bpf policy list &lt;endpoint-id&gt;
+
+<span class="c"># Verify policy compilation</span>
+c0 policy validate &lt;policy-file.yaml&gt;
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="hubble-network-observability-platform">Hubble: Network Observability Platform</h2>
+
+<p>Hubble provides comprehensive network observability for Cilium-based clusters, offering real-time visibility into network traffic, security policies, and service dependencies.</p>
+
+<p><br /></p>
+
+<h3 id="hubble-architecture">Hubble Architecture</h3>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TB
+      subgraph "Hubble Architecture"
+        subgraph "Data Collection"
+          eBPF[eBPF Programs]
+          Agent[Cilium Agent]
+          Local[Hubble Local Server]
+        end
+        
+        subgraph "Data Aggregation"
+          Relay[Hubble Relay]
+          API[Hubble API]
+        end
+        
+        subgraph "Visualization"
+          UI[Hubble UI]
+          CLI[Hubble CLI]
+          Metrics[Prometheus Metrics]
+        end
+        
+        subgraph "Storage"
+          Ring[Ring Buffer]
+          Export[Flow Export]
+        end
+      end
+      
+      eBPF --&gt; Agent
+      Agent --&gt; Local
+      Local --&gt; Relay
+      Relay --&gt; API
+      API --&gt; UI
+      API --&gt; CLI
+      Local --&gt; Metrics
+      Local --&gt; Ring
+      Relay --&gt; Export
+      
+      style eBPF fill:#a5d6a7
+      style Relay fill:#64b5f6
+      style UI fill:#ffcc80
+      style Metrics fill:#ef9a9a
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="hubble-configuration-and-access">Hubble Configuration and Access</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Configure Hubble UI as NodePort for external access</span>
+kubectl patch <span class="nt">-n</span> kube-system svc hubble-ui <span class="nt">-p</span> <span class="s1">'{"spec": {"type": "NodePort"}}'</span>
+
+<span class="c"># Verify service configuration</span>
+kubectl get svc <span class="nt">-n</span> kube-system hubble-ui
+
+<span class="c"># Configure firewall rules (if needed)</span>
+<span class="c"># Add the NodePort to your firewall configuration</span>
+
+<span class="c"># Access Hubble UI via browser</span>
+<span class="c"># http://&lt;node-ip&gt;:&lt;nodeport&gt;</span>
+</code></pre></div></div>
+
+<p><img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1755056423/cilium-2_ubxfoy.png" alt="Hubble_site_1" /></p>
+
+<p><br /></p>
+
+<p>You can also select and view the namespace as shown below.
+<img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1755056423/cilium-3_vciruh.png" alt="Hubble_site_2" /></p>
+
+<p><br /></p>
+
+<h3 id="hubble-cli-usage">Hubble CLI Usage</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install Hubble CLI</span>
+<span class="nv">HUBBLE_VERSION</span><span class="o">=</span><span class="si">$(</span>curl <span class="nt">-s</span> https://raw.githubusercontent.com/cilium/hubble/master/stable.txt<span class="si">)</span>
+curl <span class="nt">-L</span> <span class="nt">--remote-name-all</span> https://github.com/cilium/hubble/releases/download/<span class="nv">$HUBBLE_VERSION</span>/hubble-linux-amd64.tar.gz<span class="o">{</span>,.sha256sum<span class="o">}</span>
+<span class="nb">sha256sum</span> <span class="nt">--check</span> hubble-linux-amd64.tar.gz.sha256sum
+<span class="nb">sudo tar </span>xzvfC hubble-linux-amd64.tar.gz /usr/local/bin
+<span class="nb">rm </span>hubble-linux-amd64.tar.gz<span class="o">{</span>,.sha256sum<span class="o">}</span>
+
+<span class="c"># Port forward to Hubble Relay</span>
+kubectl port-forward <span class="nt">-n</span> kube-system svc/hubble-relay 4245:443 &amp;
+
+<span class="c"># Query flow data</span>
+hubble observe
+hubble observe <span class="nt">--namespace</span> network-policy-test
+hubble observe <span class="nt">--pod</span> frontend
+hubble observe <span class="nt">--protocol</span> tcp <span class="nt">--port</span> 80
+
+<span class="c"># Service topology</span>
+hubble observe <span class="nt">--output</span> json | jq <span class="s1">'.flow.source.namespace,.flow.destination.namespace'</span>
+
+<span class="c"># Security policy violations</span>
+hubble observe <span class="nt">--verdict</span> DENIED
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="flow-analysis-and-debugging">Flow Analysis and Debugging</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Hubble Command</th>
+      <th style="width: 70%;">Purpose and Output</th>
+    </tr>
+    <tr>
+      <td><code>hubble observe</code></td>
+      <td>Real-time flow observation with source, destination, and verdict information</td>
+    </tr>
+    <tr>
+      <td><code>hubble observe --verdict DENIED</code></td>
+      <td>Shows only flows that were denied by network policies</td>
+    </tr>
+    <tr>
+      <td><code>hubble observe --namespace &lt;ns&gt;</code></td>
+      <td>Filters flows for a specific namespace</td>
+    </tr>
+    <tr>
+      <td><code>hubble observe --pod &lt;pod&gt;</code></td>
+      <td>Shows flows involving a specific pod</td>
+    </tr>
+    <tr>
+      <td><code>hubble observe --protocol &lt;proto&gt;</code></td>
+      <td>Filters flows by protocol (tcp, udp, icmp)</td>
+    </tr>
+    <tr>
+      <td><code>hubble status</code></td>
+      <td>Shows Hubble server status and flow statistics</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="metrics-and-monitoring-integration">Metrics and Monitoring Integration</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Prometheus configuration for Hubble metrics</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">hubble-metrics-config</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">kube-system</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">enabled-metrics</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">dns:labelsContext=source_namespace,destination_namespace</span>
+    <span class="s">drop:labelsContext=source_namespace,destination_namespace</span>
+    <span class="s">tcp:labelsContext=source_namespace,destination_namespace</span>
+    <span class="s">flow:labelsContext=source_namespace,destination_namespace</span>
+    <span class="s">icmp:labelsContext=source_namespace,destination_namespace</span>
+    <span class="s">http:labelsContext=source_namespace,destination_namespace</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="advanced-traffic-flow-analysis">Advanced Traffic Flow Analysis</h2>
+
+<p>Understanding traffic patterns and implementing comprehensive monitoring is crucial for maintaining secure and performant Kubernetes networks.</p>
+
+<p><br /></p>
+
+<h3 id="network-interface-analysis">Network Interface Analysis</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create a network debugging pod for detailed analysis</span>
+<span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="no">EOF</span><span class="sh"> | kubectl create -n network-policy-test -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: netpod
+  labels:
+    app: netpod
+spec:
+  nodeName: test-server-agent
+  containers:
+  - name: netshoot-pod
+    image: nicolaka/netshoot
+    command: ["tail"]
+    args: ["-f", "/dev/null"]
+  terminationGracePeriodSeconds: 0
+</span><span class="no">EOF
+
+</span><span class="c"># Get pod IP for testing</span>
+<span class="nv">NETPODIP</span><span class="o">=</span><span class="si">$(</span>kubectl get pods netpod <span class="nt">-n</span> network-policy-test <span class="nt">-o</span> <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.podIP}'</span><span class="si">)</span>
+
+<span class="c"># Create alias for easy access</span>
+<span class="nb">alias </span><span class="nv">p0</span><span class="o">=</span><span class="s2">"kubectl exec -n network-policy-test -it netpod -- "</span>
+
+<span class="c"># Analyze network interfaces and routing</span>
+p0 ip <span class="nt">-c</span> route
+p0 ip <span class="nt">-c</span> addr show
+p0 ss <span class="nt">-tulpn</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="cidr-and-network-configuration">CIDR and Network Configuration</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check Cilium cluster CIDR configuration</span>
+kubectl get configmap <span class="nt">-n</span> kube-system cilium-config <span class="nt">-o</span> yaml | <span class="nb">grep </span>cluster-pool-ipv4-cidr
+
+<span class="c"># Verify endpoint assignments</span>
+c1 endpoint list
+
+<span class="c"># Analyze service mappings</span>
+c0 service list
+
+<span class="c"># Monitor real-time traffic</span>
+c0 monitor <span class="nt">--type</span> trace
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="comprehensive-policy-testing">Comprehensive Policy Testing</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ICMP communication policy</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s2">"</span><span class="s">cilium.io/v2"</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">CiliumNetworkPolicy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">allow-icmp-communication"</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">network-policy-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">endpointSelector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">role</span><span class="pi">:</span> <span class="s">frontend</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">fromEndpoints</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">matchLabels</span><span class="pi">:</span>
+            <span class="na">app</span><span class="pi">:</span> <span class="s">netpod</span>
+      <span class="na">rules</span><span class="pi">:</span>
+        <span class="na">icmp</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="pi">{}</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s2">"</span><span class="s">cilium.io/v2"</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">CiliumNetworkPolicy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">allow-backend-communication"</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">network-policy-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">endpointSelector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">role</span><span class="pi">:</span> <span class="s">backend</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">fromEndpoints</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">matchLabels</span><span class="pi">:</span>
+            <span class="na">app</span><span class="pi">:</span> <span class="s">netpod</span>
+      <span class="na">rules</span><span class="pi">:</span>
+        <span class="na">icmp</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="pi">{}</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="service-mesh-capabilities">Service Mesh Capabilities</h3>
+
+<p>Cilium provides service mesh functionality without sidecars, leveraging eBPF for efficient L7 processing.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Service mesh policy with mTLS</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s2">"</span><span class="s">cilium.io/v2"</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">CiliumNetworkPolicy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">service-mesh-policy"</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">network-policy-test</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">endpointSelector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">microservice-a</span>
+  <span class="na">ingress</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">fromEndpoints</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">matchLabels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">microservice-b</span>
+    <span class="na">toPorts</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">ports</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8080"</span>
+        <span class="na">protocol</span><span class="pi">:</span> <span class="s">TCP</span>
+      <span class="na">rules</span><span class="pi">:</span>
+        <span class="na">http</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">method</span><span class="pi">:</span> <span class="s2">"</span><span class="s">GET|POST"</span>
+          <span class="na">path</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/api/.*"</span>
+        <span class="pi">-</span> <span class="na">headers</span><span class="pi">:</span>
+          <span class="pi">-</span> <span class="s2">"</span><span class="s">Authorization:</span><span class="nv"> </span><span class="s">Bearer</span><span class="nv"> </span><span class="s">.*"</span>
+      <span class="na">terminatingTLS</span><span class="pi">:</span>
+        <span class="na">certificate</span><span class="pi">:</span> <span class="s2">"</span><span class="s">service-cert"</span>
+        <span class="na">privateKey</span><span class="pi">:</span> <span class="s2">"</span><span class="s">service-key"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="performance-monitoring-and-optimization">Performance Monitoring and Optimization</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Monitor Cilium performance metrics</span>
+kubectl top pods <span class="nt">-n</span> kube-system <span class="nt">-l</span> k8s-app<span class="o">=</span>cilium
+
+<span class="c"># Check eBPF program performance</span>
+c0 bpf metrics list
+
+<span class="c"># Analyze memory usage</span>
+c0 map list
+
+<span class="c"># Monitor datapath latency</span>
+c0 monitor <span class="nt">--type</span> trace <span class="nt">-v</span>
+
+<span class="c"># Service load balancing statistics</span>
+c0 service list <span class="nt">--output</span> json | jq <span class="s1">'.[] | {id: .id, frontend: .frontend, backends: .backends}'</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="production-deployment-considerations">Production Deployment Considerations</h2>
+
+<p>Deploying Cilium in production environments requires careful planning for security, performance, scalability, and monitoring.</p>
+
+<p><br /></p>
+
+<h3 id="security-hardening">Security Hardening</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Security Area</th>
+      <th style="width: 70%;">Best Practices</th>
+    </tr>
+    <tr>
+      <td><strong>Network Policies</strong></td>
+      <td>
+        <ul>
+          <li>Implement default-deny policies for all namespaces</li>
+          <li>Use least-privilege principle for service communication</li>
+          <li>Enable L7 policies for HTTP/gRPC traffic inspection</li>
+          <li>Regular policy auditing and compliance validation</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Encryption</strong></td>
+      <td>
+        <ul>
+          <li>Enable transparent encryption for node-to-node communication</li>
+          <li>Configure IPSec or WireGuard for data-in-transit protection</li>
+          <li>Implement certificate rotation for TLS termination</li>
+          <li>Use Kubernetes secrets for certificate management</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Identity Management</strong></td>
+      <td>
+        <ul>
+          <li>Leverage Kubernetes service accounts for identity-based policies</li>
+          <li>Implement RBAC for Cilium administrative operations</li>
+          <li>Enable audit logging for policy violations</li>
+          <li>Regular identity and access reviews</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="performance-tuning">Performance Tuning</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Cilium ConfigMap for production optimization</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">cilium-config</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">kube-system</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="c1"># Performance settings</span>
+  <span class="na">preallocate-bpf-maps</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">bpf-map-dynamic-size-ratio</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0.25"</span>
+  <span class="na">enable-endpoint-routes</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  
+  <span class="c1"># Monitoring and observability</span>
+  <span class="na">enable-metrics</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">prometheus-serve-addr</span><span class="pi">:</span> <span class="s2">"</span><span class="s">:9090"</span>
+  
+  <span class="c1"># Security settings</span>
+  <span class="na">enable-policy</span><span class="pi">:</span> <span class="s2">"</span><span class="s">default"</span>
+  <span class="na">policy-enforcement-mode</span><span class="pi">:</span> <span class="s2">"</span><span class="s">default"</span>
+  
+  <span class="c1"># Networking configuration</span>
+  <span class="na">tunnel</span><span class="pi">:</span> <span class="s2">"</span><span class="s">vxlan"</span>
+  <span class="na">enable-ipv4</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">enable-ipv6</span><span class="pi">:</span> <span class="s2">"</span><span class="s">false"</span>
+  
+  <span class="c1"># Load balancing</span>
+  <span class="na">enable-nodeport</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">enable-external-ips</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">kube-proxy-replacement</span><span class="pi">:</span> <span class="s2">"</span><span class="s">strict"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="monitoring-and-alerting">Monitoring and Alerting</h3>
+
+<script src="https://gist.github.com/somaz94/ced3b7c43096ae83b58122d29d521075.js"></script>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="troubleshooting-and-debugging">Troubleshooting and Debugging</h2>
+
+<p>Effective troubleshooting techniques are essential for maintaining healthy Cilium deployments and resolving network issues quickly.</p>
+
+<p><br /></p>
+
+<h3 id="common-issues-and-solutions">Common Issues and Solutions</h3>
+
+<div class="table-container">
+  <table class="table-beauty">
+    <tr>
+      <th style="width: 30%;">Issue Category</th>
+      <th style="width: 35%;">Symptoms</th>
+      <th style="width: 35%;">Troubleshooting Steps</th>
+    </tr>
+    <tr>
+      <td><strong>Connectivity Issues</strong></td>
+      <td>
+        <ul>
+          <li>Pods cannot reach services</li>
+          <li>External connectivity fails</li>
+          <li>DNS resolution problems</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Check endpoint status: <code>cilium endpoint list</code></li>
+          <li>Verify service mappings: <code>cilium service list</code></li>
+          <li>Monitor traffic: <code>cilium monitor</code></li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Policy Issues</strong></td>
+      <td>
+        <ul>
+          <li>Unexpected traffic blocking</li>
+          <li>Policy not enforced</li>
+          <li>L7 rules not working</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Validate policies: <code>cilium policy get</code></li>
+          <li>Check policy logs: <code>hubble observe --verdict DENIED</code></li>
+          <li>Test connectivity: <code>cilium connectivity test</code></li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Performance Issues</strong></td>
+      <td>
+        <ul>
+          <li>High latency</li>
+          <li>Packet drops</li>
+          <li>CPU/memory usage spikes</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Monitor metrics: <code>cilium metrics list</code></li>
+          <li>Check BPF maps: <code>cilium map list</code></li>
+          <li>Analyze traces: <code>cilium monitor --type trace</code></li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="diagnostic-commands">Diagnostic Commands</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Comprehensive health check</span>
+cilium status <span class="nt">--verbose</span>
+
+<span class="c"># Network connectivity testing</span>
+cilium connectivity <span class="nb">test</span>
+
+<span class="c"># Policy troubleshooting</span>
+cilium policy trace <span class="nt">--src-endpoint</span> &lt;src-id&gt; <span class="nt">--dst-endpoint</span> &lt;dst-id&gt;
+
+<span class="c"># BPF program debugging</span>
+cilium bpf prog list
+cilium bpf map list
+cilium bpf policy get &lt;endpoint-id&gt;
+
+<span class="c"># Log analysis</span>
+kubectl logs <span class="nt">-n</span> kube-system daemonset/cilium <span class="nt">-f</span>
+kubectl logs <span class="nt">-n</span> kube-system deployment/cilium-operator <span class="nt">-f</span>
+
+<span class="c"># Performance analysis</span>
+cilium monitor <span class="nt">--type</span> drop
+cilium monitor <span class="nt">--type</span> trace <span class="nt">-v</span>
+cilium metrics list
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="key-points">Key Points</h2>
+
+<div class="info-box info-box-success-not-check">
+  <strong>💡 Cilium Essentials</strong>
+  <ul>
+    <li><strong>eBPF Foundation</strong>: Cilium's use of eBPF technology provides unprecedented performance and flexibility compared to traditional iptables-based solutions</li>
+    <li><strong>Comprehensive Security</strong>: Layer 3, 4, and 7 network policies with identity-based security and API-aware filtering capabilities</li>
+    <li><strong>Service Mesh Without Sidecars</strong>: Native service mesh functionality with load balancing, traffic management, and observability without performance overhead</li>
+    <li><strong>Advanced Observability</strong>: Hubble provides real-time network visibility, flow analysis, and security monitoring essential for complex distributed systems</li>
+    <li><strong>Production Readiness</strong>: Scalable architecture supporting large clusters with high-throughput networking and minimal operational overhead</li>
+    <li><strong>Kubernetes Integration</strong>: Seamless CNI plugin integration with native Kubernetes network policies and service discovery</li>
+    <li><strong>Performance Optimization</strong>: NUMA awareness, CPU pinning support, and optimized data paths for high-performance workloads</li>
+    <li><strong>Multi-Cloud Capability</strong>: Consistent networking across different cloud providers and on-premises infrastructure</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="https://somaz.tistory.com/category/Kubernetes/Network">Kubernetes Network</a></li>
+  <li><a href="https://somaz.tistory.com/ipvs-vs-iptables">Kubernetes IPVS vs iptables</a></li>
+  <li><a href="https://somaz.tistory.com/gateway-api">Kubernetes Gateway API Complete Guide</a></li>
+  <li><a href="https://somaz.tistory.com/headless-service">Kubernetes Headless Service</a></li>
+  <li><a href="https://somaz.tistory.com/endpoint-endpointslice">Kubernetes Endpoint and EndpointSlice</a></li>
+</ul>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://docs.cilium.io/">Cilium Documentation</a></li>
+  <li><a href="https://docs.cilium.io/en/latest/installation/">Cilium Installation Guide</a></li>
+  <li><a href="https://ebpf.io/">eBPF Documentation</a></li>
+  <li><a href="https://docs.cilium.io/en/stable/gettingstarted/hubble/">Hubble Observability</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/">Kubernetes Network Policies</a></li>
+  <li><a href="https://github.com/jetstack/cni-migration">CNI Migration Guide</a></li>
+  <li><a href="https://docs.cilium.io/en/stable/policy/">Cilium Network Policy Examples</a></li>
+  <li><a href="https://gitlab.openminds.be/mirror/kubespray/-/blob/master/docs/cilium.md">Kubespray Cilium Configuration</a></li>
+  <li><a href="https://arthurchiao.art/blog/cilium-life-of-a-packet-pod-to-service/">Packet Flow Analysis</a></li>
+  <li><a href="https://docs.cilium.io/en/stable/overview/component-overview/">Cilium Architecture Deep Dive</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/storage/ceph-erasure-code/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755133935/ceph-erasure-code_kheagu.png">
+                                    
+                                    <h3>Advanced Ceph Erasure Code Configuration and Performance Optimization</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/kubernetes/kubernetes-redis-redlock-in-kubernetes/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1754990727/redlock-redis_hkxaio.png">
+                                    
+                                    <h3>Implementing Redis Redlock on Kubernetes — A Complete Guide to Distributed Locks</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/iac/automated-ceph-deployment-cephadm-ansible-kubernetes/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755078890/cephadm-ansible-1_bataxt.png">
+                                    
+                                    <h3>Automated Ceph Cluster Deployment with Cephadm-Ansible and Kubernetes Integration</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="28">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/storage/ceph-erasure-code/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755133935/ceph-erasure-code_kheagu.png">
+                
+            </div>
+            <h3 class="title">Advanced Ceph Erasure Code Configuration and Performance Optimization</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Complete guide to Cilium covering eBPF fundamentals, Kubernetes CNI implementation, network policies, service mesh capabilities, and comprehensive observability with Hubble. Includes practical examples and production deployment strategies.&quot;%20https://somaz.blog/category/kubernetes/cilium-deep-dive/%20via%20&#64;twitter_username&hashtags=kubernetes,cilium,ebpf,cni,networking,security,observability,hubble,service-mesh,network-policy"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/kubernetes/cilium-deep-dive/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile.png" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  <script type="application/ld+json">
+  {
+      "@context": "http://schema.org",
+      "@type": "Person",
+      "name": "Somaz",
+      
+      "image": "/assets/img/uploads/profile.png",
+      
+      "jobTitle": "DevOps Engineer",
+      "url": "https://somaz.blog/authors/somaz/",
+      "sameAs": [
+        "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://{{ author.tistory_username }}.tistory.com"
+      ]
+  }
+  </script>
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/kubernetes/cilium-deep-dive/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.facebook.com/facebook_username" title="Facebook">
+          <svg><use xlink:href="#icon-facebook"></use></svg>
+        </a>
+      
+      
+        <a href="https://twitter.com/twitter_username" title="Twitter">
+          <svg><use xlink:href="#icon-twitter"></use></svg>
+        </a>
+      
+      
+        <a href="https://medium.com/@medium_username" title="Medium">
+          <svg><use xlink:href="#icon-medium"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.instagram.com/instagram_username" title="Instagram">
+          <svg><use xlink:href="#icon-instagram"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "Organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": "600",
+      "height": "315"
+  },
+  "sameAs": [
+    "https://github.com/somaz94","https://www.facebook.com/facebook_username","https://twitter.com/twitter_username","https://medium.com/@medium_username","https://www.instagram.com/instagram_username","https://www.linkedin.com/in/somaz","https://{{ site.tistory_username }}.tistory.com"
+  ]
+}
+</script>
+
+<!-- Include the script that allows Netlify CMS login -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-XXXXXXXX-X"></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-XXXXXXXX-X');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "http://schema.org",
+            "@type": "BlogPosting",
+            "name": "Cilium Deep Dive - Advanced eBPF-based Kubernetes Networking and Security",
+            "headline": "From installation to advanced network policies, observability, and traffic analysis with Cilium and Hubble",
+            "description": "Complete guide to Cilium covering eBPF fundamentals, Kubernetes CNI implementation, network policies, service mesh capabilities, and comprehensive observability with Hubble. Includes practical examples and production deployment strategies.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1755056273/cilium-1_h8xe9p.png",
+            "url": "https://somaz.blog/category/kubernetes/cilium-deep-dive/",
+            "articleBody": "Image Reference
+
+
+
+
+
+Overview
+
+This comprehensive guide explores Cilium, from basic concepts to installation, configuration, observability, policy implementation, and network traffic flow analysis through hands-on practice.
+
+Cilium is a Kubernetes networking and security solution that leverages eBPF (Extended Berkeley Packet Filter) technology to provide higher performance, enhanced security, and sophisticated observability compared to traditional iptables-based CNI solutions.
+
+
+
+Beyond being a simple CNI plugin, Cilium provides the following key capabilities:
+
+
+  High-performance network policy control
+  L7 (HTTP/gRPC) based policy support
+  Real-time traffic observation and visualization through Hubble
+  Sidecar-free Kubernetes service mesh implementation
+  Seamless integration with Kubernetes
+
+
+
+
+Through this hands-on guide, we’ll install Cilium with Kubespray, observe various network policies and traffic flows in real-time, and gain a practical understanding of Cilium’s operational model.
+
+
+
+
+
+What is Cilium?
+
+Cilium is an open-source software solution designed to provide, secure, and observe network connectivity between container workloads. Developed with a focus on cloud-native environments, Cilium is particularly well-suited for applications running in Kubernetes.
+
+
+
+Core Architecture and eBPF Foundation
+
+
+  
+    graph TB
+      subgraph &quot;Cilium Architecture&quot;
+        subgraph &quot;User Space&quot;
+          CLI[Cilium CLI]
+          Agent[Cilium Agent]
+          Operator[Cilium Operator]
+          Hubble[Hubble Relay]
+        end
+        
+        subgraph &quot;Kernel Space&quot;
+          eBPF[eBPF Programs]
+          NetFilter[Netfilter Hooks]
+          TC[Traffic Control]
+          XDP[XDP Layer]
+        end
+        
+        subgraph &quot;Data Plane&quot;
+          Pods[Pod Network]
+          Services[Service Load Balancing]
+          Policies[Network Policies]
+        end
+      end
+      
+      CLI --&amp;gt; Agent
+      Agent --&amp;gt; eBPF
+      Operator --&amp;gt; Agent
+      eBPF --&amp;gt; NetFilter
+      eBPF --&amp;gt; TC
+      eBPF --&amp;gt; XDP
+      eBPF --&amp;gt; Pods
+      eBPF --&amp;gt; Services
+      eBPF --&amp;gt; Policies
+      
+      style Agent fill:#64b5f6
+      style eBPF fill:#a5d6a7
+      style Pods fill:#ffcc80
+      style Services fill:#ffcc80
+      style Policies fill:#ffcc80
+  
+
+
+
+
+Cilium leverages eBPF (Extended Berkeley Packet Filter), a powerful technology that enables advanced networking, security, and load balancing functions to be performed directly within the Linux kernel without requiring traditional overlay networks.
+
+
+
+Key Features and Capabilities
+
+
+  
+    
+      Feature Area
+      Capabilities
+    
+    
+      Networking &amp;amp; Security
+      
+        
+          Functions as CNI plugin for Kubernetes pod and external service networking
+          Replaces traditional iptables-based approaches with eBPF for efficient packet routing
+          Advanced bandwidth management and access control
+          API-aware network security with identity-based policies
+        
+      
+    
+    
+      eBPF Technology
+      
+        
+          Programmable packet processing within the Linux kernel
+          High-performance, low-latency networking impossible with traditional methods
+          Dynamic program loading without kernel recompilation
+          Safe execution with kernel verification
+        
+      
+    
+    
+      Observability &amp;amp; Monitoring
+      
+        
+          Comprehensive network behavior, security incident, and performance insights
+          Hubble for real-time network visibility and troubleshooting
+          Flow logs and metrics for distributed system debugging
+          Integration with Prometheus and Grafana
+        
+      
+    
+    
+      Security Policies
+      
+        
+          Transparent security policy insertion and enforcement at packet level
+          Layer 7 (application layer) policy enforcement
+          Identity-based security with automatic service discovery
+          Encryption and mutual TLS capabilities
+        
+      
+    
+    
+      Cloud Native Integration
+      
+        
+          Seamless integration with Kubernetes and popular orchestration tools
+          Support for network policies, service load balancing, and pod connectivity
+          Multi-cluster connectivity and service mesh capabilities
+          Integration with service discovery mechanisms
+        
+      
+    
+    
+      Scalability &amp;amp; Performance
+      
+        
+          High efficiency through eBPF utilization, suitable for high-load environments
+          Large-scale clusters and high-throughput networks without significant overhead
+          Horizontal scaling across multiple data centers
+          Optimized for microservices architectures
+        
+      
+    
+  
+
+
+
+
+
+
+Cilium Architecture Components
+
+Understanding Cilium’s architecture is crucial for effective deployment and troubleshooting. Each component has specific responsibilities in the overall networking and security infrastructure.
+
+
+
+Core Components
+
+
+  
+    
+      Component
+      Purpose
+      Functionality
+    
+    
+      Cilium Agent
+      Node-level networking and policy enforcement
+      
+        
+          Runs on each cluster node as a DaemonSet
+          Accepts configuration describing networking, service load balancing, network policies
+          Compiles and loads eBPF programs into the kernel
+          Manages local endpoint connectivity
+        
+      
+    
+    
+      Cilium Operator
+      Cluster-wide operations and coordination
+      
+        
+          Handles operations that need cluster-wide view
+          Manages IPAM (IP Address Management)
+          Coordinates with cloud provider APIs
+          Updates kvstore heartbeat keys
+        
+      
+    
+    
+      Cilium CLI
+      Administrative interface and debugging
+      
+        
+          Command-line tool for interacting with Cilium agent
+          Local agent state inspection and validation
+          Direct eBPF map access for troubleshooting
+          Policy and connectivity testing
+        
+      
+    
+    
+      CNI Plugin
+      Kubernetes integration interface
+      
+        
+          Called by Kubernetes when pods are scheduled/terminated
+          Triggers data path configuration via Cilium API
+          Configures networking, load balancing, and network policies
+          Manages pod network namespace setup
+        
+      
+    
+    
+      Hubble
+      Network observability and monitoring
+      
+        
+          Real-time visibility into network traffic
+          Service dependency mapping
+          Security policy violation detection
+          Performance metrics and flow logs
+        
+      
+    
+  
+
+
+
+
+Component Interaction Flow
+
+
+  
+    sequenceDiagram
+      participant K8s as Kubernetes API
+      participant CNI as CNI Plugin
+      participant Agent as Cilium Agent
+      participant eBPF as eBPF Programs
+      participant Op as Cilium Operator
+      participant Hub as Hubble
+      
+      K8s-&amp;gt;&amp;gt;CNI: Pod scheduled
+      CNI-&amp;gt;&amp;gt;Agent: Configure networking
+      Agent-&amp;gt;&amp;gt;eBPF: Load/update programs
+      Agent-&amp;gt;&amp;gt;Hub: Send flow data
+      Op-&amp;gt;&amp;gt;Agent: Cluster-wide coordination
+      eBPF-&amp;gt;&amp;gt;Agent: Policy events
+      Agent-&amp;gt;&amp;gt;K8s: Status updates
+      Hub-&amp;gt;&amp;gt;Hub: Aggregate flow data
+  
+
+
+
+
+
+
+Understanding eBPF Technology
+
+eBPF (Extended Berkeley Packet Filter) forms the technological foundation of Cilium’s capabilities. Understanding eBPF is essential for comprehending Cilium’s advantages and operational model.
+
+
+
+What is eBPF?
+
+
+  Revolutionary Kernel Programming
+
+  eBPF is a revolutionary technology that allows user-written programs to run safely within the Linux kernel without requiring kernel modifications or module loading.
+
+  
+    Origin: Evolved from the original Berkeley Packet Filter for network packet inspection
+    Evolution: Now a general-purpose kernel programming technology
+    Safety: Kernel verifier ensures program safety before execution
+    Performance: Minimal user-space to kernel-space context switching
+  
+
+
+
+
+eBPF Characteristics and Benefits
+
+
+  
+    
+      Characteristic
+      Description and Benefits
+    
+    
+      High Performance
+      
+        
+          Minimal context switching between user and kernel space
+          Direct packet processing in kernel data path
+          JIT compilation for native performance
+          Optimized memory access patterns
+        
+      
+    
+    
+      Kernel Stability
+      
+        
+          Verification ensures program safety before execution
+          Cannot crash or hang the kernel
+          Bounded execution prevents infinite loops
+          Memory access bounds checking
+        
+      
+    
+    
+      Dynamic Updates
+      
+        
+          Programs can be loaded/unloaded without reboot
+          Real-time policy updates without service disruption
+          Hot-swappable network configurations
+          Gradual rollout capabilities
+        
+      
+    
+    
+      API Stability
+      
+        
+          Consistent interface across kernel versions
+          Feature detection and graceful degradation
+          Long-term application compatibility
+          Standardized helper functions
+        
+      
+    
+  
+
+
+
+
+eBPF Use Cases in Cilium
+
+
+  
+    graph TB
+      subgraph &quot;eBPF Applications in Cilium&quot;
+        A[Network Packet Processing] --&amp;gt; B[Load Balancing]
+        A --&amp;gt; C[Security Policy Enforcement]
+        A --&amp;gt; D[Traffic Monitoring]
+        
+        B --&amp;gt; E[Service Discovery]
+        B --&amp;gt; F[Health Checking]
+        
+        C --&amp;gt; G[L3/L4 Filtering]
+        C --&amp;gt; H[L7 Protocol Parsing]
+        
+        D --&amp;gt; I[Flow Logging]
+        D --&amp;gt; J[Metrics Collection]
+      end
+      
+      style A fill:#64b5f6
+      style B fill:#a5d6a7
+      style C fill:#ffcc80
+      style D fill:#ef9a9a
+  
+
+
+
+
+Traditional vs eBPF-based Networking
+
+
+  
+    
+      Aspect
+      Traditional (iptables)
+      eBPF-based (Cilium)
+    
+    
+      Performance
+      
+        
+          Linear rule processing
+          Performance degrades with rule count
+          Context switching overhead
+        
+      
+      
+        
+          O(1) hash-based lookups
+          Consistent performance at scale
+          Kernel-native processing
+        
+      
+    
+    
+      Flexibility
+      
+        
+          Fixed rule chains
+          Limited programmability
+          Complex rule management
+        
+      
+      
+        
+          Programmable logic
+          Custom protocol support
+          Dynamic reconfiguration
+        
+      
+    
+    
+      Observability
+      
+        
+          Limited visibility
+          Basic logging capabilities
+          Difficult troubleshooting
+        
+      
+      
+        
+          Deep packet inspection
+          Rich telemetry data
+          Real-time monitoring
+        
+      
+    
+  
+
+
+
+
+
+
+Cilium Installation with Kubespray
+
+This section demonstrates how to install Kubernetes with Cilium as the CNI using Kubespray, providing a production-ready foundation for advanced networking capabilities.
+
+
+
+System Requirements and Configuration
+
+
+  
+    
+      Component
+      Specifications
+    
+    
+      Operating System
+      Ubuntu 20.04 LTS (Focal) on Google Compute Engine
+    
+    
+      Master Node
+      
+        
+          Hostname: test-server
+          IP: 10.77.101.62
+          CPU: 2 cores
+          Memory: 8GB
+        
+      
+    
+    
+      Worker Node
+      
+        
+          Hostname: test-server-agent
+          IP: 10.77.101.57
+          CPU: 2 cores
+          Memory: 8GB
+        
+      
+    
+  
+
+
+
+
+Infrastructure Setup with Terraform
+
+
+
+
+
+Prerequisites and Environment Setup
+
+# SSH key generation and distribution
+ssh-keygen
+ssh-copy-id somaz@10.77.101.57
+
+# Configure /etc/hosts for hostname resolution
+cat &amp;gt;&amp;gt; /etc/hosts &amp;lt;&amp;lt; EOF
+10.77.101.62 test-server
+10.77.101.57 test-server-agent
+EOF
+
+# Verify SSH connectivity
+ssh test-server-agent
+
+# Install Python 3.10 (Critical for Kubespray compatibility)
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt install -y python3.10 python3-pip git python3.10-venv
+
+# Verify Python version
+python3.10 --version  # Should output: Python 3.10.13
+
+
+
+
+Kubespray Deployment Process
+
+# Clone Kubespray repository and setup environment
+git clone https://github.com/kubernetes-sigs/kubespray.git
+
+VENVDIR=kubespray-venv
+KUBESPRAYDIR=kubespray
+python3.10 -m venv $VENVDIR
+source $VENVDIR/bin/activate
+cd $KUBESPRAYDIR
+
+# Install dependencies
+pip install -U -r requirements.txt
+
+# Prepare Ansible inventory
+cp -rfp inventory/sample inventory/somaz-cluster
+
+# Generate inventory with IP addresses
+declare -a IPS=(10.77.101.62 10.77.101.57)
+CONFIG_FILE=inventory/somaz-cluster/hosts.yaml python3 contrib/inventory_builder/inventory.py ${IPS[@]}
+
+
+
+
+Cilium Configuration
+
+# inventory/somaz-cluster/group_vars/k8s_cluster/k8s-cluster.yml
+# Configure CNI to use Cilium instead of Calico
+kube_network_plugin: cilium
+
+# inventory/somaz-cluster/group_vars/k8s_cluster/addons.yml
+# Enable essential addons
+helm_enabled: true
+ingress_nginx_enabled: true
+metallb_enabled: true
+metallb_protocol: &quot;layer2&quot;
+metallb_config:
+  address_pools:
+    primary:
+      ip_range:
+        - 192.168.56.200-192.168.56.209  # Adjust IP range as needed
+      auto_assign: true
+  layer2:
+    - primary
+
+# inventory/somaz-cluster/group_vars/k8s_cluster/k8s-net-cilium.yml
+# Enable Hubble for observability
+cilium_enable_hubble: true
+cilium_enable_hubble_metrics: true
+cilium_hubble_metrics:
+  - dns
+  - drop
+  - tcp
+  - flow
+  - icmp
+  - http
+cilium_hubble_install: true
+cilium_hubble_tls_generate: true
+
+
+
+
+Inventory Configuration
+
+# inventory/somaz-cluster/inventory.ini
+[all]
+test-server ansible_host=10.77.101.62  ip=10.77.101.62
+test-server-agent ansible_host=10.77.101.57  ip=10.77.101.57
+
+[kube_control_plane]
+test-server
+
+[etcd]
+test-server
+
+[kube_node]
+test-server-agent
+
+[calico_rr]
+
+[k8s_cluster:children]
+kube_control_plane
+kube_node
+calico_rr
+
+
+
+
+Deployment Execution
+
+# Verify Ansible connectivity
+ansible all -i inventory/somaz-cluster/inventory.ini -m ping
+
+# Optional: Update apt cache on all nodes
+ansible all -i inventory/somaz-cluster/inventory.ini -m apt -a &apos;update_cache=yes&apos; --become
+
+# Execute the deployment playbook
+ansible-playbook -i inventory/somaz-cluster/inventory.ini cluster.yml --become
+
+
+
+
+Post-Installation Setup
+
+# Configure kubectl access
+mkdir ~/.kube
+sudo cp /etc/kubernetes/admin.conf ~/.kube/config
+sudo chown $USER:$USER ~/.kube/config
+
+# Set up kubectl completion and aliases
+echo &apos;# kubectl completion and alias&apos; &amp;gt;&amp;gt; ~/.bashrc
+echo &apos;source &amp;lt;(kubectl completion bash)&apos; &amp;gt;&amp;gt; ~/.bashrc
+echo &apos;alias k=kubectl&apos; &amp;gt;&amp;gt; ~/.bashrc
+echo &apos;complete -F __start_kubectl k&apos; &amp;gt;&amp;gt; ~/.bashrc
+source ~/.bashrc
+
+# Verify cluster status
+kubectl get nodes
+kubectl cluster-info
+kubectl get pods -n kube-system
+
+
+
+
+Cilium CLI Installation
+
+# Download and install Cilium CLI
+curl -LO https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
+sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
+rm cilium-linux-amd64.tar.gz
+
+# Verify Cilium status
+cilium status
+
+
+
+
+
+
+Network Communication with Cilium CNI
+
+Understanding how Cilium handles pod-to-pod and pod-to-service communication is crucial for troubleshooting and optimization. This section explores the detailed packet forwarding paths within Cilium’s architecture.
+
+
+
+Cilium Network Interfaces
+
+
+  
+    graph TB
+      subgraph &quot;Node Network Stack&quot;
+        subgraph &quot;Host Network Namespace&quot;
+          cilium_host[cilium_host]
+          cilium_net[cilium_net] 
+          eth0[eth0 - Node Interface]
+        end
+        
+        subgraph &quot;Pod Network Namespace&quot;
+          lxc[lxc interface]
+          eth0_pod[eth0 - Pod Interface]
+        end
+        
+        subgraph &quot;eBPF Programs&quot;
+          tc_ingress[TC Ingress Hook]
+          tc_egress[TC Egress Hook]
+          xdp[XDP Hook]
+        end
+      end
+      
+      cilium_host -.-&amp;gt;|veth pair| cilium_net
+      lxc -.-&amp;gt;|veth pair| cilium_host
+      eth0_pod -.-&amp;gt;|namespace| lxc
+      
+      tc_ingress --&amp;gt; cilium_host
+      tc_egress --&amp;gt; cilium_net
+      xdp --&amp;gt; eth0
+      
+      style cilium_host fill:#64b5f6
+      style cilium_net fill:#a5d6a7
+      style tc_ingress fill:#ffcc80
+      style tc_egress fill:#ffcc80
+  
+
+
+
+
+Interface Roles and Functions
+
+
+  
+    
+      Interface
+      Purpose and Functionality
+    
+    
+      cilium_net
+      
+        
+          eBPF-based virtual interface for managing networking
+          Handles packet encapsulation for cross-node communication
+          Provides efficient packet forwarding within the cluster
+          Acts as the gateway for pod-to-external communications
+        
+      
+    
+    
+      cilium_host
+      
+        
+          Bridge between cilium_net and host network namespace
+          Routes traffic from pods to external services and vice versa
+          Enforces security policies at the network boundary
+          Connected to cilium_net via veth pair relationship
+        
+      
+    
+    
+      lxc interfaces
+      
+        
+          Pod-specific virtual ethernet interfaces
+          Direct connection between pod and cilium_host
+          Enables per-pod network policy enforcement
+          Facilitates individual pod traffic monitoring
+        
+      
+    
+  
+
+
+
+
+Packet Flow Analysis
+
+# Set up Cilium pod aliases for easier management
+CILIUMPOD0=$(kubectl get pods -n kube-system -l k8s-app=cilium --field-selector spec.nodeName=test-server -o jsonpath=&apos;{.items[0].metadata.name}&apos;)
+CILIUMPOD1=$(kubectl get pods -n kube-system -l k8s-app=cilium --field-selector spec.nodeName=test-server-agent -o jsonpath=&apos;{.items[0].metadata.name}&apos;)
+
+# Create convenient aliases for Cilium CLI access
+alias c0=&quot;kubectl exec -it $CILIUMPOD0 -n kube-system -- cilium&quot;
+alias c1=&quot;kubectl exec -it $CILIUMPOD1 -n kube-system -- cilium&quot;
+
+# Examine IP cache mappings
+c0 map get cilium_ipcache
+
+# View endpoint configurations
+c0 endpoint list
+
+# Monitor network policies
+c0 bpf policy list
+
+# Check endpoint health
+c0 endpoint health &amp;lt;endpoint-id&amp;gt;
+
+
+
+
+Understanding IPCache and Routing
+
+The IPCache is a critical component that maintains mappings between IP addresses, security identities, and routing information.
+
+# Example IPCache output analysis
+c0 map get cilium_ipcache
+# Key                Value                                                                  State   Error
+# 0.0.0.0/0          identity=2 encryptkey=0 tunnelendpoint=0.0.0.0 nodeid=0                sync
+# 10.233.64.153/32   identity=4 encryptkey=0 tunnelendpoint=10.77.101.57 nodeid=12111       sync
+# 10.77.101.62/32    identity=1 encryptkey=0 tunnelendpoint=0.0.0.0 nodeid=0                sync
+
+
+
+  
+    
+      IPCache Field
+      Description
+    
+    
+      Identity
+      Unique security identity assigned to endpoints based on labels
+    
+    
+      Encryptkey
+      Encryption key identifier for secure communication (0 = no encryption)
+    
+    
+      Tunnelendpoint
+      IP address of the tunnel endpoint for cross-node communication
+    
+    
+      Nodeid
+      Unique identifier for the node hosting the endpoint
+    
+  
+
+
+
+
+
+
+Network Policies and Security
+
+Cilium provides sophisticated network policy capabilities that go beyond traditional Kubernetes NetworkPolicies, offering Layer 7 awareness and identity-based security.
+
+
+
+Creating and Testing Network Policies
+
+# Create a dedicated namespace for network policy testing
+kubectl create namespace network-policy-test
+
+# Deploy a basic CiliumNetworkPolicy
+cat &amp;lt;&amp;lt;EOF &amp;gt; frontend-backend-policy.yaml
+apiVersion: &quot;cilium.io/v2&quot;
+kind: CiliumNetworkPolicy
+metadata:
+  name: &quot;allow-frontend&quot;
+  namespace: network-policy-test
+spec:
+  endpointSelector:
+    matchLabels:
+      role: frontend
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        role: backend
+    toPorts:
+    - ports:
+      - port: &quot;80&quot;
+        protocol: TCP
+EOF
+
+kubectl apply -f frontend-backend-policy.yaml
+
+
+
+
+Application Deployment for Testing
+
+# Frontend deployment with service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: network-policy-test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      role: frontend
+  template:
+    metadata:
+      labels:
+        role: frontend
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: network-policy-test
+spec:
+  selector:
+    role: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+# Backend pod for testing connectivity
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backend
+  namespace: network-policy-test
+  labels:
+    role: backend
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    command: [&apos;sh&apos;, &apos;-c&apos;, &apos;echo Backend Pod is Running; sleep 3600&apos;]
+
+
+
+
+Policy Testing and Validation
+
+# Test connectivity from backend to frontend (should work)
+kubectl exec -n network-policy-test -it backend -- wget -qO- http://frontend
+
+# Create a test pod without the backend label (should be blocked)
+kubectl run test-pod --image=busybox --namespace=network-policy-test -- sleep 3600
+
+# Test connectivity from test-pod to frontend (should fail)
+kubectl exec -n network-policy-test -it test-pod -- wget -qO- http://frontend
+
+
+
+
+Advanced Policy Examples
+
+# L7 HTTP policy with path-based routing
+apiVersion: &quot;cilium.io/v2&quot;
+kind: CiliumNetworkPolicy
+metadata:
+  name: &quot;l7-http-policy&quot;
+  namespace: network-policy-test
+spec:
+  endpointSelector:
+    matchLabels:
+      app: api-server
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        app: frontend
+    toPorts:
+    - ports:
+      - port: &quot;8080&quot;
+        protocol: TCP
+      rules:
+        http:
+        - method: &quot;GET&quot;
+          path: &quot;/api/v1/.*&quot;
+        - method: &quot;POST&quot;
+          path: &quot;/api/v1/data&quot;
+---
+# Database access policy with time-based restrictions
+apiVersion: &quot;cilium.io/v2&quot;
+kind: CiliumNetworkPolicy
+metadata:
+  name: &quot;database-access-policy&quot;
+  namespace: network-policy-test
+spec:
+  endpointSelector:
+    matchLabels:
+      app: database
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        app: webapp
+    toPorts:
+    - ports:
+      - port: &quot;3306&quot;
+        protocol: TCP
+  - fromEndpoints:
+    - matchLabels:
+        app: admin-tools
+    toPorts:
+    - ports:
+      - port: &quot;3306&quot;
+        protocol: TCP
+      rules:
+        http:
+        - headers:
+          - &quot;X-Admin-Token: .*&quot;
+
+
+
+
+Policy Monitoring and Troubleshooting
+
+# View applied policies
+c0 policy get
+
+# Monitor policy enforcement in real-time
+c0 monitor --type policy-verdict
+
+# Check policy statistics
+c0 bpf policy list &amp;lt;endpoint-id&amp;gt;
+
+# Verify policy compilation
+c0 policy validate &amp;lt;policy-file.yaml&amp;gt;
+
+
+
+
+
+
+Hubble: Network Observability Platform
+
+Hubble provides comprehensive network observability for Cilium-based clusters, offering real-time visibility into network traffic, security policies, and service dependencies.
+
+
+
+Hubble Architecture
+
+
+  
+    graph TB
+      subgraph &quot;Hubble Architecture&quot;
+        subgraph &quot;Data Collection&quot;
+          eBPF[eBPF Programs]
+          Agent[Cilium Agent]
+          Local[Hubble Local Server]
+        end
+        
+        subgraph &quot;Data Aggregation&quot;
+          Relay[Hubble Relay]
+          API[Hubble API]
+        end
+        
+        subgraph &quot;Visualization&quot;
+          UI[Hubble UI]
+          CLI[Hubble CLI]
+          Metrics[Prometheus Metrics]
+        end
+        
+        subgraph &quot;Storage&quot;
+          Ring[Ring Buffer]
+          Export[Flow Export]
+        end
+      end
+      
+      eBPF --&amp;gt; Agent
+      Agent --&amp;gt; Local
+      Local --&amp;gt; Relay
+      Relay --&amp;gt; API
+      API --&amp;gt; UI
+      API --&amp;gt; CLI
+      Local --&amp;gt; Metrics
+      Local --&amp;gt; Ring
+      Relay --&amp;gt; Export
+      
+      style eBPF fill:#a5d6a7
+      style Relay fill:#64b5f6
+      style UI fill:#ffcc80
+      style Metrics fill:#ef9a9a
+  
+
+
+
+
+Hubble Configuration and Access
+
+# Configure Hubble UI as NodePort for external access
+kubectl patch -n kube-system svc hubble-ui -p &apos;{&quot;spec&quot;: {&quot;type&quot;: &quot;NodePort&quot;}}&apos;
+
+# Verify service configuration
+kubectl get svc -n kube-system hubble-ui
+
+# Configure firewall rules (if needed)
+# Add the NodePort to your firewall configuration
+
+# Access Hubble UI via browser
+# http://&amp;lt;node-ip&amp;gt;:&amp;lt;nodeport&amp;gt;
+
+
+
+
+
+
+You can also select and view the namespace as shown below.
+
+
+
+
+Hubble CLI Usage
+
+# Install Hubble CLI
+HUBBLE_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/hubble/master/stable.txt)
+curl -L --remote-name-all https://github.com/cilium/hubble/releases/download/$HUBBLE_VERSION/hubble-linux-amd64.tar.gz{,.sha256sum}
+sha256sum --check hubble-linux-amd64.tar.gz.sha256sum
+sudo tar xzvfC hubble-linux-amd64.tar.gz /usr/local/bin
+rm hubble-linux-amd64.tar.gz{,.sha256sum}
+
+# Port forward to Hubble Relay
+kubectl port-forward -n kube-system svc/hubble-relay 4245:443 &amp;amp;
+
+# Query flow data
+hubble observe
+hubble observe --namespace network-policy-test
+hubble observe --pod frontend
+hubble observe --protocol tcp --port 80
+
+# Service topology
+hubble observe --output json | jq &apos;.flow.source.namespace,.flow.destination.namespace&apos;
+
+# Security policy violations
+hubble observe --verdict DENIED
+
+
+
+
+Flow Analysis and Debugging
+
+
+  
+    
+      Hubble Command
+      Purpose and Output
+    
+    
+      hubble observe
+      Real-time flow observation with source, destination, and verdict information
+    
+    
+      hubble observe --verdict DENIED
+      Shows only flows that were denied by network policies
+    
+    
+      hubble observe --namespace &amp;lt;ns&amp;gt;
+      Filters flows for a specific namespace
+    
+    
+      hubble observe --pod &amp;lt;pod&amp;gt;
+      Shows flows involving a specific pod
+    
+    
+      hubble observe --protocol &amp;lt;proto&amp;gt;
+      Filters flows by protocol (tcp, udp, icmp)
+    
+    
+      hubble status
+      Shows Hubble server status and flow statistics
+    
+  
+
+
+
+
+Metrics and Monitoring Integration
+
+# Prometheus configuration for Hubble metrics
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hubble-metrics-config
+  namespace: kube-system
+data:
+  enabled-metrics: |
+    dns:labelsContext=source_namespace,destination_namespace
+    drop:labelsContext=source_namespace,destination_namespace
+    tcp:labelsContext=source_namespace,destination_namespace
+    flow:labelsContext=source_namespace,destination_namespace
+    icmp:labelsContext=source_namespace,destination_namespace
+    http:labelsContext=source_namespace,destination_namespace
+
+
+
+
+
+
+Advanced Traffic Flow Analysis
+
+Understanding traffic patterns and implementing comprehensive monitoring is crucial for maintaining secure and performant Kubernetes networks.
+
+
+
+Network Interface Analysis
+
+# Create a network debugging pod for detailed analysis
+cat &amp;lt;&amp;lt;EOF | kubectl create -n network-policy-test -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: netpod
+  labels:
+    app: netpod
+spec:
+  nodeName: test-server-agent
+  containers:
+  - name: netshoot-pod
+    image: nicolaka/netshoot
+    command: [&quot;tail&quot;]
+    args: [&quot;-f&quot;, &quot;/dev/null&quot;]
+  terminationGracePeriodSeconds: 0
+EOF
+
+# Get pod IP for testing
+NETPODIP=$(kubectl get pods netpod -n network-policy-test -o jsonpath=&apos;{.status.podIP}&apos;)
+
+# Create alias for easy access
+alias p0=&quot;kubectl exec -n network-policy-test -it netpod -- &quot;
+
+# Analyze network interfaces and routing
+p0 ip -c route
+p0 ip -c addr show
+p0 ss -tulpn
+
+
+
+
+CIDR and Network Configuration
+
+# Check Cilium cluster CIDR configuration
+kubectl get configmap -n kube-system cilium-config -o yaml | grep cluster-pool-ipv4-cidr
+
+# Verify endpoint assignments
+c1 endpoint list
+
+# Analyze service mappings
+c0 service list
+
+# Monitor real-time traffic
+c0 monitor --type trace
+
+
+
+
+Comprehensive Policy Testing
+
+# ICMP communication policy
+apiVersion: &quot;cilium.io/v2&quot;
+kind: CiliumNetworkPolicy
+metadata:
+  name: &quot;allow-icmp-communication&quot;
+  namespace: network-policy-test
+spec:
+  endpointSelector:
+    matchLabels:
+      role: frontend
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: netpod
+      rules:
+        icmp:
+        - {}
+---
+apiVersion: &quot;cilium.io/v2&quot;
+kind: CiliumNetworkPolicy
+metadata:
+  name: &quot;allow-backend-communication&quot;
+  namespace: network-policy-test
+spec:
+  endpointSelector:
+    matchLabels:
+      role: backend
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: netpod
+      rules:
+        icmp:
+        - {}
+
+
+
+
+Service Mesh Capabilities
+
+Cilium provides service mesh functionality without sidecars, leveraging eBPF for efficient L7 processing.
+
+# Service mesh policy with mTLS
+apiVersion: &quot;cilium.io/v2&quot;
+kind: CiliumNetworkPolicy
+metadata:
+  name: &quot;service-mesh-policy&quot;
+  namespace: network-policy-test
+spec:
+  endpointSelector:
+    matchLabels:
+      app: microservice-a
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        app: microservice-b
+    toPorts:
+    - ports:
+      - port: &quot;8080&quot;
+        protocol: TCP
+      rules:
+        http:
+        - method: &quot;GET|POST&quot;
+          path: &quot;/api/.*&quot;
+        - headers:
+          - &quot;Authorization: Bearer .*&quot;
+      terminatingTLS:
+        certificate: &quot;service-cert&quot;
+        privateKey: &quot;service-key&quot;
+
+
+
+
+Performance Monitoring and Optimization
+
+# Monitor Cilium performance metrics
+kubectl top pods -n kube-system -l k8s-app=cilium
+
+# Check eBPF program performance
+c0 bpf metrics list
+
+# Analyze memory usage
+c0 map list
+
+# Monitor datapath latency
+c0 monitor --type trace -v
+
+# Service load balancing statistics
+c0 service list --output json | jq &apos;.[] | {id: .id, frontend: .frontend, backends: .backends}&apos;
+
+
+
+
+
+
+Production Deployment Considerations
+
+Deploying Cilium in production environments requires careful planning for security, performance, scalability, and monitoring.
+
+
+
+Security Hardening
+
+
+  
+    
+      Security Area
+      Best Practices
+    
+    
+      Network Policies
+      
+        
+          Implement default-deny policies for all namespaces
+          Use least-privilege principle for service communication
+          Enable L7 policies for HTTP/gRPC traffic inspection
+          Regular policy auditing and compliance validation
+        
+      
+    
+    
+      Encryption
+      
+        
+          Enable transparent encryption for node-to-node communication
+          Configure IPSec or WireGuard for data-in-transit protection
+          Implement certificate rotation for TLS termination
+          Use Kubernetes secrets for certificate management
+        
+      
+    
+    
+      Identity Management
+      
+        
+          Leverage Kubernetes service accounts for identity-based policies
+          Implement RBAC for Cilium administrative operations
+          Enable audit logging for policy violations
+          Regular identity and access reviews
+        
+      
+    
+  
+
+
+
+
+Performance Tuning
+
+# Cilium ConfigMap for production optimization
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cilium-config
+  namespace: kube-system
+data:
+  # Performance settings
+  preallocate-bpf-maps: &quot;true&quot;
+  bpf-map-dynamic-size-ratio: &quot;0.25&quot;
+  enable-endpoint-routes: &quot;true&quot;
+  
+  # Monitoring and observability
+  enable-metrics: &quot;true&quot;
+  prometheus-serve-addr: &quot;:9090&quot;
+  
+  # Security settings
+  enable-policy: &quot;default&quot;
+  policy-enforcement-mode: &quot;default&quot;
+  
+  # Networking configuration
+  tunnel: &quot;vxlan&quot;
+  enable-ipv4: &quot;true&quot;
+  enable-ipv6: &quot;false&quot;
+  
+  # Load balancing
+  enable-nodeport: &quot;true&quot;
+  enable-external-ips: &quot;true&quot;
+  kube-proxy-replacement: &quot;strict&quot;
+
+
+
+
+Monitoring and Alerting
+
+
+
+
+
+
+
+Troubleshooting and Debugging
+
+Effective troubleshooting techniques are essential for maintaining healthy Cilium deployments and resolving network issues quickly.
+
+
+
+Common Issues and Solutions
+
+
+  
+    
+      Issue Category
+      Symptoms
+      Troubleshooting Steps
+    
+    
+      Connectivity Issues
+      
+        
+          Pods cannot reach services
+          External connectivity fails
+          DNS resolution problems
+        
+      
+      
+        
+          Check endpoint status: cilium endpoint list
+          Verify service mappings: cilium service list
+          Monitor traffic: cilium monitor
+        
+      
+    
+    
+      Policy Issues
+      
+        
+          Unexpected traffic blocking
+          Policy not enforced
+          L7 rules not working
+        
+      
+      
+        
+          Validate policies: cilium policy get
+          Check policy logs: hubble observe --verdict DENIED
+          Test connectivity: cilium connectivity test
+        
+      
+    
+    
+      Performance Issues
+      
+        
+          High latency
+          Packet drops
+          CPU/memory usage spikes
+        
+      
+      
+        
+          Monitor metrics: cilium metrics list
+          Check BPF maps: cilium map list
+          Analyze traces: cilium monitor --type trace
+        
+      
+    
+  
+
+
+
+
+Diagnostic Commands
+
+# Comprehensive health check
+cilium status --verbose
+
+# Network connectivity testing
+cilium connectivity test
+
+# Policy troubleshooting
+cilium policy trace --src-endpoint &amp;lt;src-id&amp;gt; --dst-endpoint &amp;lt;dst-id&amp;gt;
+
+# BPF program debugging
+cilium bpf prog list
+cilium bpf map list
+cilium bpf policy get &amp;lt;endpoint-id&amp;gt;
+
+# Log analysis
+kubectl logs -n kube-system daemonset/cilium -f
+kubectl logs -n kube-system deployment/cilium-operator -f
+
+# Performance analysis
+cilium monitor --type drop
+cilium monitor --type trace -v
+cilium metrics list
+
+
+
+
+
+
+Key Points
+
+
+  💡 Cilium Essentials
+  
+    eBPF Foundation: Cilium&apos;s use of eBPF technology provides unprecedented performance and flexibility compared to traditional iptables-based solutions
+    Comprehensive Security: Layer 3, 4, and 7 network policies with identity-based security and API-aware filtering capabilities
+    Service Mesh Without Sidecars: Native service mesh functionality with load balancing, traffic management, and observability without performance overhead
+    Advanced Observability: Hubble provides real-time network visibility, flow analysis, and security monitoring essential for complex distributed systems
+    Production Readiness: Scalable architecture supporting large clusters with high-throughput networking and minimal operational overhead
+    Kubernetes Integration: Seamless CNI plugin integration with native Kubernetes network policies and service discovery
+    Performance Optimization: NUMA awareness, CPU pinning support, and optimized data paths for high-performance workloads
+    Multi-Cloud Capability: Consistent networking across different cloud providers and on-premises infrastructure
+  
+
+
+
+
+
+
+Related Articles
+
+
+  Kubernetes Network
+  Kubernetes IPVS vs iptables
+  Kubernetes Gateway API Complete Guide
+  Kubernetes Headless Service
+  Kubernetes Endpoint and EndpointSlice
+
+
+
+
+
+
+References
+
+
+  Cilium Documentation
+  Cilium Installation Guide
+  eBPF Documentation
+  Hubble Observability
+  Kubernetes Network Policies
+  CNI Migration Guide
+  Cilium Network Policy Examples
+  Kubespray Cilium Configuration
+  Packet Flow Analysis
+  Cilium Architecture Deep Dive
+
+",
+            "wordcount": "5107",
+            "inLanguage": "en",
+            "dateCreated": "2025-11-12/",
+            "datePublished": "2025-11-12/",
+            "dateModified": "2025-11-12/",
+            "author": {
+                "@type": "Person",
+                "name": "Somaz",
+                
+                "image": "/assets/img/uploads/profile.png",
+                
+                "jobTitle": "DevOps Engineer",
+                "url": "https://somaz.blog/authors/somaz/",
+                "sameAs": [
+                    "https://github.com/somaz94","https://www.linkedin.com/in/somaz"
+                ]
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "somaz",
+                "url": "https://somaz.blog/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://somaz.blog/assets/img/blog-image.png",
+                    "width": "600",
+                    "height": "315"
+                }
+            },
+            "mainEntityOfPage": "True",
+            "genre": "KUBERNETES",
+            "articleSection": "KUBERNETES",
+            "keywords": ["kubernetes","cilium","ebpf","cni","networking","security","observability","hubble","service-mesh","network-policy"]
+        }
+        </script>
+    </body>
+</html>
