@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- ✅ Google Tag Manager 추가 -->
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+      <!-- ✅ End Google Tag Manager -->
+
+    <!-- Mermaid.js 직접 로드 -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+
+    <title>Context Switch Deep Dive - The Hidden Performance Cost in Container Environments | somaz</title>
+    <meta name="description" content="Explore how context switching affects container performance, causes resource waste, and learn practical optimization techniques for production environments">
+    
+        <meta name="keywords" content="context-switch, containers, performance, cpu, optimization, docker, kubernetes">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Context Switch Deep Dive - The Hidden Performance Cost in Container Environments | somaz">
+    <meta name="twitter:description" content="Explore how context switching affects container performance, causes resource waste, and learn practical optimization techniques for production environments">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1767769259/context-switch-1_s1n69e.png">
+    
+    
+    
+        <meta name="twitter:site" content="@twitter_username">
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/cs/context-switching/">
+    <meta property="og:title" content="Context Switch Deep Dive - The Hidden Performance Cost in Container Environments | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1767769259/context-switch-1_s1n69e.png">
+    <meta property="og:description" content="Explore how context switching affects container performance, causes resource waste, and learn practical optimization techniques for production environments">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/cs/context-switching/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
+    <!-- <link href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;700&display=swap" rel="stylesheet"> -->
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<!-- ✅ Google Tag Manager (noscript) -->
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+<!-- ✅ End Google Tag Manager (noscript) -->
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-01-31T00:00:00+00:00">
+                            
+
+
+January 31, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>15 min to read</span>
+                </p>
+                <h1 class="post-title">Context Switch Deep Dive - The Hidden Performance Cost in Container Environments</h1>
+                <p class="post-subtitle">Understanding the overhead behind multitasking and resource optimization strategies</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1767769259/context-switch-1_s1n69e.png" alt="Featured image" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>Does the CPU really process multiple tasks simultaneously?</p>
+
+<p>We take “multitasking” for granted as we run dozens of containers, processes, and threads concurrently every day. However, the CPU actually processes only one task at any given moment. The core technology that makes rapid task switching appear like true multitasking is called <strong>Context Switching</strong>.</p>
+
+<p>But context switching isn’t free. As the number of containers increases and task switching becomes more frequent, the CPU spends more resources saving and restoring contexts rather than performing actual computations.</p>
+
+<p>This article explores what Context Switching is, why it leads to performance degradation and resource waste in container environments, and how to reduce it effectively in production systems.</p>
+
+<p><br /></p>
+
+<h2 id="does-cpu-really-multitask">Does CPU Really Multitask?</h2>
+
+<p>The illusion of simultaneous execution is created by the CPU rapidly switching between tasks thousands of times per second. Each switch involves saving the current task’s state and loading another task’s state—this is context switching.</p>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    timeline
+      title CPU Task Execution Timeline
+      
+      section Time Slice 1
+        Task A Execution : Save Task A Context
+                         : Load Task B Context
+      
+      section Time Slice 2  
+        Task B Execution : Save Task B Context
+                         : Load Task C Context
+      
+      section Time Slice 3
+        Task C Execution : Save Task C Context
+                         : Load Task A Context
+      
+      section Time Slice 4
+        Task A Execution : Continue...
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>CPU Time Slicing: Rapid context switching creates the illusion of parallelism</p>
+</div>
+
+<p><br /></p>
+
+<h2 id="what-is-context-switching">What is Context Switching?</h2>
+
+<p>Context Switching is the operation where the CPU saves the state (context) of the currently running process or thread and switches to another task’s state. The OS manages this process, and the CPU rapidly switches from Task A → Task B, making it appear as if multiple tasks are running simultaneously.</p>
+
+<p><br /></p>
+
+<h3 id="context-information-stored-during-switching">Context Information Stored During Switching</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Component</th>
+      <th>Description</th>
+      <th>Impact on Performance</th>
+    </tr>
+    <tr>
+      <td><strong>CPU Registers</strong></td>
+      <td>General-purpose and special registers</td>
+      <td>Direct memory access overhead</td>
+    </tr>
+    <tr>
+      <td><strong>Program Counter (PC)</strong></td>
+      <td>Current instruction address</td>
+      <td>Pipeline flush required</td>
+    </tr>
+    <tr>
+      <td><strong>Stack Pointer</strong></td>
+      <td>Current stack position</td>
+      <td>Memory cache invalidation</td>
+    </tr>
+    <tr>
+      <td><strong>Memory Mapping</strong></td>
+      <td>Virtual memory translation tables</td>
+      <td>TLB (Translation Lookaside Buffer) flush</td>
+    </tr>
+    <tr>
+      <td><strong>Process State</strong></td>
+      <td>Running, waiting, blocked status</td>
+      <td>Scheduler overhead</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h2 id="why-container-environments-are-more-sensitive">Why Container Environments Are More Sensitive</h2>
+
+<p>Container environments amplify context switching challenges due to their architecture and deployment patterns.</p>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      HOST[Host OS] --&gt; DOCKER[Docker Engine]
+      DOCKER --&gt; C1[Container 1<br />Web Server]
+      DOCKER --&gt; C2[Container 2<br />Database]
+      DOCKER --&gt; C3[Container 3<br />Cache]
+      DOCKER --&gt; C4[Container 4<br />Queue]
+      DOCKER --&gt; CN[Container N<br />Microservice]
+      
+      C1 --&gt; P1[Process 1]
+      C1 --&gt; P2[Process 2]
+      C2 --&gt; P3[Process 3]
+      C2 --&gt; P4[Process 4]
+      C3 --&gt; P5[Process 5]
+      C4 --&gt; P6[Process 6]
+      CN --&gt; PN[Process N]
+      
+      style HOST fill:#ff6b9d,stroke:#333,stroke-width:3px
+      style DOCKER fill:#4ecdc4,stroke:#333,stroke-width:2px
+      style C1 fill:#95e1d3,stroke:#333,stroke-width:1px
+      style C2 fill:#95e1d3,stroke:#333,stroke-width:1px
+      style C3 fill:#95e1d3,stroke:#333,stroke-width:1px
+      style C4 fill:#95e1d3,stroke:#333,stroke-width:1px
+      style CN fill:#95e1d3,stroke:#333,stroke-width:1px
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>Container Architecture: Multiple containers create numerous processes competing for CPU time</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="1-lightweight-but-numerous-processes">1. Lightweight but Numerous Processes</h3>
+
+<p>Containers are lightweight, but they create many processes and threads. Dozens to hundreds of containers run simultaneously, each with their own processes competing for CPU resources. This leads to exponentially increased context switching frequency.</p>
+
+<p><br /></p>
+
+<h3 id="2-multiple-containers--more-task-switching">2. Multiple Containers = More Task Switching</h3>
+
+<p>The number of CPU cores is limited, and as container count increases, the scheduler must perform switches more frequently. When CPU-intensive tasks overlap, context switching overhead increases dramatically.</p>
+
+<p><br /></p>
+
+<h3 id="3-additional-overhead-from-cgroups-and-namespaces">3. Additional Overhead from cgroups and namespaces</h3>
+
+<p>Container isolation technologies like cgroups and namespaces provide excellent isolation but add extra state management costs during context switches.</p>
+
+<p><br /></p>
+
+<h2 id="performance-analysis-monitoring-context-switches">Performance Analysis: Monitoring Context Switches</h2>
+
+<p>Understanding how to measure and analyze context switching is crucial for optimization.</p>
+
+<p><br /></p>
+
+<h3 id="using-pidstat-for-context-switch-monitoring">Using pidstat for Context Switch Monitoring</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Monitor context switches per second</span>
+pidstat <span class="nt">-w</span> 1
+</code></pre></div></div>
+
+<h4 id="sample-output">Sample Output:</h4>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Linux 6.8.0-55-generic (production-server)    01/31/26    _x86_64_    (8 CPU)
+
+03:35:19   UID    PID   cswch/s nvcswch/s  Command
+03:35:20     0     11      1.98      0.00  kworker/u4:0
+03:35:20     0     17     29.70      0.00  rcu_preempt
+03:35:20   999   1234      2.97      0.00  nginx
+03:35:20   999   1235      3.96      0.00  nginx
+03:35:20   994   1240      1.98      0.00  postgres
+03:35:20   994   1241      4.95      0.00  postgres
+03:35:20   992   1250      0.99      0.00  prometheus
+03:35:20   995   1260     43.56      0.99  redis-server
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="understanding-voluntary-vs-non-voluntary-context-switches">Understanding Voluntary vs Non-voluntary Context Switches</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Type</th>
+      <th>Trigger</th>
+      <th>Performance Impact</th>
+      <th>Optimization Strategy</th>
+    </tr>
+    <tr>
+      <td><strong>Voluntary (cswch/s)</strong></td>
+      <td>Process voluntarily yields CPU (I/O wait, sleep)</td>
+      <td>Lower impact, predictable</td>
+      <td>Optimize I/O patterns, async processing</td>
+    </tr>
+    <tr>
+      <td><strong>Non-voluntary (nvcswch/s)</strong></td>
+      <td>Scheduler forcibly preempts process</td>
+      <td>High impact, cache invalidation</td>
+      <td>CPU affinity, priority tuning, load balancing</td>
+    </tr>
+  </table>
+</div>
+
+<p><strong>High <code class="language-plaintext highlighter-rouge">nvcswch/s</code> values indicate CPU contention and potential performance bottlenecks.</strong></p>
+
+<p><br /></p>
+
+<h3 id="advanced-performance-monitoring">Advanced Performance Monitoring</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Using perf for detailed analysis</span>
+<span class="nb">sudo </span>perf record <span class="nt">-g</span>
+<span class="nb">sudo </span>perf report
+
+<span class="c"># Monitor specific process</span>
+<span class="nb">sudo </span>perf record <span class="nt">-p</span> &lt;PID&gt; <span class="nt">-g</span>
+
+<span class="c"># System-wide context switch analysis</span>
+vmstat 1
+
+<span class="c"># Container-specific monitoring with cAdvisor</span>
+docker run <span class="nt">--rm</span> <span class="nt">-p</span> 8080:8080 <span class="nt">-v</span> /var/run:/var/run:ro <span class="nt">-v</span> /sys:/sys:ro <span class="nt">-v</span> /var/lib/docker/:/var/lib/docker:ro gcr.io/cadvisor/cadvisor:latest
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="resource-waste-and-performance-degradation-cases">Resource Waste and Performance Degradation Cases</h2>
+
+<p>Real-world scenarios where context switching becomes a bottleneck:</p>
+
+<p><br /></p>
+
+<h3 id="common-bottleneck-patterns">Common Bottleneck Patterns</h3>
+
+<ol>
+  <li><strong>High CPU utilization with low actual throughput</strong>
+    <ul>
+      <li>CPU appears busy but actual work completion is slow</li>
+      <li>Often indicates excessive context switching overhead</li>
+    </ul>
+  </li>
+  <li><strong>Response latency increases with container scale</strong>
+    <ul>
+      <li>More containers lead to longer response times</li>
+      <li>Scheduler overhead dominates execution time</li>
+    </ul>
+  </li>
+  <li><strong>Idle container overhead</strong>
+    <ul>
+      <li>Unnecessary containers consuming CPU cycles through context switches</li>
+      <li>Background processes creating scheduling noise</li>
+    </ul>
+  </li>
+</ol>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TB
+      A[Container Scale Up] --&gt; B[More Processes]
+      B --&gt; C[Increased Context Switching]
+      C --&gt; D[CPU Cache Misses]
+      D --&gt; E[Memory Latency]
+      E --&gt; F[Performance Degradation]
+      F --&gt; G[Resource Waste]
+      
+      style A fill:#ffd3b6,stroke:#333,stroke-width:2px
+      style F fill:#ff6b9d,stroke:#333,stroke-width:2px
+      style G fill:#ff6b9d,stroke:#333,stroke-width:2px
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>Performance Degradation Cycle: How container proliferation leads to inefficiency</p>
+</div>
+
+<p><br /></p>
+
+<h2 id="production-optimization-strategies">Production Optimization Strategies</h2>
+
+<p>Practical approaches to reduce context switching overhead in production environments.</p>
+
+<p><br /></p>
+
+<h3 id="1-cpu-affinity-configuration">1. CPU Affinity Configuration</h3>
+
+<p>Binding specific processes to specific CPU cores reduces inter-core context switches and improves cache locality.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Bind process to specific CPU core</span>
+taskset <span class="nt">-c</span> 0 ./my_application
+
+<span class="c"># Docker container with CPU affinity</span>
+docker run <span class="nt">--cpuset-cpus</span><span class="o">=</span><span class="s2">"0,1"</span> my-app
+
+<span class="c"># Kubernetes CPU pinning</span>
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: app
+    resources:
+      requests:
+        cpu: <span class="s2">"1"</span>
+      limits:
+        cpu: <span class="s2">"1"</span>
+</code></pre></div></div>
+
+<h4 id="kubernetes-cpu-manager-policy">Kubernetes CPU Manager Policy:</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># kubelet configuration</span>
+<span class="na">cpuManagerPolicy</span><span class="pi">:</span> <span class="s">static</span>
+</code></pre></div></div>
+
+<h4 id="benefits">Benefits:</h4>
+<ul>
+  <li>Maintains cache locality across context switches</li>
+  <li>Reduces core-to-core migration overhead</li>
+  <li>Improves deterministic performance</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="2-container-optimization">2. Container Optimization</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Strategy</th>
+      <th>Implementation</th>
+      <th>Impact</th>
+    </tr>
+    <tr>
+      <td><strong>Eliminate Unnecessary Sidecars</strong></td>
+      <td>Replace Fluentd sidecars with DaemonSet</td>
+      <td>Reduce process count by 50-80%</td>
+    </tr>
+    <tr>
+      <td><strong>Consolidate Metrics Collection</strong></td>
+      <td>Use node_exporter instead of per-pod exporters</td>
+      <td>Minimize scheduling overhead</td>
+    </tr>
+    <tr>
+      <td><strong>InitContainer Pattern</strong></td>
+      <td>Move setup tasks to initContainers</td>
+      <td>Reduce long-running process count</td>
+    </tr>
+    <tr>
+      <td><strong>Resource Right-sizing</strong></td>
+      <td>Match resource requests to actual usage</td>
+      <td>Improve scheduling efficiency</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="3-cfs-quota-and-cpu-share-management">3. CFS Quota and CPU Share Management</h3>
+
+<p>Linux Completely Fair Scheduler (CFS) can be tuned to reduce forced preemption.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Kubernetes resource configuration</span>
+<span class="na">resources</span><span class="pi">:</span>
+  <span class="na">requests</span><span class="pi">:</span>
+    <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">500m"</span>    <span class="c1"># Soft limit</span>
+  <span class="na">limits</span><span class="pi">:</span>
+    <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1000m"</span>   <span class="c1"># Hard limit</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Direct cgroup configuration</span>
+<span class="nb">echo </span>50000 <span class="o">&gt;</span> /sys/fs/cgroup/cpu/container/cpu.cfs_quota_us
+<span class="nb">echo </span>100000 <span class="o">&gt;</span> /sys/fs/cgroup/cpu/container/cpu.cfs_period_us
+</code></pre></div></div>
+
+<h4 id="benefits-1">Benefits:</h4>
+<ul>
+  <li>Prevents CPU starvation</li>
+  <li>Reduces non-voluntary context switches</li>
+  <li>Enables predictable resource allocation</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="4-process-priority-and-nice-values">4. Process Priority and Nice Values</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Adjust process priority</span>
+<span class="nb">nice</span> <span class="nt">-n</span> 10 ./low_priority_task
+<span class="nb">nice</span> <span class="nt">-n</span> <span class="nt">-5</span> ./high_priority_task
+
+<span class="c"># Real-time scheduling for critical processes</span>
+chrt <span class="nt">-f</span> 50 ./critical_process
+</code></pre></div></div>
+
+<h4 id="priority-levels">Priority Levels:</h4>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">-20</code> to <code class="language-plaintext highlighter-rouge">19</code> for nice values (lower = higher priority)</li>
+  <li>Real-time policies: <code class="language-plaintext highlighter-rouge">SCHED_FIFO</code>, <code class="language-plaintext highlighter-rouge">SCHED_RR</code></li>
+  <li>Use sparingly to avoid system instability</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="5-runtime-and-language-optimization">5. Runtime and Language Optimization</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Runtime</th>
+      <th>Threading Model</th>
+      <th>Context Switch Impact</th>
+      <th>Use Case</th>
+    </tr>
+    <tr>
+      <td><strong>Node.js</strong></td>
+      <td>Single-threaded event loop</td>
+      <td>Low (for I/O), High (for CPU-bound)</td>
+      <td>API servers, real-time applications</td>
+    </tr>
+    <tr>
+      <td><strong>Go</strong></td>
+      <td>Goroutines (user-space threads)</td>
+      <td>Very Low</td>
+      <td>Concurrent services, microservices</td>
+    </tr>
+    <tr>
+      <td><strong>Rust</strong></td>
+      <td>Async/await with minimal runtime</td>
+      <td>Very Low</td>
+      <td>High-performance systems</td>
+    </tr>
+    <tr>
+      <td><strong>Java/Python</strong></td>
+      <td>Kernel threads</td>
+      <td>High</td>
+      <td>Enterprise applications (with tuning)</td>
+    </tr>
+    <tr>
+      <td><strong>Nginx</strong></td>
+      <td>Event-driven, non-blocking I/O</td>
+      <td>Very Low</td>
+      <td>Web servers, reverse proxies</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h2 id="multi-core-cpu-cache-invalidation-issues">Multi-core CPU Cache Invalidation Issues</h2>
+
+<p>Understanding cache behavior during context switches is crucial for performance optimization.</p>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      PROC[Process A on Core 1] --&gt; CACHE1[L1/L2 Cache Populated]
+      CACHE1 --&gt; SWITCH[Context Switch to Core 2]
+      SWITCH --&gt; INVALID[Cache Invalidation]
+      INVALID --&gt; RELOAD[Reload from Memory]
+      RELOAD --&gt; SLOW[Performance Penalty]
+      
+      style PROC fill:#95e1d3,stroke:#333,stroke-width:2px
+      style SWITCH fill:#ffd3b6,stroke:#333,stroke-width:2px
+      style INVALID fill:#ff6b9d,stroke:#333,stroke-width:2px
+      style SLOW fill:#ff6b9d,stroke:#333,stroke-width:2px
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>Cache Invalidation: Cross-core context switches destroy cache locality</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="solutions-for-cache-optimization">Solutions for Cache Optimization</h3>
+
+<h4 id="cpu-pinning-tasksetcpuset">CPU Pinning (taskset/cpuset):</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Pin process to specific cores</span>
+taskset <span class="nt">-c</span> 0-3 ./cpu_intensive_app
+
+<span class="c"># Docker CPU pinning</span>
+docker run <span class="nt">--cpuset-cpus</span><span class="o">=</span><span class="s2">"0-3"</span> my-app
+</code></pre></div></div>
+
+<h4 id="numa-awareness">NUMA Awareness:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check NUMA topology</span>
+numactl <span class="nt">--hardware</span>
+
+<span class="c"># Bind to specific NUMA node</span>
+numactl <span class="nt">--cpunodebind</span><span class="o">=</span>0 <span class="nt">--membind</span><span class="o">=</span>0 ./app
+</code></pre></div></div>
+
+<h4 id="kubernetes-numa-alignment">Kubernetes NUMA Alignment:</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">app</span>
+    <span class="na">resources</span><span class="pi">:</span>
+      <span class="na">requests</span><span class="pi">:</span>
+        <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">4"</span>
+        <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8Gi"</span>
+      <span class="na">limits</span><span class="pi">:</span>
+        <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">4"</span>
+        <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8Gi"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="kubernetes-specific-optimization">Kubernetes-specific Optimization</h2>
+
+<p>Container orchestration platforms require specialized approaches to context switch optimization.</p>
+
+<p><br /></p>
+
+<h3 id="cpu-manager-policy-configuration">CPU Manager Policy Configuration</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># kubelet config</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">kubelet.config.k8s.io/v1beta1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">KubeletConfiguration</span>
+<span class="na">cpuManagerPolicy</span><span class="pi">:</span> <span class="s">static</span>
+<span class="na">cpuManagerReconcilePeriod</span><span class="pi">:</span> <span class="s">10s</span>
+</code></pre></div></div>
+
+<h4 id="requirements-for-cpu-pinning">Requirements for CPU Pinning:</h4>
+<ul>
+  <li>Pod must have Guaranteed QoS class</li>
+  <li>Integer CPU requests and limits</li>
+  <li>Sufficient CPU resources on node</li>
+</ul>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Guaranteed QoS Pod example</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">cpu-intensive-app</span>
+    <span class="na">resources</span><span class="pi">:</span>
+      <span class="na">requests</span><span class="pi">:</span>
+        <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2"</span>
+        <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">4Gi"</span>
+      <span class="na">limits</span><span class="pi">:</span>
+        <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2"</span>
+        <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">4Gi"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="node-selector-and-affinity">Node Selector and Affinity</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Dedicate specific nodes for CPU-intensive workloads</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">nodeSelector</span><span class="pi">:</span>
+    <span class="na">workload-type</span><span class="pi">:</span> <span class="s">cpu-intensive</span>
+  <span class="na">affinity</span><span class="pi">:</span>
+    <span class="na">nodeAffinity</span><span class="pi">:</span>
+      <span class="na">requiredDuringSchedulingIgnoredDuringExecution</span><span class="pi">:</span>
+        <span class="na">nodeSelectorTerms</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">matchExpressions</span><span class="pi">:</span>
+          <span class="pi">-</span> <span class="na">key</span><span class="pi">:</span> <span class="s">kubernetes.io/arch</span>
+            <span class="na">operator</span><span class="pi">:</span> <span class="s">In</span>
+            <span class="na">values</span><span class="pi">:</span>
+            <span class="pi">-</span> <span class="s">amd64</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="resource-management-best-practices">Resource Management Best Practices</h3>
+
+<ol>
+  <li><strong>Right-size Resource Requests</strong>: Match resource requests to actual application needs</li>
+  <li><strong>Use Vertical Pod Autoscaler</strong>: Automatically adjust resource requests based on usage</li>
+  <li><strong>Implement Pod Disruption Budgets</strong>: Ensure graceful scheduling during updates</li>
+  <li><strong>Monitor Resource Utilization</strong>: Use Prometheus metrics to track efficiency</li>
+</ol>
+
+<p><br /></p>
+
+<h2 id="real-world-performance-case-study">Real-world Performance Case Study</h2>
+
+<p><strong>Scenario</strong>: Microservices architecture with 100+ containers experiencing performance degradation despite adequate hardware resources.</p>
+
+<p><br /></p>
+
+<h3 id="problem-identification">Problem Identification</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Initial symptoms</span>
+- High CPU utilization <span class="o">(&gt;</span>80%<span class="o">)</span> but low application throughput
+- Increased response latency with scale
+- Frequent non-voluntary context switches
+
+<span class="c"># Monitoring revealed</span>
+pidstat <span class="nt">-w</span> 1 | <span class="nb">grep</span> <span class="nt">-E</span> <span class="s2">"nvcswch|Command"</span>
+</code></pre></div></div>
+
+<h4 id="results-showed">Results showed:</h4>
+<ul>
+  <li>50+ containers with excessive non-voluntary context switches</li>
+  <li>Multiple idle sidecars consuming CPU cycles</li>
+  <li>Poor cache locality due to cross-core scheduling</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="solution-implementation">Solution Implementation</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Action</th>
+      <th>Implementation</th>
+      <th>Result</th>
+    </tr>
+    <tr>
+      <td><strong>Container Consolidation</strong></td>
+      <td>Removed unnecessary Fluentd sidecars</td>
+      <td>40% reduction in process count</td>
+    </tr>
+    <tr>
+      <td><strong>CPU Affinity</strong></td>
+      <td>Enabled CPU Manager Policy in Kubernetes</td>
+      <td>60% reduction in cache misses</td>
+    </tr>
+    <tr>
+      <td><strong>Resource Right-sizing</strong></td>
+      <td>Implemented VPA recommendations</td>
+      <td>30% improvement in scheduling efficiency</td>
+    </tr>
+    <tr>
+      <td><strong>Runtime Optimization</strong></td>
+      <td>Migrated Node.js services to Go</td>
+      <td>50% reduction in context switches</td>
+    </tr>
+  </table>
+</div>
+
+<h4 id="overall-impact">Overall Impact:</h4>
+<ul>
+  <li>75% reduction in context switching overhead</li>
+  <li>2x improvement in application throughput</li>
+  <li>40% reduction in CPU utilization for same workload</li>
+</ul>
+
+<p><br /></p>
+
+<h2 id="monitoring-and-alerting-strategy">Monitoring and Alerting Strategy</h2>
+
+<p>Implementing comprehensive monitoring for context switching metrics is essential for maintaining optimal performance.</p>
+
+<p><br /></p>
+
+<h3 id="key-metrics-to-monitor">Key Metrics to Monitor</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Prometheus alerting rules</span>
+<span class="na">groups</span><span class="pi">:</span>
+<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">context_switching</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">HighContextSwitching</span>
+    <span class="na">expr</span><span class="pi">:</span> <span class="s">rate(node_context_switches_total[5m]) &gt; </span><span class="m">10000</span>
+    <span class="na">for</span><span class="pi">:</span> <span class="s">2m</span>
+    <span class="na">labels</span><span class="pi">:</span>
+      <span class="na">severity</span><span class="pi">:</span> <span class="s">warning</span>
+    <span class="na">annotations</span><span class="pi">:</span>
+      <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">High</span><span class="nv"> </span><span class="s">context</span><span class="nv"> </span><span class="s">switching</span><span class="nv"> </span><span class="s">rate</span><span class="nv"> </span><span class="s">detected"</span>
+      
+  <span class="pi">-</span> <span class="na">alert</span><span class="pi">:</span> <span class="s">ExcessiveNonVoluntaryCS</span>
+    <span class="na">expr</span><span class="pi">:</span> <span class="s">rate(node_procs_blocked[5m]) &gt; </span><span class="m">100</span>
+    <span class="na">for</span><span class="pi">:</span> <span class="s">1m</span>
+    <span class="na">labels</span><span class="pi">:</span>
+      <span class="na">severity</span><span class="pi">:</span> <span class="s">critical</span>
+    <span class="na">annotations</span><span class="pi">:</span>
+      <span class="na">summary</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Excessive</span><span class="nv"> </span><span class="s">non-voluntary</span><span class="nv"> </span><span class="s">context</span><span class="nv"> </span><span class="s">switches"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="performance-dashboard">Performance Dashboard</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Key metrics for dashboards</span>
+- node_context_switches_total <span class="o">(</span>rate<span class="o">)</span>
+- container_cpu_usage_seconds_total
+- container_spec_cpu_quota
+- node_load1, node_load5, node_load15
+- container_cpu_cfs_throttled_seconds_total
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="future-considerations-and-emerging-technologies">Future Considerations and Emerging Technologies</h2>
+
+<p><br /></p>
+
+<h3 id="ebpf-for-context-switch-analysis">eBPF for Context Switch Analysis</h3>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// eBPF program for context switch tracing</span>
+<span class="n">SEC</span><span class="p">(</span><span class="s">"tracepoint/sched/sched_switch"</span><span class="p">)</span>
+<span class="kt">int</span> <span class="nf">trace_ctx_switch</span><span class="p">(</span><span class="k">struct</span> <span class="n">trace_event_raw_sched_switch</span> <span class="o">*</span><span class="n">ctx</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Custom context switch analysis logic</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="benefits-2">Benefits:</h4>
+<ul>
+  <li>Zero-overhead production monitoring</li>
+  <li>Detailed context switch causality analysis</li>
+  <li>Custom metrics for specific workloads</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="user-space-threading-advances">User-space Threading Advances</h3>
+
+<p>Emerging runtime technologies are reducing kernel-level context switching:</p>
+<ul>
+  <li><strong>Goroutines in Go</strong>: M:N threading model</li>
+  <li><strong>Green threads in Rust</strong>: Tokio async runtime</li>
+  <li><strong>Fiber-based concurrency</strong>: User-space cooperative scheduling</li>
+</ul>
+
+<p><br /></p>
+
+<h2 id="conclusion-mastering-the-hidden-performance-cost">Conclusion: Mastering the Hidden Performance Cost</h2>
+
+<p>Context switching represents one of the most significant hidden performance costs in modern container environments. While containers provide excellent isolation and deployment flexibility, they can introduce substantial scheduling overhead if not properly managed.</p>
+
+<p>The key insight is that <strong>true system performance isn’t about maximizing CPU utilization—it’s about minimizing unnecessary work</strong>. Every context switch represents CPU cycles spent on bookkeeping rather than actual computation.</p>
+
+<p><br /></p>
+
+<h3 id="key-takeaways-for-production-systems">Key Takeaways for Production Systems:</h3>
+
+<ol>
+  <li><strong>Monitor context switching metrics</strong> alongside traditional CPU utilization</li>
+  <li><strong>Implement CPU affinity</strong> for performance-critical workloads</li>
+  <li><strong>Eliminate unnecessary containers</strong> and consolidate where possible</li>
+  <li><strong>Choose runtime technologies</strong> that minimize kernel-level threading</li>
+  <li><strong>Right-size resource allocations</strong> to reduce scheduling conflicts</li>
+</ol>
+
+<p><br /></p>
+
+<h3 id="the-operational-mindset-shift">The Operational Mindset Shift</h3>
+
+<p>Modern container orchestration requires thinking beyond individual container performance to system-wide scheduling efficiency. The goal isn’t to run as many containers as possible—it’s to run the right containers efficiently.</p>
+
+<p>As container adoption continues to grow and workloads become more complex, understanding and optimizing context switching becomes a critical skill for maintaining high-performance systems. The CPU should focus on computation, not constantly saving and restoring state.</p>
+
+<p><strong>Context switching optimization is not just performance tuning—it’s the foundation of sustainable, scalable container infrastructure.</strong></p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+<ul>
+  <li><a href="https://www.kernel.org/doc/Documentation/scheduler/sched-design-CFS.txt">Linux Kernel Documentation - CFS Scheduler</a></li>
+  <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/">Kubernetes CPU Management Policies</a></li>
+  <li><a href="http://www.brendangregg.com/linuxperf.html">Linux Performance Analysis Tools</a></li>
+  <li><a href="https://access.redhat.com/solutions/416983">Container Performance Optimization</a></li>
+  <li><a href="https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/cpusets.html">CPU Affinity and NUMA Optimization</a></li>
+  <li><a href="https://github.com/prometheus/node_exporter">Prometheus Node Exporter Metrics</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/aws/aws-efs-kubernetes-guide/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767685797/kubernetes-efs-1_ek4rbd.png">
+                                    
+                                    <h3>AWS Elastic File System (EFS) with Kubernetes - Complete Implementation Guide</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/cs/tls-https/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767770122/tls-handshake-1_nwd3f0.png">
+                                    
+                                    <h3>TLS Handshake and Certificate Architecture - A Deep Dive into HTTPS Security</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/container/dockerfile/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755656803/dockerfile-1_xe6akt.png">
+                                    
+                                    <h3>Dockerfile - Complete Guide to Container Image Creation and Best Practices</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="15">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/aws/aws-efs-kubernetes-guide/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767685797/kubernetes-efs-1_ek4rbd.png">
+                
+            </div>
+            <h3 class="title">AWS Elastic File System (EFS) with Kubernetes - Complete Implementation Guide</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Explore how context switching affects container performance, causes resource waste, and learn practical optimization techniques for production environments&quot;%20https://somaz.blog/category/cs/context-switching/%20via%20&#64;twitter_username&hashtags=context-switch,containers,performance,cpu,optimization,docker,kubernetes"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/cs/context-switching/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile.png" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  <script type="application/ld+json">
+  {
+      "@context": "http://schema.org",
+      "@type": "Person",
+      "name": "Somaz",
+      
+      "image": "/assets/img/uploads/profile.png",
+      
+      "jobTitle": "DevOps Engineer",
+      "url": "https://somaz.blog/authors/somaz/",
+      "sameAs": [
+        "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://{{ author.tistory_username }}.tistory.com"
+      ]
+  }
+  </script>
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/cs/context-switching/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.facebook.com/facebook_username" title="Facebook">
+          <svg><use xlink:href="#icon-facebook"></use></svg>
+        </a>
+      
+      
+        <a href="https://twitter.com/twitter_username" title="Twitter">
+          <svg><use xlink:href="#icon-twitter"></use></svg>
+        </a>
+      
+      
+        <a href="https://medium.com/@medium_username" title="Medium">
+          <svg><use xlink:href="#icon-medium"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.instagram.com/instagram_username" title="Instagram">
+          <svg><use xlink:href="#icon-instagram"></use></svg>
+        </a>
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "Organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": "600",
+      "height": "315"
+  },
+  "sameAs": [
+    "https://github.com/somaz94","https://www.facebook.com/facebook_username","https://twitter.com/twitter_username","https://medium.com/@medium_username","https://www.instagram.com/instagram_username","https://www.linkedin.com/in/somaz","https://{{ site.tistory_username }}.tistory.com"
+  ]
+}
+</script>
+
+<!-- Include the script that allows Netlify CMS login -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-XXXXXXXX-X"></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-XXXXXXXX-X');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "http://schema.org",
+            "@type": "BlogPosting",
+            "name": "Context Switch Deep Dive - The Hidden Performance Cost in Container Environments",
+            "headline": "Understanding the overhead behind multitasking and resource optimization strategies",
+            "description": "Explore how context switching affects container performance, causes resource waste, and learn practical optimization techniques for production environments",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1767769259/context-switch-1_s1n69e.png",
+            "url": "https://somaz.blog/category/cs/context-switching/",
+            "articleBody": "
+
+
+
+Overview
+
+Does the CPU really process multiple tasks simultaneously?
+
+We take “multitasking” for granted as we run dozens of containers, processes, and threads concurrently every day. However, the CPU actually processes only one task at any given moment. The core technology that makes rapid task switching appear like true multitasking is called Context Switching.
+
+But context switching isn’t free. As the number of containers increases and task switching becomes more frequent, the CPU spends more resources saving and restoring contexts rather than performing actual computations.
+
+This article explores what Context Switching is, why it leads to performance degradation and resource waste in container environments, and how to reduce it effectively in production systems.
+
+
+
+Does CPU Really Multitask?
+
+The illusion of simultaneous execution is created by the CPU rapidly switching between tasks thousands of times per second. Each switch involves saving the current task’s state and loading another task’s state—this is context switching.
+
+
+  
+    timeline
+      title CPU Task Execution Timeline
+      
+      section Time Slice 1
+        Task A Execution : Save Task A Context
+                         : Load Task B Context
+      
+      section Time Slice 2  
+        Task B Execution : Save Task B Context
+                         : Load Task C Context
+      
+      section Time Slice 3
+        Task C Execution : Save Task C Context
+                         : Load Task A Context
+      
+      section Time Slice 4
+        Task A Execution : Continue...
+  
+
+
+
+  CPU Time Slicing: Rapid context switching creates the illusion of parallelism
+
+
+
+
+What is Context Switching?
+
+Context Switching is the operation where the CPU saves the state (context) of the currently running process or thread and switches to another task’s state. The OS manages this process, and the CPU rapidly switches from Task A → Task B, making it appear as if multiple tasks are running simultaneously.
+
+
+
+Context Information Stored During Switching
+
+
+  
+    
+      Component
+      Description
+      Impact on Performance
+    
+    
+      CPU Registers
+      General-purpose and special registers
+      Direct memory access overhead
+    
+    
+      Program Counter (PC)
+      Current instruction address
+      Pipeline flush required
+    
+    
+      Stack Pointer
+      Current stack position
+      Memory cache invalidation
+    
+    
+      Memory Mapping
+      Virtual memory translation tables
+      TLB (Translation Lookaside Buffer) flush
+    
+    
+      Process State
+      Running, waiting, blocked status
+      Scheduler overhead
+    
+  
+
+
+
+
+Why Container Environments Are More Sensitive
+
+Container environments amplify context switching challenges due to their architecture and deployment patterns.
+
+
+  
+    graph TD
+      HOST[Host OS] --&amp;gt; DOCKER[Docker Engine]
+      DOCKER --&amp;gt; C1[Container 1Web Server]
+      DOCKER --&amp;gt; C2[Container 2Database]
+      DOCKER --&amp;gt; C3[Container 3Cache]
+      DOCKER --&amp;gt; C4[Container 4Queue]
+      DOCKER --&amp;gt; CN[Container NMicroservice]
+      
+      C1 --&amp;gt; P1[Process 1]
+      C1 --&amp;gt; P2[Process 2]
+      C2 --&amp;gt; P3[Process 3]
+      C2 --&amp;gt; P4[Process 4]
+      C3 --&amp;gt; P5[Process 5]
+      C4 --&amp;gt; P6[Process 6]
+      CN --&amp;gt; PN[Process N]
+      
+      style HOST fill:#ff6b9d,stroke:#333,stroke-width:3px
+      style DOCKER fill:#4ecdc4,stroke:#333,stroke-width:2px
+      style C1 fill:#95e1d3,stroke:#333,stroke-width:1px
+      style C2 fill:#95e1d3,stroke:#333,stroke-width:1px
+      style C3 fill:#95e1d3,stroke:#333,stroke-width:1px
+      style C4 fill:#95e1d3,stroke:#333,stroke-width:1px
+      style CN fill:#95e1d3,stroke:#333,stroke-width:1px
+  
+
+
+
+  Container Architecture: Multiple containers create numerous processes competing for CPU time
+
+
+
+
+1. Lightweight but Numerous Processes
+
+Containers are lightweight, but they create many processes and threads. Dozens to hundreds of containers run simultaneously, each with their own processes competing for CPU resources. This leads to exponentially increased context switching frequency.
+
+
+
+2. Multiple Containers = More Task Switching
+
+The number of CPU cores is limited, and as container count increases, the scheduler must perform switches more frequently. When CPU-intensive tasks overlap, context switching overhead increases dramatically.
+
+
+
+3. Additional Overhead from cgroups and namespaces
+
+Container isolation technologies like cgroups and namespaces provide excellent isolation but add extra state management costs during context switches.
+
+
+
+Performance Analysis: Monitoring Context Switches
+
+Understanding how to measure and analyze context switching is crucial for optimization.
+
+
+
+Using pidstat for Context Switch Monitoring
+
+# Monitor context switches per second
+pidstat -w 1
+
+
+Sample Output:
+Linux 6.8.0-55-generic (production-server)    01/31/26    _x86_64_    (8 CPU)
+
+03:35:19   UID    PID   cswch/s nvcswch/s  Command
+03:35:20     0     11      1.98      0.00  kworker/u4:0
+03:35:20     0     17     29.70      0.00  rcu_preempt
+03:35:20   999   1234      2.97      0.00  nginx
+03:35:20   999   1235      3.96      0.00  nginx
+03:35:20   994   1240      1.98      0.00  postgres
+03:35:20   994   1241      4.95      0.00  postgres
+03:35:20   992   1250      0.99      0.00  prometheus
+03:35:20   995   1260     43.56      0.99  redis-server
+
+
+
+
+Understanding Voluntary vs Non-voluntary Context Switches
+
+
+  
+    
+      Type
+      Trigger
+      Performance Impact
+      Optimization Strategy
+    
+    
+      Voluntary (cswch/s)
+      Process voluntarily yields CPU (I/O wait, sleep)
+      Lower impact, predictable
+      Optimize I/O patterns, async processing
+    
+    
+      Non-voluntary (nvcswch/s)
+      Scheduler forcibly preempts process
+      High impact, cache invalidation
+      CPU affinity, priority tuning, load balancing
+    
+  
+
+
+High nvcswch/s values indicate CPU contention and potential performance bottlenecks.
+
+
+
+Advanced Performance Monitoring
+
+# Using perf for detailed analysis
+sudo perf record -g
+sudo perf report
+
+# Monitor specific process
+sudo perf record -p &amp;lt;PID&amp;gt; -g
+
+# System-wide context switch analysis
+vmstat 1
+
+# Container-specific monitoring with cAdvisor
+docker run --rm -p 8080:8080 -v /var/run:/var/run:ro -v /sys:/sys:ro -v /var/lib/docker/:/var/lib/docker:ro gcr.io/cadvisor/cadvisor:latest
+
+
+
+
+Resource Waste and Performance Degradation Cases
+
+Real-world scenarios where context switching becomes a bottleneck:
+
+
+
+Common Bottleneck Patterns
+
+
+  High CPU utilization with low actual throughput
+    
+      CPU appears busy but actual work completion is slow
+      Often indicates excessive context switching overhead
+    
+  
+  Response latency increases with container scale
+    
+      More containers lead to longer response times
+      Scheduler overhead dominates execution time
+    
+  
+  Idle container overhead
+    
+      Unnecessary containers consuming CPU cycles through context switches
+      Background processes creating scheduling noise
+    
+  
+
+
+
+  
+    graph TB
+      A[Container Scale Up] --&amp;gt; B[More Processes]
+      B --&amp;gt; C[Increased Context Switching]
+      C --&amp;gt; D[CPU Cache Misses]
+      D --&amp;gt; E[Memory Latency]
+      E --&amp;gt; F[Performance Degradation]
+      F --&amp;gt; G[Resource Waste]
+      
+      style A fill:#ffd3b6,stroke:#333,stroke-width:2px
+      style F fill:#ff6b9d,stroke:#333,stroke-width:2px
+      style G fill:#ff6b9d,stroke:#333,stroke-width:2px
+  
+
+
+
+  Performance Degradation Cycle: How container proliferation leads to inefficiency
+
+
+
+
+Production Optimization Strategies
+
+Practical approaches to reduce context switching overhead in production environments.
+
+
+
+1. CPU Affinity Configuration
+
+Binding specific processes to specific CPU cores reduces inter-core context switches and improves cache locality.
+
+# Bind process to specific CPU core
+taskset -c 0 ./my_application
+
+# Docker container with CPU affinity
+docker run --cpuset-cpus=&quot;0,1&quot; my-app
+
+# Kubernetes CPU pinning
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: app
+    resources:
+      requests:
+        cpu: &quot;1&quot;
+      limits:
+        cpu: &quot;1&quot;
+
+
+Kubernetes CPU Manager Policy:
+# kubelet configuration
+cpuManagerPolicy: static
+
+
+Benefits:
+
+  Maintains cache locality across context switches
+  Reduces core-to-core migration overhead
+  Improves deterministic performance
+
+
+
+
+2. Container Optimization
+
+
+  
+    
+      Strategy
+      Implementation
+      Impact
+    
+    
+      Eliminate Unnecessary Sidecars
+      Replace Fluentd sidecars with DaemonSet
+      Reduce process count by 50-80%
+    
+    
+      Consolidate Metrics Collection
+      Use node_exporter instead of per-pod exporters
+      Minimize scheduling overhead
+    
+    
+      InitContainer Pattern
+      Move setup tasks to initContainers
+      Reduce long-running process count
+    
+    
+      Resource Right-sizing
+      Match resource requests to actual usage
+      Improve scheduling efficiency
+    
+  
+
+
+
+
+3. CFS Quota and CPU Share Management
+
+Linux Completely Fair Scheduler (CFS) can be tuned to reduce forced preemption.
+
+# Kubernetes resource configuration
+resources:
+  requests:
+    cpu: &quot;500m&quot;    # Soft limit
+  limits:
+    cpu: &quot;1000m&quot;   # Hard limit
+
+
+# Direct cgroup configuration
+echo 50000 &amp;gt; /sys/fs/cgroup/cpu/container/cpu.cfs_quota_us
+echo 100000 &amp;gt; /sys/fs/cgroup/cpu/container/cpu.cfs_period_us
+
+
+Benefits:
+
+  Prevents CPU starvation
+  Reduces non-voluntary context switches
+  Enables predictable resource allocation
+
+
+
+
+4. Process Priority and Nice Values
+
+# Adjust process priority
+nice -n 10 ./low_priority_task
+nice -n -5 ./high_priority_task
+
+# Real-time scheduling for critical processes
+chrt -f 50 ./critical_process
+
+
+Priority Levels:
+
+  -20 to 19 for nice values (lower = higher priority)
+  Real-time policies: SCHED_FIFO, SCHED_RR
+  Use sparingly to avoid system instability
+
+
+
+
+5. Runtime and Language Optimization
+
+
+  
+    
+      Runtime
+      Threading Model
+      Context Switch Impact
+      Use Case
+    
+    
+      Node.js
+      Single-threaded event loop
+      Low (for I/O), High (for CPU-bound)
+      API servers, real-time applications
+    
+    
+      Go
+      Goroutines (user-space threads)
+      Very Low
+      Concurrent services, microservices
+    
+    
+      Rust
+      Async/await with minimal runtime
+      Very Low
+      High-performance systems
+    
+    
+      Java/Python
+      Kernel threads
+      High
+      Enterprise applications (with tuning)
+    
+    
+      Nginx
+      Event-driven, non-blocking I/O
+      Very Low
+      Web servers, reverse proxies
+    
+  
+
+
+
+
+Multi-core CPU Cache Invalidation Issues
+
+Understanding cache behavior during context switches is crucial for performance optimization.
+
+
+  
+    graph TD
+      PROC[Process A on Core 1] --&amp;gt; CACHE1[L1/L2 Cache Populated]
+      CACHE1 --&amp;gt; SWITCH[Context Switch to Core 2]
+      SWITCH --&amp;gt; INVALID[Cache Invalidation]
+      INVALID --&amp;gt; RELOAD[Reload from Memory]
+      RELOAD --&amp;gt; SLOW[Performance Penalty]
+      
+      style PROC fill:#95e1d3,stroke:#333,stroke-width:2px
+      style SWITCH fill:#ffd3b6,stroke:#333,stroke-width:2px
+      style INVALID fill:#ff6b9d,stroke:#333,stroke-width:2px
+      style SLOW fill:#ff6b9d,stroke:#333,stroke-width:2px
+  
+
+
+
+  Cache Invalidation: Cross-core context switches destroy cache locality
+
+
+
+
+Solutions for Cache Optimization
+
+CPU Pinning (taskset/cpuset):
+# Pin process to specific cores
+taskset -c 0-3 ./cpu_intensive_app
+
+# Docker CPU pinning
+docker run --cpuset-cpus=&quot;0-3&quot; my-app
+
+
+NUMA Awareness:
+# Check NUMA topology
+numactl --hardware
+
+# Bind to specific NUMA node
+numactl --cpunodebind=0 --membind=0 ./app
+
+
+Kubernetes NUMA Alignment:
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: app
+    resources:
+      requests:
+        cpu: &quot;4&quot;
+        memory: &quot;8Gi&quot;
+      limits:
+        cpu: &quot;4&quot;
+        memory: &quot;8Gi&quot;
+
+
+
+
+Kubernetes-specific Optimization
+
+Container orchestration platforms require specialized approaches to context switch optimization.
+
+
+
+CPU Manager Policy Configuration
+
+# kubelet config
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cpuManagerPolicy: static
+cpuManagerReconcilePeriod: 10s
+
+
+Requirements for CPU Pinning:
+
+  Pod must have Guaranteed QoS class
+  Integer CPU requests and limits
+  Sufficient CPU resources on node
+
+
+# Guaranteed QoS Pod example
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: cpu-intensive-app
+    resources:
+      requests:
+        cpu: &quot;2&quot;
+        memory: &quot;4Gi&quot;
+      limits:
+        cpu: &quot;2&quot;
+        memory: &quot;4Gi&quot;
+
+
+
+
+Node Selector and Affinity
+
+# Dedicate specific nodes for CPU-intensive workloads
+apiVersion: v1
+kind: Pod
+spec:
+  nodeSelector:
+    workload-type: cpu-intensive
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64
+
+
+
+
+Resource Management Best Practices
+
+
+  Right-size Resource Requests: Match resource requests to actual application needs
+  Use Vertical Pod Autoscaler: Automatically adjust resource requests based on usage
+  Implement Pod Disruption Budgets: Ensure graceful scheduling during updates
+  Monitor Resource Utilization: Use Prometheus metrics to track efficiency
+
+
+
+
+Real-world Performance Case Study
+
+Scenario: Microservices architecture with 100+ containers experiencing performance degradation despite adequate hardware resources.
+
+
+
+Problem Identification
+
+# Initial symptoms
+- High CPU utilization (&amp;gt;80%) but low application throughput
+- Increased response latency with scale
+- Frequent non-voluntary context switches
+
+# Monitoring revealed
+pidstat -w 1 | grep -E &quot;nvcswch|Command&quot;
+
+
+Results showed:
+
+  50+ containers with excessive non-voluntary context switches
+  Multiple idle sidecars consuming CPU cycles
+  Poor cache locality due to cross-core scheduling
+
+
+
+
+Solution Implementation
+
+
+  
+    
+      Action
+      Implementation
+      Result
+    
+    
+      Container Consolidation
+      Removed unnecessary Fluentd sidecars
+      40% reduction in process count
+    
+    
+      CPU Affinity
+      Enabled CPU Manager Policy in Kubernetes
+      60% reduction in cache misses
+    
+    
+      Resource Right-sizing
+      Implemented VPA recommendations
+      30% improvement in scheduling efficiency
+    
+    
+      Runtime Optimization
+      Migrated Node.js services to Go
+      50% reduction in context switches
+    
+  
+
+
+Overall Impact:
+
+  75% reduction in context switching overhead
+  2x improvement in application throughput
+  40% reduction in CPU utilization for same workload
+
+
+
+
+Monitoring and Alerting Strategy
+
+Implementing comprehensive monitoring for context switching metrics is essential for maintaining optimal performance.
+
+
+
+Key Metrics to Monitor
+
+# Prometheus alerting rules
+groups:
+- name: context_switching
+  rules:
+  - alert: HighContextSwitching
+    expr: rate(node_context_switches_total[5m]) &amp;gt; 10000
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: &quot;High context switching rate detected&quot;
+      
+  - alert: ExcessiveNonVoluntaryCS
+    expr: rate(node_procs_blocked[5m]) &amp;gt; 100
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: &quot;Excessive non-voluntary context switches&quot;
+
+
+
+
+Performance Dashboard
+
+# Key metrics for dashboards
+- node_context_switches_total (rate)
+- container_cpu_usage_seconds_total
+- container_spec_cpu_quota
+- node_load1, node_load5, node_load15
+- container_cpu_cfs_throttled_seconds_total
+
+
+
+
+Future Considerations and Emerging Technologies
+
+
+
+eBPF for Context Switch Analysis
+
+// eBPF program for context switch tracing
+SEC(&quot;tracepoint/sched/sched_switch&quot;)
+int trace_ctx_switch(struct trace_event_raw_sched_switch *ctx) {
+    // Custom context switch analysis logic
+    return 0;
+}
+
+
+Benefits:
+
+  Zero-overhead production monitoring
+  Detailed context switch causality analysis
+  Custom metrics for specific workloads
+
+
+
+
+User-space Threading Advances
+
+Emerging runtime technologies are reducing kernel-level context switching:
+
+  Goroutines in Go: M:N threading model
+  Green threads in Rust: Tokio async runtime
+  Fiber-based concurrency: User-space cooperative scheduling
+
+
+
+
+Conclusion: Mastering the Hidden Performance Cost
+
+Context switching represents one of the most significant hidden performance costs in modern container environments. While containers provide excellent isolation and deployment flexibility, they can introduce substantial scheduling overhead if not properly managed.
+
+The key insight is that true system performance isn’t about maximizing CPU utilization—it’s about minimizing unnecessary work. Every context switch represents CPU cycles spent on bookkeeping rather than actual computation.
+
+
+
+Key Takeaways for Production Systems:
+
+
+  Monitor context switching metrics alongside traditional CPU utilization
+  Implement CPU affinity for performance-critical workloads
+  Eliminate unnecessary containers and consolidate where possible
+  Choose runtime technologies that minimize kernel-level threading
+  Right-size resource allocations to reduce scheduling conflicts
+
+
+
+
+The Operational Mindset Shift
+
+Modern container orchestration requires thinking beyond individual container performance to system-wide scheduling efficiency. The goal isn’t to run as many containers as possible—it’s to run the right containers efficiently.
+
+As container adoption continues to grow and workloads become more complex, understanding and optimizing context switching becomes a critical skill for maintaining high-performance systems. The CPU should focus on computation, not constantly saving and restoring state.
+
+Context switching optimization is not just performance tuning—it’s the foundation of sustainable, scalable container infrastructure.
+
+
+
+
+
+References
+
+  Linux Kernel Documentation - CFS Scheduler
+  Kubernetes CPU Management Policies
+  Linux Performance Analysis Tools
+  Container Performance Optimization
+  CPU Affinity and NUMA Optimization
+  Prometheus Node Exporter Metrics
+
+",
+            "wordcount": "2700",
+            "inLanguage": "en",
+            "dateCreated": "2026-01-31/",
+            "datePublished": "2026-01-31/",
+            "dateModified": "2026-01-31/",
+            "author": {
+                "@type": "Person",
+                "name": "Somaz",
+                
+                "image": "/assets/img/uploads/profile.png",
+                
+                "jobTitle": "DevOps Engineer",
+                "url": "https://somaz.blog/authors/somaz/",
+                "sameAs": [
+                    "https://github.com/somaz94","https://www.linkedin.com/in/somaz"
+                ]
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "somaz",
+                "url": "https://somaz.blog/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://somaz.blog/assets/img/blog-image.png",
+                    "width": "600",
+                    "height": "315"
+                }
+            },
+            "mainEntityOfPage": "True",
+            "genre": "CS",
+            "articleSection": "CS",
+            "keywords": ["context-switch","containers","performance","cpu","optimization","docker","kubernetes"]
+        }
+        </script>
+    </body>
+</html>
