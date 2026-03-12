@@ -48,9 +48,9 @@ post-status: ## Show new, modified, and deleted posts
 	@git diff --cached --name-only '_posts/' 2>/dev/null || true
 
 post-commit: ## Auto-commit post changes with generated message
-	@NEW_FILES=$$(git ls-files --others --exclude-standard '_posts/' 2>/dev/null | grep '\.md$$'); \
-	MOD_FILES=$$(git diff --name-only '_posts/' 2>/dev/null | grep '\.md$$'); \
-	DEL_FILES=$$(git ls-files --deleted '_posts/' 2>/dev/null | grep '\.md$$'); \
+	@NEW_FILES=$$({ git ls-files --others --exclude-standard '_posts/'; git diff --cached --diff-filter=A --name-only '_posts/'; } 2>/dev/null | sort -u | grep '\.md$$'); \
+	MOD_FILES=$$({ git diff --name-only '_posts/'; git diff --cached --diff-filter=M --name-only '_posts/'; } 2>/dev/null | sort -u | grep '\.md$$'); \
+	DEL_FILES=$$({ git ls-files --deleted '_posts/'; git diff --cached --diff-filter=D --name-only '_posts/'; } 2>/dev/null | sort -u | grep '\.md$$'); \
 	ALL_FILES=""; \
 	[ -n "$$NEW_FILES" ] && ALL_FILES="$$NEW_FILES"; \
 	[ -n "$$MOD_FILES" ] && ALL_FILES="$$ALL_FILES $$MOD_FILES"; \
