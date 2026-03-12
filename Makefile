@@ -87,7 +87,9 @@ post-commit: ## Auto-commit post changes with generated message
 		[ "$$NEW_COUNT" -gt 0 ] && PARTS="add $$NEW_COUNT"; \
 		[ "$$MOD_COUNT" -gt 0 ] && { [ -n "$$PARTS" ] && PARTS="$$PARTS, "; PARTS="$${PARTS}update $$MOD_COUNT"; }; \
 		[ "$$DEL_COUNT" -gt 0 ] && { [ -n "$$PARTS" ] && PARTS="$$PARTS, "; PARTS="$${PARTS}remove $$DEL_COUNT"; }; \
-		MSG="posts: $$PARTS posts"; \
+		CATEGORIES=$$(echo "$$ALL_FILES" | tr ' ' '\n' | sed 's|_posts/\([^/]*\)/.*|\1|' | sort -u | tr '\n' ',' | sed 's/,$$//; s/,/, /g'); \
+		SLUGS=$$(echo "$$ALL_FILES" | tr ' ' '\n' | xargs -I{} basename {} .md | sed 's/^[0-9]*-[0-9]*-[0-9]*-//' | tr '\n' ',' | sed 's/,$$//; s/,/, /g'); \
+		MSG="posts($$CATEGORIES): $$PARTS - $$SLUGS"; \
 	fi; \
 	\
 	echo "Commit: $$MSG"; \
