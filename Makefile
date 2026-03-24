@@ -1,4 +1,4 @@
-.PHONY: help serve build install post-status post-commit post-push new-post list-categories pdf
+.PHONY: help serve build install post-status post-commit post-push new-post list-categories pdf status commit push
 
 # Default target
 help: ## Show available commands
@@ -106,3 +106,69 @@ post-push: post-commit ## Auto-commit and push post changes
 pdf: ## Generate resume/career PDFs from HTML (output: pdf/)
 	@rm -f pdf/*.pdf
 	node scripts/generate-pdf.mjs
+
+# ---------------------------------------------------------------------------
+# General git operations (all files)
+# ---------------------------------------------------------------------------
+
+status: ## Show all changed files (new, modified, deleted)
+	@echo "=== Untracked ==="
+	@git ls-files --others --exclude-standard 2>/dev/null || true
+	@echo ""
+	@echo "=== Modified ==="
+	@git diff --name-only 2>/dev/null || true
+	@echo ""
+	@echo "=== Staged ==="
+	@git diff --cached --name-only 2>/dev/null || true
+
+commit: ## Auto-commit all changes with generated message
+	@NEW_FILES=$$(git ls-files --others --exclude-standard 2>/dev/null); \
+	MOD_FILES=$$(git diff --name-only 2>/dev/null); \
+	DEL_FILES=$$(git ls-files --deleted 2>/dev/null); \
+	ALL_FILES=""; \
+	[ -n "$$NEW_FILES" ] && ALL_FILES="$$NEW_FILES"; \
+	[ -n "$$MOD_FILES" ] && ALL_FILES="$$ALL_FILES $$MOD_FILES"; \
+	[ -n "$$DEL_FILES" ] && ALL_FILES="$$ALL_FILES $$DEL_FILES"; \
+	ALL_FILES=$$(echo "$$ALL_FILES" | xargs -n1 | sort -u | xargs); \
+	if [ -z "$$ALL_FILES" ]; then \
+		echo "No changes to commit."; \
+		exit 0; \
+	fi; \
+	\
+	for f in $$ALL_FILES; do \
+		git add "$$f"; \
+	done; \
+	\
+	NEW_COUNT=0; MOD_COUNT=0; DEL_COUNT=0; \
+	[ -n "$$NEW_FILES" ] && NEW_COUNT=$$(echo "$$NEW_FILES" | wc -l | tr -d ' '); \
+	[ -n "$$MOD_FILES" ] && MOD_COUNT=$$(echo "$$MOD_FILES" | wc -l | tr -d ' '); \
+	[ -n "$$DEL_FILES" ] && DEL_COUNT=$$(echo "$$DEL_FILES" | wc -l | tr -d ' '); \
+	TOTAL=$$((NEW_COUNT + MOD_COUNT + DEL_COUNT)); \
+	\
+	DIRS=$$(echo "$$ALL_FILES" | tr ' ' '\n' | sed 's|/[^/]*$$||' | sort -u | tr '\n' ',' | sed 's/,$$//; s/,/, /g'); \
+	PARTS=""; \
+	[ "$$NEW_COUNT" -gt 0 ] && PARTS="add $$NEW_COUNT"; \
+	[ "$$MOD_COUNT" -gt 0 ] && { [ -n "$$PARTS" ] && PARTS="$$PARTS, "; PARTS="$${PARTS}update $$MOD_COUNT"; }; \
+	[ "$$DEL_COUNT" -gt 0 ] && { [ -n "$$PARTS" ] && PARTS="$$PARTS, "; PARTS="$${PARTS}remove $$DEL_COUNT"; }; \
+	\
+	if [ "$$TOTAL" -eq 1 ]; then \
+		FILE=$$(echo "$$ALL_FILES" | tr ' ' '\n' | head -1); \
+		DIR=$$(echo "$$FILE" | sed 's|/[^/]*$$||'); \
+		BASE=$$(basename "$$FILE"); \
+		if [ -n "$$NEW_FILES" ] && echo "$$NEW_FILES" | grep -q "$$FILE"; then \
+			MSG="$$DIR: add $$BASE"; \
+		elif [ -n "$$DEL_FILES" ] && echo "$$DEL_FILES" | grep -q "$$FILE"; then \
+			MSG="$$DIR: remove $$BASE"; \
+		else \
+			MSG="$$DIR: update $$BASE"; \
+		fi; \
+	else \
+		MSG="$$DIRS: $$PARTS ($$TOTAL files)"; \
+	fi; \
+	\
+	echo "Commit: $$MSG"; \
+	git commit -m "$$MSG"; \
+	echo "Done!"
+
+push: commit ## Auto-commit all changes and push
+	git push
