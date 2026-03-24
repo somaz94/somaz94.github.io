@@ -1,4 +1,4 @@
-.PHONY: help serve build install post-status post-commit post-push new-post list-categories
+.PHONY: help serve build install post-status post-commit post-push new-post list-categories pdf
 
 # Default target
 help: ## Show available commands
@@ -98,3 +98,11 @@ post-commit: ## Auto-commit post changes with generated message
 
 post-push: post-commit ## Auto-commit and push post changes
 	git push
+
+# ---------------------------------------------------------------------------
+# PDF generation
+# ---------------------------------------------------------------------------
+
+pdf: ## Generate resume/career PDFs from HTML (output: pdf/)
+	@rm -f pdf/*.pdf
+	node scripts/generate-pdf.mjs
