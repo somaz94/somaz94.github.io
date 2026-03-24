@@ -123,8 +123,8 @@ status: ## Show all changed files (new, modified, deleted)
 
 commit: ## Auto-commit all changes with generated message
 	@NEW_FILES=$$(git ls-files --others --exclude-standard 2>/dev/null); \
-	MOD_FILES=$$(git diff --name-only 2>/dev/null); \
-	DEL_FILES=$$(git ls-files --deleted 2>/dev/null); \
+	MOD_FILES=$$({ git diff --name-only; git diff --cached --name-only; } 2>/dev/null | sort -u); \
+	DEL_FILES=$$({ git ls-files --deleted; git diff --cached --diff-filter=D --name-only; } 2>/dev/null | sort -u); \
 	ALL_FILES=""; \
 	[ -n "$$NEW_FILES" ] && ALL_FILES="$$NEW_FILES"; \
 	[ -n "$$MOD_FILES" ] && ALL_FILES="$$ALL_FILES $$MOD_FILES"; \
