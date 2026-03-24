@@ -190,7 +190,7 @@ async function main() {
 
     const targets = [
       // 이력서 (resume.html)
-      { path: '/resume/', lang: 'ko', file: 'Resume_이동형.pdf' },
+      { path: '/resume/', lang: 'ko', file: '이력서_이동형.pdf' },
       { path: '/resume/', lang: 'en', file: 'Resume_DongHyungLee.pdf' },
       // 이력서+경력기술서 (resume-career.html)
       { path: '/resume-career/', lang: 'ko', file: '이력서_경력기술서_이동형.pdf' },
