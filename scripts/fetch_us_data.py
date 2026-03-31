@@ -93,7 +93,7 @@ def yoy_entry(name: str, unit: str, rows: list) -> dict:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    api_key = os.environ.get("FRED_API_KEY", "")
+    api_key = os.environ.get("FRED_API_KEY", "").strip()
     if not api_key:
         print("ERROR: FRED_API_KEY environment variable not set.", file=sys.stderr)
         sys.exit(1)

@@ -82,7 +82,7 @@ def build_entry(name: str, unit: str, latest, prev, time_label: str,
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    api_key = os.environ.get("ECOS_API_KEY", "")
+    api_key = os.environ.get("ECOS_API_KEY", "").strip()
     if not api_key:
         print("ERROR: ECOS_API_KEY environment variable not set.", file=sys.stderr)
         sys.exit(1)

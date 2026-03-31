@@ -147,7 +147,7 @@ def summarize_news(news_items: list) -> dict:
     """Generate Korean and English market summaries from headlines using Gemini.
     Tries each model in GEMINI_MODELS order until one succeeds."""
     empty = {"ko": "", "en": ""}
-    api_key = os.environ.get("GEMINI_API_KEY", "")
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key or not GENAI_AVAILABLE or not news_items:
         return empty
 
