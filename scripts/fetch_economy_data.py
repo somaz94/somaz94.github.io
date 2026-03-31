@@ -54,7 +54,6 @@ RATES = [
     {"symbol": "^VIX",     "name": "VIX",       "unit": ""},
     {"symbol": "^TNX",     "name": "US 10Y",    "unit": "%"},
     {"symbol": "^IRX",     "name": "US 3M",     "unit": "%"},
-    {"symbol": "^KR10YT=RR", "name": "KR 10Y", "unit": "%"},
     {"symbol": "DX-Y.NYB", "name": "USD Index", "unit": ""},
 ]
 
