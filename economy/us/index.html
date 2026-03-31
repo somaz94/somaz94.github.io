@@ -755,28 +755,10 @@
       var hideTimer  = null;
       var activeCard = null;
 
-      function showTip(card) {
-        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-        if (activeCard === card) return;
-        activeCard = card;
-
-        var raw = card.getAttribute('data-history');
-        if (!raw || raw === 'null') return;
-        var history;
-        try { history = JSON.parse(raw); } catch (e) { return; }
-        if (!history || !history.times || history.times.length < 2) return;
-
-        var name = (card.querySelector('.eco-card-name') || {}).textContent || '';
-        var unit = card.getAttribute('data-unit') || '';
-        tipName.textContent  = name.trim() + (unit ? '  (' + unit + ')' : '');
-        tipRange.textContent = history.times[0] + '  –  ' + history.times[history.times.length - 1]
-                               + '  (' + history.times.length + ')';
-        tipHint.style.display = isTouch ? 'none' : '';
-        drawChart(tipCvs, history);
-
-        var r   = card.getBoundingClientRect();
-        var TW  = tip.offsetWidth  || 300;
-        var TH  = tip.offsetHeight || 195;
+      function positionTip(card) {
+        var r  = card.getBoundingClientRect();
+        var TW = tip.offsetWidth  || 300;
+        var TH = tip.offsetHeight || 195;
         var top, left;
         if (isTouch) {
           top  = r.bottom + 8 + window.scrollY;
@@ -789,7 +771,73 @@
         }
         tip.style.top  = top  + 'px';
         tip.style.left = left + 'px';
+      }
+
+      function renderTip(card, history) {
+        var name = (card.querySelector('.eco-card-name') || {}).textContent || '';
+        var unit = card.getAttribute('data-unit') || '';
+        tipName.textContent  = name.trim() + (unit ? '  (' + unit + ')' : '');
+        tipRange.textContent = history.times[0] + '  –  ' + history.times[history.times.length - 1]
+                               + '  (' + history.times.length + ')';
+        tipHint.style.display = isTouch ? 'none' : '';
+        drawChart(tipCvs, history);
+        positionTip(card);
         tip.classList.add('eco-htip-show');
+      }
+
+      function showTip(card) {
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        if (activeCard === card) return;
+        activeCard = card;
+
+        var raw = card.getAttribute('data-history');
+        if (raw && raw !== 'null') {
+          var history;
+          try { history = JSON.parse(raw); } catch (e) { return; }
+          if (!history || !history.times || history.times.length < 2) return;
+          renderTip(card, history);
+          return;
+        }
+
+        /* async: crypto card with data-coin-id only */
+        var coinId = card.getAttribute('data-coin-id');
+        if (!coinId) return;
+
+        /* show tooltip immediately with loading state */
+        var name = (card.querySelector('.eco-card-name') || {}).textContent || '';
+        var unit = card.getAttribute('data-unit') || '';
+        tipName.textContent  = name.trim() + (unit ? '  (' + unit + ')' : '');
+        tipRange.textContent = 'Loading...';
+        tipHint.style.display = 'none';
+        var ctx = tipCvs.getContext('2d');
+        ctx.clearRect(0, 0, tipCvs.width, tipCvs.height);
+        ctx.font = '9px sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Loading...', tipCvs.width / 2, tipCvs.height / 2);
+        positionTip(card);
+        tip.classList.add('eco-htip-show');
+
+        fetch('https://api.coingecko.com/api/v3/coins/' + coinId +
+              '/market_chart?vs_currency=usd&days=90')
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var prices = data.prices;
+            var times = [], values = [], prev = '';
+            prices.forEach(function(p) {
+              var d = new Date(p[0]).toISOString().slice(0, 10);
+              if (d !== prev) { times.push(d); values.push(Math.round(p[1] * 100) / 100); prev = d; }
+            });
+            var fetched = { times: times, values: values };
+            card.setAttribute('data-history', JSON.stringify(fetched));
+            if (activeCard !== card) return; /* user moved away */
+            if (fetched.times.length < 2) return;
+            renderTip(card, fetched);
+          })
+          .catch(function() {
+            if (activeCard === card) tipRange.textContent = 'Failed to load.';
+          });
       }
 
       function hideTip(delay) {
@@ -905,17 +953,18 @@
 
       if (!isTouch) {
         /* Desktop: hover → tooltip, click → modal */
+        var chartCardSel = '.eco-card[data-history], .eco-card[data-coin-id]';
         document.addEventListener('mouseover', function (e) {
-          var card = e.target.closest('.eco-card[data-history]');
+          var card = e.target.closest(chartCardSel);
           if (!card) return;
-          var from = e.relatedTarget ? e.relatedTarget.closest('.eco-card[data-history]') : null;
+          var from = e.relatedTarget ? e.relatedTarget.closest(chartCardSel) : null;
           if (from === card) return;
           showTip(card);
         });
         document.addEventListener('mouseout', function (e) {
-          var card = e.target.closest('.eco-card[data-history]');
+          var card = e.target.closest(chartCardSel);
           if (!card) return;
-          var to = e.relatedTarget ? e.relatedTarget.closest('.eco-card[data-history]') : null;
+          var to = e.relatedTarget ? e.relatedTarget.closest(chartCardSel) : null;
           if (to === card) return;
           hideTip(60);
         });
