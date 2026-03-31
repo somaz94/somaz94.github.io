@@ -863,11 +863,31 @@
           if (card) openModal(card);
         });
       } else {
-        /* Mobile: tap → modal directly */
-        document.addEventListener('click', function (e) {
+        /* Mobile: touchend → modal (instant, no 300ms click delay) */
+        var touchStartX = 0, touchStartY = 0;
+
+        document.addEventListener('touchstart', function (e) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', function (e) {
+          var t = e.changedTouches[0];
+          /* ignore if finger moved (scroll gesture) */
+          if (Math.abs(t.clientX - touchStartX) > 8 ||
+              Math.abs(t.clientY - touchStartY) > 8) return;
+
           var card = e.target.closest('.eco-card[data-history]');
-          if (card) { openModal(card); return; }
-          if (!modal.contains(e.target)) closeModal();
+          if (card) {
+            e.preventDefault(); /* suppress the delayed click */
+            openModal(card);
+            return;
+          }
+          if (modal.classList.contains('eco-modal-open') &&
+              !modal.querySelector('.eco-modal-box').contains(e.target)) {
+            e.preventDefault();
+            closeModal();
+          }
         });
       }
 
