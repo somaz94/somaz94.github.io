@@ -45,18 +45,34 @@ def quarterly_range(years: int = 2) -> tuple[str, str]:
 
 
 def fetch_ecos(api_key: str, stat_code: str, period: str,
-               start: str, end: str, item_code: str = "") -> list:
+               start: str, end: str, item_code: str = "", retries: int = 3) -> list:
     url = (f"{ECOS_BASE}/{api_key}/json/kr/1/100"
            f"/{stat_code}/{period}/{start}/{end}/{item_code}")
-    try:
-        resp = requests.get(url, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        rows = data.get("StatisticSearch", {}).get("row", [])
-        return sorted(rows, key=lambda r: r.get("TIME", ""))
-    except Exception as exc:
-        print(f"  WARN: {stat_code}/{item_code} — {exc}", file=sys.stderr)
-        return []
+    for attempt in range(retries):
+        try:
+            resp = requests.get(url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            rows = data.get("StatisticSearch", {}).get("row", [])
+            return sorted(rows, key=lambda r: r.get("TIME", ""))
+        except requests.exceptions.HTTPError as exc:
+            code = exc.response.status_code if exc.response is not None else 0
+            if code == 429 and attempt < retries - 1:
+                wait = 15 * (attempt + 1)
+                print(f"  RATE LIMIT {stat_code}/{item_code}, waiting {wait}s ...", file=sys.stderr)
+                time.sleep(wait)
+            elif attempt < retries - 1:
+                time.sleep(3)
+            else:
+                print(f"  WARN: {stat_code}/{item_code} — {exc}", file=sys.stderr)
+                return []
+        except Exception as exc:
+            if attempt < retries - 1:
+                time.sleep(3)
+            else:
+                print(f"  WARN: {stat_code}/{item_code} — {exc}", file=sys.stderr)
+                return []
+    return []
 
 
 def latest_two(rows: list) -> tuple:

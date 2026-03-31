@@ -544,6 +544,11 @@
 
 
 
+
+
+
+
+
 <section class="eco-section">
   <h2 class="eco-section-title">KR vs US</h2>
   <div class="eco-compare-grid">
@@ -558,7 +563,7 @@
       <span class="eco-compare-val eco-flat">3.64%</span>
     </div>
     <div class="eco-compare-row">
-      <span class="eco-compare-label">소비자물가 / CPI YoY</span>
+      <span class="eco-compare-label">소비자물가 / CPI (KR: MoM · US: YoY)</span>
       <span class="eco-compare-val eco-down">0.31% MoM</span>
       <span class="eco-compare-val eco-up">2.66% YoY</span>
     </div>
@@ -1409,6 +1414,13 @@ var cryptoHistoryMap = {};
 
     /* ── Relative time for "Updated:" labels ── */
     (function () {
+      /* stale threshold: 25h on weekdays, 72h on weekends/Mon-before-8am KST */
+      var nowKst  = new Date(Date.now() + 9 * 3600000);
+      var dayKst  = nowKst.getUTCDay();  /* 0=Sun, 6=Sat */
+      var hourKst = nowKst.getUTCHours();
+      var isExpectedStale = dayKst === 0 || dayKst === 6 || (dayKst === 1 && hourKst < 8);
+      var staleThresholdMin = isExpectedStale ? 72 * 60 : 25 * 60;
+
       document.querySelectorAll('.eco-updated').forEach(function (el) {
         var text = el.textContent || '';
         var match = text.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
@@ -1416,14 +1428,14 @@ var cryptoHistoryMap = {};
         var updated = new Date(match[1] + 'T' + match[2] + ':00+09:00');
         if (isNaN(updated.getTime())) return;
         var diffMin = Math.floor((Date.now() - updated.getTime()) / 60000);
-        var rel = diffMin < 1   ? 'just now'
-                : diffMin < 60  ? diffMin + 'm ago'
+        var rel = diffMin < 1    ? 'just now'
+                : diffMin < 60   ? diffMin + 'm ago'
                 : diffMin < 1440 ? Math.floor(diffMin / 60) + 'h ago'
                 : Math.floor(diffMin / 1440) + 'd ago';
         var prefix = text.split(':')[0] + ': ';
         el.title = text.trim();
         el.textContent = prefix + rel;
-        if (diffMin > 25 * 60) el.classList.add('eco-stale');
+        if (diffMin > staleThresholdMin) el.classList.add('eco-stale');
       });
     })();
     </script>
