@@ -3,7 +3,7 @@
 Fetch daily economy data: market indices, commodities, and news.
 Writes results to _data/market_data.json for Jekyll to render.
 
-Dependencies: requests, feedparser
+Dependencies: yfinance, feedparser
 Usage: python scripts/fetch_economy_data.py
 """
 
@@ -14,9 +14,9 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 try:
-    import requests
+    import yfinance as yf
 except ImportError:
-    print("ERROR: 'requests' not installed. Run: pip install requests", file=sys.stderr)
+    print("ERROR: 'yfinance' not installed. Run: pip install yfinance", file=sys.stderr)
     sys.exit(1)
 
 try:
@@ -65,32 +65,16 @@ NEWS_FEEDS = [
     {"url": "https://feeds.bloomberg.com/markets/news.rss",             "source": "Bloomberg"},
 ]
 
-YAHOO_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    )
-}
-
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def fetch_yahoo_quote(symbol: str) -> dict | None:
-    """Fetch latest price and daily change from Yahoo Finance."""
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-    params = {"interval": "1d", "range": "2d"}
+def fetch_quote(symbol: str) -> dict | None:
+    """Fetch latest price and daily change via yfinance."""
     try:
-        resp = requests.get(url, params=params, headers=YAHOO_HEADERS, timeout=12)
-        resp.raise_for_status()
-        data = resp.json()
-        result = data["chart"]["result"][0]
-        meta = result["meta"]
+        ticker = yf.Ticker(symbol)
+        fi = ticker.fast_info
 
-        current = float(meta.get("regularMarketPrice") or 0)
-        prev = float(
-            meta.get("previousClose")
-            or meta.get("chartPreviousClose")
-            or 0
-        )
+        current = float(fi.last_price or 0)
+        prev = float(fi.previous_close or 0)
         if current == 0:
             return None
 
@@ -154,10 +138,10 @@ def main() -> None:
     print(f"[fetch_economy_data] Starting — {updated_at}")
 
     # ── Indices ───────────────────────────────────────────────────────────────
-    print("\n[1/3] Fetching market indices ...")
+    print("\n[1/4] Fetching market indices ...")
     indices_result = []
     for item in INDICES:
-        quote = fetch_yahoo_quote(item["symbol"])
+        quote = fetch_quote(item["symbol"])
         if quote:
             indices_result.append({
                 "symbol": item["symbol"],
@@ -167,20 +151,18 @@ def main() -> None:
             })
             print(f"  OK  {item['name']:15s} {quote['price']:>12,}  {quote['change_pct']:+.2f}%")
         else:
-            # Keep placeholder so the page doesn't break
             indices_result.append({
                 "symbol": item["symbol"],
                 "name": item["name"],
                 "currency": item["currency"],
                 "price": 0, "change": 0, "change_pct": 0,
             })
-        time.sleep(0.4)
 
     # ── Commodities ───────────────────────────────────────────────────────────
-    print("\n[2/3] Fetching commodities ...")
+    print("\n[2/4] Fetching commodities ...")
     commodities_result = []
     for item in COMMODITIES:
-        quote = fetch_yahoo_quote(item["symbol"])
+        quote = fetch_quote(item["symbol"])
         if quote:
             commodities_result.append({
                 "symbol": item["symbol"],
@@ -196,13 +178,12 @@ def main() -> None:
                 "unit": item["unit"],
                 "price": 0, "change": 0, "change_pct": 0,
             })
-        time.sleep(0.4)
 
     # ── Interest Rates ────────────────────────────────────────────────────────
     print("\n[3/4] Fetching interest rates & USD index ...")
     rates_result = []
     for item in RATES:
-        quote = fetch_yahoo_quote(item["symbol"])
+        quote = fetch_quote(item["symbol"])
         if quote:
             rates_result.append({
                 "symbol": item["symbol"],
@@ -218,7 +199,6 @@ def main() -> None:
                 "unit": item["unit"],
                 "price": 0, "change": 0, "change_pct": 0,
             })
-        time.sleep(0.4)
 
     # ── News ──────────────────────────────────────────────────────────────────
     print("\n[4/4] Fetching news ...")
