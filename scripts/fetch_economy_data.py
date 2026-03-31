@@ -10,6 +10,8 @@ Usage: python scripts/fetch_economy_data.py
 import json
 import os
 import sys
+import time
+import urllib.request
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -63,6 +65,17 @@ RATES = [
     {"symbol": "DX-Y.NYB", "name": "USD Index", "unit": ""},
 ]
 
+CRYPTO_COINS = [
+    {"id": "bitcoin",     "symbol": "BTC"},
+    {"id": "ethereum",    "symbol": "ETH"},
+    {"id": "binancecoin", "symbol": "BNB"},
+    {"id": "ripple",      "symbol": "XRP"},
+    {"id": "solana",      "symbol": "SOL"},
+    {"id": "dogecoin",    "symbol": "DOGE"},
+    {"id": "cardano",     "symbol": "ADA"},
+    {"id": "avalanche-2", "symbol": "AVAX"},
+]
+
 NEWS_FEEDS = [
     {"url": "https://feeds.reuters.com/reuters/businessNews",           "source": "Reuters"},
     {"url": "https://www.cnbc.com/id/10000664/device/rss/rss.html",    "source": "CNBC"},
@@ -104,6 +117,28 @@ def fetch_quote(symbol: str, period: str = "3mo") -> dict | None:
     except Exception as exc:
         print(f"  WARN: {symbol} — {exc}", file=sys.stderr)
         return None
+
+
+def fetch_crypto_history(coin_id: str) -> dict:
+    """Fetch 90-day daily price history for a coin from CoinGecko."""
+    url = (f"https://api.coingecko.com/api/v3/coins/{coin_id}"
+           f"/market_chart?vs_currency=usd&days=90&interval=daily")
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        prices = data.get("prices", [])
+        times, values, prev = [], [], ""
+        for p in prices:
+            d = datetime.fromtimestamp(p[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+            if d != prev:
+                times.append(d)
+                values.append(round(p[1], 2))
+                prev = d
+        return {"times": times, "values": values}
+    except Exception as exc:
+        print(f"  WARN: crypto history {coin_id} — {exc}", file=sys.stderr)
+        return {"times": [], "values": []}
 
 
 def _fetch_single_feed(feed_cfg: dict, per_feed: int) -> list:
@@ -285,8 +320,18 @@ def main() -> None:
                 "history": {"times": [], "values": []},
             })
 
+    # ── Crypto History ────────────────────────────────────────────────────────
+    print("\n[4/5] Fetching crypto 90-day history ...")
+    crypto_result = []
+    for coin in CRYPTO_COINS:
+        h = fetch_crypto_history(coin["id"])
+        crypto_result.append({"id": coin["id"], "symbol": coin["symbol"], "history": h})
+        pts = len(h["times"])
+        print(f"  OK  {coin['symbol']:6s} [{pts} pts]")
+        time.sleep(2)  # 2s delay to avoid CoinGecko rate limit
+
     # ── News ──────────────────────────────────────────────────────────────────
-    print("\n[4/4] Fetching news ...")
+    print("\n[5/5] Fetching news ...")
     news_result = fetch_news(NEWS_FEEDS)
     print(f"  Collected {len(news_result)} headlines")
 
@@ -305,6 +350,7 @@ def main() -> None:
         "indices": indices_result,
         "commodities": commodities_result,
         "rates": rates_result,
+        "crypto": crypto_result,
         "news": news_result,
     }
 
