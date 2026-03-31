@@ -267,7 +267,7 @@
   <div class="eco-sentiment-row">
     <div class="fng-wrapper">
       <div class="fng-gauge-wrap">
-        <canvas id="fngCanvas" width="260" height="140"></canvas>
+        <canvas id="fngCanvas" width="260" height="140" role="img" aria-label="Fear and Greed index gauge"></canvas>
       </div>
       <div class="fng-info">
         <div class="fng-label-sm">Fear &amp; Greed</div>
@@ -671,11 +671,15 @@
 
 <script>
 (function () {
-  /* ── Fear & Greed gauge ── */
+  /* ── Fear & Greed gauge (responsive) ── */
+  var fngVal = null;
+
   function drawGauge(canvas, value) {
+    var W = canvas.width, H = canvas.height;
+    var scale = W / 260;
     var ctx = canvas.getContext('2d');
-    var cx = 130, cy = 130, r = 110;
-    ctx.clearRect(0, 0, 260, 140);
+    var cx = W / 2, cy = Math.round(130 * scale), r = Math.round(110 * scale);
+    ctx.clearRect(0, 0, W, H);
     var segments = [
       { color: '#c0392b', from: Math.PI, to: Math.PI * 1.2 },
       { color: '#e74c3c', from: Math.PI * 1.2, to: Math.PI * 1.4 },
@@ -686,24 +690,33 @@
     segments.forEach(function(s) {
       ctx.beginPath();
       ctx.arc(cx, cy, r, s.from, s.to);
-      ctx.arc(cx, cy, r - 28, s.to, s.from, true);
+      ctx.arc(cx, cy, r - Math.round(28 * scale), s.to, s.from, true);
       ctx.fillStyle = s.color;
       ctx.fill();
     });
     var angle = Math.PI + (value / 100) * Math.PI;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.lineTo(
-      cx + Math.cos(angle) * (r - 10),
-      cy + Math.sin(angle) * (r - 10)
-    );
+    ctx.lineTo(cx + Math.cos(angle) * (r - Math.round(10 * scale)),
+               cy + Math.sin(angle) * (r - Math.round(10 * scale)));
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = Math.max(2, Math.round(3 * scale));
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.arc(cx, cy, Math.max(4, Math.round(8 * scale)), 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
     ctx.fill();
+  }
+
+  function resizeGauge() {
+    var wrap = document.querySelector('.fng-gauge-wrap');
+    var canvas = document.getElementById('fngCanvas');
+    if (!wrap || !canvas) return;
+    var W = Math.min(wrap.offsetWidth || 260, 260);
+    if (W < 2) return;
+    canvas.width  = W;
+    canvas.height = Math.round(W * 140 / 260);
+    if (fngVal != null) drawGauge(canvas, fngVal);
   }
 
   fetch('https://api.alternative.me/fng/?limit=2')
@@ -711,16 +724,18 @@
     .then(function(d) {
       var today = d.data[0];
       var yesterday = d.data[1];
-      var val = parseInt(today.value, 10);
-      document.getElementById('fngValue').textContent = val;
+      fngVal = parseInt(today.value, 10);
+      document.getElementById('fngValue').textContent = fngVal;
       document.getElementById('fngLabel').textContent = today.value_classification;
       document.getElementById('fngPrev').textContent = yesterday.value + ' · ' + yesterday.value_classification;
       var canvas = document.getElementById('fngCanvas');
-      if (canvas.getContext) drawGauge(canvas, val);
+      if (canvas.getContext) { resizeGauge(); }
     })
     .catch(function() {
       document.getElementById('fngLabel').textContent = 'Unavailable';
     });
+
+  window.addEventListener('resize', resizeGauge);
 
   /* ── Crypto prices ── */
   var cryptoIds = 'bitcoin,ethereum,binancecoin,ripple,solana,dogecoin,cardano,avalanche-2';
@@ -730,36 +745,79 @@
     cardano: 'ADA', 'avalanche-2': 'AVAX'
   };
 
-  fetch('https://api.coingecko.com/api/v3/simple/price?ids=' + cryptoIds + '&vs_currencies=usd,krw&include_24hr_change=true')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var html = '';
-      /* fixed order by market cap rank (BTC > ETH > BNB > XRP > SOL > DOGE > ADA > AVAX) */
-      var sortedIds = cryptoIds.split(',').filter(function(id) { return data[id]; });
-      sortedIds.forEach(function(id) {
-        var coin = data[id];
-        var pct = coin.usd_24h_change ? coin.usd_24h_change.toFixed(2) : '0.00';
-        var dir = parseFloat(pct) >= 0 ? 'eco-up' : 'eco-down';
-        var arrow = parseFloat(pct) >= 0 ? '▲' : '▼';
-        var krw = coin.krw ? '₩' + coin.krw.toLocaleString() : '';
-        html += '<div class="eco-card ' + dir + '" data-coin-id="' + id + '" data-unit="USD">' +
-          '<div class="eco-card-name">' + cryptoSymbols[id] + '</div>' +
-          '<div class="eco-card-price">$' + coin.usd.toLocaleString() + '</div>' +
-          '<div class="eco-card-change">' + arrow + ' ' + Math.abs(pct) + '%</div>' +
-          '<div class="eco-card-currency">' + krw + '</div>' +
-          '</div>';
-      });
-      var cryptoEl = document.getElementById('crypto-grid');
-      cryptoEl.className = 'eco-grid';
-      cryptoEl.innerHTML = html;
-    })
-    .catch(function() {
-      document.getElementById('crypto-grid').innerHTML =
-        '<p class="eco-empty">Crypto data temporarily unavailable.</p>';
+  var CRYPTO_CACHE_KEY = 'eco_crypto_v2';
+  var CRYPTO_CACHE_TTL = 5 * 60 * 1000; /* 5 minutes */
+
+  function getCryptoCache() {
+    try {
+      var raw = localStorage.getItem(CRYPTO_CACHE_KEY);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (Date.now() - obj.ts > CRYPTO_CACHE_TTL) return null;
+      return obj.data;
+    } catch (e) { return null; }
+  }
+
+  function setCryptoCache(data) {
+    try { localStorage.setItem(CRYPTO_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data })); }
+    catch (e) {}
+  }
+
+  function renderCrypto(data) {
+    var html = '';
+    var sortedIds = cryptoIds.split(',').filter(function(id) { return data[id]; });
+    sortedIds.forEach(function(id) {
+      var coin = data[id];
+      if (!coin || coin.usd == null) return;
+      var pct = coin.usd_24h_change ? coin.usd_24h_change.toFixed(2) : '0.00';
+      var dir = parseFloat(pct) >= 0 ? 'eco-up' : 'eco-down';
+      var arrow = parseFloat(pct) >= 0 ? '▲' : '▼';
+      var krw = coin.krw ? '₩' + coin.krw.toLocaleString() : '';
+      html += '<div class="eco-card ' + dir + '" data-coin-id="' + id + '" data-unit="USD">' +
+        '<div class="eco-card-name">' + cryptoSymbols[id] + '</div>' +
+        '<div class="eco-card-price">$' + coin.usd.toLocaleString() + '</div>' +
+        '<div class="eco-card-change">' + arrow + ' ' + Math.abs(pct) + '%</div>' +
+        '<div class="eco-card-currency">' + krw + '</div>' +
+        '</div>';
     });
+    var cryptoEl = document.getElementById('crypto-grid');
+    cryptoEl.className = 'eco-grid';
+    cryptoEl.innerHTML = html;
+  }
+
+  var cryptoTimeout = setTimeout(function() {
+    var el = document.getElementById('crypto-grid');
+    if (el && el.querySelector('.eco-loading'))
+      el.innerHTML = '<p class="eco-empty">Crypto data temporarily unavailable.</p>';
+  }, 8000);
+
+  var cached = getCryptoCache();
+  if (cached) {
+    clearTimeout(cryptoTimeout);
+    renderCrypto(cached);
+  } else {
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=' + cryptoIds + '&vs_currencies=usd,krw&include_24hr_change=true')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        clearTimeout(cryptoTimeout);
+        setCryptoCache(data);
+        renderCrypto(data);
+      })
+      .catch(function() {
+        clearTimeout(cryptoTimeout);
+        document.getElementById('crypto-grid').innerHTML =
+          '<p class="eco-empty">Crypto data temporarily unavailable.</p>';
+      });
+  }
 
   /* ── Exchange Rates ── */
   (function() {
+    var forexTimeout = setTimeout(function() {
+      var el = document.getElementById('forex-grid');
+      if (el && el.querySelector('.eco-loading'))
+        el.innerHTML = '<p class="eco-empty">Exchange rate data temporarily unavailable.</p>';
+    }, 8000);
+
     var from = new Date();
     from.setDate(from.getDate() - 90);
     var fromStr = from.toISOString().slice(0, 10);
@@ -767,6 +825,7 @@
     fetch('https://api.frankfurter.app/' + fromStr + '..?from=USD&to=KRW,EUR,JPY,CNY,GBP')
       .then(function(r) { return r.json(); })
       .then(function(data) {
+        clearTimeout(forexTimeout);
         var dates = Object.keys(data.rates).sort();
         if (dates.length < 2) throw new Error('not enough data');
         var t = data.rates[dates[dates.length - 1]];
@@ -825,6 +884,7 @@
         });
       })
       .catch(function() {
+        clearTimeout(forexTimeout);
         document.getElementById('forex-grid').innerHTML =
           '<p class="eco-empty">Exchange rate data temporarily unavailable.</p>';
       });
@@ -965,7 +1025,7 @@
     <!-- ── Hover Chart Tooltip (small) ── -->
     <div id="eco-htip">
       <div id="eco-htip-name"></div>
-      <canvas id="eco-htip-canvas" width="272" height="136"></canvas>
+      <canvas id="eco-htip-canvas" width="272" height="136" role="img" aria-label="Price history chart"></canvas>
       <div id="eco-htip-range"></div>
       <div id="eco-htip-hint">click to expand ↗</div>
     </div>
@@ -979,7 +1039,7 @@
           <button id="eco-modal-close" aria-label="Close">✕</button>
         </div>
         <div class="eco-modal-canvas-wrap">
-          <canvas id="eco-modal-canvas"></canvas>
+          <canvas id="eco-modal-canvas" role="img" aria-label="Price history chart"></canvas>
         </div>
         <div id="eco-modal-range"></div>
       </div>
@@ -1216,6 +1276,7 @@
           modalRange.textContent = history.times[0] + '  –  ' + history.times[history.times.length - 1]
                                    + '  (' + history.times.length + ' data points)';
           modal.classList.add('eco-modal-open');
+          document.body.style.overflow = 'hidden';
           hideTip(0);
           sizeAndDraw(history);
           return;
@@ -1228,6 +1289,7 @@
         modalTitle.textContent = name.trim() + (unit ? '  (' + unit + ')' : '');
         modalRange.textContent = 'Loading...';
         modal.classList.add('eco-modal-open');
+        document.body.style.overflow = 'hidden';
         hideTip(0);
         sizeAndDraw(null); /* show loading indicator */
 
@@ -1260,6 +1322,7 @@
 
       function closeModal() {
         modal.classList.remove('eco-modal-open');
+        document.body.style.overflow = '';
       }
 
       closeBtn.addEventListener('click', closeModal);
@@ -1319,6 +1382,26 @@
         });
       }
 
+    })();
+
+    /* ── Relative time for "Updated:" labels ── */
+    (function () {
+      document.querySelectorAll('.eco-updated').forEach(function (el) {
+        var text = el.textContent || '';
+        var match = text.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
+        if (!match) return;
+        var updated = new Date(match[1] + 'T' + match[2] + ':00+09:00');
+        if (isNaN(updated.getTime())) return;
+        var diffMin = Math.floor((Date.now() - updated.getTime()) / 60000);
+        var rel = diffMin < 1   ? 'just now'
+                : diffMin < 60  ? diffMin + 'm ago'
+                : diffMin < 1440 ? Math.floor(diffMin / 60) + 'h ago'
+                : Math.floor(diffMin / 1440) + 'd ago';
+        var prefix = text.split(':')[0] + ': ';
+        el.title = text.trim();
+        el.textContent = prefix + rel;
+        if (diffMin > 25 * 60) el.classList.add('eco-stale');
+      });
     })();
     </script>
   </body>

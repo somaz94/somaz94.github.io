@@ -640,7 +640,7 @@
     <!-- ── Hover Chart Tooltip (small) ── -->
     <div id="eco-htip">
       <div id="eco-htip-name"></div>
-      <canvas id="eco-htip-canvas" width="272" height="136"></canvas>
+      <canvas id="eco-htip-canvas" width="272" height="136" role="img" aria-label="Price history chart"></canvas>
       <div id="eco-htip-range"></div>
       <div id="eco-htip-hint">click to expand ↗</div>
     </div>
@@ -654,7 +654,7 @@
           <button id="eco-modal-close" aria-label="Close">✕</button>
         </div>
         <div class="eco-modal-canvas-wrap">
-          <canvas id="eco-modal-canvas"></canvas>
+          <canvas id="eco-modal-canvas" role="img" aria-label="Price history chart"></canvas>
         </div>
         <div id="eco-modal-range"></div>
       </div>
@@ -891,6 +891,7 @@
           modalRange.textContent = history.times[0] + '  –  ' + history.times[history.times.length - 1]
                                    + '  (' + history.times.length + ' data points)';
           modal.classList.add('eco-modal-open');
+          document.body.style.overflow = 'hidden';
           hideTip(0);
           sizeAndDraw(history);
           return;
@@ -903,6 +904,7 @@
         modalTitle.textContent = name.trim() + (unit ? '  (' + unit + ')' : '');
         modalRange.textContent = 'Loading...';
         modal.classList.add('eco-modal-open');
+        document.body.style.overflow = 'hidden';
         hideTip(0);
         sizeAndDraw(null); /* show loading indicator */
 
@@ -935,6 +937,7 @@
 
       function closeModal() {
         modal.classList.remove('eco-modal-open');
+        document.body.style.overflow = '';
       }
 
       closeBtn.addEventListener('click', closeModal);
@@ -994,6 +997,26 @@
         });
       }
 
+    })();
+
+    /* ── Relative time for "Updated:" labels ── */
+    (function () {
+      document.querySelectorAll('.eco-updated').forEach(function (el) {
+        var text = el.textContent || '';
+        var match = text.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
+        if (!match) return;
+        var updated = new Date(match[1] + 'T' + match[2] + ':00+09:00');
+        if (isNaN(updated.getTime())) return;
+        var diffMin = Math.floor((Date.now() - updated.getTime()) / 60000);
+        var rel = diffMin < 1   ? 'just now'
+                : diffMin < 60  ? diffMin + 'm ago'
+                : diffMin < 1440 ? Math.floor(diffMin / 60) + 'h ago'
+                : Math.floor(diffMin / 1440) + 'd ago';
+        var prefix = text.split(':')[0] + ': ';
+        el.title = text.trim();
+        el.textContent = prefix + rel;
+        if (diffMin > 25 * 60) el.classList.add('eco-stale');
+      });
     })();
     </script>
   </body>

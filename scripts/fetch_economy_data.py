@@ -10,7 +10,6 @@ Usage: python scripts/fetch_economy_data.py
 import json
 import os
 import sys
-import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -107,31 +106,39 @@ def fetch_quote(symbol: str, period: str = "3mo") -> dict | None:
         return None
 
 
-def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
-    """Fetch news headlines from RSS feeds, sorted newest-first."""
+def _fetch_single_feed(feed_cfg: dict, per_feed: int) -> list:
+    """Fetch entries from a single RSS feed."""
     import calendar
     items = []
-    for feed_cfg in feeds:
-        try:
-            parsed = feedparser.parse(feed_cfg["url"])
-            for entry in parsed.entries[:per_feed]:
-                title = entry.get("title", "").strip()
-                link = entry.get("link", "").strip()
-                published = entry.get("published", "")[:16] if entry.get("published") else ""
-                # Use parsed time tuple for sorting (Unix timestamp); fallback to 0
-                pub_parsed = entry.get("published_parsed")
-                pub_ts = int(calendar.timegm(pub_parsed)) if pub_parsed else 0
-                if title and link:
-                    items.append({
-                        "title": title,
-                        "url": link,
-                        "source": feed_cfg["source"],
-                        "published": published,
-                        "_ts": pub_ts,
-                    })
-        except Exception as exc:
-            print(f"  WARN: feed {feed_cfg['source']} — {exc}", file=sys.stderr)
-        time.sleep(0.3)
+    try:
+        parsed = feedparser.parse(feed_cfg["url"])
+        for entry in parsed.entries[:per_feed]:
+            title = entry.get("title", "").strip()
+            link = entry.get("link", "").strip()
+            published = entry.get("published", "")[:16] if entry.get("published") else ""
+            pub_parsed = entry.get("published_parsed")
+            pub_ts = int(calendar.timegm(pub_parsed)) if pub_parsed else 0
+            if title and link:
+                items.append({
+                    "title": title,
+                    "url": link,
+                    "source": feed_cfg["source"],
+                    "published": published,
+                    "_ts": pub_ts,
+                })
+    except Exception as exc:
+        print(f"  WARN: feed {feed_cfg['source']} — {exc}", file=sys.stderr)
+    return items
+
+
+def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
+    """Fetch news headlines from RSS feeds in parallel, sorted newest-first."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    items = []
+    with ThreadPoolExecutor(max_workers=min(len(feeds), 4)) as executor:
+        futures = {executor.submit(_fetch_single_feed, cfg, per_feed): cfg for cfg in feeds}
+        for future in as_completed(futures):
+            items.extend(future.result())
 
     # Deduplicate by title
     seen = set()
@@ -142,10 +149,8 @@ def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
             seen.add(key)
             unique.append(item)
 
-    # Sort newest-first
+    # Sort newest-first and remove internal sort key
     unique.sort(key=lambda x: x["_ts"], reverse=True)
-
-    # Remove internal sort key before returning
     for item in unique:
         item.pop("_ts", None)
 
