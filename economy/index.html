@@ -752,29 +752,6 @@
       var cryptoEl = document.getElementById('crypto-grid');
       cryptoEl.className = 'eco-grid';
       cryptoEl.innerHTML = html;
-
-      /* pre-fetch 90-day chart for each coin sequentially to avoid rate limit */
-      var cards = cryptoEl.querySelectorAll('.eco-card[data-coin-id]');
-      cards.forEach(function(card, idx) {
-        var coinId = card.getAttribute('data-coin-id');
-        setTimeout(function() {
-          if (card.getAttribute('data-history')) return; /* already cached */
-          fetch('https://api.coingecko.com/api/v3/coins/' + coinId +
-                '/market_chart?vs_currency=usd&days=90')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-              var prices = data.prices;
-              var times = [], values = [], prev = '';
-              prices.forEach(function(p) {
-                var d = new Date(p[0]).toISOString().slice(0, 10);
-                if (d !== prev) { times.push(d); values.push(Math.round(p[1] * 100) / 100); prev = d; }
-              });
-              if (times.length >= 2)
-                card.setAttribute('data-history', JSON.stringify({ times: times, values: values }));
-            })
-            .catch(function() {});
-        }, idx * 700);
-      });
     })
     .catch(function() {
       document.getElementById('crypto-grid').innerHTML =
