@@ -79,7 +79,7 @@ CRYPTO_COINS = [
 NEWS_FEEDS = [
     {"url": "https://feeds.reuters.com/reuters/businessNews",        "source": "Reuters"},
     {"url": "https://www.cnbc.com/id/10000664/device/rss/rss.html", "source": "CNBC"},
-    {"url": "http://feeds.marketwatch.com/marketwatch/topstories/",  "source": "MarketWatch"},
+    {"url": "https://feeds.marketwatch.com/marketwatch/topstories/", "source": "MarketWatch"},
     {"url": "https://feeds.apnews.com/rss/business",                 "source": "AP News"},
 ]
 
