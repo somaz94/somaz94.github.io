@@ -264,8 +264,49 @@ def main() -> None:
                        "history": EMPTY_HIST})
     time.sleep(0.3)
 
+    # ── Trade ─────────────────────────────────────────────────────────────────
+    print("\n[4/5] Fetching trade data ...")
+    trade = []
+
+    # Trade Balance (Goods & Services) — BOPGSTB: millions USD, monthly
+    rows = fetch_fred(api_key, "BOPGSTB", limit=30)
+    hist = mom_history(rows, scale=1000.0)
+    if len(rows) >= 2:
+        latest = round(float(rows[-1]["value"]) / 1000, 2)
+        prev   = round(float(rows[-2]["value"]) / 1000, 2)
+        change = round(latest - prev, 2)
+        change_pct = round((change / abs(prev) * 100) if prev else 0, 2)
+        entry = {"name": "Trade Balance", "unit": "B$",
+                 "price": latest, "change": change, "change_pct": change_pct,
+                 "time": rows[-1]["date"][:7], "history": hist}
+        trade.append(entry)
+        print(f"  OK  Trade Balance        ${latest}B  [{len(hist['times'])} pts]")
+    else:
+        trade.append({"name": "Trade Balance", "unit": "B$",
+                       "price": 0, "change": 0, "change_pct": 0, "time": "",
+                       "history": EMPTY_HIST})
+    time.sleep(0.3)
+
+    # Exports of Goods & Services — EXPGS: quarterly, billions chained 2017$
+    rows = fetch_fred(api_key, "EXPGS", limit=20)
+    hist = mom_history(rows)
+    entry = mom_entry("Exports", "B$", rows, history=hist)
+    trade.append(entry)
+    if entry["price"]:
+        print(f"  OK  Exports              ${entry['price']}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
+    time.sleep(0.3)
+
+    # Imports of Goods & Services — IMPGS: quarterly, billions chained 2017$
+    rows = fetch_fred(api_key, "IMPGS", limit=20)
+    hist = mom_history(rows)
+    entry = mom_entry("Imports", "B$", rows, history=hist)
+    trade.append(entry)
+    if entry["price"]:
+        print(f"  OK  Imports              ${entry['price']}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
+    time.sleep(0.3)
+
     # ── Growth & Sentiment ────────────────────────────────────────────────────
-    print("\n[4/4] Fetching growth & sentiment data ...")
+    print("\n[5/5] Fetching growth & sentiment data ...")
     sentiment = []
 
     # Real GDP Growth QoQ% (already a rate series — use absolute pp change)
@@ -363,6 +404,7 @@ def main() -> None:
         "inflation": inflation,
         "employment": employment,
         "rates": rates,
+        "trade": trade,
         "sentiment": sentiment,
     }
 

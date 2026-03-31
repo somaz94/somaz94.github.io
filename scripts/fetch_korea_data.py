@@ -53,6 +53,9 @@ def fetch_ecos(api_key: str, stat_code: str, period: str,
             resp = requests.get(url, timeout=15)
             resp.raise_for_status()
             data = resp.json()
+            if "RESULT" in data:
+                print(f"  WARN: ECOS error {stat_code}/{item_code} — {data['RESULT']}", file=sys.stderr)
+                return []
             rows = data.get("StatisticSearch", {}).get("row", [])
             return sorted(rows, key=lambda r: r.get("TIME", ""))
         except requests.exceptions.HTTPError as exc:
@@ -223,6 +226,7 @@ def main() -> None:
         ("731Y001", "D", d_start, d_end, "0000002", "JPY/KRW", "원/100¥", 1.0),
         ("731Y001", "D", d_start, d_end, "0000003", "EUR/KRW", "원",      1.0),
         ("731Y001", "D", d_start, d_end, "0000053", "CNY/KRW", "원",      1.0),
+        ("731Y001", "D", d_start, d_end, "0000012", "GBP/KRW", "원",      1.0),
     ]
     for stat, period, s, e, item, name, unit, scale in fx_specs:
         rows = fetch_ecos(api_key, stat, period, s, e, item)

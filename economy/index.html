@@ -216,7 +216,7 @@
     Real-time crypto &amp; forex · Daily indices &amp; commodities · Latest news
   </p>
   <p class="eco-datasource">
-    Indices &amp; Commodities: Yahoo Finance · Crypto: CoinGecko · FX: Frankfurter · News: Reuters, CNBC, MarketWatch
+    Indices &amp; Commodities: Yahoo Finance · Crypto: CoinGecko · FX: Frankfurter · News: Reuters, CNBC, MarketWatch, AP News
   </p>
   <div class="eco-meta">
     
@@ -850,7 +850,7 @@ var cryptoHistoryMap = {};
     from.setDate(from.getDate() - 90);
     var fromStr = from.toISOString().slice(0, 10);
 
-    fetch('https://api.frankfurter.app/' + fromStr + '..?from=USD&to=KRW,EUR,JPY,CNY,GBP')
+    fetch('https://api.frankfurter.app/' + fromStr + '..?from=USD&to=EUR,JPY,GBP,CNY,KRW')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         clearTimeout(forexTimeout);
@@ -860,30 +860,30 @@ var cryptoHistoryMap = {};
         var p = data.rates[dates[dates.length - 2]];
         function pct(a, b) { return b ? ((a - b) / b * 100).toFixed(2) : null; }
 
-        /* build per-pair history from all dates */
+        /* build per-pair history from all dates (global major pairs) */
         var hist = {
-          'USD / KRW':     { times: [], values: [] },
-          'EUR / KRW':     { times: [], values: [] },
-          '100 JPY / KRW': { times: [], values: [] },
-          'CNY / KRW':     { times: [], values: [] },
-          'GBP / KRW':     { times: [], values: [] }
+          'EUR / USD': { times: [], values: [] },
+          'USD / JPY': { times: [], values: [] },
+          'GBP / USD': { times: [], values: [] },
+          'USD / CNY': { times: [], values: [] },
+          'USD / KRW': { times: [], values: [] }
         };
         dates.forEach(function(d) {
           var r = data.rates[d];
           if (!r) return;
-          if (r.KRW) { hist['USD / KRW'].times.push(d);     hist['USD / KRW'].values.push(Math.round(r.KRW)); }
-          if (r.KRW && r.EUR) { hist['EUR / KRW'].times.push(d);     hist['EUR / KRW'].values.push(Math.round(r.KRW / r.EUR)); }
-          if (r.KRW && r.JPY) { hist['100 JPY / KRW'].times.push(d); hist['100 JPY / KRW'].values.push(Math.round(r.KRW / r.JPY * 100)); }
-          if (r.KRW && r.CNY) { hist['CNY / KRW'].times.push(d);     hist['CNY / KRW'].values.push(Math.round(r.KRW / r.CNY * 10) / 10); }
-          if (r.KRW && r.GBP) { hist['GBP / KRW'].times.push(d);     hist['GBP / KRW'].values.push(Math.round(r.KRW / r.GBP)); }
+          if (r.EUR) { hist['EUR / USD'].times.push(d); hist['EUR / USD'].values.push(Math.round(1 / r.EUR * 10000) / 10000); }
+          if (r.JPY) { hist['USD / JPY'].times.push(d); hist['USD / JPY'].values.push(Math.round(r.JPY * 100) / 100); }
+          if (r.GBP) { hist['GBP / USD'].times.push(d); hist['GBP / USD'].values.push(Math.round(1 / r.GBP * 10000) / 10000); }
+          if (r.CNY) { hist['USD / CNY'].times.push(d); hist['USD / CNY'].values.push(Math.round(r.CNY * 10000) / 10000); }
+          if (r.KRW) { hist['USD / KRW'].times.push(d); hist['USD / KRW'].values.push(Math.round(r.KRW)); }
         });
 
         var pairs = [
-          { label: 'USD / KRW',     cur: t.KRW,                     prv: p.KRW },
-          { label: 'EUR / KRW',     cur: t.KRW / t.EUR,             prv: p.KRW / p.EUR },
-          { label: '100 JPY / KRW', cur: (t.KRW / t.JPY) * 100,    prv: (p.KRW / p.JPY) * 100 },
-          { label: 'CNY / KRW',     cur: t.KRW / t.CNY,             prv: p.KRW / p.CNY },
-          { label: 'GBP / KRW',     cur: t.KRW / t.GBP,             prv: p.KRW / p.GBP }
+          { label: 'EUR / USD', cur: 1 / t.EUR,  prv: 1 / p.EUR,  decimals: 4, unit: 'USD', prefix: '' },
+          { label: 'USD / JPY', cur: t.JPY,       prv: p.JPY,      decimals: 2, unit: 'JPY', prefix: '¥' },
+          { label: 'GBP / USD', cur: 1 / t.GBP,  prv: 1 / p.GBP,  decimals: 4, unit: 'USD', prefix: '' },
+          { label: 'USD / CNY', cur: t.CNY,       prv: p.CNY,      decimals: 4, unit: 'CNY', prefix: '¥' },
+          { label: 'USD / KRW', cur: t.KRW,       prv: p.KRW,      decimals: 0, unit: 'KRW', prefix: '₩' }
         ];
         var html = '';
         pairs.forEach(function(pair) {
@@ -891,11 +891,14 @@ var cryptoHistoryMap = {};
           var val = parseFloat(change);
           var dir   = change === null ? 'eco-flat' : val > 0 ? 'eco-up' : val < 0 ? 'eco-down' : 'eco-flat';
           var arrow = val > 0 ? '▲ ' : val < 0 ? '▼ ' : '';
-          html += '<div class="eco-card ' + dir + '" data-unit="KRW">' +
+          var priceStr = pair.decimals === 0
+            ? pair.prefix + pair.cur.toLocaleString(undefined, {maximumFractionDigits: 0})
+            : pair.cur.toFixed(pair.decimals);
+          html += '<div class="eco-card ' + dir + '" data-unit="' + pair.unit + '">' +
             '<div class="eco-card-name">' + pair.label + '</div>' +
-            '<div class="eco-card-price">₩' + pair.cur.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</div>' +
+            '<div class="eco-card-price">' + priceStr + '</div>' +
             (change !== null ? '<div class="eco-card-change">' + arrow + Math.abs(val).toFixed(2) + '%</div>' : '') +
-            '<div class="eco-card-currency">KRW</div>' +
+            '<div class="eco-card-currency">' + pair.unit + '</div>' +
             '</div>';
         });
         var forexEl = document.getElementById('forex-grid');
