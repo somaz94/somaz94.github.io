@@ -119,26 +119,37 @@ def fetch_quote(symbol: str, period: str = "3mo") -> dict | None:
         return None
 
 
-def fetch_crypto_history(coin_id: str) -> dict:
-    """Fetch 90-day daily price history for a coin from CoinGecko."""
+def fetch_crypto_history(coin_id: str, retries: int = 3) -> dict:
+    """Fetch 90-day daily price history for a coin from CoinGecko.
+    Retries on 429 with exponential backoff."""
     url = (f"https://api.coingecko.com/api/v3/coins/{coin_id}"
            f"/market_chart?vs_currency=usd&days=90&interval=daily")
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-        prices = data.get("prices", [])
-        times, values, prev = [], [], ""
-        for p in prices:
-            d = datetime.fromtimestamp(p[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
-            if d != prev:
-                times.append(d)
-                values.append(round(p[1], 2))
-                prev = d
-        return {"times": times, "values": values}
-    except Exception as exc:
-        print(f"  WARN: crypto history {coin_id} — {exc}", file=sys.stderr)
-        return {"times": [], "values": []}
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+            prices = data.get("prices", [])
+            times, values, prev = [], [], ""
+            for p in prices:
+                d = datetime.fromtimestamp(p[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+                if d != prev:
+                    times.append(d)
+                    values.append(round(p[1], 2))
+                    prev = d
+            return {"times": times, "values": values}
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < retries - 1:
+                wait = 30 * (attempt + 1)  # 30s, 60s
+                print(f"  RATE LIMIT {coin_id}, waiting {wait}s ...", file=sys.stderr)
+                time.sleep(wait)
+            else:
+                print(f"  WARN: crypto history {coin_id} — {exc}", file=sys.stderr)
+                return {"times": [], "values": []}
+        except Exception as exc:
+            print(f"  WARN: crypto history {coin_id} — {exc}", file=sys.stderr)
+            return {"times": [], "values": []}
+    return {"times": [], "values": []}
 
 
 def _fetch_single_feed(feed_cfg: dict, per_feed: int) -> list:
@@ -328,7 +339,7 @@ def main() -> None:
         crypto_result.append({"id": coin["id"], "symbol": coin["symbol"], "history": h})
         pts = len(h["times"])
         print(f"  OK  {coin['symbol']:6s} [{pts} pts]")
-        time.sleep(2)  # 2s delay to avoid CoinGecko rate limit
+        time.sleep(7)  # 7s delay → ~8.5 req/min, safely under free tier limit
 
     # ── News ──────────────────────────────────────────────────────────────────
     print("\n[5/5] Fetching news ...")
