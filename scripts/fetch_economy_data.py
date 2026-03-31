@@ -3,11 +3,12 @@
 Fetch daily economy data: market indices, commodities, and news.
 Writes results to _data/market_data.json for Jekyll to render.
 
-Dependencies: yfinance, feedparser
+Dependencies: yfinance, feedparser, google-generativeai
 Usage: python scripts/fetch_economy_data.py
 """
 
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone, timedelta
@@ -24,6 +25,12 @@ try:
 except ImportError:
     print("ERROR: 'feedparser' not installed. Run: pip install feedparser", file=sys.stderr)
     sys.exit(1)
+
+try:
+    from google import genai
+    GENAI_AVAILABLE = True
+except ImportError:
+    GENAI_AVAILABLE = False
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
@@ -127,6 +134,46 @@ def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
     return unique[:total_limit]
 
 
+def summarize_news(news_items: list) -> dict:
+    """Generate Korean and English market summaries from headlines using Gemini."""
+    empty = {"ko": "", "en": ""}
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key or not GENAI_AVAILABLE or not news_items:
+        return empty
+
+    try:
+        client = genai.Client(api_key=api_key)
+
+        headlines = "\n".join(
+            f"- {item['title']} ({item['source']})" for item in news_items
+        )
+        prompt = (
+            "Based on the following global economic/financial news headlines, "
+            "provide two market summaries — one in Korean and one in English — "
+            "each within 3 sentences. Focus on key issues and market impact.\n\n"
+            f"Headlines:\n{headlines}\n\n"
+            "Respond in this exact format:\n"
+            "KO: <Korean summary here>\n"
+            "EN: <English summary here>"
+        )
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite-preview", contents=prompt
+        )
+        text = response.text.strip()
+
+        ko, en = "", ""
+        for line in text.splitlines():
+            if line.startswith("KO:"):
+                ko = line[3:].strip()
+            elif line.startswith("EN:"):
+                en = line[3:].strip()
+
+        return {"ko": ko, "en": en}
+    except Exception as exc:
+        print(f"  WARN: Gemini summary — {exc}", file=sys.stderr)
+        return empty
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -204,9 +251,18 @@ def main() -> None:
     news_result = fetch_news(NEWS_FEEDS)
     print(f"  Collected {len(news_result)} headlines")
 
+    # ── News Summary ──────────────────────────────────────────────────────────
+    print("\n[5/5] Generating news summary ...")
+    summary = summarize_news(news_result)
+    if summary.get("ko"):
+        print(f"  OK  KO ({len(summary['ko'])} chars) / EN ({len(summary['en'])} chars)")
+    else:
+        print("  SKIP  No API key or generation failed")
+
     # ── Write output ──────────────────────────────────────────────────────────
     output = {
         "updated_at": updated_at,
+        "summary": summary,
         "indices": indices_result,
         "commodities": commodities_result,
         "rates": rates_result,
