@@ -73,21 +73,23 @@ NEWS_FEEDS = [
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def fetch_quote(symbol: str) -> dict | None:
-    """Fetch latest price and daily change via yfinance."""
+def fetch_quote(symbol: str, period: str = "3mo") -> dict | None:
+    """Fetch price, daily change, and 3-month history via yfinance."""
     try:
         ticker = yf.Ticker(symbol)
-        fi = ticker.fast_info
+        hist_df = ticker.history(period=period)
+        if hist_df.empty or len(hist_df) < 2:
+            return None
 
-        current = float(fi.last_price or 0)
-        prev = float(fi.previous_close or 0)
+        closes = hist_df["Close"]
+        current = float(closes.iloc[-1])
+        prev    = float(closes.iloc[-2])
         if current == 0:
             return None
 
-        change = round(current - prev, 4)
+        change     = round(current - prev, 4)
         change_pct = round((change / prev * 100) if prev else 0, 2)
 
-        # Round price based on magnitude
         if current >= 1000:
             price = round(current, 2)
         elif current >= 10:
@@ -95,14 +97,19 @@ def fetch_quote(symbol: str) -> dict | None:
         else:
             price = round(current, 4)
 
-        return {"price": price, "change": change, "change_pct": change_pct}
+        times  = [d.strftime("%Y-%m-%d") for d in closes.index]
+        values = [round(float(v), 4) for v in closes]
+
+        return {"price": price, "change": change, "change_pct": change_pct,
+                "history": {"times": times, "values": values}}
     except Exception as exc:
         print(f"  WARN: {symbol} — {exc}", file=sys.stderr)
         return None
 
 
 def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
-    """Fetch news headlines from RSS feeds."""
+    """Fetch news headlines from RSS feeds, sorted newest-first."""
+    import calendar
     items = []
     for feed_cfg in feeds:
         try:
@@ -111,12 +118,16 @@ def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
                 title = entry.get("title", "").strip()
                 link = entry.get("link", "").strip()
                 published = entry.get("published", "")[:16] if entry.get("published") else ""
+                # Use parsed time tuple for sorting (Unix timestamp); fallback to 0
+                pub_parsed = entry.get("published_parsed")
+                pub_ts = int(calendar.timegm(pub_parsed)) if pub_parsed else 0
                 if title and link:
                     items.append({
                         "title": title,
                         "url": link,
                         "source": feed_cfg["source"],
                         "published": published,
+                        "_ts": pub_ts,
                     })
         except Exception as exc:
             print(f"  WARN: feed {feed_cfg['source']} — {exc}", file=sys.stderr)
@@ -130,6 +141,13 @@ def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
         if key not in seen:
             seen.add(key)
             unique.append(item)
+
+    # Sort newest-first
+    unique.sort(key=lambda x: x["_ts"], reverse=True)
+
+    # Remove internal sort key before returning
+    for item in unique:
+        item.pop("_ts", None)
 
     return unique[:total_limit]
 
@@ -205,13 +223,15 @@ def main() -> None:
                 "currency": item["currency"],
                 **quote,
             })
-            print(f"  OK  {item['name']:15s} {quote['price']:>12,}  {quote['change_pct']:+.2f}%")
+            pts = len(quote["history"]["times"])
+            print(f"  OK  {item['name']:15s} {quote['price']:>12,}  {quote['change_pct']:+.2f}%  [{pts} pts]")
         else:
             indices_result.append({
                 "symbol": item["symbol"],
                 "name": item["name"],
                 "currency": item["currency"],
                 "price": 0, "change": 0, "change_pct": 0,
+                "history": {"times": [], "values": []},
             })
 
     # ── Commodities ───────────────────────────────────────────────────────────
@@ -226,13 +246,15 @@ def main() -> None:
                 "unit": item["unit"],
                 **quote,
             })
-            print(f"  OK  {item['name']:12s} ${quote['price']:>10,}  {quote['change_pct']:+.2f}%")
+            pts = len(quote["history"]["times"])
+            print(f"  OK  {item['name']:12s} ${quote['price']:>10,}  {quote['change_pct']:+.2f}%  [{pts} pts]")
         else:
             commodities_result.append({
                 "symbol": item["symbol"],
                 "name": item["name"],
                 "unit": item["unit"],
                 "price": 0, "change": 0, "change_pct": 0,
+                "history": {"times": [], "values": []},
             })
 
     # ── Interest Rates ────────────────────────────────────────────────────────
@@ -247,13 +269,15 @@ def main() -> None:
                 "unit": item["unit"],
                 **quote,
             })
-            print(f"  OK  {item['name']:12s} {quote['price']:>10,}  {quote['change_pct']:+.2f}%")
+            pts = len(quote["history"]["times"])
+            print(f"  OK  {item['name']:12s} {quote['price']:>10,}  {quote['change_pct']:+.2f}%  [{pts} pts]")
         else:
             rates_result.append({
                 "symbol": item["symbol"],
                 "name": item["name"],
                 "unit": item["unit"],
                 "price": 0, "change": 0, "change_pct": 0,
+                "history": {"times": [], "values": []},
             })
 
     # ── News ──────────────────────────────────────────────────────────────────

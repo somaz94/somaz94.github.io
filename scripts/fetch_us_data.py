@@ -50,10 +50,38 @@ def fetch_fred(api_key: str, series_id: str, limit: int = 15, retries: int = 3) 
     return []
 
 
-def mom_entry(name: str, unit: str, rows: list) -> dict:
+EMPTY_HIST = {"times": [], "values": []}
+
+
+def mom_history(rows: list, scale: float = 1.0) -> dict:
+    """Build price history array from FRED observations."""
+    valid = [r for r in rows if r.get("value", "") not in (".", "")]
+    times  = [r["date"][:7] for r in valid]
+    values = [round(float(r["value"]) / scale, 4) for r in valid]
+    return {"times": times, "values": values}
+
+
+def yoy_history(rows: list) -> dict:
+    """Build YoY% history array — needs 13+ raw observations per point."""
+    valid = [r for r in rows if r.get("value", "") not in (".", "")]
+    times, values = [], []
+    for i in range(12, len(valid)):
+        try:
+            val  = float(valid[i]["value"])
+            base = float(valid[i - 12]["value"])
+            if base:
+                times.append(valid[i]["date"][:7])
+                values.append(round((val / base - 1) * 100, 2))
+        except (ValueError, ZeroDivisionError):
+            continue
+    return {"times": times, "values": values}
+
+
+def mom_entry(name: str, unit: str, rows: list, history: dict = None) -> dict:
     """Build entry from latest two observations (MoM change)."""
     base = {"name": name, "unit": unit,
-            "price": 0, "change": 0, "change_pct": 0, "time": ""}
+            "price": 0, "change": 0, "change_pct": 0, "time": "",
+            "history": history or EMPTY_HIST}
     if len(rows) < 2:
         return base
     latest = float(rows[-1]["value"])
@@ -63,13 +91,14 @@ def mom_entry(name: str, unit: str, rows: list) -> dict:
     price = round(latest, 2) if latest >= 10 else round(latest, 3)
     return {"name": name, "unit": unit,
             "price": price, "change": change, "change_pct": change_pct,
-            "time": rows[-1]["date"][:7]}
+            "time": rows[-1]["date"][:7], "history": history or EMPTY_HIST}
 
 
-def yoy_entry(name: str, unit: str, rows: list) -> dict:
+def yoy_entry(name: str, unit: str, rows: list, history: dict = None) -> dict:
     """Build entry showing YoY% as the main value (for CPI etc.)."""
     base = {"name": name, "unit": unit,
-            "price": 0, "change": 0, "change_pct": 0, "time": ""}
+            "price": 0, "change": 0, "change_pct": 0, "time": "",
+            "history": history or EMPTY_HIST}
     if len(rows) < 13:
         return base
     latest = float(rows[-1]["value"])
@@ -87,7 +116,7 @@ def yoy_entry(name: str, unit: str, rows: list) -> dict:
 
     return {"name": name, "unit": unit,
             "price": yoy_now, "change": change, "change_pct": change,
-            "time": rows[-1]["date"][:7]}
+            "time": rows[-1]["date"][:7], "history": history or EMPTY_HIST}
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -110,11 +139,12 @@ def main() -> None:
     for series, name in [("CPIAUCSL", "CPI YoY"), ("CPILFESL", "Core CPI YoY"),
                           ("PCEPI", "PCE YoY"), ("PCEPILFE", "Core PCE YoY"),
                           ("PPIFIS", "PPI YoY")]:
-        rows = fetch_fred(api_key, series, limit=15)
-        entry = yoy_entry(name, "%", rows)
+        rows = fetch_fred(api_key, series, limit=40)   # 24 months YoY + 13 base months
+        hist = yoy_history(rows)
+        entry = yoy_entry(name, "%", rows, history=hist)
         inflation.append(entry)
         if entry["price"]:
-            print(f"  OK  {name:18s}  {entry['price']}%  {entry['change']:+.2f}pp")
+            print(f"  OK  {name:18s}  {entry['price']}%  {entry['change']:+.2f}pp  [{len(hist['times'])} pts]")
         time.sleep(0.3)
 
     # ── Employment ────────────────────────────────────────────────────────────
@@ -122,39 +152,47 @@ def main() -> None:
     employment = []
 
     # Unemployment Rate — change shown in pp (absolute), not relative %
-    rows = fetch_fred(api_key, "UNRATE", limit=3)
+    rows = fetch_fred(api_key, "UNRATE", limit=30)
+    hist = mom_history(rows)
     if len(rows) >= 2:
         latest = float(rows[-1]["value"])
         prev = float(rows[-2]["value"])
         change = round(latest - prev, 2)
         entry = {"name": "Unemployment Rate", "unit": "%",
                  "price": round(latest, 2), "change": change, "change_pct": change,
-                 "time": rows[-1]["date"][:7]}
+                 "time": rows[-1]["date"][:7], "history": hist}
         employment.append(entry)
-        print(f"  OK  Unemployment Rate    {latest}%  {change:+.2f}pp")
+        print(f"  OK  Unemployment Rate    {latest}%  {change:+.2f}pp  [{len(hist['times'])} pts]")
     else:
         employment.append({"name": "Unemployment Rate", "unit": "%",
-                            "price": 0, "change": 0, "change_pct": 0, "time": ""})
+                            "price": 0, "change": 0, "change_pct": 0, "time": "",
+                            "history": EMPTY_HIST})
     time.sleep(0.3)
 
-    # Nonfarm Payrolls — show MoM change (thousands)
-    rows = fetch_fred(api_key, "PAYEMS", limit=3)
+    # Nonfarm Payrolls — show MoM change (thousands); history shows MoM changes
+    rows = fetch_fred(api_key, "PAYEMS", limit=30)
+    nfp_hist_vals = [round(float(rows[i]["value"]) - float(rows[i-1]["value"]), 1)
+                     for i in range(1, len(rows)) if rows[i]["value"] not in (".", "")]
+    nfp_hist_times = [rows[i]["date"][:7] for i in range(1, len(rows)) if rows[i]["value"] not in (".", "")]
+    nfp_hist = {"times": nfp_hist_times, "values": nfp_hist_vals}
     if len(rows) >= 2:
         latest = float(rows[-1]["value"])
         prev = float(rows[-2]["value"])
         change = round(latest - prev, 1)
         entry = {"name": "Nonfarm Payrolls", "unit": "K",
                  "price": round(change, 1), "change": change, "change_pct": change,
-                 "time": rows[-1]["date"][:7]}
+                 "time": rows[-1]["date"][:7], "history": nfp_hist}
         employment.append(entry)
-        print(f"  OK  Nonfarm Payrolls     {change:+.0f}K")
+        print(f"  OK  Nonfarm Payrolls     {change:+.0f}K  [{len(nfp_hist['times'])} pts]")
     else:
         employment.append({"name": "Nonfarm Payrolls", "unit": "K",
-                            "price": 0, "change": 0, "change_pct": 0, "time": ""})
+                            "price": 0, "change": 0, "change_pct": 0, "time": "",
+                            "history": EMPTY_HIST})
     time.sleep(0.3)
 
     # Initial Jobless Claims — ICSA is in number of claims, display as K
-    rows = fetch_fred(api_key, "ICSA", limit=3)
+    rows = fetch_fred(api_key, "ICSA", limit=52)   # 52 weeks
+    hist = mom_history(rows, scale=1000.0)
     if len(rows) >= 2:
         latest = float(rows[-1]["value"]) / 1000
         prev = float(rows[-2]["value"]) / 1000
@@ -162,12 +200,32 @@ def main() -> None:
         change_pct = round((change / prev * 100) if prev else 0, 2)
         entry = {"name": "Initial Claims", "unit": "K",
                  "price": round(latest, 1), "change": change, "change_pct": change_pct,
-                 "time": rows[-1]["date"][:7]}
+                 "time": rows[-1]["date"][:7], "history": hist}
         employment.append(entry)
-        print(f"  OK  Initial Claims       {round(latest, 1)}K  {change_pct:+.2f}%")
+        print(f"  OK  Initial Claims       {round(latest, 1)}K  {change_pct:+.2f}%  [{len(hist['times'])} pts]")
     else:
         employment.append({"name": "Initial Claims", "unit": "K",
-                            "price": 0, "change": 0, "change_pct": 0, "time": ""})
+                            "price": 0, "change": 0, "change_pct": 0, "time": "",
+                            "history": EMPTY_HIST})
+    time.sleep(0.3)
+
+    # Job Openings (JOLTS) — JTSJOL in thousands, display as M
+    rows = fetch_fred(api_key, "JTSJOL", limit=30)
+    hist = mom_history(rows, scale=1000.0)
+    if len(rows) >= 2:
+        latest = round(float(rows[-1]["value"]) / 1000, 2)
+        prev = round(float(rows[-2]["value"]) / 1000, 2)
+        change = round(latest - prev, 2)
+        change_pct = round((change / prev * 100) if prev else 0, 2)
+        entry = {"name": "Job Openings", "unit": "M",
+                 "price": latest, "change": change, "change_pct": change_pct,
+                 "time": rows[-1]["date"][:7], "history": hist}
+        employment.append(entry)
+        print(f"  OK  Job Openings         {latest}M  {change_pct:+.2f}%  [{len(hist['times'])} pts]")
+    else:
+        employment.append({"name": "Job Openings", "unit": "M",
+                            "price": 0, "change": 0, "change_pct": 0, "time": "",
+                            "history": EMPTY_HIST})
     time.sleep(0.3)
 
     # ── Rates ─────────────────────────────────────────────────────────────────
@@ -178,52 +236,112 @@ def main() -> None:
         ("FEDFUNDS",    "Fed Funds Rate", "%"),
         ("MORTGAGE30US","30Y Mortgage",   "%"),
     ]:
-        rows = fetch_fred(api_key, series, limit=3)
-        entry = mom_entry(name, unit, rows)
+        rows = fetch_fred(api_key, series, limit=52)  # ~1 year for weekly/monthly
+        hist = mom_history(rows)
+        entry = mom_entry(name, unit, rows, history=hist)
+        entry["change_pct"] = entry["change"]  # absolute pp for rate indicators
         rates.append(entry)
         if entry["price"]:
-            print(f"  OK  {name:18s}  {entry['price']}%  {entry['change_pct']:+.3f}%")
+            print(f"  OK  {name:18s}  {entry['price']}%  {entry['change']:+.3f}pp  [{len(hist['times'])} pts]")
         time.sleep(0.3)
+
+    # 10Y-2Y Spread — T10Y2Y daily, already in pp; use absolute pp change
+    rows = fetch_fred(api_key, "T10Y2Y", limit=90)   # 90 trading days
+    hist = {"times": [r["date"][:10] for r in rows if r["value"] not in (".", "")],
+            "values": [round(float(r["value"]), 3) for r in rows if r["value"] not in (".", "")]}
+    if len(rows) >= 2:
+        latest = float(rows[-1]["value"])
+        prev = float(rows[-2]["value"])
+        change = round(latest - prev, 3)
+        entry = {"name": "10Y-2Y Spread", "unit": "pp",
+                 "price": round(latest, 3), "change": change, "change_pct": change,
+                 "time": rows[-1]["date"][:10], "history": hist}
+        rates.append(entry)
+        print(f"  OK  10Y-2Y Spread        {latest}pp  {change:+.3f}pp  [{len(hist['times'])} pts]")
+    else:
+        rates.append({"name": "10Y-2Y Spread", "unit": "pp",
+                       "price": 0, "change": 0, "change_pct": 0, "time": "",
+                       "history": EMPTY_HIST})
+    time.sleep(0.3)
 
     # ── Growth & Sentiment ────────────────────────────────────────────────────
     print("\n[4/4] Fetching growth & sentiment data ...")
     sentiment = []
 
     # Real GDP Growth QoQ% (already a rate series — use absolute pp change)
-    rows = fetch_fred(api_key, "A191RL1Q225SBEA", limit=3)
-    entry = mom_entry("GDP Growth QoQ", "%", rows)
+    rows = fetch_fred(api_key, "A191RL1Q225SBEA", limit=20)  # ~5 years quarterly
+    hist = mom_history(rows)
+    entry = mom_entry("GDP Growth QoQ", "%", rows, history=hist)
     entry["change_pct"] = entry["change"]
     sentiment.append(entry)
     if entry["price"]:
-        print(f"  OK  GDP Growth QoQ       {entry['price']}%  {entry['change']:+.2f}pp")
+        print(f"  OK  GDP Growth QoQ       {entry['price']}%  {entry['change']:+.2f}pp  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
     # Michigan Consumer Sentiment
-    rows = fetch_fred(api_key, "UMCSENT", limit=3)
-    entry = mom_entry("Consumer Sentiment", "", rows)
+    rows = fetch_fred(api_key, "UMCSENT", limit=30)
+    hist = mom_history(rows)
+    entry = mom_entry("Consumer Sentiment", "", rows, history=hist)
     sentiment.append(entry)
     if entry["price"]:
-        print(f"  OK  Consumer Sentiment   {entry['price']}")
+        print(f"  OK  Consumer Sentiment   {entry['price']}  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
-    # Retail Sales MoM — RSXFS in millions USD, show MoM%
-    rows = fetch_fred(api_key, "RSXFS", limit=3)
+    # Chicago Fed National Activity Index — CFNAI, >0 = above-average growth
+    rows = fetch_fred(api_key, "CFNAI", limit=30)
+    hist = mom_history(rows)
+    entry = mom_entry("Chicago Fed NAI", "", rows, history=hist)
+    entry["change_pct"] = entry["change"]  # absolute change
+    sentiment.append(entry)
+    if entry["price"]:
+        print(f"  OK  Chicago Fed NAI      {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
+    time.sleep(0.3)
+
+    # Durable Goods Orders — DGORDER in millions USD, show MoM%
+    rows = fetch_fred(api_key, "DGORDER", limit=30)
+    dg_hist_vals = [round((float(rows[i]["value"]) - float(rows[i-1]["value"])) / float(rows[i-1]["value"]) * 100, 2)
+                    for i in range(1, len(rows)) if rows[i]["value"] not in (".", "") and rows[i-1]["value"] not in (".", "")]
+    dg_hist_times = [rows[i]["date"][:7] for i in range(1, len(rows)) if rows[i]["value"] not in (".", "")]
+    dg_hist = {"times": dg_hist_times, "values": dg_hist_vals}
+    if len(rows) >= 2:
+        latest = float(rows[-1]["value"])
+        prev   = float(rows[-2]["value"])
+        change_pct = round((latest - prev) / prev * 100, 2) if prev else 0
+        entry = {"name": "Durable Goods MoM", "unit": "%",
+                 "price": change_pct, "change": change_pct, "change_pct": change_pct,
+                 "time": rows[-1]["date"][:7], "history": dg_hist}
+        sentiment.append(entry)
+        print(f"  OK  Durable Goods MoM    {change_pct:+.2f}%  [{len(dg_hist['times'])} pts]")
+    else:
+        sentiment.append({"name": "Durable Goods MoM", "unit": "%",
+                           "price": 0, "change": 0, "change_pct": 0, "time": "",
+                           "history": EMPTY_HIST})
+    time.sleep(0.3)
+
+    # Retail Sales MoM — RSXFS in millions USD, show MoM%; history shows MoM% changes
+    rows = fetch_fred(api_key, "RSXFS", limit=30)
+    rs_hist_vals = [round((float(rows[i]["value"]) - float(rows[i-1]["value"])) / float(rows[i-1]["value"]) * 100, 2)
+                    for i in range(1, len(rows)) if rows[i]["value"] not in (".", "") and rows[i-1]["value"] not in (".", "")]
+    rs_hist_times = [rows[i]["date"][:7] for i in range(1, len(rows)) if rows[i]["value"] not in (".", "")]
+    rs_hist = {"times": rs_hist_times, "values": rs_hist_vals}
     if len(rows) >= 2:
         latest = float(rows[-1]["value"])
         prev = float(rows[-2]["value"])
         change_pct = round((latest - prev) / prev * 100, 2) if prev else 0
         entry = {"name": "Retail Sales MoM", "unit": "%",
                  "price": change_pct, "change": change_pct, "change_pct": change_pct,
-                 "time": rows[-1]["date"][:7]}
+                 "time": rows[-1]["date"][:7], "history": rs_hist}
         sentiment.append(entry)
-        print(f"  OK  Retail Sales MoM     {change_pct:+.2f}%")
+        print(f"  OK  Retail Sales MoM     {change_pct:+.2f}%  [{len(rs_hist['times'])} pts]")
     else:
         sentiment.append({"name": "Retail Sales MoM", "unit": "%",
-                           "price": 0, "change": 0, "change_pct": 0, "time": ""})
+                           "price": 0, "change": 0, "change_pct": 0, "time": "",
+                           "history": EMPTY_HIST})
     time.sleep(0.3)
 
     # Housing Starts — HOUST in thousands of units (annualized)
-    rows = fetch_fred(api_key, "HOUST", limit=3)
+    rows = fetch_fred(api_key, "HOUST", limit=30)
+    hist = mom_history(rows)
     if len(rows) >= 2:
         latest = float(rows[-1]["value"])
         prev = float(rows[-2]["value"])
@@ -231,12 +349,13 @@ def main() -> None:
         change_pct = round((change / prev * 100) if prev else 0, 2)
         entry = {"name": "Housing Starts", "unit": "K",
                  "price": round(latest, 1), "change": change, "change_pct": change_pct,
-                 "time": rows[-1]["date"][:7]}
+                 "time": rows[-1]["date"][:7], "history": hist}
         sentiment.append(entry)
-        print(f"  OK  Housing Starts       {round(latest, 1)}K  {change_pct:+.2f}%")
+        print(f"  OK  Housing Starts       {round(latest, 1)}K  {change_pct:+.2f}%  [{len(hist['times'])} pts]")
     else:
         sentiment.append({"name": "Housing Starts", "unit": "K",
-                           "price": 0, "change": 0, "change_pct": 0, "time": ""})
+                           "price": 0, "change": 0, "change_pct": 0, "time": "",
+                           "history": EMPTY_HIST})
 
     # ── Write output ──────────────────────────────────────────────────────────
     output = {
