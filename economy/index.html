@@ -281,7 +281,7 @@
       
       
       
-      <div class="eco-card eco-up vix-card">
+      <div class="eco-card eco-up vix-card" data-history="{&quot;times&quot;:[&quot;2025-12-30&quot;,&quot;2025-12-31&quot;,&quot;2026-01-02&quot;,&quot;2026-01-05&quot;,&quot;2026-01-06&quot;,&quot;2026-01-07&quot;,&quot;2026-01-08&quot;,&quot;2026-01-09&quot;,&quot;2026-01-12&quot;,&quot;2026-01-13&quot;,&quot;2026-01-14&quot;,&quot;2026-01-15&quot;,&quot;2026-01-16&quot;,&quot;2026-01-20&quot;,&quot;2026-01-21&quot;,&quot;2026-01-22&quot;,&quot;2026-01-23&quot;,&quot;2026-01-26&quot;,&quot;2026-01-27&quot;,&quot;2026-01-28&quot;,&quot;2026-01-29&quot;,&quot;2026-01-30&quot;,&quot;2026-02-02&quot;,&quot;2026-02-03&quot;,&quot;2026-02-04&quot;,&quot;2026-02-05&quot;,&quot;2026-02-06&quot;,&quot;2026-02-09&quot;,&quot;2026-02-10&quot;,&quot;2026-02-11&quot;,&quot;2026-02-12&quot;,&quot;2026-02-13&quot;,&quot;2026-02-17&quot;,&quot;2026-02-18&quot;,&quot;2026-02-19&quot;,&quot;2026-02-20&quot;,&quot;2026-02-23&quot;,&quot;2026-02-24&quot;,&quot;2026-02-25&quot;,&quot;2026-02-26&quot;,&quot;2026-02-27&quot;,&quot;2026-03-02&quot;,&quot;2026-03-03&quot;,&quot;2026-03-04&quot;,&quot;2026-03-05&quot;,&quot;2026-03-06&quot;,&quot;2026-03-09&quot;,&quot;2026-03-10&quot;,&quot;2026-03-11&quot;,&quot;2026-03-12&quot;,&quot;2026-03-13&quot;,&quot;2026-03-16&quot;,&quot;2026-03-17&quot;,&quot;2026-03-18&quot;,&quot;2026-03-19&quot;,&quot;2026-03-20&quot;,&quot;2026-03-23&quot;,&quot;2026-03-24&quot;,&quot;2026-03-25&quot;,&quot;2026-03-26&quot;,&quot;2026-03-27&quot;,&quot;2026-03-30&quot;],&quot;values&quot;:[14.33,14.95,14.51,14.9,14.75,15.38,15.45,14.49,15.12,15.98,16.75,15.84,15.86,20.09,16.9,15.64,16.09,16.15,16.35,16.35,16.88,17.44,16.34,18.0,18.64,21.77,20.37,17.36,17.79,17.65,20.82,20.6,20.29,19.62,20.23,19.09,21.01,19.55,17.93,18.63,19.86,21.44,23.57,21.15,23.75,29.49,25.5,24.93,24.23,27.29,27.19,23.51,22.37,25.09,24.06,26.78,26.15,26.95,25.33,27.44,31.05,30.61]}" data-unit="">
         <div class="eco-card-name">VIX · CBOE Volatility</div>
         <div class="vix-value">30.61</div>
         <div class="vix-label">High</div>
@@ -723,23 +723,29 @@
     });
 
   /* ── Crypto prices ── */
-  var cryptoIds = 'bitcoin,ethereum,solana,binancecoin,ripple,dogecoin';
+  var cryptoIds = 'bitcoin,ethereum,solana,binancecoin,ripple,dogecoin,cardano,avalanche-2';
   var cryptoSymbols = {
     bitcoin: 'BTC', ethereum: 'ETH', solana: 'SOL',
-    binancecoin: 'BNB', ripple: 'XRP', dogecoin: 'DOGE'
+    binancecoin: 'BNB', ripple: 'XRP', dogecoin: 'DOGE',
+    cardano: 'ADA', 'avalanche-2': 'AVAX'
   };
 
-  fetch('https://api.coingecko.com/api/v3/simple/price?ids=' + cryptoIds + '&vs_currencies=usd,krw&include_24hr_change=true')
+  fetch('https://api.coingecko.com/api/v3/simple/price?ids=' + cryptoIds + '&vs_currencies=usd,krw&include_24hr_change=true&include_market_cap=true')
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var html = '';
-      Object.keys(data).forEach(function(id) {
+      var sortedIds = Object.keys(data).sort(function(a, b) {
+        var mcA = (data[a] && data[a].usd_market_cap) ? data[a].usd_market_cap : 0;
+        var mcB = (data[b] && data[b].usd_market_cap) ? data[b].usd_market_cap : 0;
+        return mcB - mcA;
+      });
+      sortedIds.forEach(function(id) {
         var coin = data[id];
         var pct = coin.usd_24h_change ? coin.usd_24h_change.toFixed(2) : '0.00';
         var dir = parseFloat(pct) >= 0 ? 'eco-up' : 'eco-down';
         var arrow = parseFloat(pct) >= 0 ? '▲' : '▼';
         var krw = coin.krw ? '₩' + coin.krw.toLocaleString() : '';
-        html += '<div class="eco-card ' + dir + '">' +
+        html += '<div class="eco-card ' + dir + '" data-coin-id="' + id + '" data-unit="USD">' +
           '<div class="eco-card-name">' + cryptoSymbols[id] + '</div>' +
           '<div class="eco-card-price">$' + coin.usd.toLocaleString() + '</div>' +
           '<div class="eco-card-change">' + arrow + ' ' + Math.abs(pct) + '%</div>' +
@@ -758,7 +764,7 @@
   /* ── Exchange Rates ── */
   (function() {
     var from = new Date();
-    from.setDate(from.getDate() - 7);
+    from.setDate(from.getDate() - 90);
     var fromStr = from.toISOString().slice(0, 10);
 
     fetch('https://api.frankfurter.app/' + fromStr + '..?from=USD&to=KRW,EUR,JPY,CNY,GBP')
@@ -769,6 +775,25 @@
         var t = data.rates[dates[dates.length - 1]];
         var p = data.rates[dates[dates.length - 2]];
         function pct(a, b) { return b ? ((a - b) / b * 100).toFixed(2) : null; }
+
+        /* build per-pair history from all dates */
+        var hist = {
+          'USD / KRW':     { times: [], values: [] },
+          'EUR / KRW':     { times: [], values: [] },
+          '100 JPY / KRW': { times: [], values: [] },
+          'CNY / KRW':     { times: [], values: [] },
+          'GBP / KRW':     { times: [], values: [] }
+        };
+        dates.forEach(function(d) {
+          var r = data.rates[d];
+          if (!r) return;
+          if (r.KRW) { hist['USD / KRW'].times.push(d);     hist['USD / KRW'].values.push(Math.round(r.KRW)); }
+          if (r.KRW && r.EUR) { hist['EUR / KRW'].times.push(d);     hist['EUR / KRW'].values.push(Math.round(r.KRW / r.EUR)); }
+          if (r.KRW && r.JPY) { hist['100 JPY / KRW'].times.push(d); hist['100 JPY / KRW'].values.push(Math.round(r.KRW / r.JPY * 100)); }
+          if (r.KRW && r.CNY) { hist['CNY / KRW'].times.push(d);     hist['CNY / KRW'].values.push(Math.round(r.KRW / r.CNY * 10) / 10); }
+          if (r.KRW && r.GBP) { hist['GBP / KRW'].times.push(d);     hist['GBP / KRW'].values.push(Math.round(r.KRW / r.GBP)); }
+        });
+
         var pairs = [
           { label: 'USD / KRW',     cur: t.KRW,                     prv: p.KRW },
           { label: 'EUR / KRW',     cur: t.KRW / t.EUR,             prv: p.KRW / p.EUR },
@@ -782,7 +807,7 @@
           var val = parseFloat(change);
           var dir   = change === null ? 'eco-flat' : val > 0 ? 'eco-up' : val < 0 ? 'eco-down' : 'eco-flat';
           var arrow = val > 0 ? '▲ ' : val < 0 ? '▼ ' : '';
-          html += '<div class="eco-card ' + dir + '">' +
+          html += '<div class="eco-card ' + dir + '" data-unit="KRW">' +
             '<div class="eco-card-name">' + pair.label + '</div>' +
             '<div class="eco-card-price">₩' + pair.cur.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</div>' +
             (change !== null ? '<div class="eco-card-change">' + arrow + Math.abs(val).toFixed(2) + '%</div>' : '') +
@@ -792,6 +817,15 @@
         var forexEl = document.getElementById('forex-grid');
         forexEl.className = 'eco-grid eco-grid-5';
         forexEl.innerHTML = html;
+
+        /* attach history to each card after render */
+        var forexCards = forexEl.querySelectorAll('.eco-card');
+        pairs.forEach(function(pair, idx) {
+          var h = hist[pair.label];
+          if (forexCards[idx] && h && h.times.length >= 2) {
+            forexCards[idx].setAttribute('data-history', JSON.stringify(h));
+          }
+        });
       })
       .catch(function() {
         document.getElementById('forex-grid').innerHTML =
@@ -961,7 +995,10 @@
       function drawChart(c, history) {
         var ctx = c.getContext('2d');
         var W = c.width, H = c.height;
-        var pad = { top: 22, right: 16, bottom: 32, left: 56 };
+        var isLg = W > 400;
+        var pad = isLg
+          ? { top: 22, right: 16, bottom: 32, left: 56 }
+          : { top: 14, right: 8,  bottom: 22, left: 42 };
         var times = history.times, vals = history.values, n = vals.length;
 
         ctx.clearRect(0, 0, W, H);
@@ -978,9 +1015,8 @@
         function vy(v) { return cB - ((v - minV) / rng) * cH; }
         function vx(i) { return cL + (i / (n - 1)) * cW; }
 
-        var decimals = rng < 0.5 ? 3 : rng < 5 ? 2 : rng < 100 ? 1 : 0;
-        var isLarge  = W > 400;
-        var fontSize = isLarge ? '11px' : '9px';
+        var decimals  = rng < 0.5 ? 3 : rng < 5 ? 2 : rng < 100 ? 1 : 0;
+        var fontSize  = isLg ? '11px' : '9px';
 
         /* grid + Y labels */
         ctx.font = fontSize + ' sans-serif';
@@ -999,7 +1035,7 @@
         ctx.fillStyle = 'rgba(255,255,255,0.32)';
         ctx.textAlign = 'left';
         ctx.fillText(times[0], cL, H - 8);
-        if (isLarge) {
+        if (isLg) {
           ctx.textAlign = 'center';
           ctx.fillText(times[Math.floor(n / 2)], cL + cW / 2, H - 8);
         }
@@ -1021,12 +1057,12 @@
         ctx.moveTo(vx(0), vy(vals[0]));
         for (var i = 1; i < n; i++) ctx.lineTo(vx(i), vy(vals[i]));
         ctx.strokeStyle = 'rgba(99,179,237,0.9)';
-        ctx.lineWidth = isLarge ? 2 : 1.5;
+        ctx.lineWidth = isLg ? 2 : 1.5;
         ctx.stroke();
 
         /* last-point dot */
         ctx.beginPath();
-        ctx.arc(vx(n - 1), vy(vals[n - 1]), isLarge ? 4 : 3, 0, Math.PI * 2);
+        ctx.arc(vx(n - 1), vy(vals[n - 1]), isLg ? 4 : 3, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(99,179,237,1)';
         ctx.fill();
       }
@@ -1092,41 +1128,93 @@
       var modalRange = document.getElementById('eco-modal-range');
       var backdrop   = modal.querySelector('.eco-modal-backdrop');
       var closeBtn   = document.getElementById('eco-modal-close');
-      var modalCard  = null;
 
-      function openModal(card) {
-        var raw = card.getAttribute('data-history');
-        if (!raw || raw === 'null') return;
-        var history;
-        try { history = JSON.parse(raw); } catch (e) { return; }
-        if (!history || !history.times || history.times.length < 2) return;
+      function drawLoading(c) {
+        var ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Loading chart data...', c.width / 2, c.height / 2);
+      }
 
-        modalCard = card;
-        var name = (card.querySelector('.eco-card-name') || {}).textContent || '';
-        var unit = card.getAttribute('data-unit') || '';
-        modalTitle.textContent = name.trim() + (unit ? '  (' + unit + ')' : '');
-        modalRange.textContent = history.times[0] + '  –  ' + history.times[history.times.length - 1]
-                                 + '  (' + history.times.length + ' data points)';
-
-        /* show modal first, then measure actual width after render */
-        modal.classList.add('eco-modal-open');
-        hideTip(0);
-
+      function sizeAndDraw(history) {
         requestAnimationFrame(function () {
-          var wrap = modalCvs.parentElement;
-          var W = wrap.offsetWidth || (window.innerWidth * 0.95 - 44);
+          var W = modalCvs.parentElement.offsetWidth || (window.innerWidth * 0.95 - 44);
           var H = Math.max(Math.round(W * 0.42), 160);
           modalCvs.width  = W;
           modalCvs.height = H;
           modalCvs.style.width  = '';
           modalCvs.style.height = '';
-          drawChart(modalCvs, history);
+          if (history) drawChart(modalCvs, history);
+          else drawLoading(modalCvs);
         });
+      }
+
+      function openModal(card) {
+        var name = (card.querySelector('.eco-card-name') || {}).textContent || '';
+        var unit = card.getAttribute('data-unit') || '';
+
+        /* try pre-stored history first */
+        var raw = card.getAttribute('data-history');
+        var history = null;
+        if (raw && raw !== 'null') {
+          try {
+            var h = JSON.parse(raw);
+            if (h && h.times && h.times.length >= 2) history = h;
+          } catch (e) {}
+        }
+
+        if (history) {
+          modalTitle.textContent = name.trim() + (unit ? '  (' + unit + ')' : '');
+          modalRange.textContent = history.times[0] + '  –  ' + history.times[history.times.length - 1]
+                                   + '  (' + history.times.length + ' data points)';
+          modal.classList.add('eco-modal-open');
+          hideTip(0);
+          sizeAndDraw(history);
+          return;
+        }
+
+        /* lazy fetch for crypto (data-coin-id) */
+        var coinId = card.getAttribute('data-coin-id');
+        if (!coinId) return;
+
+        modalTitle.textContent = name.trim() + (unit ? '  (' + unit + ')' : '');
+        modalRange.textContent = 'Loading...';
+        modal.classList.add('eco-modal-open');
+        hideTip(0);
+        sizeAndDraw(null); /* show loading indicator */
+
+        fetch('https://api.coingecko.com/api/v3/coins/' + coinId +
+              '/market_chart?vs_currency=usd&days=90')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var prices = data.prices;
+            var times = [], values = [], prev = '';
+            prices.forEach(function (p) {
+              var d = new Date(p[0]).toISOString().slice(0, 10);
+              if (d !== prev) {
+                times.push(d);
+                values.push(Math.round(p[1] * 100) / 100);
+                prev = d;
+              }
+            });
+            var fetched = { times: times, values: values };
+            card.setAttribute('data-history', JSON.stringify(fetched)); /* cache */
+            if (!modal.classList.contains('eco-modal-open')) return;
+            modalRange.textContent = times[0] + '  –  ' + times[times.length - 1]
+                                     + '  (' + times.length + ' data points)';
+            sizeAndDraw(fetched);
+          })
+          .catch(function () {
+            if (modal.classList.contains('eco-modal-open'))
+              modalRange.textContent = 'Failed to load chart data.';
+          });
       }
 
       function closeModal() {
         modal.classList.remove('eco-modal-open');
-        modalCard = null;
       }
 
       closeBtn.addEventListener('click', closeModal);
@@ -1153,7 +1241,7 @@
           hideTip(60);
         });
         document.addEventListener('click', function (e) {
-          var card = e.target.closest('.eco-card[data-history]');
+          var card = e.target.closest('.eco-card[data-history], .eco-card[data-coin-id]');
           if (card) openModal(card);
         });
       } else {
@@ -1171,7 +1259,7 @@
           if (Math.abs(t.clientX - touchStartX) > 8 ||
               Math.abs(t.clientY - touchStartY) > 8) return;
 
-          var card = e.target.closest('.eco-card[data-history]');
+          var card = e.target.closest('.eco-card[data-history], .eco-card[data-coin-id]');
           if (card) {
             e.preventDefault(); /* suppress the delayed click */
             openModal(card);
