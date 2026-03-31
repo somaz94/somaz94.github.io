@@ -300,6 +300,41 @@ def main() -> None:
         print(f"  OK  GDP 성장률     {entry['price']}%  {entry['change']:+.2f}pp  ({t})  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
+    # ── News ─────────────────────────────────────────────────────────────────
+    print("\n[7/7] Fetching Korea news ...")
+    import feedparser, calendar
+    kr_feeds = [
+        {"url": "https://www.yna.co.kr/rss/economy.xml",   "source": "연합뉴스"},
+        {"url": "https://www.hankyung.com/feed/economy",    "source": "한국경제"},
+    ]
+    news_items = []
+    for feed_cfg in kr_feeds:
+        try:
+            parsed = feedparser.parse(feed_cfg["url"])
+            for entry in parsed.entries[:6]:
+                title = entry.get("title", "").strip()
+                link  = entry.get("link",  "").strip()
+                published  = entry.get("published", "")[:16] if entry.get("published") else ""
+                pub_parsed = entry.get("published_parsed")
+                pub_ts = int(calendar.timegm(pub_parsed)) if pub_parsed else 0
+                if title and link:
+                    news_items.append({"title": title, "url": link,
+                                       "source": feed_cfg["source"],
+                                       "published": published, "_ts": pub_ts})
+        except Exception as exc:
+            print(f"  WARN: {feed_cfg['source']} — {exc}", file=sys.stderr)
+    seen, unique = set(), []
+    for item in news_items:
+        key = item["title"].lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    unique.sort(key=lambda x: x["_ts"], reverse=True)
+    for item in unique:
+        item.pop("_ts", None)
+    news = unique[:12]
+    print(f"  Collected {len(news)} headlines")
+
     # ── Write output ──────────────────────────────────────────────────────────
     output = {
         "updated_at": updated_at,
@@ -309,6 +344,7 @@ def main() -> None:
         "fx": fx,
         "trade": trade,
         "growth": growth,
+        "news": news,
     }
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
