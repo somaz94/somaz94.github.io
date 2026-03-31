@@ -134,44 +134,54 @@ def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
     return unique[:total_limit]
 
 
+# Fallback order: highest RPD first, then quality
+GEMINI_MODELS = [
+    "gemini-3.1-flash-lite-preview",  # RPD=500, RPM=15
+    "gemini-2.5-flash",               # RPD=20,  RPM=5
+    "gemini-2.5-flash-lite",          # RPD=20,  RPM=10
+    "gemini-3-flash-preview",         # RPD=20,  RPM=5
+]
+
+
 def summarize_news(news_items: list) -> dict:
-    """Generate Korean and English market summaries from headlines using Gemini."""
+    """Generate Korean and English market summaries from headlines using Gemini.
+    Tries each model in GEMINI_MODELS order until one succeeds."""
     empty = {"ko": "", "en": ""}
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key or not GENAI_AVAILABLE or not news_items:
         return empty
 
-    try:
-        client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key)
+    headlines = "\n".join(
+        f"- {item['title']} ({item['source']})" for item in news_items
+    )
+    prompt = (
+        "Based on the following global economic/financial news headlines, "
+        "provide two market summaries — one in Korean and one in English — "
+        "each within 3 sentences. Focus on key issues and market impact.\n\n"
+        f"Headlines:\n{headlines}\n\n"
+        "Respond in this exact format:\n"
+        "KO: <Korean summary here>\n"
+        "EN: <English summary here>"
+    )
 
-        headlines = "\n".join(
-            f"- {item['title']} ({item['source']})" for item in news_items
-        )
-        prompt = (
-            "Based on the following global economic/financial news headlines, "
-            "provide two market summaries — one in Korean and one in English — "
-            "each within 3 sentences. Focus on key issues and market impact.\n\n"
-            f"Headlines:\n{headlines}\n\n"
-            "Respond in this exact format:\n"
-            "KO: <Korean summary here>\n"
-            "EN: <English summary here>"
-        )
-        response = client.models.generate_content(
-            model="gemini-3.1-flash-lite-preview", contents=prompt
-        )
-        text = response.text.strip()
+    for model in GEMINI_MODELS:
+        try:
+            response = client.models.generate_content(model=model, contents=prompt)
+            text = response.text.strip()
+            ko, en = "", ""
+            for line in text.splitlines():
+                if line.startswith("KO:"):
+                    ko = line[3:].strip()
+                elif line.startswith("EN:"):
+                    en = line[3:].strip()
+            if ko or en:
+                print(f"  OK  model={model}")
+                return {"ko": ko, "en": en}
+        except Exception as exc:
+            print(f"  WARN: {model} — {exc}", file=sys.stderr)
 
-        ko, en = "", ""
-        for line in text.splitlines():
-            if line.startswith("KO:"):
-                ko = line[3:].strip()
-            elif line.startswith("EN:"):
-                en = line[3:].strip()
-
-        return {"ko": ko, "en": en}
-    except Exception as exc:
-        print(f"  WARN: Gemini summary — {exc}", file=sys.stderr)
-        return empty
+    return empty
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────

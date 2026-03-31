@@ -108,7 +108,8 @@ def main() -> None:
     inflation = []
 
     for series, name in [("CPIAUCSL", "CPI YoY"), ("CPILFESL", "Core CPI YoY"),
-                          ("PCEPI", "PCE YoY"), ("PCEPILFE", "Core PCE YoY")]:
+                          ("PCEPI", "PCE YoY"), ("PCEPILFE", "Core PCE YoY"),
+                          ("PPIFIS", "PPI YoY")]:
         rows = fetch_fred(api_key, series, limit=15)
         entry = yoy_entry(name, "%", rows)
         inflation.append(entry)
@@ -188,12 +189,13 @@ def main() -> None:
     print("\n[4/4] Fetching growth & sentiment data ...")
     sentiment = []
 
-    # Real GDP Growth QoQ% (already a rate series)
+    # Real GDP Growth QoQ% (already a rate series — use absolute pp change)
     rows = fetch_fred(api_key, "A191RL1Q225SBEA", limit=3)
     entry = mom_entry("GDP Growth QoQ", "%", rows)
+    entry["change_pct"] = entry["change"]
     sentiment.append(entry)
     if entry["price"]:
-        print(f"  OK  GDP Growth QoQ       {entry['price']}%")
+        print(f"  OK  GDP Growth QoQ       {entry['price']}%  {entry['change']:+.2f}pp")
     time.sleep(0.3)
 
     # Michigan Consumer Sentiment
@@ -203,6 +205,38 @@ def main() -> None:
     if entry["price"]:
         print(f"  OK  Consumer Sentiment   {entry['price']}")
     time.sleep(0.3)
+
+    # Retail Sales MoM — RSXFS in millions USD, show MoM%
+    rows = fetch_fred(api_key, "RSXFS", limit=3)
+    if len(rows) >= 2:
+        latest = float(rows[-1]["value"])
+        prev = float(rows[-2]["value"])
+        change_pct = round((latest - prev) / prev * 100, 2) if prev else 0
+        entry = {"name": "Retail Sales MoM", "unit": "%",
+                 "price": change_pct, "change": change_pct, "change_pct": change_pct,
+                 "time": rows[-1]["date"][:7]}
+        sentiment.append(entry)
+        print(f"  OK  Retail Sales MoM     {change_pct:+.2f}%")
+    else:
+        sentiment.append({"name": "Retail Sales MoM", "unit": "%",
+                           "price": 0, "change": 0, "change_pct": 0, "time": ""})
+    time.sleep(0.3)
+
+    # Housing Starts — HOUST in thousands of units (annualized)
+    rows = fetch_fred(api_key, "HOUST", limit=3)
+    if len(rows) >= 2:
+        latest = float(rows[-1]["value"])
+        prev = float(rows[-2]["value"])
+        change = round(latest - prev, 1)
+        change_pct = round((change / prev * 100) if prev else 0, 2)
+        entry = {"name": "Housing Starts", "unit": "K",
+                 "price": round(latest, 1), "change": change, "change_pct": change_pct,
+                 "time": rows[-1]["date"][:7]}
+        sentiment.append(entry)
+        print(f"  OK  Housing Starts       {round(latest, 1)}K  {change_pct:+.2f}%")
+    else:
+        sentiment.append({"name": "Housing Starts", "unit": "K",
+                           "price": 0, "change": 0, "change_pct": 0, "time": ""})
 
     # ── Write output ──────────────────────────────────────────────────────────
     output = {
