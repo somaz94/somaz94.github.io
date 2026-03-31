@@ -3,10 +3,11 @@
 Fetch Korean economic data from ECOS (한국은행 경제통계시스템).
 Writes results to _data/kr_data.json for Jekyll to render.
 
-Dependencies: requests
+Dependencies: requests, feedparser
 Usage: ECOS_API_KEY=<key> python scripts/fetch_korea_data.py
 """
 
+import calendar
 import json
 import os
 import sys
@@ -18,6 +19,12 @@ try:
     import requests
 except ImportError:
     print("ERROR: 'requests' not installed. Run: pip install requests", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import feedparser
+except ImportError:
+    print("ERROR: 'feedparser' not installed. Run: pip install feedparser", file=sys.stderr)
     sys.exit(1)
 
 # ── Configuration ────────────────────────────────────────────────────────────
@@ -155,7 +162,7 @@ def main() -> None:
     q_start, q_end = quarterly_range(3)  # 3 years for quarterly (GDP)
 
     # ── Interest Rates ────────────────────────────────────────────────────────
-    print("\n[1/6] Fetching interest rates ...")
+    print("\n[1/7] Fetching interest rates ...")
     rates = []
 
     specs = [
@@ -175,7 +182,7 @@ def main() -> None:
         time.sleep(0.3)
 
     # ── Prices ────────────────────────────────────────────────────────────────
-    print("\n[2/6] Fetching price data ...")
+    print("\n[2/7] Fetching price data ...")
     prices = []
 
     price_specs = [
@@ -193,7 +200,7 @@ def main() -> None:
         time.sleep(0.3)
 
     # ── Employment ────────────────────────────────────────────────────────────
-    print("\n[3/6] Fetching employment data ...")
+    print("\n[3/7] Fetching employment data ...")
     macro = []
 
     # 실업률 — pp change
@@ -218,7 +225,7 @@ def main() -> None:
     time.sleep(0.3)
 
     # ── Exchange Rates ────────────────────────────────────────────────────────
-    print("\n[4/6] Fetching exchange rates ...")
+    print("\n[4/7] Fetching exchange rates ...")
     fx = []
 
     fx_specs = [
@@ -239,7 +246,7 @@ def main() -> None:
         time.sleep(0.3)
 
     # ── Trade & Current Account ───────────────────────────────────────────────
-    print("\n[5/6] Fetching trade data ...")
+    print("\n[5/7] Fetching trade data ...")
     trade = []
 
     # 수출/수입: 901Y118 values in thousands USD → divide by 1,000,000 for B$
@@ -286,7 +293,7 @@ def main() -> None:
     time.sleep(0.3)
 
     # ── GDP Growth ────────────────────────────────────────────────────────────
-    print("\n[6/6] Fetching GDP growth ...")
+    print("\n[6/7] Fetching GDP growth ...")
     growth = []
 
     # 902Y015/KOR: 국제 주요국 경제성장률 한국, quarterly QoQ%
@@ -302,7 +309,6 @@ def main() -> None:
 
     # ── News ─────────────────────────────────────────────────────────────────
     print("\n[7/7] Fetching Korea news ...")
-    import feedparser, calendar
     kr_feeds = [
         {"url": "https://www.yna.co.kr/rss/economy.xml",   "source": "연합뉴스"},
         {"url": "https://www.hankyung.com/feed/economy",    "source": "한국경제"},

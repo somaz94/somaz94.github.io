@@ -133,7 +133,7 @@ def main() -> None:
     print(f"[fetch_us_data] Starting — {updated_at}")
 
     # ── Inflation ─────────────────────────────────────────────────────────────
-    print("\n[1/4] Fetching inflation data ...")
+    print("\n[1/5] Fetching inflation data ...")
     inflation = []
 
     for series, name in [("CPIAUCSL", "CPI YoY"), ("CPILFESL", "Core CPI YoY"),
@@ -148,7 +148,7 @@ def main() -> None:
         time.sleep(0.3)
 
     # ── Employment ────────────────────────────────────────────────────────────
-    print("\n[2/4] Fetching employment data ...")
+    print("\n[2/5] Fetching employment data ...")
     employment = []
 
     # Unemployment Rate — change shown in pp (absolute), not relative %
@@ -229,7 +229,7 @@ def main() -> None:
     time.sleep(0.3)
 
     # ── Rates ─────────────────────────────────────────────────────────────────
-    print("\n[3/4] Fetching rate data ...")
+    print("\n[3/5] Fetching rate data ...")
     rates = []
 
     for series, name, unit in [
@@ -287,22 +287,22 @@ def main() -> None:
                        "history": EMPTY_HIST})
     time.sleep(0.3)
 
-    # Exports of Goods & Services — EXPGS: quarterly, billions chained 2017$
+    # Exports of Goods & Services — EXPGS: quarterly, billions chained 2017$ (annualized)
     rows = fetch_fred(api_key, "EXPGS", limit=20)
     hist = mom_history(rows)
-    entry = mom_entry("Exports", "B$", rows, history=hist)
+    entry = mom_entry("Exports (Ann.)", "B$", rows, history=hist)
     trade.append(entry)
     if entry["price"]:
-        print(f"  OK  Exports              ${entry['price']}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
+        print(f"  OK  Exports (Ann.)       ${entry['price']}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
-    # Imports of Goods & Services — IMPGS: quarterly, billions chained 2017$
+    # Imports of Goods & Services — IMPGS: quarterly, billions chained 2017$ (annualized)
     rows = fetch_fred(api_key, "IMPGS", limit=20)
     hist = mom_history(rows)
-    entry = mom_entry("Imports", "B$", rows, history=hist)
+    entry = mom_entry("Imports (Ann.)", "B$", rows, history=hist)
     trade.append(entry)
     if entry["price"]:
-        print(f"  OK  Imports              ${entry['price']}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
+        print(f"  OK  Imports (Ann.)       ${entry['price']}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
     # ── Growth & Sentiment ────────────────────────────────────────────────────

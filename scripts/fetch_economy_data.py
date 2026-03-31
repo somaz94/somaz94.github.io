@@ -263,7 +263,7 @@ def main() -> None:
     print(f"[fetch_economy_data] Starting — {updated_at}")
 
     # ── Indices ───────────────────────────────────────────────────────────────
-    print("\n[1/4] Fetching market indices ...")
+    print("\n[1/6] Fetching market indices ...")
     indices_result = []
     for item in INDICES:
         quote = fetch_quote(item["symbol"])
@@ -286,7 +286,7 @@ def main() -> None:
             })
 
     # ── Commodities ───────────────────────────────────────────────────────────
-    print("\n[2/4] Fetching commodities ...")
+    print("\n[2/6] Fetching commodities ...")
     commodities_result = []
     for item in COMMODITIES:
         quote = fetch_quote(item["symbol"])
@@ -309,7 +309,7 @@ def main() -> None:
             })
 
     # ── Interest Rates ────────────────────────────────────────────────────────
-    print("\n[3/4] Fetching interest rates & USD index ...")
+    print("\n[3/6] Fetching interest rates & USD index ...")
     rates_result = []
     for item in RATES:
         quote = fetch_quote(item["symbol"])
@@ -332,7 +332,7 @@ def main() -> None:
             })
 
     # ── Crypto History ────────────────────────────────────────────────────────
-    print("\n[4/5] Fetching crypto 90-day history ...")
+    print("\n[4/6] Fetching crypto 90-day history ...")
     crypto_result = []
     for coin in CRYPTO_COINS:
         h = fetch_crypto_history(coin["id"])
@@ -342,12 +342,12 @@ def main() -> None:
         time.sleep(7)  # 7s delay → ~8.5 req/min, safely under free tier limit
 
     # ── News ──────────────────────────────────────────────────────────────────
-    print("\n[5/5] Fetching news ...")
+    print("\n[5/6] Fetching news ...")
     news_result = fetch_news(NEWS_FEEDS)
     print(f"  Collected {len(news_result)} headlines")
 
     # ── News Summary ──────────────────────────────────────────────────────────
-    print("\n[5/5] Generating news summary ...")
+    print("\n[6/6] Generating news summary ...")
     summary = summarize_news(news_result)
     if summary.get("ko"):
         print(f"  OK  KO ({len(summary['ko'])} chars) / EN ({len(summary['en'])} chars)")
