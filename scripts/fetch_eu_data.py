@@ -247,6 +247,32 @@ def main() -> None:
         print(f"  OK  Unemployment Rate   {entry['price']}%  {entry['change']:+.2f}pp  [{len(unemp_data)} pts]")
     time.sleep(0.3)
 
+    # Employed (EA20, quarterly, thousands → M)
+    emp_data = fetch_eurostat("lfsi_emp_q", {
+        "geo": "EA20", "age": "Y15-64", "sex": "T", "unit": "THS_PER",
+        "s_adj": "SA", "freq": "Q",
+        "sinceTimePeriod": "2023-Q1",
+    })
+    if len(emp_data) >= 2:
+        emp_items = sorted(emp_data.items())
+        emp_times = [t for t, _ in emp_items]
+        emp_values = [round(v / 1000, 2) for _, v in emp_items]
+        emp_hist = {"times": emp_times, "values": emp_values}
+        latest = emp_values[-1]
+        prev_val = emp_values[-2]
+        change = round(latest - prev_val, 2)
+        change_pct = round((change / prev_val * 100) if prev_val else 0, 2)
+        emp_entry = {"name": "Employed", "unit": "M",
+                     "price": latest, "change": change, "change_pct": change_pct,
+                     "time": emp_times[-1], "history": emp_hist}
+        macro.append(emp_entry)
+        print(f"  OK  Employed            {latest}M  {change_pct:+.2f}%  [{len(emp_times)} pts]")
+    else:
+        macro.append({"name": "Employed", "unit": "M",
+                      "price": 0, "change": 0, "change_pct": 0, "time": "",
+                      "history": EMPTY_HIST})
+    time.sleep(0.3)
+
     # ── Growth & Sentiment ───────────────────────────────────────────────────
     print("\n[4/5] Fetching growth & sentiment data ...")
     growth = []
