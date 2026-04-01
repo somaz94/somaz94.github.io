@@ -4,7 +4,7 @@ Fetch KR economic data from ECOS (한국은행 경제통계시스템).
 Writes results to _data/kr_data.json for Jekyll to render.
 
 Dependencies: requests, feedparser
-Usage: ECOS_API_KEY=<key> python scripts/fetch_korea_data.py
+Usage: ECOS_API_KEY=<key> python scripts/fetch_kr_data.py
 """
 
 import calendar
@@ -33,6 +33,30 @@ OUTPUT_FILE = Path(__file__).parent.parent / "_data" / "kr_data.json"
 ECOS_BASE = "https://ecos.bok.or.kr/api/StatisticSearch"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+def load_previous(path: Path) -> dict:
+    """Load existing JSON output if it exists, for fallback on fetch failure."""
+    try:
+        if path.exists():
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def fallback_list(new_items: list, prev_items: list, key: str = "name") -> list:
+    """Replace price=0 entries in new_items with previous data keyed by name."""
+    prev_map = {item[key]: item for item in prev_items if key in item}
+    result = []
+    for item in new_items:
+        if item.get("price", 0) == 0 and item.get(key) in prev_map:
+            result.append(prev_map[item[key]])
+            print(f"  FALLBACK  {item[key]} — using previous data")
+        else:
+            result.append(item)
+    return result
+
 
 def daily_range(days: int = 15) -> tuple[str, str]:
     end = datetime.now()
@@ -155,7 +179,9 @@ def main() -> None:
     kst = timezone(timedelta(hours=9))
     now_kst = datetime.now(kst)
     updated_at = now_kst.strftime("%Y-%m-%d %H:%M KST")
-    print(f"[fetch_korea_data] Starting — {updated_at}")
+    print(f"[fetch_kr_data] Starting — {updated_at}")
+
+    prev = load_previous(OUTPUT_FILE)
 
     d_start, d_end = daily_range(90)    # 90 days for daily (rates, FX)
     m_start, m_end = monthly_range(24)   # 24 months for monthly series
@@ -372,6 +398,14 @@ def main() -> None:
         item.pop("_ts", None)
     news = unique[:12]
     print(f"  Collected {len(news)} headlines")
+
+    # ── Fallback: replace failed (price=0) items with previous data ───────────
+    rates  = fallback_list(rates,  prev.get("rates",  []))
+    prices = fallback_list(prices, prev.get("prices", []))
+    macro  = fallback_list(macro,  prev.get("macro",  []))
+    fx     = fallback_list(fx,     prev.get("fx",     []))
+    trade  = fallback_list(trade,  prev.get("trade",  []))
+    growth = fallback_list(growth, prev.get("growth", []))
 
     # ── Write output ──────────────────────────────────────────────────────────
     output = {

@@ -53,6 +53,30 @@ def fetch_fred(api_key: str, series_id: str, limit: int = 15, retries: int = 3) 
 EMPTY_HIST = {"times": [], "values": []}
 
 
+def load_previous(path: Path) -> dict:
+    """Load existing JSON output if it exists, for fallback on fetch failure."""
+    try:
+        if path.exists():
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def fallback_list(new_items: list, prev_items: list, key: str = "name") -> list:
+    """Replace price=0 entries in new_items with previous data keyed by name."""
+    prev_map = {item[key]: item for item in prev_items if key in item}
+    result = []
+    for item in new_items:
+        if item.get("price", 0) == 0 and item.get(key) in prev_map:
+            result.append(prev_map[item[key]])
+            print(f"  FALLBACK  {item[key]} — using previous data")
+        else:
+            result.append(item)
+    return result
+
+
 def mom_history(rows: list, scale: float = 1.0) -> dict:
     """Build price history array from FRED observations."""
     valid = [r for r in rows if r.get("value", "") not in (".", "")]
@@ -131,6 +155,8 @@ def main() -> None:
     now_kst = datetime.now(kst)
     updated_at = now_kst.strftime("%Y-%m-%d %H:%M KST")
     print(f"[fetch_us_data] Starting — {updated_at}")
+
+    prev = load_previous(OUTPUT_FILE)
 
     # ── Inflation ─────────────────────────────────────────────────────────────
     print("\n[1/5] Fetching inflation data ...")
@@ -397,6 +423,13 @@ def main() -> None:
         sentiment.append({"name": "Housing Starts", "unit": "K",
                            "price": 0, "change": 0, "change_pct": 0, "time": "",
                            "history": EMPTY_HIST})
+
+    # ── Fallback: replace failed (price=0) items with previous data ───────────
+    inflation  = fallback_list(inflation,  prev.get("inflation",  []))
+    employment = fallback_list(employment, prev.get("employment", []))
+    rates      = fallback_list(rates,      prev.get("rates",      []))
+    trade      = fallback_list(trade,      prev.get("trade",      []))
+    sentiment  = fallback_list(sentiment,  prev.get("sentiment",  []))
 
     # ── Write output ──────────────────────────────────────────────────────────
     output = {

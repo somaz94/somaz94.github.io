@@ -70,7 +70,7 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 | Script | Steps | Purpose |
 |---|---|---|
 | `fetch_economy_data.py` | 6 | Indices, commodities, rates, crypto 90-day history, news, Gemini AI summary |
-| `fetch_korea_data.py` | 7 | KR rates, prices, employment, FX, trade, GDP, news (연합뉴스+한경 RSS) |
+| `fetch_kr_data.py` | 7 | KR rates, prices, employment, FX, trade, GDP, news (연합뉴스+한경 RSS) |
 | `fetch_us_data.py` | 5 | Inflation, employment, rates, trade, growth & sentiment |
 
 <br/>
@@ -130,7 +130,7 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 
 ### `daily-economy.yml`
 - **Schedule**: Weekdays 08:00 KST (`0 23 * * 0-4`) and 18:00 KST (`0 9 * * 1-5`)
-- **Steps**: fetch_economy_data → fetch_korea_data → fetch_us_data → verify → commit
+- **Steps**: fetch_economy_data → fetch_kr_data → fetch_us_data → verify → commit
 - **Verify step** checks:
   - Required keys presence per file
   - Data quality: fails if >60% of price items are zero
@@ -149,7 +149,7 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 | Secret | Used by |
 |---|---|
 | `GEMINI_API_KEY` | `fetch_economy_data.py` — AI market summary (optional, skipped if missing) |
-| `ECOS_API_KEY` | `fetch_korea_data.py` — BOK ECOS API |
+| `ECOS_API_KEY` | `fetch_kr_data.py` — BOK ECOS API |
 | `FRED_API_KEY` | `fetch_us_data.py` — Federal Reserve FRED API |
 | `DEPLOY_TOKEN` | `deploy.yml` — push to public GitHub Pages repo |
 

@@ -178,6 +178,30 @@ def _fetch_single_feed(feed_cfg: dict, per_feed: int) -> list:
     return items
 
 
+def load_previous(path: Path) -> dict:
+    """Load existing JSON output if it exists, for fallback on fetch failure."""
+    try:
+        if path.exists():
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def fallback_list(new_items: list, prev_items: list, key: str = "name") -> list:
+    """Replace price=0 entries in new_items with previous data keyed by name."""
+    prev_map = {item[key]: item for item in prev_items if key in item}
+    result = []
+    for item in new_items:
+        if item.get("price", 0) == 0 and item.get(key) in prev_map:
+            result.append(prev_map[item[key]])
+            print(f"  FALLBACK  {item[key]} — using previous data")
+        else:
+            result.append(item)
+    return result
+
+
 def fetch_news(feeds: list, per_feed: int = 5, total_limit: int = 15) -> list:
     """Fetch news headlines from RSS feeds in parallel, sorted newest-first."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -262,6 +286,8 @@ def main() -> None:
     updated_at = now_kst.strftime("%Y-%m-%d %H:%M KST")
 
     print(f"[fetch_economy_data] Starting — {updated_at}")
+
+    prev = load_previous(OUTPUT_FILE)
 
     # ── Indices ───────────────────────────────────────────────────────────────
     print("\n[1/6] Fetching market indices ...")
@@ -354,6 +380,11 @@ def main() -> None:
         print(f"  OK  KO ({len(summary['ko'])} chars) / EN ({len(summary['en'])} chars)")
     else:
         print("  SKIP  No API key or generation failed")
+
+    # ── Fallback: replace failed (price=0) items with previous data ───────────
+    indices_result    = fallback_list(indices_result,    prev.get("indices",    []))
+    commodities_result= fallback_list(commodities_result,prev.get("commodities",[]))
+    rates_result      = fallback_list(rates_result,      prev.get("rates",      []))
 
     # ── Write output ──────────────────────────────────────────────────────────
     output = {
