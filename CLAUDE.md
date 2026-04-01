@@ -19,14 +19,15 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 
 | File | URL | Description |
 |---|---|---|
-| `economy.html` | `/economy/` | Global hub — indices, commodities, crypto, forex, news, 3-country comparison |
+| `economy.html` | `/economy/` | Global hub — indices, commodities, crypto, forex, news, 4-country comparison |
 | `economy/kr.html` | `/economy/kr/` | KR macro dashboard (BOK ECOS) |
 | `economy/us.html` | `/economy/us/` | US macro dashboard (FRED) |
 | `economy/jp.html` | `/economy/jp/` | JP macro dashboard (FRED + e-Stat) |
+| `economy/eu.html` | `/economy/eu/` | EU macro dashboard (FRED + Eurostat) |
 
 ### Country Page Convention
 
-Country pages (KR, US, JP, and future additions) must follow a **consistent structure**.
+Country pages (KR, US, JP, EU, and future additions) must follow a **consistent structure**.
 See **[`docs/ECONOMY-STRUCTURE.md`](docs/ECONOMY-STRUCTURE.md)** for the full specification:
 - 8-section order, section titles, card format, empty state messages
 - Side-by-side data comparison (rates, inflation, FX, trade, employment, growth, news)
@@ -45,6 +46,7 @@ See **[`docs/ECONOMY-TECHNICAL.md`](docs/ECONOMY-TECHNICAL.md)** for implementat
 | KR — Policy Rate (BOK) | BOK ECOS API | ✅ Automatic |
 | US — Policy Rate (Fed) | FRED `DFEDTARU` | ✅ Automatic |
 | JP — Policy Rate (BOJ) | Lookup table in `fetch_jp_data.py` | ❌ Manual — add a line when BOJ changes rate |
+| EU — Policy Rate (ECB) | FRED `ECBMRRFR` | ✅ Automatic |
 
 BOJ holds 8 meetings/year. 2026 schedule in script comments.
 Source: https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm
@@ -62,6 +64,7 @@ Source: https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm
 | `fetch_kr_data.py` | BOK ECOS | `ECOS_API_KEY` |
 | `fetch_us_data.py` | FRED | `FRED_API_KEY` |
 | `fetch_jp_data.py` | FRED + e-Stat | `FRED_API_KEY`, `ESTAT_API_KEY` |
+| `fetch_eu_data.py` | FRED + Eurostat | `FRED_API_KEY` |
 
 <br/>
 

@@ -49,7 +49,9 @@ INDICES = [
     {"symbol": "^N300",  "name": "Nikkei 300",  "currency": "JPY"},
     {"symbol": "^HSI",   "name": "Hang Seng",   "currency": "HKD"},
     {"symbol": "^FTSE",  "name": "FTSE 100",    "currency": "GBP"},
+    {"symbol": "^STOXX50E","name": "Euro Stoxx 50","currency": "EUR"},
     {"symbol": "^GDAXI", "name": "DAX",         "currency": "EUR"},
+    {"symbol": "^FCHI",  "name": "CAC 40",      "currency": "EUR"},
 ]
 
 COMMODITIES = [
