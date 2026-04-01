@@ -224,11 +224,11 @@ def main() -> None:
         print(f"  OK  취업자 수       {entry['price']}M명  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
-    # 외환보유액 — 732Y001/F001, million USD → B$
-    rows = fetch_ecos(api_key, "732Y001", "M", m_start, m_end, "F001")
+    # 외환보유액 — 732Y001/99 (합계), thousand USD → B$
+    rows = fetch_ecos(api_key, "732Y001", "M", m_start, m_end, "99")
     v, p, t = latest_two(rows)
-    hist = extract_history(rows, scale=1000.0)
-    entry = build_entry("외환보유액", "B$", v, p, t, scale=1000.0, history=hist)
+    hist = extract_history(rows, scale=1_000_000.0)
+    entry = build_entry("외환보유액", "B$", v, p, t, scale=1_000_000.0, history=hist)
     macro.append(entry)
     if v is not None:
         print(f"  OK  외환보유액      ${entry['price']:.1f}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
@@ -328,15 +328,15 @@ def main() -> None:
         print(f"  OK  소비자심리지수  {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
-    # BSI 제조업 업황실적 — 512Y003/C1000, monthly
-    rows = fetch_ecos(api_key, "512Y003", "M", m_start, m_end, "C1000")
+    # 뉴스심리지수 — 521Y001/A001, monthly (100 기준, 실험적 통계)
+    rows = fetch_ecos(api_key, "521Y001", "M", m_start, m_end, "A001")
     v, p, t = latest_two(rows)
     hist = extract_history(rows)
-    entry = build_entry("제조업 BSI", "", v, p, t, history=hist)
+    entry = build_entry("뉴스심리지수", "", v, p, t, history=hist)
     entry["change_pct"] = entry["change"]  # absolute pp
     growth.append(entry)
     if v is not None:
-        print(f"  OK  제조업 BSI     {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
+        print(f"  OK  뉴스심리지수   {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
     # ── News ─────────────────────────────────────────────────────────────────
