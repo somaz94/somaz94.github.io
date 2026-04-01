@@ -156,7 +156,7 @@ def main() -> None:
     updated_at = now_kst.strftime("%Y-%m-%d %H:%M KST")
     print(f"[fetch_us_data] Starting — {updated_at}")
 
-    prev = load_previous(OUTPUT_FILE)
+    prev_data = load_previous(OUTPUT_FILE)
 
     # ── Inflation ─────────────────────────────────────────────────────────────
     print("\n[1/5] Fetching inflation data ...")
@@ -259,8 +259,10 @@ def main() -> None:
     rates = []
 
     for series, name, unit in [
-        ("FEDFUNDS",    "Fed Funds Rate", "%"),
-        ("MORTGAGE30US","30Y Mortgage",   "%"),
+        ("DFEDTARU",    "Policy Rate (Fed)", "%"),
+        ("DGS10",       "US 10Y",         "%"),
+        ("DGS2",        "US 2Y",          "%"),
+        ("MORTGAGE30US","30Y Mortgage",    "%"),
     ]:
         rows = fetch_fred(api_key, series, limit=52)  # ~1 year for weekly/monthly
         hist = mom_history(rows)
@@ -425,11 +427,11 @@ def main() -> None:
                            "history": EMPTY_HIST})
 
     # ── Fallback: replace failed (price=0) items with previous data ───────────
-    inflation  = fallback_list(inflation,  prev.get("inflation",  []))
-    employment = fallback_list(employment, prev.get("employment", []))
-    rates      = fallback_list(rates,      prev.get("rates",      []))
-    trade      = fallback_list(trade,      prev.get("trade",      []))
-    sentiment  = fallback_list(sentiment,  prev.get("sentiment",  []))
+    inflation  = fallback_list(inflation,  prev_data.get("inflation",  []))
+    employment = fallback_list(employment, prev_data.get("employment", []))
+    rates      = fallback_list(rates,      prev_data.get("rates",      []))
+    trade      = fallback_list(trade,      prev_data.get("trade",      []))
+    sentiment  = fallback_list(sentiment,  prev_data.get("sentiment",  []))
 
     # ── Write output ──────────────────────────────────────────────────────────
     output = {

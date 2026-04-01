@@ -46,6 +46,7 @@ INDICES = [
     {"symbol": "^KQ11",  "name": "KOSDAQ",      "currency": "KRW"},
     {"symbol": "^KS200", "name": "KOSPI 200",   "currency": "KRW"},
     {"symbol": "^N225",  "name": "Nikkei 225",  "currency": "JPY"},
+    {"symbol": "^N300",  "name": "Nikkei 300",  "currency": "JPY"},
     {"symbol": "^HSI",   "name": "Hang Seng",   "currency": "HKD"},
     {"symbol": "^FTSE",  "name": "FTSE 100",    "currency": "GBP"},
     {"symbol": "^GDAXI", "name": "DAX",         "currency": "EUR"},

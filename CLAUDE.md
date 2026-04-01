@@ -19,30 +19,46 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 
 | File | URL | Description | Language |
 |---|---|---|---|
-| `economy.html` | `/economy/` | Global hub — indices, commodities, crypto, forex, news, KR/US comparison | English |
-| `economy/kr.html` | `/economy/kr/` | KR macro dashboard (ECOS data) | Korean |
+| `economy.html` | `/economy/` | Global hub — indices, commodities, crypto, forex, news, KR/US/JP comparison | English |
+| `economy/kr.html` | `/economy/kr/` | KR macro dashboard (ECOS data) | English |
 | `economy/us.html` | `/economy/us/` | US macro dashboard (FRED data) | English |
+| `economy/jp.html` | `/economy/jp/` | JP macro dashboard (FRED + e-Stat data) | English |
 
-### Section Order (KR / US parallel structure)
+### Country Page Convention
 
-| # | KR (`kr.html`) | US (`us.html`) |
-|---|---|---|
-| 1 | Stock Indices (KOSPI, KOSDAQ, KOSPI 200) | Stock Indices (S&P 500, NASDAQ, NASDAQ 100, Dow Jones) |
-| 2 | Interest Rates | Interest Rates |
-| 3 | Exchange Rates (X/KRW) | Exchange Rates (X/USD) |
-| 4 | Inflation | Inflation |
-| 5 | Trade | Trade |
-| 6 | Employment & Macro (Unemployment Rate, Employed, FX Reserves) | Employment |
-| 7 | Growth & Sentiment (GDP Growth, CCSI, News Sentiment) | Growth & Sentiment |
-| 8 | Economic News | Economic News |
+Country economy pages (KR, US, JP, and any future additions) must follow a **consistent structure**:
+
+1. **Section order** — all country pages use the same 8 sections in the same order:
+   - Stock Indices → Interest Rates → Exchange Rates → Inflation → Trade → Employment & Macro → Growth & Sentiment → Economic News
+2. **Section titles** — identical across pages (e.g. "Employment & Macro", not "Employment")
+3. **Card format** — same eco-card structure: name, price, change, currency/time line
+4. **Empty state** — `"Data will appear after the first scheduled fetch."` (use "scheduled" and "waiting" consistently)
+5. **Navigation** — each page links back to Economy hub and to the other two country pages
+6. **Exchange rate multiplier** — use 100× or 1000× for small-valued currencies so values fit the same order of magnitude as other pairs on that page
+7. **Stock index prices** — apply `number_with_delimiter` filter for thousands separator
+8. **Color logic** — `eco-up` = good, `eco-down` = bad; inverted for inflation and unemployment
+
+### Section Order (KR / US / JP)
+
+| # | Section | KR | US | JP |
+|---|---|---|---|---|
+| 1 | Stock Indices | KOSPI, KOSDAQ, KOSPI 200 | S&P 500, NASDAQ, NASDAQ 100, Dow Jones | Nikkei 225, Nikkei 300 |
+| 2 | Interest Rates | Policy Rate (BOK), KTB 3Y, KTB 10Y | Policy Rate (Fed), US 10Y, US 2Y, 30Y Mortgage, 10Y-2Y Spread | Policy Rate (BOJ), Call Money, JGB 10Y, 3M Call Rate |
+| 3 | Exchange Rates | X/KRW (ECOS) | X/USD (Frankfurter JS) | X/JPY (Frankfurter JS) |
+| 4 | Inflation | CPI, Core CPI | CPI, Core CPI, PCE, Core PCE, PPI | CPI YoY, Core CPI YoY |
+| 5 | Trade | Exports, Imports, Balance, Current Account | Balance, Exports, Imports | Exports, Imports, Balance |
+| 6 | Employment & Macro | Unemployment, Employed, FX Reserves | Unemployment, NFP, Claims, Job Openings | Unemployment, Employed, FX Reserves |
+| 7 | Growth & Sentiment | GDP, CCSI, News Sentiment | GDP, Consumer Sentiment, Chicago Fed, Durable Goods, Retail Sales, Housing | GDP, Industrial Prod., Consumer Confidence |
+| 8 | Economic News | kr_data.json RSS | market_data.json (shared) | jp_data.json RSS |
 
 ### Exchange Rate Pairs
 
 | Page | Pairs | Source |
 |---|---|---|
 | Main | EUR/USD, USD/JPY, GBP/USD, USD/CNY, USD/KRW | Frankfurter (live JS) |
-| KR | USD/KRW, JPY/KRW, EUR/KRW, CNY/KRW, GBP/KRW | ECOS API (server-side) |
+| KR | USD/KRW, JPY/KRW (100¥), EUR/KRW, CNY/KRW, GBP/KRW | ECOS API (server-side) |
 | US | EUR/USD, GBP/USD, CHF/USD, CAD/USD, 100 JPY/USD | Frankfurter (live JS) |
+| JP | USD/JPY, EUR/JPY, GBP/JPY, CNY/JPY, 1000 KRW/JPY | Frankfurter (live JS) |
 
 ### Layout & Styles
 
@@ -64,6 +80,7 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 | `market_data.json` | yfinance, CoinGecko, Frankfurter, RSS | `updated_at, summary, indices, commodities, rates, crypto, news` |
 | `kr_data.json` | BOK ECOS API, RSS (연합뉴스, 한국경제) | `updated_at, rates, prices, macro, fx, trade, growth, news` |
 | `us_data.json` | FRED API | `updated_at, inflation, employment, rates, trade, sentiment` |
+| `jp_data.json` | FRED + e-Stat API, RSS (NHK, The Japan News) | `updated_at, rates, prices, macro, trade, growth, news` |
 
 ### Data Scripts (`scripts/`)
 
@@ -72,6 +89,7 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 | `fetch_economy_data.py` | 6 | Indices, commodities, rates, crypto 90-day history, news, Gemini AI summary |
 | `fetch_kr_data.py` | 7 | KR rates, prices, employment, FX, trade, GDP, news (연합뉴스+한경 RSS) |
 | `fetch_us_data.py` | 5 | Inflation, employment, rates, trade, growth & sentiment |
+| `fetch_jp_data.py` | 6 | JP rates (FRED), inflation/unemployment/IP/CCI (e-Stat), trade (FRED), GDP (FRED), news (NHK RSS) |
 
 <br/>
 
@@ -130,7 +148,7 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 
 ### `daily-economy.yml`
 - **Schedule**: Weekdays 08:00 KST (`0 23 * * 0-4`) and 18:00 KST (`0 9 * * 1-5`)
-- **Steps**: fetch_economy_data → fetch_kr_data → fetch_us_data → verify → commit
+- **Steps**: fetch_economy_data → fetch_kr_data → fetch_us_data → fetch_jp_data → verify → commit
 - **Verify step** checks:
   - Required keys presence per file
   - Data quality: fails if >60% of price items are zero
@@ -150,7 +168,8 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 |---|---|
 | `GEMINI_API_KEY` | `fetch_economy_data.py` — AI market summary (optional, skipped if missing) |
 | `ECOS_API_KEY` | `fetch_kr_data.py` — BOK ECOS API |
-| `FRED_API_KEY` | `fetch_us_data.py` — Federal Reserve FRED API |
+| `FRED_API_KEY` | `fetch_us_data.py`, `fetch_jp_data.py` — Federal Reserve FRED API |
+| `ESTAT_API_KEY` | `fetch_jp_data.py` — Japan e-Stat API (CPI, unemployment, IP, CCI) |
 | `DEPLOY_TOKEN` | `deploy.yml` — push to public GitHub Pages repo |
 
 <br/>

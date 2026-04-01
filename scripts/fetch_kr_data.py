@@ -192,7 +192,7 @@ def main() -> None:
     rates = []
 
     specs = [
-        ("722Y001", "D", d_start, d_end, "0101000",   "Base Rate",  "%", 1.0),
+        ("722Y001", "D", d_start, d_end, "0101000",   "Policy Rate (BOK)",  "%", 1.0),
         ("817Y002", "D", d_start, d_end, "010200000",  "KTB 3Y",    "%", 1.0),
         ("817Y002", "D", d_start, d_end, "010210000",  "KTB 10Y",   "%", 1.0),
     ]
