@@ -309,7 +309,7 @@ def main() -> None:
         base = {"name": name, "unit": "%", "price": 0, "change": 0, "change_pct": 0, "time": "", "history": EMPTY_HIST}
         if not estat_key:
             return base
-        vals = fetch_estat(estat_key, "0003427113", {"cdTab": "3", "cdArea": "00000", "cdCat01": cat01_code})
+        vals = fetch_estat(estat_key, "0003427113", {"cdTab": "3", "cdArea": "00000", "cdCat01": cat01_code, "cdTimeFrom": "2024000101"})
         if len(vals) < 2:
             return base
         def to_ym(v):
@@ -350,7 +350,7 @@ def main() -> None:
     if estat_key:
         unemp_time_map = fetch_estat_meta_time(estat_key, "0003005865")
         unemp_vals = fetch_estat(estat_key, "0003005865",
-                                 {"cdTab": "02", "cdCat01": "000", "cdCat02": "08", "cdCat03": "0", "cdArea": "00000"})
+                                 {"cdTab": "02", "cdCat01": "000", "cdCat02": "08", "cdCat03": "0", "cdArea": "00000", "cdTimeFrom": "2024000101"})
         def unemp_ym(v):
             return unemp_time_map.get(v.get("@time", ""), v.get("@time", ""))
         def _is_valid(v):
@@ -554,7 +554,7 @@ def main() -> None:
                 "price": 0, "change": 0, "change_pct": 0, "time": "", "history": EMPTY_HIST}
     if estat_key:
         cc_time_map = fetch_estat_meta_time(estat_key, "0003446462")
-        cc_vals = fetch_estat(estat_key, "0003446462", {"cdCat01": "1060"})
+        cc_vals = fetch_estat(estat_key, "0003446462", {"cdCat01": "1060", "cdTimeFrom": "2024000101"})
         def cc_ym(v):
             return cc_time_map.get(v.get("@time", ""), "")
         def _valid_cc(v):

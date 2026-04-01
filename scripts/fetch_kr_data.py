@@ -207,22 +207,47 @@ def main() -> None:
             print(f"  OK  {name:12s}  {entry['price']}%  {entry['change']:+.3f}pp  [{len(hist['times'])} pts]")
         time.sleep(0.3)
 
-    # ── Prices ────────────────────────────────────────────────────────────────
+    # ── Prices (YoY%) ────────────────────────────────────────────────────────
     print("\n[2/7] Fetching price data ...")
     prices = []
 
     price_specs = [
-        ("901Y009", "M", m_start, m_end, "0",  "CPI",      "", 1.0),
-        ("901Y010", "M", m_start, m_end, "QB", "Core CPI", "", 1.0),
+        ("901Y009", "M", m_start, m_end, "0",  "CPI YoY"),
+        ("901Y010", "M", m_start, m_end, "QB", "Core CPI YoY"),
     ]
-    for stat, period, s, e, item, name, unit, scale in price_specs:
+    for stat, period, s, e, item, name in price_specs:
         rows = fetch_ecos(api_key, stat, period, s, e, item)
-        v, p, t = latest_two(rows)
-        hist = extract_history(rows, scale)
-        entry = build_entry(name, unit, v, p, t, scale, history=hist)
+        # Deduplicate rows
+        deduped: dict = {}
+        for r in rows:
+            if r.get("DATA_VALUE", "").strip():
+                deduped[r.get("TIME", "")] = r
+        sorted_rows = sorted(deduped.values(), key=lambda r: r.get("TIME", ""))
+        # Compute YoY% from index values (need 13+ months)
+        yoy_times, yoy_values = [], []
+        for i in range(12, len(sorted_rows)):
+            try:
+                val = float(sorted_rows[i]["DATA_VALUE"])
+                base = float(sorted_rows[i - 12]["DATA_VALUE"])
+                if base:
+                    yoy_times.append(fmt_time(sorted_rows[i].get("TIME", "")))
+                    yoy_values.append(round((val / base - 1) * 100, 2))
+            except (ValueError, ZeroDivisionError):
+                continue
+        hist = {"times": yoy_times, "values": yoy_values}
+        if len(yoy_values) >= 2:
+            latest_yoy = yoy_values[-1]
+            prev_yoy = yoy_values[-2]
+            change = round(latest_yoy - prev_yoy, 2)
+            entry = {"name": name, "unit": "%",
+                     "price": latest_yoy, "change": change, "change_pct": change,
+                     "time": yoy_times[-1], "history": hist}
+            print(f"  OK  {name:20s}  {latest_yoy}%  {change:+.2f}pp  [{len(yoy_times)} pts]")
+        else:
+            entry = {"name": name, "unit": "%",
+                     "price": 0, "change": 0, "change_pct": 0, "time": "",
+                     "history": {"times": [], "values": []}}
         prices.append(entry)
-        if v is not None:
-            print(f"  OK  {name:20s}  {entry['price']}  {entry['change_pct']:+.3f}%  [{len(hist['times'])} pts]")
         time.sleep(0.3)
 
     # ── Employment ────────────────────────────────────────────────────────────
