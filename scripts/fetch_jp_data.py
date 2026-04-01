@@ -587,7 +587,6 @@ def main() -> None:
     print("\n[6/6] Fetching JP news ...")
     jp_feeds = [
         {"url": "https://www3.nhk.or.jp/rss/news/cat6.xml",        "source": "NHK"},
-        {"url": "https://japannews.net/feed/",                      "source": "The Japan News"},
     ]
     news_items = []
     for feed_cfg in jp_feeds:
