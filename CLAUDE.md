@@ -27,14 +27,14 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 
 | # | KR (`kr.html`) | US (`us.html`) |
 |---|---|---|
-| 1 | 주가지수 (KOSPI, KOSDAQ, KOSPI 200) | Stock Indices (S&P 500, NASDAQ, NASDAQ 100, Dow Jones) |
-| 2 | 금리 | Interest Rates |
-| 3 | 환율 (X/KRW) | Exchange Rates (X/USD) |
-| 4 | 물가 | Inflation |
-| 5 | 무역·경상수지 | Trade |
-| 6 | 고용 · 거시 (실업률, 취업자 수, 외환보유액) | Employment |
-| 7 | 성장 · 경기심리 (GDP, CCSI, 뉴스심리지수) | Growth & Sentiment |
-| 8 | 경제 뉴스 | Economic News |
+| 1 | Stock Indices (KOSPI, KOSDAQ, KOSPI 200) | Stock Indices (S&P 500, NASDAQ, NASDAQ 100, Dow Jones) |
+| 2 | Interest Rates | Interest Rates |
+| 3 | Exchange Rates (X/KRW) | Exchange Rates (X/USD) |
+| 4 | Inflation | Inflation |
+| 5 | Trade | Trade |
+| 6 | Employment & Macro (Unemployment Rate, Employed, FX Reserves) | Employment |
+| 7 | Growth & Sentiment (GDP Growth, CCSI, News Sentiment) | Growth & Sentiment |
+| 8 | Economic News | Economic News |
 
 ### Exchange Rate Pairs
 

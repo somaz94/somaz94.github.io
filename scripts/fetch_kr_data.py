@@ -192,9 +192,9 @@ def main() -> None:
     rates = []
 
     specs = [
-        ("722Y001", "D", d_start, d_end, "0101000",   "기준금리",    "%", 1.0),
-        ("817Y002", "D", d_start, d_end, "010200000",  "국고채 3년",  "%", 1.0),
-        ("817Y002", "D", d_start, d_end, "010210000",  "국고채 10년", "%", 1.0),
+        ("722Y001", "D", d_start, d_end, "0101000",   "Base Rate",  "%", 1.0),
+        ("817Y002", "D", d_start, d_end, "010200000",  "KTB 3Y",    "%", 1.0),
+        ("817Y002", "D", d_start, d_end, "010210000",  "KTB 10Y",   "%", 1.0),
     ]
     for stat, period, s, e, item, name, unit, scale in specs:
         rows = fetch_ecos(api_key, stat, period, s, e, item)
@@ -212,8 +212,8 @@ def main() -> None:
     prices = []
 
     price_specs = [
-        ("901Y009", "M", m_start, m_end, "0",  "소비자물가 (CPI)", "", 1.0),
-        ("901Y010", "M", m_start, m_end, "QB", "근원물가",         "", 1.0),
+        ("901Y009", "M", m_start, m_end, "0",  "CPI",      "", 1.0),
+        ("901Y010", "M", m_start, m_end, "QB", "Core CPI", "", 1.0),
     ]
     for stat, period, s, e, item, name, unit, scale in price_specs:
         rows = fetch_ecos(api_key, stat, period, s, e, item)
@@ -229,35 +229,35 @@ def main() -> None:
     print("\n[3/7] Fetching employment data ...")
     macro = []
 
-    # 실업률 — pp change
+    # Unemployment Rate — pp change
     rows = fetch_ecos(api_key, "901Y027", "M", m_start, m_end, "I61BC")
     v, p, t = latest_two(rows)
     hist = extract_history(rows)
-    entry = build_entry("실업률", "%", v, p, t, history=hist)
+    entry = build_entry("Unemployment Rate", "%", v, p, t, history=hist)
     entry["change_pct"] = entry["change"]  # absolute pp
     macro.append(entry)
     if v is not None:
-        print(f"  OK  실업률          {entry['price']}%  {entry['change']:+.2f}pp  [{len(hist['times'])} pts]")
+        print(f"  OK  Unemployment Rate  {entry['price']}%  {entry['change']:+.2f}pp  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
-    # 취업자 수 — scale to M명, dedup handles 원계열/계절조정
+    # Employed — scale to M persons, dedup handles 원계열/계절조정
     rows = fetch_ecos(api_key, "901Y027", "M", m_start, m_end, "I61BA")
     v, p, t = latest_two(rows)
     hist = extract_history(rows, scale=1000.0)
-    entry = build_entry("취업자 수", "M명", v, p, t, scale=1000.0, history=hist)
+    entry = build_entry("Employed", "M", v, p, t, scale=1000.0, history=hist)
     macro.append(entry)
     if v is not None:
-        print(f"  OK  취업자 수       {entry['price']}M명  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
+        print(f"  OK  Employed         {entry['price']}M  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
-    # 외환보유액 — 732Y001/99 (합계), thousand USD → B$
+    # FX Reserves — 732Y001/99 (합계), thousand USD → B$
     rows = fetch_ecos(api_key, "732Y001", "M", m_start, m_end, "99")
     v, p, t = latest_two(rows)
     hist = extract_history(rows, scale=1_000_000.0)
-    entry = build_entry("외환보유액", "B$", v, p, t, scale=1_000_000.0, history=hist)
+    entry = build_entry("FX Reserves", "B$", v, p, t, scale=1_000_000.0, history=hist)
     macro.append(entry)
     if v is not None:
-        print(f"  OK  외환보유액      ${entry['price']:.1f}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
+        print(f"  OK  FX Reserves      ${entry['price']:.1f}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
     # ── Exchange Rates ────────────────────────────────────────────────────────
@@ -285,9 +285,9 @@ def main() -> None:
     print("\n[5/7] Fetching trade data ...")
     trade = []
 
-    # 수출/수입: 901Y118 values in thousands USD → divide by 1,000,000 for B$
+    # Exports/Imports: 901Y118 values in thousands USD → divide by 1,000,000 for B$
     exports_v, imports_v, trade_time = None, None, ""
-    for item, name in [("T002", "수출"), ("T004", "수입")]:
+    for item, name in [("T002", "Exports"), ("T004", "Imports")]:
         rows = fetch_ecos(api_key, "901Y118", "M", m_start, m_end, item)
         v, p, t = latest_two(rows)
         hist = extract_history(rows, scale=1_000_000.0)
@@ -295,13 +295,13 @@ def main() -> None:
         trade.append(entry)
         if v is not None:
             print(f"  OK  {name:6s}  ${entry['price']:.2f}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
-            if name == "수출":
+            if name == "Exports":
                 exports_v, trade_time = entry["price"], t
-            elif name == "수입":
+            elif name == "Imports":
                 imports_v = entry["price"]
         time.sleep(0.3)
 
-    # 무역수지 = 수출 - 수입  (compute monthly balance history)
+    # Trade Balance = Exports - Imports  (compute monthly balance history)
     if exports_v is not None and imports_v is not None:
         balance = round(exports_v - imports_v, 2)
         # Build balance history by matching months from exports/imports rows
@@ -313,56 +313,56 @@ def main() -> None:
         bal_times  = [fmt_time(m) for m in common_months]
         bal_values = [round((exp_by_month[m] - imp_by_month[m]) / 1_000_000.0, 4) for m in common_months]
         bal_history = {"times": bal_times, "values": bal_values}
-        trade.append({"name": "무역수지", "unit": "B$",
+        trade.append({"name": "Trade Balance", "unit": "B$",
                       "price": balance, "prev": 0, "change": 0, "change_pct": 0,
                       "time": fmt_time(trade_time), "history": bal_history})
-        print(f"  OK  무역수지  {'+'if balance>=0 else ''}${balance:.2f}B  [{len(bal_times)} pts]")
+        print(f"  OK  Trade Balance  {'+'if balance>=0 else ''}${balance:.2f}B  [{len(bal_times)} pts]")
 
-    # 경상수지: 301Y017/SA000, values in million USD → divide by 1,000 for B$
+    # Current Account: 301Y017/SA000, values in million USD → divide by 1,000 for B$
     rows = fetch_ecos(api_key, "301Y017", "M", m_start, m_end, "SA000")
     v, p, t = latest_two(rows)
     hist = extract_history(rows, scale=1000.0)
-    entry = build_entry("경상수지", "B$", v, p, t, scale=1000.0, history=hist)
+    entry = build_entry("Current Account", "B$", v, p, t, scale=1000.0, history=hist)
     trade.append(entry)
     if v is not None:
-        print(f"  OK  경상수지  {'+'if entry['price']>=0 else ''}${entry['price']:.2f}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
+        print(f"  OK  Current Account  {'+'if entry['price']>=0 else ''}${entry['price']:.2f}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
     # ── GDP Growth ────────────────────────────────────────────────────────────
     print("\n[6/7] Fetching GDP growth ...")
     growth = []
 
-    # 902Y015/KOR: 국제 주요국 경제성장률 한국, quarterly QoQ%
+    # 902Y015/KOR: GDP growth rate (QoQ %)
     rows = fetch_ecos(api_key, "902Y015", "Q", q_start, q_end, "KOR")
     v, p, t = latest_two(rows)
     hist = extract_history(rows)
-    entry = build_entry("GDP 성장률", "%", v, p, t, history=hist)
+    entry = build_entry("GDP Growth", "%", v, p, t, history=hist)
     entry["change_pct"] = entry["change"]  # absolute pp
     growth.append(entry)
     if v is not None:
-        print(f"  OK  GDP 성장률     {entry['price']}%  {entry['change']:+.2f}pp  ({t})  [{len(hist['times'])} pts]")
+        print(f"  OK  GDP Growth     {entry['price']}%  {entry['change']:+.2f}pp  ({t})  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
-    # CCSI (소비자심리지수) — 511Y002/FME, monthly
+    # CCSI (Consumer Sentiment Index) — 511Y002/FME, monthly
     rows = fetch_ecos(api_key, "511Y002", "M", m_start, m_end, "FME")
     v, p, t = latest_two(rows)
     hist = extract_history(rows)
-    entry = build_entry("소비자심리지수", "", v, p, t, history=hist)
+    entry = build_entry("CCSI", "", v, p, t, history=hist)
     entry["change_pct"] = entry["change"]  # absolute pp
     growth.append(entry)
     if v is not None:
-        print(f"  OK  소비자심리지수  {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
+        print(f"  OK  CCSI           {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
-    # 뉴스심리지수 — 521Y001/A001, monthly (100 기준, 실험적 통계)
+    # News Sentiment Index — 521Y001/A001, monthly (base 100, experimental)
     rows = fetch_ecos(api_key, "521Y001", "M", m_start, m_end, "A001")
     v, p, t = latest_two(rows)
     hist = extract_history(rows)
-    entry = build_entry("뉴스심리지수", "", v, p, t, history=hist)
+    entry = build_entry("News Sentiment", "", v, p, t, history=hist)
     entry["change_pct"] = entry["change"]  # absolute pp
     growth.append(entry)
     if v is not None:
-        print(f"  OK  뉴스심리지수   {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
+        print(f"  OK  News Sentiment  {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
     # ── News ─────────────────────────────────────────────────────────────────
