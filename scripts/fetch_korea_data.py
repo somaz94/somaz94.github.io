@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fetch Korean economic data from ECOS (한국은행 경제통계시스템).
+Fetch KR economic data from ECOS (한국은행 경제통계시스템).
 Writes results to _data/kr_data.json for Jekyll to render.
 
 Dependencies: requests, feedparser
@@ -224,6 +224,16 @@ def main() -> None:
         print(f"  OK  취업자 수       {entry['price']}M명  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
+    # 외환보유액 — 732Y001/F001, million USD → B$
+    rows = fetch_ecos(api_key, "732Y001", "M", m_start, m_end, "F001")
+    v, p, t = latest_two(rows)
+    hist = extract_history(rows, scale=1000.0)
+    entry = build_entry("외환보유액", "B$", v, p, t, scale=1000.0, history=hist)
+    macro.append(entry)
+    if v is not None:
+        print(f"  OK  외환보유액      ${entry['price']:.1f}B  {entry['change_pct']:+.2f}%  [{len(hist['times'])} pts]")
+    time.sleep(0.3)
+
     # ── Exchange Rates ────────────────────────────────────────────────────────
     print("\n[4/7] Fetching exchange rates ...")
     fx = []
@@ -307,8 +317,30 @@ def main() -> None:
         print(f"  OK  GDP 성장률     {entry['price']}%  {entry['change']:+.2f}pp  ({t})  [{len(hist['times'])} pts]")
     time.sleep(0.3)
 
+    # CCSI (소비자심리지수) — 511Y002/FME, monthly
+    rows = fetch_ecos(api_key, "511Y002", "M", m_start, m_end, "FME")
+    v, p, t = latest_two(rows)
+    hist = extract_history(rows)
+    entry = build_entry("소비자심리지수", "", v, p, t, history=hist)
+    entry["change_pct"] = entry["change"]  # absolute pp
+    growth.append(entry)
+    if v is not None:
+        print(f"  OK  소비자심리지수  {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
+    time.sleep(0.3)
+
+    # BSI 제조업 업황실적 — 512Y003/C1000, monthly
+    rows = fetch_ecos(api_key, "512Y003", "M", m_start, m_end, "C1000")
+    v, p, t = latest_two(rows)
+    hist = extract_history(rows)
+    entry = build_entry("제조업 BSI", "", v, p, t, history=hist)
+    entry["change_pct"] = entry["change"]  # absolute pp
+    growth.append(entry)
+    if v is not None:
+        print(f"  OK  제조업 BSI     {entry['price']}  {entry['change']:+.2f}  [{len(hist['times'])} pts]")
+    time.sleep(0.3)
+
     # ── News ─────────────────────────────────────────────────────────────────
-    print("\n[7/7] Fetching Korea news ...")
+    print("\n[7/7] Fetching KR news ...")
     kr_feeds = [
         {"url": "https://www.yna.co.kr/rss/economy.xml",   "source": "연합뉴스"},
         {"url": "https://www.hankyung.com/feed/economy",    "source": "한국경제"},

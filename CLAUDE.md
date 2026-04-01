@@ -20,7 +20,7 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 | File | URL | Description | Language |
 |---|---|---|---|
 | `economy.html` | `/economy/` | Global hub — indices, commodities, crypto, forex, news, KR/US comparison | English |
-| `economy/kr.html` | `/economy/kr/` | Korea macro dashboard (ECOS data) | Korean |
+| `economy/kr.html` | `/economy/kr/` | KR macro dashboard (ECOS data) | Korean |
 | `economy/us.html` | `/economy/us/` | US macro dashboard (FRED data) | English |
 
 ### Section Order (KR / US parallel structure)
