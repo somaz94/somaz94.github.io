@@ -33,7 +33,7 @@ Jekyll personal blog with an integrated Economy Dashboard feature.
 | 4 | 물가 | Inflation |
 | 5 | 무역·경상수지 | Trade |
 | 6 | 고용 · 거시 (실업률, 취업자 수, 외환보유액) | Employment |
-| 7 | 성장 · 경기심리 (GDP, CCSI, BSI) | Growth & Sentiment |
+| 7 | 성장 · 경기심리 (GDP, CCSI, 뉴스심리지수) | Growth & Sentiment |
 | 8 | 경제 뉴스 | Economic News |
 
 ### Exchange Rate Pairs
