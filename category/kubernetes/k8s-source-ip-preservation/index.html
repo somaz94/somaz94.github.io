@@ -1,0 +1,2874 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- Google Tag Manager -->
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+    <!-- End Google Tag Manager -->
+
+    <!-- Mermaid.js -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+
+    <title>Preserving Source IP in Kubernetes: A Complete Guide | somaz</title>
+    <meta name="description" content="A comprehensive guide to preserving source IP addresses in Kubernetes across different service types and ingress configurations, including practical examples...">
+    
+        <meta name="keywords" content="kubernetes, networking, source-ip, metallb, ingress-nginx, security, troubleshooting">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Preserving Source IP in Kubernetes: A Complete Guide | somaz">
+    <meta name="twitter:description" content="A comprehensive guide to preserving source IP addresses in Kubernetes across different service types and ingress configurations, including practical examples...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1767841728/kuberentes-sourceip-1_hffnie.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/kubernetes/k8s-source-ip-preservation/">
+    <meta property="og:title" content="Preserving Source IP in Kubernetes: A Complete Guide | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1767841728/kuberentes-sourceip-1_hffnie.png">
+    <meta property="og:description" content="A comprehensive guide to preserving source IP addresses in Kubernetes across different service types and ingress configurations, including practical examples...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-06-04T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/kubernetes/k8s-source-ip-preservation/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
+    <!-- <link href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;700&display=swap" rel="stylesheet"> -->
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<!-- Google Tag Manager (noscript) -->
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+<!-- End Google Tag Manager (noscript) -->
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/economy">Economy</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-06-04T00:00:00+00:00">
+                            
+
+
+June 4, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>20 min to read</span>
+                </p>
+                <h1 class="post-title">Preserving Source IP in Kubernetes: A Complete Guide</h1>
+                <p class="post-subtitle">Maintaining client IP addresses through Services and Ingress for logging, security, and access control</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1767841728/kuberentes-sourceip-1_hffnie.png" alt="Preserving Source IP in Kubernetes: A Complete Guide" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>In Kubernetes clusters, accurately identifying the Source IP (client IP) of incoming external requests is crucial for various operational and security purposes including logging, security analysis, auditing, and access control.</p>
+
+<p>However, in Kubernetes’ default network configuration, depending on the service type, requests pass through kube-proxy, NAT, ingress proxies, etc., causing the Source IP to be changed or lost.</p>
+
+<p>This article explains why Source IP disappears in Kubernetes environments and what configuration to apply to preserve it, organized by Service type and Ingress method.</p>
+
+<p>We’ll also cover practical labs using a Flask app with MetalLB + Ingress-NGINX to see how IPs appear in actual requests and how to preserve them.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="source-ip-preservation-by-service-type">Source IP Preservation by Service Type</h2>
+
+<p><br /></p>
+
+<h3 id="comparison-table">Comparison Table</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Service Type</th>
+      <th>Configuration Required</th>
+      <th>Request Flow</th>
+      <th>Source IP Preserved</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>ClusterIP</strong></td>
+      <td>Not possible</td>
+      <td>Internal cluster via kube-proxy</td>
+      <td>❌ No</td>
+    </tr>
+    <tr>
+      <td><strong>NodePort / LoadBalancer</strong></td>
+      <td>Requires <code class="language-plaintext highlighter-rouge">externalTrafficPolicy: Local</code></td>
+      <td>Client → Node IP:Port → Direct Pod</td>
+      <td>✅ Yes</td>
+    </tr>
+    <tr>
+      <td><strong>Ingress</strong></td>
+      <td>Requires X-Forwarded-For header</td>
+      <td>Client → Ingress Controller → Pod</td>
+      <td>✅ Yes (header-based)</td>
+    </tr>
+    <tr>
+      <td><strong>MetalLB (LoadBalancer)</strong></td>
+      <td>Requires <code class="language-plaintext highlighter-rouge">externalTrafficPolicy: Local</code></td>
+      <td>External IP → Direct node routing (L2/BGP)</td>
+      <td>✅ Yes</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><br /></p>
+
+<p><strong>Important Note</strong>: With Ingress, the actual IP doesn’t reach the pod directly but is transmitted via headers (X-Forwarded-For), requiring header parsing in the application.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="why-does-source-ip-disappear-in-cluster-mode">Why Does Source IP Disappear in Cluster Mode?</h2>
+
+<p><br /></p>
+
+<h3 id="understanding-snat">Understanding SNAT</h3>
+
+<p><strong>Cluster Mode</strong> (default):</p>
+<ul>
+  <li>kube-proxy performs SNAT (Source NAT) when forwarding traffic via iptables or ipvs</li>
+  <li>Requester’s IP is replaced with the node’s IP</li>
+  <li>Result: Node IP is recorded instead of client IP</li>
+</ul>
+
+<p><strong>Local Mode</strong>:</p>
+<ul>
+  <li>No SNAT processing</li>
+  <li>Traffic forwarded directly to pods on local node</li>
+  <li>Result: Original IP preserved</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="traffic-flow-comparison">Traffic Flow Comparison</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Cluster Mode <span class="o">(</span>externalTrafficPolicy: Cluster<span class="o">)</span>
+────────────────────────────────────────────
+Client <span class="o">(</span>1.2.3.4<span class="o">)</span>
+    ↓
+LoadBalancer/NodePort
+    ↓
+Node-1 <span class="o">(</span>kube-proxy SNAT<span class="o">)</span>
+    ↓ <span class="o">(</span>Source becomes Node-1 IP<span class="o">)</span>
+Pod on Node-2
+    ↓
+Application sees: Node-1 IP ❌
+
+
+Local Mode <span class="o">(</span>externalTrafficPolicy: Local<span class="o">)</span>
+──────────────────────────────────────────
+Client <span class="o">(</span>1.2.3.4<span class="o">)</span>
+    ↓
+LoadBalancer/NodePort
+    ↓
+Node-1 <span class="o">(</span>NO SNAT<span class="o">)</span>
+    ↓ <span class="o">(</span>Source remains 1.2.3.4<span class="o">)</span>
+Pod on Node-1 <span class="o">(</span>must exist!<span class="o">)</span>
+    ↓
+Application sees: 1.2.3.4 ✅
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="using-externaltrafficpolicy-local">Using externalTrafficPolicy: Local</h2>
+
+<p><br /></p>
+
+<h3 id="configuration">Configuration</h3>
+
+<p>For LoadBalancer or NodePort services, configure as follows to maintain original client IP:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-service</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">LoadBalancer</span>
+  <span class="na">externalTrafficPolicy</span><span class="pi">:</span> <span class="s">Local</span>  <span class="c1"># Key setting</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+  <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8080</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="behavior-differences">Behavior Differences</h3>
+
+<h4 id="local">Local:</h4>
+<ul>
+  <li>Preserves client’s original IP</li>
+  <li>Only forwards to pods on the receiving node</li>
+  <li><strong>Caveat</strong>: If no pod exists on that node, request fails</li>
+</ul>
+
+<h4 id="cluster-default">Cluster (default):</h4>
+<ul>
+  <li>Request is NAT processed within cluster</li>
+  <li>Source IP becomes node IP</li>
+  <li>Load balances across all cluster pods</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="best-practices-with-local-mode">Best Practices with Local Mode</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Use DaemonSet to ensure pod on every node</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">DaemonSet</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:latest</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="preserving-source-ip-with-ingress-nginx">Preserving Source IP with Ingress (NGINX)</h2>
+
+<p><br /></p>
+
+<h3 id="required-configuration">Required Configuration</h3>
+
+<p>Two essential settings are needed:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Setting</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Service</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">externalTrafficPolicy: Local</code></td>
+      <td>Prevents client IP from being SNATed</td>
+    </tr>
+    <tr>
+      <td><strong>ConfigMap</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">use-forwarded-headers: "true"</code><br /><code class="language-plaintext highlighter-rouge">proxy-real-ip-cidr: "0.0.0.0/0"</code></td>
+      <td>Trust X-Forwarded-For and X-Real-IP headers for logs and backend</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><br /></p>
+
+<h3 id="1-configmap-configuration">1. ConfigMap Configuration</h3>
+
+<p>Ingress controllers (like NGINX) operate as L7 proxies by default, changing the Source IP. Preserve it with this configuration:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-ingress-controller</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">ingress-nginx</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">use-forwarded-headers</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">proxy-real-ip-cidr</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0.0.0.0/0"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h4 id="configuration-keys-explained">Configuration Keys Explained</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Key</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">use-forwarded-headers: "true"</code></td>
+      <td>Trust and use X-Forwarded-For, X-Real-IP HTTP headers</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">proxy-real-ip-cidr: "0.0.0.0/0"</code></td>
+      <td>Trust any client IP. For security, limit to internal network ranges like <code class="language-plaintext highlighter-rouge">10.0.0.0/8</code>, <code class="language-plaintext highlighter-rouge">192.168.0.0/16</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>This allows NGINX to correctly parse <code class="language-plaintext highlighter-rouge">$proxy_protocol_addr</code>, <code class="language-plaintext highlighter-rouge">$remote_addr</code>, etc.</p>
+
+<p><br /></p>
+
+<h3 id="2-service-configuration">2. Service Configuration</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">ingress-nginx-controller</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">ingress-nginx</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">LoadBalancer</span>  <span class="c1"># or NodePort</span>
+  <span class="na">externalTrafficPolicy</span><span class="pi">:</span> <span class="s">Local</span>  <span class="c1"># Critical!</span>
+  <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">targetPort</span><span class="pi">:</span> <span class="s">http</span>
+    <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">443</span>
+      <span class="na">targetPort</span><span class="pi">:</span> <span class="s">https</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app.kubernetes.io/name</span><span class="pi">:</span> <span class="s">ingress-nginx</span>
+    <span class="na">app.kubernetes.io/component</span><span class="pi">:</span> <span class="s">controller</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="lab-1-verifying-source-ip">Lab 1: Verifying Source IP</h2>
+
+<p><br /></p>
+
+<h3 id="architecture">Architecture</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>External Client
+    ↓
+NodePort Service <span class="o">(</span>externalTrafficPolicy: Local<span class="o">)</span>
+    ↓
+Flask Pod <span class="o">(</span>logs request headers<span class="o">)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="1-flask-application-configmap">1. Flask Application ConfigMap</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">flask-app-config</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">app.py</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">from flask import Flask, request</span>
+    <span class="s">import os</span>
+
+    <span class="s">app = Flask(__name__)</span>
+
+    <span class="s">@app.route('/')</span>
+    <span class="s">def hello():</span>
+        <span class="s">client_ip = request.remote_addr</span>
+        <span class="s">x_forwarded_for = request.headers.get('X-Forwarded-For', '')</span>
+        <span class="s">x_real_ip = request.headers.get('X-Real-IP', '')</span>
+        <span class="s">all_headers = dict(request.headers)</span>
+    <span class="no">    </span>
+        <span class="s">response = f"""</span>
+    <span class="s">Hello from Flask!</span>
+    
+    <span class="s">Client Info:</span>
+    <span class="s">------------</span>
+    <span class="s">Remote Addr: {client_ip}</span>
+    <span class="s">X-Forwarded-For: {x_forwarded_for}</span>
+    <span class="s">X-Real-IP: {x_real_ip}</span>
+    
+    <span class="s">All Request Headers:</span>
+    <span class="s">-------------------</span>
+    <span class="s">{all_headers}</span>
+    <span class="s">"""</span>
+        <span class="s">return response</span>
+
+    <span class="s">if __name__ == '__main__':</span>
+        <span class="s">app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="2-flask-pod-definition">2. Flask Pod Definition</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">flask-app</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">flask-app</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">flask-app</span>
+      <span class="na">image</span><span class="pi">:</span> <span class="s">python:3.9-slim</span>
+      <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">8080</span>
+      <span class="na">env</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">PORT</span>
+          <span class="na">value</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8080"</span>
+      <span class="na">command</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">/bin/sh"</span><span class="pi">,</span> <span class="s2">"</span><span class="s">-c"</span><span class="pi">]</span>
+      <span class="na">args</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="pi">|</span>
+          <span class="s">pip install flask</span>
+          <span class="s">mkdir -p /app</span>
+          <span class="s">cp /config/app.py /app/</span>
+          <span class="s">cd /app</span>
+          <span class="s">python app.py</span>
+      <span class="na">volumeMounts</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">flask-app-config</span>
+          <span class="na">mountPath</span><span class="pi">:</span> <span class="s">/config</span>
+  <span class="na">volumes</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">flask-app-config</span>
+      <span class="na">configMap</span><span class="pi">:</span>
+        <span class="na">name</span><span class="pi">:</span> <span class="s">flask-app-config</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="3-service-configuration">3. Service Configuration</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">flask-app-service</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">NodePort</span>
+  <span class="na">externalTrafficPolicy</span><span class="pi">:</span> <span class="s">Local</span>  <span class="c1"># Preserves source IP</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">flask-app</span>
+  <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">8080</span>
+      <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8080</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="4-complete-manifest">4. Complete Manifest</h3>
+
+<script src="https://gist.github.com/somaz94/example-flask-source-ip-test.js"></script>
+
+<p><br /></p>
+
+<h3 id="5-testing-from-external-client">5. Testing from External Client</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl http://&lt;NodeIP&gt;:&lt;NodePort&gt;
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="6-lab-results">6. Lab Results</h3>
+
+<h4 id="same-network-segment">Same Network Segment:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl 10.10.10.51:30378
+
+Hello from Flask!
+
+Client Info:
+<span class="nt">------------</span>
+Remote Addr: 10.10.10.50
+X-Forwarded-For: 
+X-Real-IP: 
+
+All Request Headers:
+<span class="nt">-------------------</span>
+<span class="o">{</span><span class="s1">'Host'</span>: <span class="s1">'10.10.10.51:30378'</span>, <span class="s1">'User-Agent'</span>: <span class="s1">'curl/7.81.0'</span>, <span class="s1">'Accept'</span>: <span class="s1">'*/*'</span><span class="o">}</span>
+</code></pre></div></div>
+<p>✅ Source IP preserved correctly</p>
+
+<p><br /></p>
+
+<h4 id="different-network-segment">Different Network Segment:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl 10.10.10.51:30378
+
+Hello from Flask!
+
+Client Info:
+<span class="nt">------------</span>
+Remote Addr: 10.10.10.251  <span class="c"># Gateway IP, not actual client!</span>
+X-Forwarded-For: 
+X-Real-IP: 
+
+All Request Headers:
+<span class="nt">-------------------</span>
+<span class="o">{</span><span class="s1">'Host'</span>: <span class="s1">'10.10.10.51:30378'</span>, <span class="s1">'User-Agent'</span>: <span class="s1">'curl/7.81.0'</span>, <span class="s1">'Accept'</span>: <span class="s1">'*/*'</span><span class="o">}</span>
+</code></pre></div></div>
+<p>❌ Shows gateway IP instead of actual external IP</p>
+
+<p><br /></p>
+
+<h3 id="understanding-the-results">Understanding the Results</h3>
+
+<p><strong>Current Situation</strong>:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">externalTrafficPolicy: Local</code> configured ✅</li>
+  <li>NodePort direct connection to worker node ✅</li>
+  <li>Flask shows <code class="language-plaintext highlighter-rouge">$remote_addr</code> ✅</li>
+  <li>Same network: Source IP preserved ✅</li>
+  <li>Different network: Shows gateway IP (e.g., 10.10.10.251) instead of real external IP ❌</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="root-cause-kube-proxy--nat--gateway">Root Cause: kube-proxy + NAT + Gateway</h3>
+
+<p>When requests traverse physical routers or virtual gateways, the Flask pod sees the gateway/NAT IP instead of the actual external client IP:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>Your MacBook] 
+     ↓ <span class="o">(</span>request<span class="o">)</span>
+<span class="o">[</span>Gateway/NAT <span class="o">(</span>10.10.10.251<span class="o">)]</span>
+     ↓ <span class="o">(</span>SNAT applied<span class="o">)</span>
+<span class="o">[</span>Worker Node <span class="o">(</span>10.10.10.51<span class="o">)</span>:32440]
+     ↓
+<span class="o">[</span>Flask Pod]
+     
+Result: Flask receives SNATed IP <span class="o">(</span>gateway IP<span class="o">)</span>, not direct client IP
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="lab-2-metallb--ingress-nginx-with-source-ip">Lab 2: MetalLB + Ingress-NGINX with Source IP</h2>
+
+<p><br /></p>
+
+<h3 id="architecture-1">Architecture</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>External Client
+    ↓
+MetalLB LoadBalancer <span class="o">(</span>10.10.10.63<span class="o">)</span>
+    ↓
+Ingress-NGINX Controller <span class="o">(</span>externalTrafficPolicy: Local<span class="o">)</span>
+    ↓
+NGINX Pod <span class="o">(</span>configured with real_ip_header<span class="o">)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="1-metallb-setup">1. MetalLB Setup</h3>
+
+<p>First, install MetalLB. For installation guide, see: <a href="https://somaz.tistory.com/178">What is MetalLB?</a></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl get ipaddresspools.metallb.io <span class="nt">-n</span> metallb 
+
+NAME      AUTO ASSIGN   AVOID BUGGY IPS   ADDRESSES
+ip-pool   <span class="nb">true          false</span>             <span class="o">[</span><span class="s2">"10.10.10.55-10.10.10.58"</span>,<span class="s2">"10.10.10.62-10.10.10.65"</span><span class="o">]</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="2-ingress-nginx-controller-configuration">2. Ingress-NGINX Controller Configuration</h3>
+
+<p>Create test Ingress NGINX Controller with Helm:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># values/mgmt-test.yaml</span>
+<span class="na">global</span><span class="pi">:</span>
+  <span class="na">image</span><span class="pi">:</span>
+    <span class="na">registry</span><span class="pi">:</span> <span class="s">registry.k8s.io</span>
+
+<span class="na">controller</span><span class="pi">:</span>
+  <span class="na">ingressClassResource</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-test</span>  <span class="c1"># Unique name for distinction</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">default</span><span class="pi">:</span> <span class="no">false</span>  <span class="c1"># Not the default controller</span>
+    <span class="na">controllerValue</span><span class="pi">:</span> <span class="s2">"</span><span class="s">k8s.io/ingress-nginx-test"</span>
+    
+  <span class="na">service</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="no">true</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">LoadBalancer</span>
+    <span class="na">loadBalancerIP</span><span class="pi">:</span> <span class="s2">"</span><span class="s">10.10.10.63"</span>
+    <span class="na">externalTrafficPolicy</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Local"</span>  <span class="c1"># Critical!</span>
+    
+  <span class="na">config</span><span class="pi">:</span>
+    <span class="na">use-forwarded-headers</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+    <span class="na">real-ip-header</span><span class="pi">:</span> <span class="s2">"</span><span class="s">X-Forwarded-For"</span>
+    <span class="na">set-real-ip-from</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0.0.0.0/0"</span>
+    <span class="na">real-ip-recursive</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h4 id="install">Install</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>ingress-nginx-test <span class="nb">.</span> <span class="nt">-n</span> ingress-nginx <span class="nt">-f</span> ./values/mgmt-test.yaml
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h4 id="verify-configuration">Verify Configuration</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check service</span>
+kubectl get svc <span class="nt">-n</span> ingress-nginx ingress-nginx-test-controller <span class="nt">-o</span> yaml | <span class="nb">grep </span>external
+  externalTrafficPolicy: Local
+
+<span class="c"># Check configmap</span>
+kubectl get cm <span class="nt">-n</span> ingress-nginx ingress-nginx-test-controller <span class="nt">-o</span> yaml
+apiVersion: v1
+data:
+  proxy-real-ip-cidr: 0.0.0.0/0
+  use-forwarded-headers: <span class="s2">"true"</span>
+  real-ip-header: X-Forwarded-For
+  real-ip-recursive: <span class="s2">"true"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="3-nginx-test-application">3. NGINX Test Application</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">ConfigMap</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-config</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">default</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">nginx.conf</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">events {}</span>
+    <span class="s">http {</span>
+      <span class="s">log_format main '$http_x_forwarded_for - $remote_user [$time_local] "$request" '</span>
+                      <span class="s">'$status $body_bytes_sent "$http_referer" '</span>
+                      <span class="s">'"$http_user_agent" "$http_x_forwarded_for"';</span>
+      <span class="s">access_log /var/log/nginx/access.log main;</span>
+
+      <span class="s">set_real_ip_from 0.0.0.0/0;</span>
+      <span class="s">real_ip_header X-Forwarded-For;</span>
+      <span class="s">real_ip_recursive on;</span>
+
+      <span class="s">server {</span>
+        <span class="s">listen 80;</span>
+        <span class="s">location / {</span>
+          <span class="s">return 200 'Hello from NGINX! Remote Addr: $remote_addr X-Forwarded-For: $http_x_forwarded_for';</span>
+          <span class="s">add_header Content-Type text/plain;</span>
+        <span class="s">}</span>
+      <span class="s">}</span>
+    <span class="s">}</span>
+<span class="s">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Pod</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
+  <span class="na">labels</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">nginx</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">containers</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
+      <span class="na">image</span><span class="pi">:</span> <span class="s">nginx:latest</span>
+      <span class="na">ports</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">containerPort</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">volumeMounts</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">config</span>
+          <span class="na">mountPath</span><span class="pi">:</span> <span class="s">/etc/nginx/nginx.conf</span>
+          <span class="na">subPath</span><span class="pi">:</span> <span class="s">nginx.conf</span>
+  <span class="na">volumes</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">config</span>
+      <span class="na">configMap</span><span class="pi">:</span>
+        <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-config</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-service</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">nginx</span>
+  <span class="na">ports</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">targetPort</span><span class="pi">:</span> <span class="m">80</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-ingress</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ingressClassName</span><span class="pi">:</span> <span class="s">nginx-test</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="s">test.local</span>
+      <span class="na">http</span><span class="pi">:</span>
+        <span class="na">paths</span><span class="pi">:</span>
+          <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+            <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+            <span class="na">backend</span><span class="pi">:</span>
+              <span class="na">service</span><span class="pi">:</span>
+                <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-service</span>
+                <span class="na">port</span><span class="pi">:</span>
+                  <span class="na">number</span><span class="pi">:</span> <span class="m">80</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="4-testing">4. Testing</h3>
+
+<p><strong>Add to /etc/hosts</strong> (for local environment):</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="s2">"10.10.10.63 test.local"</span> | <span class="nb">sudo tee</span> <span class="nt">-a</span> /etc/hosts
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p><strong>Test from External Network</strong>:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl http://test.local
+
+Hello from Nginx!
+Remote Addr: 10.233.65.165
+X-Forwarded-For: 10.10.10.251
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p><strong>Test from Internal Network</strong>:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl http://test.local
+
+Hello from Nginx!
+Remote Addr: 10.233.65.165
+X-Forwarded-For: 10.10.10.60
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p><strong>Test with Custom X-Forwarded-For</strong>:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-H</span> <span class="s2">"Host: test.local"</span> <span class="nt">-H</span> <span class="s2">"X-Forwarded-For: 1.2.3.4"</span> http://10.10.10.63
+</code></pre></div></div>
+
+<p>If NGINX logs show <code class="language-plaintext highlighter-rouge">1.2.3.4</code>, it confirms NGINX pod is correctly reading <code class="language-plaintext highlighter-rouge">real_ip_header</code>.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="advanced-source-ip-scenarios">Advanced Source IP Scenarios</h2>
+
+<p><br /></p>
+
+<h3 id="scenario-1-multi-tier-architecture">Scenario 1: Multi-Tier Architecture</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Internet
+    ↓
+Cloud Load Balancer
+    ↓ <span class="o">(</span>X-Forwarded-For added<span class="o">)</span>
+MetalLB LoadBalancer
+    ↓ <span class="o">(</span>preserves X-Forwarded-For<span class="o">)</span>
+Ingress-NGINX
+    ↓ <span class="o">(</span>parses X-Forwarded-For<span class="o">)</span>
+Application Pod
+</code></pre></div></div>
+
+<h4 id="configuration-1">Configuration:</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Ingress NGINX ConfigMap</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">use-forwarded-headers</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">compute-full-forwarded-for</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>  <span class="c1"># Include all proxy IPs</span>
+  <span class="na">forwarded-for-header</span><span class="pi">:</span> <span class="s2">"</span><span class="s">X-Forwarded-For"</span>
+  <span class="na">proxy-real-ip-cidr</span><span class="pi">:</span> <span class="s2">"</span><span class="s">10.0.0.0/8"</span>  <span class="c1"># Trust internal network</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="scenario-2-cdn--kubernetes">Scenario 2: CDN + Kubernetes</h3>
+
+<p>When using CDN (CloudFlare, Akamai):</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Trust CDN IP ranges</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">proxy-real-ip-cidr</span><span class="pi">:</span> <span class="s2">"</span><span class="s">173.245.48.0/20,103.21.244.0/22,..."</span>
+  <span class="na">real-ip-header</span><span class="pi">:</span> <span class="s2">"</span><span class="s">CF-Connecting-IP"</span>  <span class="c1"># CloudFlare header</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="scenario-3-multiple-ingress-controllers">Scenario 3: Multiple Ingress Controllers</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Public ingress (strict checking)</span>
+<span class="na">controller-public</span><span class="pi">:</span>
+  <span class="na">config</span><span class="pi">:</span>
+    <span class="na">proxy-real-ip-cidr</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0.0.0.0/0"</span>
+    <span class="na">use-forwarded-headers</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+
+<span class="c1"># Internal ingress (trust internal)  </span>
+<span class="na">controller-internal</span><span class="pi">:</span>
+  <span class="na">config</span><span class="pi">:</span>
+    <span class="na">proxy-real-ip-cidr</span><span class="pi">:</span> <span class="s2">"</span><span class="s">10.0.0.0/8,172.16.0.0/12"</span>
+    <span class="na">use-forwarded-headers</span><span class="pi">:</span> <span class="s2">"</span><span class="s">false"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="troubleshooting-guide">Troubleshooting Guide</h2>
+
+<p><br /></p>
+
+<h3 id="issue-1-source-ip-still-shows-node-ip">Issue 1: Source IP Still Shows Node IP</h3>
+
+<h4 id="symptoms">Symptoms:</h4>
+<ul>
+  <li>externalTrafficPolicy: Local configured</li>
+  <li>Still seeing node IP in logs</li>
+</ul>
+
+<h4 id="diagnosis">Diagnosis:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check service configuration</span>
+kubectl get svc my-service <span class="nt">-o</span> yaml | <span class="nb">grep </span>externalTrafficPolicy
+
+<span class="c"># Check pod distribution</span>
+kubectl get pods <span class="nt">-o</span> wide
+
+<span class="c"># Check if pod exists on target node</span>
+kubectl get pods <span class="nt">-l</span> <span class="nv">app</span><span class="o">=</span>my-app <span class="nt">-o</span> wide | <span class="nb">grep</span> &lt;node-name&gt;
+</code></pre></div></div>
+
+<p><strong>Solutions</strong>:</p>
+<ol>
+  <li>Ensure pods exist on nodes receiving traffic</li>
+  <li>Use DaemonSet for guaranteed pod placement</li>
+  <li>Verify no additional proxy layers</li>
+</ol>
+
+<p><br /></p>
+
+<h3 id="issue-2-x-forwarded-for-header-empty">Issue 2: X-Forwarded-For Header Empty</h3>
+
+<h4 id="symptoms-1">Symptoms:</h4>
+<ul>
+  <li>Ingress configured correctly</li>
+  <li>X-Forwarded-For header is empty or missing</li>
+</ul>
+
+<h4 id="diagnosis-1">Diagnosis:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check Ingress NGINX ConfigMap</span>
+kubectl get cm <span class="nt">-n</span> ingress-nginx ingress-nginx-controller <span class="nt">-o</span> yaml
+
+<span class="c"># Check Ingress controller logs</span>
+kubectl logs <span class="nt">-n</span> ingress-nginx deployment/ingress-nginx-controller
+
+<span class="c"># Test with curl verbose</span>
+curl <span class="nt">-v</span> <span class="nt">-H</span> <span class="s2">"X-Forwarded-For: 1.2.3.4"</span> http://test.local
+</code></pre></div></div>
+
+<h4 id="solutions">Solutions:</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Ensure these settings in ConfigMap</span>
+<span class="na">data</span><span class="pi">:</span>
+  <span class="na">use-forwarded-headers</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">compute-full-forwarded-for</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">forwarded-for-header</span><span class="pi">:</span> <span class="s2">"</span><span class="s">X-Forwarded-For"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="issue-3-gateway-ip-instead-of-client-ip">Issue 3: Gateway IP Instead of Client IP</h3>
+
+<h4 id="symptoms-2">Symptoms:</h4>
+<ul>
+  <li>External requests show gateway IP</li>
+  <li>Internal requests work correctly</li>
+</ul>
+
+<h4 id="root-cause">Root Cause:</h4>
+<ul>
+  <li>Network routing through gateway/NAT</li>
+  <li>SNAT happens before reaching Kubernetes</li>
+</ul>
+
+<h4 id="solutions-1">Solutions:</h4>
+<ol>
+  <li><strong>Use Ingress with X-Forwarded-For</strong>: Application must parse headers</li>
+  <li><strong>Configure upstream proxy</strong>: If possible, configure upstream to preserve IP</li>
+  <li><strong>Use Proxy Protocol</strong>: Enable at load balancer level</li>
+</ol>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Enable Proxy Protocol on ingress</span>
+<span class="na">controller</span><span class="pi">:</span>
+  <span class="na">config</span><span class="pi">:</span>
+    <span class="na">use-proxy-protocol</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+  <span class="na">service</span><span class="pi">:</span>
+    <span class="na">annotations</span><span class="pi">:</span>
+      <span class="na">service.beta.kubernetes.io/aws-load-balancer-proxy-protocol</span><span class="pi">:</span> <span class="s2">"</span><span class="s">*"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="issue-4-inconsistent-ip-logging">Issue 4: Inconsistent IP Logging</h3>
+
+<h4 id="symptoms-3">Symptoms:</h4>
+<ul>
+  <li>Sometimes real IP, sometimes node IP</li>
+  <li>Random behavior</li>
+</ul>
+
+<h4 id="diagnosis-2">Diagnosis:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check pod distribution</span>
+kubectl get pods <span class="nt">-o</span> wide
+
+<span class="c"># Check service endpoints</span>
+kubectl get endpoints my-service
+
+<span class="c"># Check node labels and taints</span>
+kubectl get nodes <span class="nt">-o</span> wide
+</code></pre></div></div>
+
+<h4 id="solutions-2">Solutions:</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Use DaemonSet for consistent placement</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">DaemonSet</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">my-app</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">nodeSelector</span><span class="pi">:</span>
+        <span class="na">node-role.kubernetes.io/worker</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+      <span class="na">containers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">my-app</span>
+        <span class="na">image</span><span class="pi">:</span> <span class="s">my-app:latest</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="security-considerations">Security Considerations</h2>
+
+<p><br /></p>
+
+<h3 id="1-trust-boundaries">1. Trust Boundaries</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Don't trust all IPs in production</span>
+<span class="na">proxy-real-ip-cidr</span><span class="pi">:</span> <span class="s2">"</span><span class="s">10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"</span>  <span class="c1"># Internal only</span>
+
+<span class="c1"># For public ingress, be more restrictive</span>
+<span class="na">proxy-real-ip-cidr</span><span class="pi">:</span> <span class="s2">"</span><span class="s">&lt;known-lb-cidrs&gt;"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="2-header-validation">2. Header Validation</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Application-level validation
+</span><span class="k">def</span> <span class="nf">get_client_ip</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="c1"># Check X-Forwarded-For
+</span>    <span class="n">forwarded_for</span> <span class="o">=</span> <span class="n">request</span><span class="p">.</span><span class="n">headers</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'X-Forwarded-For'</span><span class="p">,</span> <span class="s">''</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">forwarded_for</span><span class="p">:</span>
+        <span class="c1"># Get first IP (original client)
+</span>        <span class="n">client_ip</span> <span class="o">=</span> <span class="n">forwarded_for</span><span class="p">.</span><span class="n">split</span><span class="p">(</span><span class="s">','</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="n">strip</span><span class="p">()</span>
+        
+        <span class="c1"># Validate IP format
+</span>        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ipaddress</span><span class="p">.</span><span class="n">ip_address</span><span class="p">(</span><span class="n">client_ip</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">client_ip</span>
+        <span class="k">except</span> <span class="nb">ValueError</span><span class="p">:</span>
+            <span class="k">pass</span>
+    
+    <span class="c1"># Fallback to remote_addr
+</span>    <span class="k">return</span> <span class="n">request</span><span class="p">.</span><span class="n">remote_addr</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="3-rate-limiting-by-ip">3. Rate Limiting by IP</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># NGINX Ingress rate limiting by real IP</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">rate-limited-ingress</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">nginx.ingress.kubernetes.io/limit-rps</span><span class="pi">:</span> <span class="s2">"</span><span class="s">10"</span>
+    <span class="na">nginx.ingress.kubernetes.io/limit-rpm</span><span class="pi">:</span> <span class="s2">"</span><span class="s">100"</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="s">api.example.com</span>
+    <span class="na">http</span><span class="pi">:</span>
+      <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+        <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+        <span class="na">backend</span><span class="pi">:</span>
+          <span class="na">service</span><span class="pi">:</span>
+            <span class="na">name</span><span class="pi">:</span> <span class="s">api-service</span>
+            <span class="na">port</span><span class="pi">:</span>
+              <span class="na">number</span><span class="pi">:</span> <span class="m">80</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="best-practices">Best Practices</h2>
+
+<p><br /></p>
+
+<h3 id="-production-checklist">✅ Production Checklist</h3>
+
+<p><strong>1. Service Configuration</strong></p>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Use <code class="language-plaintext highlighter-rouge">externalTrafficPolicy: Local</code> for LoadBalancer/NodePort</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Deploy with DaemonSet for guaranteed pod placement</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Test failover scenarios</li>
+</ul>
+
+<p><strong>2. Ingress Configuration</strong></p>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Enable <code class="language-plaintext highlighter-rouge">use-forwarded-headers</code></li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Configure <code class="language-plaintext highlighter-rouge">proxy-real-ip-cidr</code> appropriately</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Set <code class="language-plaintext highlighter-rouge">real-ip-recursive</code> for multi-proxy scenarios</li>
+</ul>
+
+<p><strong>3. Application Configuration</strong></p>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Parse X-Forwarded-For headers correctly</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Validate IP addresses</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Log both remote_addr and X-Forwarded-For</li>
+</ul>
+
+<p><strong>4. Monitoring</strong></p>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Track source IP in logs</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Alert on anomalous IP patterns</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Monitor header tampering attempts</li>
+</ul>
+
+<p><strong>5. Security</strong></p>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Restrict trusted CIDR ranges</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Implement rate limiting by IP</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Regular security audits of IP-based rules</li>
+</ul>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="monitoring-and-logging">Monitoring and Logging</h2>
+
+<p><br /></p>
+
+<h3 id="structured-logging-example">Structured Logging Example</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="k">def</span> <span class="nf">log_request</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="n">log_data</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">'timestamp'</span><span class="p">:</span> <span class="n">datetime</span><span class="p">.</span><span class="n">now</span><span class="p">().</span><span class="n">isoformat</span><span class="p">(),</span>
+        <span class="s">'remote_addr'</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">remote_addr</span><span class="p">,</span>
+        <span class="s">'x_forwarded_for'</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">headers</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'X-Forwarded-For'</span><span class="p">,</span> <span class="s">''</span><span class="p">),</span>
+        <span class="s">'x_real_ip'</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">headers</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'X-Real-IP'</span><span class="p">,</span> <span class="s">''</span><span class="p">),</span>
+        <span class="s">'method'</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">method</span><span class="p">,</span>
+        <span class="s">'path'</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">path</span><span class="p">,</span>
+        <span class="s">'user_agent'</span><span class="p">:</span> <span class="n">request</span><span class="p">.</span><span class="n">headers</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'User-Agent'</span><span class="p">,</span> <span class="s">''</span><span class="p">),</span>
+    <span class="p">}</span>
+    
+    <span class="n">logging</span><span class="p">.</span><span class="n">info</span><span class="p">(</span><span class="n">json</span><span class="p">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">log_data</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="prometheus-metrics">Prometheus Metrics</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Monitor requests by source IP</span>
+<span class="pi">-</span> <span class="na">record</span><span class="pi">:</span> <span class="s">http_requests_by_source_ip</span>
+  <span class="na">expr</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">sum(rate(http_requests_total[5m])) by (source_ip)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Preserving Source IP in Kubernetes goes beyond simple client location identification—it’s essential for security policy establishment, attacker tracking, service optimization, access control, and traffic analysis.</p>
+
+<p><br /></p>
+
+<h3 id="key-takeaways">Key Takeaways:</h3>
+
+<p>✅ <strong>externalTrafficPolicy: Local</strong> is the most critical setting for avoiding SNAT and preserving original IP in Kubernetes services</p>
+
+<p>✅ <strong>In Ingress environments</strong>, original IP is transmitted indirectly through X-Forwarded-For and real_ip_header configuration</p>
+
+<p>✅ <strong>Infrastructure like MetalLB, Cilium</strong> should be configured to accurately transmit Source IP at L2/L3 level</p>
+
+<p><br /></p>
+
+<h3 id="production-considerations">Production Considerations:</h3>
+
+<p>In actual production environments, you should design:</p>
+<ul>
+  <li>DaemonSet for pod distribution</li>
+  <li>IP trust range restrictions (CIDR filtering)</li>
+  <li>Security considerations</li>
+  <li>Minimize unnecessary SNAT processing</li>
+  <li>Ensure reliability of client identification</li>
+</ul>
+
+<p><br /></p>
+
+<blockquote>
+  <p>The ability to accurately identify and log client source IPs is fundamental to operating secure, auditable, and compliant Kubernetes services.</p>
+</blockquote>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/service/">Kubernetes Official Docs - Services</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/ingress/">Kubernetes Official Docs - Ingress</a></li>
+  <li><a href="https://kubernetes.github.io/ingress-nginx/">NGINX Ingress Controller Official Helm Chart</a></li>
+  <li><a href="http://nginx.org/en/docs/http/ngx_http_realip_module.html">NGINX Docs - Real IP Module</a></li>
+  <li><a href="https://metallb.universe.tf/">MetalLB Official Documentation</a></li>
+  <li><a href="https://docs.cilium.io/">Cilium Docs - L3 Source IP Preservation</a></li>
+  <li><a href="https://stackoverflow.com/questions/tagged/kubernetes+source-ip">Stack Overflow - Kubernetes Service Source IP Loss</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/">Kubernetes Network Policies</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/kubernetes/kubernetes-internal-network-analysis/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767757572/kubernetes-ipvs-1_k63m0i.png" alt="Complete Kubernetes Internal Network Analysis - Packet Flow Tracing in IPVS Mode">
+                                    
+                                    <h3>Complete Kubernetes Internal Network Analysis - Packet Flow Tracing in IPVS Mode</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/kubernetes/helm-values-schema/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767840469/helm-values-schema-1_y4j0w6.png" alt="Helm values.schema.json Complete Guide: Schema Validation for Production-Ready Charts">
+                                    
+                                    <h3>Helm values.schema.json Complete Guide: Schema Validation for Production-Ready Charts</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/aws/eks-prod-deploy-guide/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767757375/eks-deploy-guide-1_r7ha3s.png" alt="EKS Production Deployment Guide - Achieving Zero 502 Errors">
+                                    
+                                    <h3>EKS Production Deployment Guide - Achieving Zero 502 Errors</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="20">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/kubernetes/kubernetes-internal-network-analysis/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767757572/kubernetes-ipvs-1_k63m0i.png" alt="Complete Kubernetes Internal Network Analysis - Packet Flow Tracing in IPVS Mode">
+                
+            </div>
+            <h3 class="title">Complete Kubernetes Internal Network Analysis - Packet Flow Tracing in IPVS Mode</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to preserving source IP addresses in Kubernetes across different service types and ingress configurations, including practical examples with Flask, MetalLB, and Ingress-NGINX.&quot;%20https://somaz.blog/category/kubernetes/k8s-source-ip-preservation/%20via%20&#64;&hashtags=kubernetes,networking,source-ip,metallb,ingress-nginx,security,troubleshooting"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/kubernetes/k8s-source-ip-preservation/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile.png" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  <script type="application/ld+json">
+  {
+      "@context": "http://schema.org",
+      "@type": "Person",
+      "name": "Somaz",
+      
+      "image": "/assets/img/uploads/profile.png",
+      
+      "jobTitle": "DevOps Engineer",
+      "url": "https://somaz.blog/authors/somaz/",
+      "sameAs": [
+        "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://{{ author.tistory_username }}.tistory.com"
+      ]
+  }
+  </script>
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/kubernetes/k8s-source-ip-preservation/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/economy">Economy</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "Organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": "600",
+      "height": "315"
+  },
+  "sameAs": [
+    "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://{{ site.tistory_username }}.tistory.com"
+  ]
+}
+</script>
+
+<!-- Include the script that allows Netlify CMS login -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id="></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "http://schema.org",
+            "@type": "BlogPosting",
+            "name": "Preserving Source IP in Kubernetes: A Complete Guide",
+            "headline": "Maintaining client IP addresses through Services and Ingress for logging, security, and access control",
+            "description": "A comprehensive guide to preserving source IP addresses in Kubernetes across different service types and ingress configurations, including practical examples with Flask, MetalLB, and Ingress-NGINX.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1767841728/kuberentes-sourceip-1_hffnie.png",
+            "url": "https://somaz.blog/category/kubernetes/k8s-source-ip-preservation/",
+            "articleBody": "
+
+
+
+Overview
+
+In Kubernetes clusters, accurately identifying the Source IP (client IP) of incoming external requests is crucial for various operational and security purposes including logging, security analysis, auditing, and access control.
+
+However, in Kubernetes’ default network configuration, depending on the service type, requests pass through kube-proxy, NAT, ingress proxies, etc., causing the Source IP to be changed or lost.
+
+This article explains why Source IP disappears in Kubernetes environments and what configuration to apply to preserve it, organized by Service type and Ingress method.
+
+We’ll also cover practical labs using a Flask app with MetalLB + Ingress-NGINX to see how IPs appear in actual requests and how to preserve them.
+
+
+
+
+
+Source IP Preservation by Service Type
+
+
+
+Comparison Table
+
+
+  
+    
+      Service Type
+      Configuration Required
+      Request Flow
+      Source IP Preserved
+    
+  
+  
+    
+      ClusterIP
+      Not possible
+      Internal cluster via kube-proxy
+      ❌ No
+    
+    
+      NodePort / LoadBalancer
+      Requires externalTrafficPolicy: Local
+      Client → Node IP:Port → Direct Pod
+      ✅ Yes
+    
+    
+      Ingress
+      Requires X-Forwarded-For header
+      Client → Ingress Controller → Pod
+      ✅ Yes (header-based)
+    
+    
+      MetalLB (LoadBalancer)
+      Requires externalTrafficPolicy: Local
+      External IP → Direct node routing (L2/BGP)
+      ✅ Yes
+    
+  
+
+
+
+
+Important Note: With Ingress, the actual IP doesn’t reach the pod directly but is transmitted via headers (X-Forwarded-For), requiring header parsing in the application.
+
+
+
+
+
+Why Does Source IP Disappear in Cluster Mode?
+
+
+
+Understanding SNAT
+
+Cluster Mode (default):
+
+  kube-proxy performs SNAT (Source NAT) when forwarding traffic via iptables or ipvs
+  Requester’s IP is replaced with the node’s IP
+  Result: Node IP is recorded instead of client IP
+
+
+Local Mode:
+
+  No SNAT processing
+  Traffic forwarded directly to pods on local node
+  Result: Original IP preserved
+
+
+
+
+Traffic Flow Comparison
+
+Cluster Mode (externalTrafficPolicy: Cluster)
+────────────────────────────────────────────
+Client (1.2.3.4)
+    ↓
+LoadBalancer/NodePort
+    ↓
+Node-1 (kube-proxy SNAT)
+    ↓ (Source becomes Node-1 IP)
+Pod on Node-2
+    ↓
+Application sees: Node-1 IP ❌
+
+
+Local Mode (externalTrafficPolicy: Local)
+──────────────────────────────────────────
+Client (1.2.3.4)
+    ↓
+LoadBalancer/NodePort
+    ↓
+Node-1 (NO SNAT)
+    ↓ (Source remains 1.2.3.4)
+Pod on Node-1 (must exist!)
+    ↓
+Application sees: 1.2.3.4 ✅
+
+
+
+
+
+
+Using externalTrafficPolicy: Local
+
+
+
+Configuration
+
+For LoadBalancer or NodePort services, configure as follows to maintain original client IP:
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local  # Key setting
+  selector:
+    app: my-app
+  ports:
+    - port: 80
+      targetPort: 8080
+
+
+
+
+Behavior Differences
+
+Local:
+
+  Preserves client’s original IP
+  Only forwards to pods on the receiving node
+  Caveat: If no pod exists on that node, request fails
+
+
+Cluster (default):
+
+  Request is NAT processed within cluster
+  Source IP becomes node IP
+  Load balances across all cluster pods
+
+
+
+
+Best Practices with Local Mode
+
+# Use DaemonSet to ensure pod on every node
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-app
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:latest
+
+
+
+
+
+
+Preserving Source IP with Ingress (NGINX)
+
+
+
+Required Configuration
+
+Two essential settings are needed:
+
+
+  
+    
+      Component
+      Setting
+      Description
+    
+  
+  
+    
+      Service
+      externalTrafficPolicy: Local
+      Prevents client IP from being SNATed
+    
+    
+      ConfigMap
+      use-forwarded-headers: &quot;true&quot;proxy-real-ip-cidr: &quot;0.0.0.0/0&quot;
+      Trust X-Forwarded-For and X-Real-IP headers for logs and backend
+    
+  
+
+
+
+
+1. ConfigMap Configuration
+
+Ingress controllers (like NGINX) operate as L7 proxies by default, changing the Source IP. Preserve it with this configuration:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-ingress-controller
+  namespace: ingress-nginx
+data:
+  use-forwarded-headers: &quot;true&quot;
+  proxy-real-ip-cidr: &quot;0.0.0.0/0&quot;
+
+
+
+
+Configuration Keys Explained
+
+
+  
+    
+      Key
+      Description
+    
+  
+  
+    
+      use-forwarded-headers: &quot;true&quot;
+      Trust and use X-Forwarded-For, X-Real-IP HTTP headers
+    
+    
+      proxy-real-ip-cidr: &quot;0.0.0.0/0&quot;
+      Trust any client IP. For security, limit to internal network ranges like 10.0.0.0/8, 192.168.0.0/16
+    
+  
+
+
+This allows NGINX to correctly parse $proxy_protocol_addr, $remote_addr, etc.
+
+
+
+2. Service Configuration
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  type: LoadBalancer  # or NodePort
+  externalTrafficPolicy: Local  # Critical!
+  ports:
+    - port: 80
+      targetPort: http
+    - port: 443
+      targetPort: https
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/component: controller
+
+
+
+
+
+
+Lab 1: Verifying Source IP
+
+
+
+Architecture
+
+External Client
+    ↓
+NodePort Service (externalTrafficPolicy: Local)
+    ↓
+Flask Pod (logs request headers)
+
+
+
+
+1. Flask Application ConfigMap
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flask-app-config
+data:
+  app.py: |
+    from flask import Flask, request
+    import os
+
+    app = Flask(__name__)
+
+    @app.route(&apos;/&apos;)
+    def hello():
+        client_ip = request.remote_addr
+        x_forwarded_for = request.headers.get(&apos;X-Forwarded-For&apos;, &apos;&apos;)
+        x_real_ip = request.headers.get(&apos;X-Real-IP&apos;, &apos;&apos;)
+        all_headers = dict(request.headers)
+        
+        response = f&quot;&quot;&quot;
+    Hello from Flask!
+    
+    Client Info:
+    ------------
+    Remote Addr: {client_ip}
+    X-Forwarded-For: {x_forwarded_for}
+    X-Real-IP: {x_real_ip}
+    
+    All Request Headers:
+    -------------------
+    {all_headers}
+    &quot;&quot;&quot;
+        return response
+
+    if __name__ == &apos;__main__&apos;:
+        app.run(host=&apos;0.0.0.0&apos;, port=int(os.environ.get(&apos;PORT&apos;, 8080)))
+
+
+
+
+2. Flask Pod Definition
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: flask-app
+  labels:
+    app: flask-app
+spec:
+  containers:
+    - name: flask-app
+      image: python:3.9-slim
+      ports:
+        - containerPort: 8080
+      env:
+        - name: PORT
+          value: &quot;8080&quot;
+      command: [&quot;/bin/sh&quot;, &quot;-c&quot;]
+      args:
+        - |
+          pip install flask
+          mkdir -p /app
+          cp /config/app.py /app/
+          cd /app
+          python app.py
+      volumeMounts:
+        - name: flask-app-config
+          mountPath: /config
+  volumes:
+    - name: flask-app-config
+      configMap:
+        name: flask-app-config
+
+
+
+
+3. Service Configuration
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-app-service
+spec:
+  type: NodePort
+  externalTrafficPolicy: Local  # Preserves source IP
+  selector:
+    app: flask-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+
+
+
+
+4. Complete Manifest
+
+
+
+
+
+5. Testing from External Client
+
+curl http://&amp;lt;NodeIP&amp;gt;:&amp;lt;NodePort&amp;gt;
+
+
+
+
+6. Lab Results
+
+Same Network Segment:
+curl 10.10.10.51:30378
+
+Hello from Flask!
+
+Client Info:
+------------
+Remote Addr: 10.10.10.50
+X-Forwarded-For: 
+X-Real-IP: 
+
+All Request Headers:
+-------------------
+{&apos;Host&apos;: &apos;10.10.10.51:30378&apos;, &apos;User-Agent&apos;: &apos;curl/7.81.0&apos;, &apos;Accept&apos;: &apos;*/*&apos;}
+
+✅ Source IP preserved correctly
+
+
+
+Different Network Segment:
+curl 10.10.10.51:30378
+
+Hello from Flask!
+
+Client Info:
+------------
+Remote Addr: 10.10.10.251  # Gateway IP, not actual client!
+X-Forwarded-For: 
+X-Real-IP: 
+
+All Request Headers:
+-------------------
+{&apos;Host&apos;: &apos;10.10.10.51:30378&apos;, &apos;User-Agent&apos;: &apos;curl/7.81.0&apos;, &apos;Accept&apos;: &apos;*/*&apos;}
+
+❌ Shows gateway IP instead of actual external IP
+
+
+
+Understanding the Results
+
+Current Situation:
+
+  externalTrafficPolicy: Local configured ✅
+  NodePort direct connection to worker node ✅
+  Flask shows $remote_addr ✅
+  Same network: Source IP preserved ✅
+  Different network: Shows gateway IP (e.g., 10.10.10.251) instead of real external IP ❌
+
+
+
+
+Root Cause: kube-proxy + NAT + Gateway
+
+When requests traverse physical routers or virtual gateways, the Flask pod sees the gateway/NAT IP instead of the actual external client IP:
+
+[Your MacBook] 
+     ↓ (request)
+[Gateway/NAT (10.10.10.251)]
+     ↓ (SNAT applied)
+[Worker Node (10.10.10.51):32440]
+     ↓
+[Flask Pod]
+     
+Result: Flask receives SNATed IP (gateway IP), not direct client IP
+
+
+
+
+
+
+Lab 2: MetalLB + Ingress-NGINX with Source IP
+
+
+
+Architecture
+
+External Client
+    ↓
+MetalLB LoadBalancer (10.10.10.63)
+    ↓
+Ingress-NGINX Controller (externalTrafficPolicy: Local)
+    ↓
+NGINX Pod (configured with real_ip_header)
+
+
+
+
+1. MetalLB Setup
+
+First, install MetalLB. For installation guide, see: What is MetalLB?
+
+kubectl get ipaddresspools.metallb.io -n metallb 
+
+NAME      AUTO ASSIGN   AVOID BUGGY IPS   ADDRESSES
+ip-pool   true          false             [&quot;10.10.10.55-10.10.10.58&quot;,&quot;10.10.10.62-10.10.10.65&quot;]
+
+
+
+
+2. Ingress-NGINX Controller Configuration
+
+Create test Ingress NGINX Controller with Helm:
+
+# values/mgmt-test.yaml
+global:
+  image:
+    registry: registry.k8s.io
+
+controller:
+  ingressClassResource:
+    name: nginx-test  # Unique name for distinction
+    enabled: true
+    default: false  # Not the default controller
+    controllerValue: &quot;k8s.io/ingress-nginx-test&quot;
+    
+  service:
+    enabled: true
+    type: LoadBalancer
+    loadBalancerIP: &quot;10.10.10.63&quot;
+    externalTrafficPolicy: &quot;Local&quot;  # Critical!
+    
+  config:
+    use-forwarded-headers: &quot;true&quot;
+    real-ip-header: &quot;X-Forwarded-For&quot;
+    set-real-ip-from: &quot;0.0.0.0/0&quot;
+    real-ip-recursive: &quot;true&quot;
+
+
+
+
+Install
+
+helm install ingress-nginx-test . -n ingress-nginx -f ./values/mgmt-test.yaml
+
+
+
+
+Verify Configuration
+
+# Check service
+kubectl get svc -n ingress-nginx ingress-nginx-test-controller -o yaml | grep external
+  externalTrafficPolicy: Local
+
+# Check configmap
+kubectl get cm -n ingress-nginx ingress-nginx-test-controller -o yaml
+apiVersion: v1
+data:
+  proxy-real-ip-cidr: 0.0.0.0/0
+  use-forwarded-headers: &quot;true&quot;
+  real-ip-header: X-Forwarded-For
+  real-ip-recursive: &quot;true&quot;
+
+
+
+
+3. NGINX Test Application
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: default
+data:
+  nginx.conf: |
+    events {}
+    http {
+      log_format main &apos;$http_x_forwarded_for - $remote_user [$time_local] &quot;$request&quot; &apos;
+                      &apos;$status $body_bytes_sent &quot;$http_referer&quot; &apos;
+                      &apos;&quot;$http_user_agent&quot; &quot;$http_x_forwarded_for&quot;&apos;;
+      access_log /var/log/nginx/access.log main;
+
+      set_real_ip_from 0.0.0.0/0;
+      real_ip_header X-Forwarded-For;
+      real_ip_recursive on;
+
+      server {
+        listen 80;
+        location / {
+          return 200 &apos;Hello from NGINX! Remote Addr: $remote_addr X-Forwarded-For: $http_x_forwarded_for&apos;;
+          add_header Content-Type text/plain;
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+      volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+  volumes:
+    - name: config
+      configMap:
+        name: nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+spec:
+  ingressClassName: nginx-test
+  rules:
+    - host: test.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+
+
+
+
+4. Testing
+
+Add to /etc/hosts (for local environment):
+echo &quot;10.10.10.63 test.local&quot; | sudo tee -a /etc/hosts
+
+
+
+
+Test from External Network:
+curl http://test.local
+
+Hello from Nginx!
+Remote Addr: 10.233.65.165
+X-Forwarded-For: 10.10.10.251
+
+
+
+
+Test from Internal Network:
+curl http://test.local
+
+Hello from Nginx!
+Remote Addr: 10.233.65.165
+X-Forwarded-For: 10.10.10.60
+
+
+
+
+Test with Custom X-Forwarded-For:
+curl -H &quot;Host: test.local&quot; -H &quot;X-Forwarded-For: 1.2.3.4&quot; http://10.10.10.63
+
+
+If NGINX logs show 1.2.3.4, it confirms NGINX pod is correctly reading real_ip_header.
+
+
+
+
+
+Advanced Source IP Scenarios
+
+
+
+Scenario 1: Multi-Tier Architecture
+
+Internet
+    ↓
+Cloud Load Balancer
+    ↓ (X-Forwarded-For added)
+MetalLB LoadBalancer
+    ↓ (preserves X-Forwarded-For)
+Ingress-NGINX
+    ↓ (parses X-Forwarded-For)
+Application Pod
+
+
+Configuration:
+# Ingress NGINX ConfigMap
+data:
+  use-forwarded-headers: &quot;true&quot;
+  compute-full-forwarded-for: &quot;true&quot;  # Include all proxy IPs
+  forwarded-for-header: &quot;X-Forwarded-For&quot;
+  proxy-real-ip-cidr: &quot;10.0.0.0/8&quot;  # Trust internal network
+
+
+
+
+Scenario 2: CDN + Kubernetes
+
+When using CDN (CloudFlare, Akamai):
+
+# Trust CDN IP ranges
+data:
+  proxy-real-ip-cidr: &quot;173.245.48.0/20,103.21.244.0/22,...&quot;
+  real-ip-header: &quot;CF-Connecting-IP&quot;  # CloudFlare header
+
+
+
+
+Scenario 3: Multiple Ingress Controllers
+
+# Public ingress (strict checking)
+controller-public:
+  config:
+    proxy-real-ip-cidr: &quot;0.0.0.0/0&quot;
+    use-forwarded-headers: &quot;true&quot;
+
+# Internal ingress (trust internal)  
+controller-internal:
+  config:
+    proxy-real-ip-cidr: &quot;10.0.0.0/8,172.16.0.0/12&quot;
+    use-forwarded-headers: &quot;false&quot;
+
+
+
+
+
+
+Troubleshooting Guide
+
+
+
+Issue 1: Source IP Still Shows Node IP
+
+Symptoms:
+
+  externalTrafficPolicy: Local configured
+  Still seeing node IP in logs
+
+
+Diagnosis:
+# Check service configuration
+kubectl get svc my-service -o yaml | grep externalTrafficPolicy
+
+# Check pod distribution
+kubectl get pods -o wide
+
+# Check if pod exists on target node
+kubectl get pods -l app=my-app -o wide | grep &amp;lt;node-name&amp;gt;
+
+
+Solutions:
+
+  Ensure pods exist on nodes receiving traffic
+  Use DaemonSet for guaranteed pod placement
+  Verify no additional proxy layers
+
+
+
+
+Issue 2: X-Forwarded-For Header Empty
+
+Symptoms:
+
+  Ingress configured correctly
+  X-Forwarded-For header is empty or missing
+
+
+Diagnosis:
+# Check Ingress NGINX ConfigMap
+kubectl get cm -n ingress-nginx ingress-nginx-controller -o yaml
+
+# Check Ingress controller logs
+kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
+
+# Test with curl verbose
+curl -v -H &quot;X-Forwarded-For: 1.2.3.4&quot; http://test.local
+
+
+Solutions:
+# Ensure these settings in ConfigMap
+data:
+  use-forwarded-headers: &quot;true&quot;
+  compute-full-forwarded-for: &quot;true&quot;
+  forwarded-for-header: &quot;X-Forwarded-For&quot;
+
+
+
+
+Issue 3: Gateway IP Instead of Client IP
+
+Symptoms:
+
+  External requests show gateway IP
+  Internal requests work correctly
+
+
+Root Cause:
+
+  Network routing through gateway/NAT
+  SNAT happens before reaching Kubernetes
+
+
+Solutions:
+
+  Use Ingress with X-Forwarded-For: Application must parse headers
+  Configure upstream proxy: If possible, configure upstream to preserve IP
+  Use Proxy Protocol: Enable at load balancer level
+
+
+# Enable Proxy Protocol on ingress
+controller:
+  config:
+    use-proxy-protocol: &quot;true&quot;
+  service:
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: &quot;*&quot;
+
+
+
+
+Issue 4: Inconsistent IP Logging
+
+Symptoms:
+
+  Sometimes real IP, sometimes node IP
+  Random behavior
+
+
+Diagnosis:
+# Check pod distribution
+kubectl get pods -o wide
+
+# Check service endpoints
+kubectl get endpoints my-service
+
+# Check node labels and taints
+kubectl get nodes -o wide
+
+
+Solutions:
+# Use DaemonSet for consistent placement
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-app
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: &quot;&quot;
+      containers:
+      - name: my-app
+        image: my-app:latest
+
+
+
+
+
+
+Security Considerations
+
+
+
+1. Trust Boundaries
+
+# Don&apos;t trust all IPs in production
+proxy-real-ip-cidr: &quot;10.0.0.0/8,172.16.0.0/12,192.168.0.0/16&quot;  # Internal only
+
+# For public ingress, be more restrictive
+proxy-real-ip-cidr: &quot;&amp;lt;known-lb-cidrs&amp;gt;&quot;
+
+
+
+
+2. Header Validation
+
+# Application-level validation
+def get_client_ip(request):
+    # Check X-Forwarded-For
+    forwarded_for = request.headers.get(&apos;X-Forwarded-For&apos;, &apos;&apos;)
+    if forwarded_for:
+        # Get first IP (original client)
+        client_ip = forwarded_for.split(&apos;,&apos;)[0].strip()
+        
+        # Validate IP format
+        try:
+            ipaddress.ip_address(client_ip)
+            return client_ip
+        except ValueError:
+            pass
+    
+    # Fallback to remote_addr
+    return request.remote_addr
+
+
+
+
+3. Rate Limiting by IP
+
+# NGINX Ingress rate limiting by real IP
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rate-limited-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: &quot;10&quot;
+    nginx.ingress.kubernetes.io/limit-rpm: &quot;100&quot;
+spec:
+  rules:
+  - host: api.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-service
+            port:
+              number: 80
+
+
+
+
+
+
+Best Practices
+
+
+
+✅ Production Checklist
+
+1. Service Configuration
+
+  Use externalTrafficPolicy: Local for LoadBalancer/NodePort
+  Deploy with DaemonSet for guaranteed pod placement
+  Test failover scenarios
+
+
+2. Ingress Configuration
+
+  Enable use-forwarded-headers
+  Configure proxy-real-ip-cidr appropriately
+  Set real-ip-recursive for multi-proxy scenarios
+
+
+3. Application Configuration
+
+  Parse X-Forwarded-For headers correctly
+  Validate IP addresses
+  Log both remote_addr and X-Forwarded-For
+
+
+4. Monitoring
+
+  Track source IP in logs
+  Alert on anomalous IP patterns
+  Monitor header tampering attempts
+
+
+5. Security
+
+  Restrict trusted CIDR ranges
+  Implement rate limiting by IP
+  Regular security audits of IP-based rules
+
+
+
+
+
+
+Monitoring and Logging
+
+
+
+Structured Logging Example
+
+import logging
+import json
+
+def log_request(request):
+    log_data = {
+        &apos;timestamp&apos;: datetime.now().isoformat(),
+        &apos;remote_addr&apos;: request.remote_addr,
+        &apos;x_forwarded_for&apos;: request.headers.get(&apos;X-Forwarded-For&apos;, &apos;&apos;),
+        &apos;x_real_ip&apos;: request.headers.get(&apos;X-Real-IP&apos;, &apos;&apos;),
+        &apos;method&apos;: request.method,
+        &apos;path&apos;: request.path,
+        &apos;user_agent&apos;: request.headers.get(&apos;User-Agent&apos;, &apos;&apos;),
+    }
+    
+    logging.info(json.dumps(log_data))
+
+
+
+
+Prometheus Metrics
+
+# Monitor requests by source IP
+- record: http_requests_by_source_ip
+  expr: |
+    sum(rate(http_requests_total[5m])) by (source_ip)
+
+
+
+
+
+
+Conclusion
+
+Preserving Source IP in Kubernetes goes beyond simple client location identification—it’s essential for security policy establishment, attacker tracking, service optimization, access control, and traffic analysis.
+
+
+
+Key Takeaways:
+
+✅ externalTrafficPolicy: Local is the most critical setting for avoiding SNAT and preserving original IP in Kubernetes services
+
+✅ In Ingress environments, original IP is transmitted indirectly through X-Forwarded-For and real_ip_header configuration
+
+✅ Infrastructure like MetalLB, Cilium should be configured to accurately transmit Source IP at L2/L3 level
+
+
+
+Production Considerations:
+
+In actual production environments, you should design:
+
+  DaemonSet for pod distribution
+  IP trust range restrictions (CIDR filtering)
+  Security considerations
+  Minimize unnecessary SNAT processing
+  Ensure reliability of client identification
+
+
+
+
+
+  The ability to accurately identify and log client source IPs is fundamental to operating secure, auditable, and compliant Kubernetes services.
+
+
+
+
+
+
+References
+
+
+  Kubernetes Official Docs - Services
+  Kubernetes Official Docs - Ingress
+  NGINX Ingress Controller Official Helm Chart
+  NGINX Docs - Real IP Module
+  MetalLB Official Documentation
+  Cilium Docs - L3 Source IP Preservation
+  Stack Overflow - Kubernetes Service Source IP Loss
+  Kubernetes Network Policies
+
+",
+            "wordcount": "3761",
+            "inLanguage": "en",
+            "dateCreated": "2026-06-04T00:00:00+00:00",
+            "datePublished": "2026-06-04T00:00:00+00:00",
+            "dateModified": "2026-06-04T00:00:00+00:00",
+            "author": {
+                "@type": "Person",
+                "name": "Somaz",
+                
+                "image": "/assets/img/uploads/profile.png",
+                
+                "jobTitle": "DevOps Engineer",
+                "url": "https://somaz.blog/authors/somaz/",
+                "sameAs": [
+                    "https://github.com/somaz94","https://www.linkedin.com/in/somaz"
+                ]
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "somaz",
+                "url": "https://somaz.blog/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://somaz.blog/assets/img/blog-image.png",
+                    "width": "600",
+                    "height": "315"
+                }
+            },
+            "mainEntityOfPage": "https://somaz.blog/category/kubernetes/k8s-source-ip-preservation/",
+            "genre": "KUBERNETES",
+            "articleSection": "KUBERNETES",
+            "keywords": ["kubernetes","networking","source-ip","metallb","ingress-nginx","security","troubleshooting"]
+        }
+        </script>
+    </body>
+</html>
