@@ -1,0 +1,3466 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- Google Tag Manager -->
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+    <!-- End Google Tag Manager -->
+
+    <!-- Mermaid.js -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+
+    <title>Complete Guide to External Traffic Flow into Kubernetes Clusters | somaz</title>
+    <meta name="description" content="Step-by-step analysis of how external traffic enters Kubernetes clusters and reaches Pods. Covers the roles of Ingress Controller, Gateway API, Service, kube...">
+    
+        <meta name="keywords" content="kubernetes, networking, ingress, gateway-api, loadbalancer, nodeport, kube-proxy, service, cni, nat, traffic-flow">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Complete Guide to External Traffic Flow into Kubernetes Clusters | somaz">
+    <meta name="twitter:description" content="Step-by-step analysis of how external traffic enters Kubernetes clusters and reaches Pods. Covers the roles of Ingress Controller, Gateway API, Service, kube...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1767757938/kubernetes-external-traffic-1_ge4ahh.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/kubernetes/kubernetes-external-traffic-flow/">
+    <meta property="og:title" content="Complete Guide to External Traffic Flow into Kubernetes Clusters | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1767757938/kubernetes-external-traffic-1_ge4ahh.png">
+    <meta property="og:description" content="Step-by-step analysis of how external traffic enters Kubernetes clusters and reaches Pods. Covers the roles of Ingress Controller, Gateway API, Service, kube...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-06-17T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/kubernetes/kubernetes-external-traffic-flow/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
+    <!-- <link href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;700&display=swap" rel="stylesheet"> -->
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<!-- Google Tag Manager (noscript) -->
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+<!-- End Google Tag Manager (noscript) -->
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/economy">Economy</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-06-17T00:00:00+00:00">
+                            
+
+
+June 17, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>29 min to read</span>
+                </p>
+                <h1 class="post-title">Complete Guide to External Traffic Flow into Kubernetes Clusters</h1>
+                <p class="post-subtitle">Deep dive into packet flow and NAT transformation through Ingress, Gateway API, LoadBalancer, and NodePort</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1767757938/kubernetes-external-traffic-1_ge4ahh.png" alt="Complete Guide to External Traffic Flow into Kubernetes Clusters" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>Understanding how external traffic reaches internal Pods in a Kubernetes cluster is essential for operations and troubleshooting. Incoming requests don’t simply connect directly to Pods—they traverse multiple network components before reaching their final destination.</p>
+
+<p>External traffic first enters the cluster through an Ingress Controller or LoadBalancer. It’s then forwarded to a Service object’s ClusterIP, which is a virtual IP rather than an actual IP address. kube-proxy manages iptables or IPVS rules on each node, performing DNAT (Destination NAT) to transform packets destined for the Service IP into actual Pod IPs. Finally, packets are delivered to the container port through the network configured by the CNI (Container Network Interface). If the Pod resides on a different node, inter-node communication occurs through an Overlay network (such as VXLAN).</p>
+
+<p>This guide provides a step-by-step analysis of the entire journey from when external traffic enters the Kubernetes cluster to when it reaches the actual container.</p>
+
+<p><br /></p>
+
+<h2 id="complete-traffic-flow-overview">Complete Traffic Flow Overview</h2>
+
+<p>The process of external traffic reaching a Pod inside a Kubernetes cluster can be divided into five major stages.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>External Client <span class="o">(</span>Internet<span class="o">)</span>
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 1: Entry Point               │
+│  - Ingress Controller <span class="o">(</span>L7<span class="o">)</span>          │
+│  - Gateway API <span class="o">(</span>L7<span class="o">)</span>                 │
+│  - LoadBalancer <span class="o">(</span>L4<span class="o">)</span>                │
+│  - NodePort <span class="o">(</span>specific node port<span class="o">)</span>    │
+└─────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 2: Service <span class="o">(</span>Virtual IP<span class="o">)</span>      │
+│  - ClusterIP: 10.96.x.x             │
+│  - Does not exist on actual network │
+└─────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 3: kube-proxy <span class="o">(</span>NAT<span class="o">)</span>          │
+│  - iptables or IPVS rules           │
+│  - DNAT: Service IP → Pod IP        │
+└─────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 4: CNI Network               │
+│  - Pod Network <span class="o">(</span>192.168.x.x<span class="o">)</span>        │
+│  - Inter-node: Overlay/Routing      │
+└─────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 5: Final Destination         │
+│  - Pod Container <span class="o">(</span>targetPort<span class="o">)</span>       │
+└─────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="stage-1-entry-point">Stage 1: Entry Point</h2>
+
+<p>There are four main ways for external traffic to enter a Kubernetes cluster. Each operates at a different layer and is chosen based on the intended purpose.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>External Client
+    │
+    ▼
+┌─────────────────────┐
+│  Ingress Controller │ <span class="o">(</span>L7<span class="o">)</span> - HTTP/HTTPS
+│  or                 │
+│  Gateway API        │ <span class="o">(</span>L7<span class="o">)</span> - HTTP/HTTPS/gRPC
+│  or                 │
+│  LoadBalancer       │ <span class="o">(</span>L4<span class="o">)</span> - TCP/UDP
+│  or                 │
+│  NodePort           │ <span class="o">(</span>specific node port<span class="o">)</span>
+└─────────────────────┘
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="ingress-controller-l7-load-balancer">Ingress Controller (L7 Load Balancer)</h3>
+
+<p>Ingress Controller is an L7 (Application Layer) load balancer that handles HTTP/HTTPS traffic. It performs application-level routing based on URL paths, host headers, and TLS termination.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Ingress resource example</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">web-ingress</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">nginx.ingress.kubernetes.io/rewrite-target</span><span class="pi">:</span> <span class="s">/</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">ingressClassName</span><span class="pi">:</span> <span class="s">nginx</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="s">app.example.com</span>
+    <span class="na">http</span><span class="pi">:</span>
+      <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/api</span>
+        <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+        <span class="na">backend</span><span class="pi">:</span>
+          <span class="na">service</span><span class="pi">:</span>
+            <span class="na">name</span><span class="pi">:</span> <span class="s">api-service</span>
+            <span class="na">port</span><span class="pi">:</span>
+              <span class="na">number</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+        <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+        <span class="na">backend</span><span class="pi">:</span>
+          <span class="na">service</span><span class="pi">:</span>
+            <span class="na">name</span><span class="pi">:</span> <span class="s">web-service</span>
+            <span class="na">port</span><span class="pi">:</span>
+              <span class="na">number</span><span class="pi">:</span> <span class="m">80</span>
+  <span class="na">tls</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">hosts</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">app.example.com</span>
+    <span class="na">secretName</span><span class="pi">:</span> <span class="s">tls-secret</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>The packet flow for Ingress Controller is as follows:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Client <span class="o">(</span>203.0.113.10<span class="o">)</span>
+    │
+    │ HTTPS request: app.example.com/api/users
+    ▼
+┌───────────────────────────────────────┐
+│  External LoadBalancer                │
+│  <span class="o">(</span>AWS ALB / GCP GLB / MetalLB<span class="o">)</span>        │
+│  Public IP: 34.123.45.67              │
+└───────────────────────────────────────┘
+    │
+    │ Port 443 → NodePort or LoadBalancer IP
+    ▼
+┌───────────────────────────────────────┐
+│  Ingress Controller Pod              │
+│  <span class="o">(</span>nginx-ingress / traefik / etc<span class="o">)</span>     │
+│  ┌─────────────────────────────────┐ │
+│  │ 1. TLS Termination              │ │
+│  │ 2. Host header verification     │ │
+│  │ 3. URL path matching            │ │
+│  │ 4. Backend Service selection    │ │
+│  └─────────────────────────────────┘ │
+└───────────────────────────────────────┘
+    │
+    │ HTTP request → ClusterIP Service
+    ▼
+┌───────────────────────────────────────┐
+│  api-service <span class="o">(</span>ClusterIP<span class="o">)</span>              │
+│  10.96.100.50:80                      │
+└───────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>Major Ingress Controller types include:</p>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Ingress Controller</th>
+        <th>Features</th>
+        <th>Use Case</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>NGINX Ingress</td>
+        <td>Most widely used, stable</td>
+        <td>General purpose</td>
+      </tr>
+      <tr>
+        <td>Traefik</td>
+        <td>Auto-configuration, Let's Encrypt integration</td>
+        <td>Small to medium scale</td>
+      </tr>
+      <tr>
+        <td>HAProxy</td>
+        <td>High performance, fine-grained settings</td>
+        <td>High traffic</td>
+      </tr>
+      <tr>
+        <td>AWS ALB Ingress</td>
+        <td>AWS native integration</td>
+        <td>AWS EKS</td>
+      </tr>
+      <tr>
+        <td>GKE Ingress</td>
+        <td>GCP native integration</td>
+        <td>GCP GKE</td>
+      </tr>
+      <tr>
+        <td>Istio Gateway</td>
+        <td>Service mesh integration</td>
+        <td>Microservices</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="gateway-api-next-generation-ingress">Gateway API (Next-Generation Ingress)</h3>
+
+<p>Gateway API is the next-generation version of Ingress developed by Kubernetes SIG-Network. It offers more expressive capabilities, role-based resource separation, and excellent extensibility. As of Kubernetes 1.29, Gateway, GatewayClass, and HTTPRoute have been promoted to GA (General Availability).</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────────────────────────────┐
+│                 Gateway API Resource Hierarchy              │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Infrastructure Admin <span class="o">(</span>Cluster Operator<span class="o">)</span>                    │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  GatewayClass                                       │    │
+│  │  - Defines Gateway implementation <span class="o">(</span>nginx, envoy, etc<span class="o">)</span>│   │
+│  │  - Cluster-scoped resource                          │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                          │                                  │
+│                          ▼                                  │
+│  Cluster Operator <span class="o">(</span>Platform Team<span class="o">)</span>                           │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Gateway                                            │    │
+│  │  - Actual load balancer/proxy instance              │    │
+│  │  - Listener <span class="o">(</span>port, protocol, TLS<span class="o">)</span> configuration     │    │
+│  │  - Namespace-scoped resource                        │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                          │                                  │
+│                          ▼                                  │
+│  Application Developer <span class="o">(</span>App Team<span class="o">)</span>                           │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  HTTPRoute / GRPCRoute / TCPRoute / TLSRoute        │    │
+│  │  - Defines traffic routing rules                    │    │
+│  │  - Backend Service connection                       │    │
+│  │  - Namespace-scoped resource                        │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h4 id="gatewayclass-example">GatewayClass Example:</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Created by infrastructure admin - Using NGINX Gateway Fabric</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">gateway.networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">GatewayClass</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">nginx</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">controllerName</span><span class="pi">:</span> <span class="s">gateway.nginx.org/nginx-gateway-controller</span>
+</code></pre></div></div>
+
+<h4 id="gateway-example">Gateway Example:</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Created by cluster operator - Actual Gateway instance</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">gateway.networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Gateway</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">main-gateway</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">gateway-system</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">gatewayClassName</span><span class="pi">:</span> <span class="s">nginx</span>
+  <span class="na">listeners</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">http</span>
+    <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+    <span class="na">protocol</span><span class="pi">:</span> <span class="s">HTTP</span>
+    <span class="na">allowedRoutes</span><span class="pi">:</span>
+      <span class="na">namespaces</span><span class="pi">:</span>
+        <span class="na">from</span><span class="pi">:</span> <span class="s">All</span>  <span class="c1"># Allow Routes from all namespaces</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">https</span>
+    <span class="na">port</span><span class="pi">:</span> <span class="m">443</span>
+    <span class="na">protocol</span><span class="pi">:</span> <span class="s">HTTPS</span>
+    <span class="na">tls</span><span class="pi">:</span>
+      <span class="na">mode</span><span class="pi">:</span> <span class="s">Terminate</span>
+      <span class="na">certificateRefs</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">tls-secret</span>
+        <span class="na">kind</span><span class="pi">:</span> <span class="s">Secret</span>
+    <span class="na">allowedRoutes</span><span class="pi">:</span>
+      <span class="na">namespaces</span><span class="pi">:</span>
+        <span class="na">from</span><span class="pi">:</span> <span class="s">Selector</span>
+        <span class="na">selector</span><span class="pi">:</span>
+          <span class="na">matchLabels</span><span class="pi">:</span>
+            <span class="na">gateway-access</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+</code></pre></div></div>
+
+<h4 id="httproute-example">HTTPRoute Example:</h4>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Created by application developer - Routing rules</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">gateway.networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">HTTPRoute</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">api-routes</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">app-namespace</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">parentRefs</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">main-gateway</span>
+    <span class="na">namespace</span><span class="pi">:</span> <span class="s">gateway-system</span>
+  <span class="na">hostnames</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s2">"</span><span class="s">api.example.com"</span>
+  <span class="na">rules</span><span class="pi">:</span>
+  <span class="c1"># /v1/* requests → api-v1-service</span>
+  <span class="pi">-</span> <span class="na">matches</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span>
+        <span class="na">type</span><span class="pi">:</span> <span class="s">PathPrefix</span>
+        <span class="na">value</span><span class="pi">:</span> <span class="s">/v1</span>
+    <span class="na">backendRefs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">api-v1-service</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">100</span>
+  <span class="c1"># /v2/* requests → api-v2-service (canary deployment)</span>
+  <span class="pi">-</span> <span class="na">matches</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span>
+        <span class="na">type</span><span class="pi">:</span> <span class="s">PathPrefix</span>
+        <span class="na">value</span><span class="pi">:</span> <span class="s">/v2</span>
+    <span class="na">backendRefs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">api-v2-stable</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">90</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">api-v2-canary</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+      <span class="na">weight</span><span class="pi">:</span> <span class="m">10</span>
+  <span class="c1"># Header-based routing</span>
+  <span class="pi">-</span> <span class="na">matches</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">headers</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">X-Version</span>
+        <span class="na">value</span><span class="pi">:</span> <span class="s">beta</span>
+    <span class="na">backendRefs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">api-beta-service</span>
+      <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>The packet flow for Gateway API is as follows:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Client <span class="o">(</span>203.0.113.10<span class="o">)</span>
+    │
+    │ HTTPS request: api.example.com/v1/users
+    ▼
+┌───────────────────────────────────────┐
+│  External LoadBalancer               │
+│  <span class="o">(</span>Cloud LB / MetalLB<span class="o">)</span>                │
+│  Public IP: 34.123.45.67             │
+└───────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────┐
+│  Gateway <span class="o">(</span>main-gateway<span class="o">)</span>              │
+│  ┌─────────────────────────────────┐ │
+│  │ Listener: HTTPS <span class="o">(</span>443<span class="o">)</span>           │ │
+│  │ - TLS Termination               │ │
+│  │ - Host matching: api.example.com│ │
+│  └─────────────────────────────────┘ │
+│               │                       │
+│               ▼                       │
+│  ┌─────────────────────────────────┐ │
+│  │ HTTPRoute Matching              │ │
+│  │ - Path: /v1/<span class="k">*</span> → api-v1-service │ │
+│  │ - Weight-based load balancing   │ │
+│  └─────────────────────────────────┘ │
+└───────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────┐
+│  api-v1-service <span class="o">(</span>ClusterIP<span class="o">)</span>          │
+│  10.96.100.50:80                     │
+└───────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h4 id="major-gateway-api-implementations">Major Gateway API Implementations:</h4>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Implementation</th>
+        <th>Features</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>NGINX Gateway Fabric</td>
+        <td>NGINX-based, enterprise support</td>
+        <td>GA</td>
+      </tr>
+      <tr>
+        <td>Envoy Gateway</td>
+        <td>Envoy proxy-based, CNCF project</td>
+        <td>GA</td>
+      </tr>
+      <tr>
+        <td>Istio</td>
+        <td>Service mesh integration, advanced traffic management</td>
+        <td>GA</td>
+      </tr>
+      <tr>
+        <td>Cilium</td>
+        <td>eBPF-based, high performance</td>
+        <td>GA</td>
+      </tr>
+      <tr>
+        <td>Traefik</td>
+        <td>Auto-configuration, easy to use</td>
+        <td>GA</td>
+      </tr>
+      <tr>
+        <td>Kong</td>
+        <td>API Gateway features integrated</td>
+        <td>GA</td>
+      </tr>
+      <tr>
+        <td>HAProxy Kubernetes Ingress</td>
+        <td>High performance, fine-grained settings</td>
+        <td>Beta</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h4 id="ingress-vs-gateway-api-comparison">Ingress vs Gateway API Comparison:</h4>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Ingress</th>
+        <th>Gateway API</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>API Maturity</td>
+        <td>Stable (v1)</td>
+        <td>Stable (v1) - 1.29+</td>
+      </tr>
+      <tr>
+        <td>Role Separation</td>
+        <td>Single resource</td>
+        <td>GatewayClass/Gateway/Route</td>
+      </tr>
+      <tr>
+        <td>Protocol Support</td>
+        <td>HTTP/HTTPS</td>
+        <td>HTTP, HTTPS, TCP, UDP, gRPC, TLS</td>
+      </tr>
+      <tr>
+        <td>Traffic Splitting</td>
+        <td>Limited (annotations)</td>
+        <td>Native support (weight)</td>
+      </tr>
+      <tr>
+        <td>Header-based Routing</td>
+        <td>Implementation-dependent</td>
+        <td>Standard spec</td>
+      </tr>
+      <tr>
+        <td>Extensibility</td>
+        <td>Annotation-based</td>
+        <td>Policy Attachment</td>
+      </tr>
+      <tr>
+        <td>Cross-namespace</td>
+        <td>Limited</td>
+        <td>Native support</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="loadbalancer-l4-load-balancer">LoadBalancer (L4 Load Balancer)</h3>
+
+<p>LoadBalancer type Service operates at L4 (Transport Layer) and directly handles TCP/UDP traffic. In cloud environments, the CSP (Cloud Service Provider) automatically provisions the load balancer.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># LoadBalancer Service example</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">web-service</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="c1"># When using AWS NLB</span>
+    <span class="na">service.beta.kubernetes.io/aws-load-balancer-type</span><span class="pi">:</span> <span class="s">nlb</span>
+    <span class="c1"># For internal LB</span>
+    <span class="na">service.beta.kubernetes.io/aws-load-balancer-internal</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">LoadBalancer</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">web</span>
+  <span class="na">ports</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">http</span>
+    <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+    <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8080</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">https</span>
+    <span class="na">port</span><span class="pi">:</span> <span class="m">443</span>
+    <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8443</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>The packet flow for LoadBalancer is as follows:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Client <span class="o">(</span>203.0.113.10<span class="o">)</span>
+    │
+    │ TCP connection: 34.123.45.67:80
+    ▼
+┌───────────────────────────────────────┐
+│  Cloud Load Balancer                  │
+│  <span class="o">(</span>AWS NLB / GCP LB / Azure LB<span class="o">)</span>        │
+│  ┌─────────────────────────────────┐  │
+│  │ External IP: 34.123.45.67       │  │
+│  │ Health Check: /healthz          │  │
+│  │ Load Balancing: Round Robin     │  │
+│  └─────────────────────────────────┘  │
+└───────────────────────────────────────┘
+    │
+    │ Traffic distribution → Each node<span class="s1">'s NodePort
+    ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Node 1    │  │   Node 2    │  │   Node 3    │
+│ :30080      │  │ :30080      │  │ :30080      │
+└─────────────┘  └─────────────┘  └─────────────┘
+    │                  │                  │
+    └──────────────────┼──────────────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ ClusterIP       │
+              │ 10.96.100.50:80 │
+              └─────────────────┘
+</span></code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="nodeport-direct-node-port-exposure">NodePort (Direct Node Port Exposure)</h3>
+
+<p>NodePort exposes a Service externally through a specific port (30000-32767) on all nodes. It’s the most basic external exposure method and serves as the foundation for LoadBalancer.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># NodePort Service example</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">web-service</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">type</span><span class="pi">:</span> <span class="s">NodePort</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">web</span>
+  <span class="na">ports</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>          <span class="c1"># Service port (used with ClusterIP)</span>
+    <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8080</span>  <span class="c1"># Pod container port</span>
+    <span class="na">nodePort</span><span class="pi">:</span> <span class="m">30080</span>   <span class="c1"># Port opened on nodes (auto-assigned if omitted)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>The packet flow for NodePort is as follows:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Client <span class="o">(</span>203.0.113.10<span class="o">)</span>
+    │
+    │ TCP connection: 10.100.1.10:30080 <span class="o">(</span>Node 1 IP<span class="o">)</span>
+    ▼
+┌───────────────────────────────────────┐
+│  Node 1 <span class="o">(</span>10.100.1.10<span class="o">)</span>                 │
+│  ┌─────────────────────────────────┐  │
+│  │ kube-proxy listening on 30080   │  │
+│  │                                 │  │
+│  │ iptables/IPVS rules:            │  │
+│  │ :30080 → ClusterIP:80           │  │
+│  └─────────────────────────────────┘  │
+└───────────────────────────────────────┘
+    │
+    │ DNAT: 10.100.1.10:30080 → 10.96.100.50:80
+    ▼
+┌───────────────────────────────────────┐
+│  Service <span class="o">(</span>ClusterIP<span class="o">)</span>                  │
+│  10.96.100.50:80                      │
+└───────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="entry-point-comparison-summary">Entry Point Comparison Summary</h3>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Ingress</th>
+        <th>Gateway API</th>
+        <th>LoadBalancer</th>
+        <th>NodePort</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>OSI Layer</td>
+        <td>L7 (HTTP/HTTPS)</td>
+        <td>L7 (HTTP/HTTPS/gRPC)</td>
+        <td>L4 (TCP/UDP)</td>
+        <td>L4 (TCP/UDP)</td>
+      </tr>
+      <tr>
+        <td>TLS Termination</td>
+        <td>Supported</td>
+        <td>Supported</td>
+        <td>Separate config needed</td>
+        <td>Not supported</td>
+      </tr>
+      <tr>
+        <td>URL Routing</td>
+        <td>Supported</td>
+        <td>Supported (advanced)</td>
+        <td>Not supported</td>
+        <td>Not supported</td>
+      </tr>
+      <tr>
+        <td>Traffic Splitting</td>
+        <td>Limited</td>
+        <td>Native (weight)</td>
+        <td>Not supported</td>
+        <td>Not supported</td>
+      </tr>
+      <tr>
+        <td>Role Separation</td>
+        <td>Single resource</td>
+        <td>3-tier separation</td>
+        <td>Single resource</td>
+        <td>Single resource</td>
+      </tr>
+      <tr>
+        <td>External IP</td>
+        <td>1 LB IP</td>
+        <td>1 per Gateway</td>
+        <td>1 per Service</td>
+        <td>Node IP used</td>
+      </tr>
+      <tr>
+        <td>Cost</td>
+        <td>1 LB</td>
+        <td>1 LB</td>
+        <td>1 LB per Service</td>
+        <td>Free</td>
+      </tr>
+      <tr>
+        <td>Use Case</td>
+        <td>Web applications</td>
+        <td>Complex routing, MSA</td>
+        <td>TCP services, DB</td>
+        <td>Dev/Test</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h2 id="stage-2-service-virtual-ip">Stage 2: Service (Virtual IP)</h2>
+
+<p>Traffic entering through entry points is forwarded to the Service’s ClusterIP. ClusterIP is a completely virtual IP that doesn’t exist on any actual network interface.</p>
+
+<p><br /></p>
+
+<h3 id="understanding-service-network">Understanding Service Network</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────────────────────────────┐
+│                    Kubernetes Cluster                       │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │          Service Network <span class="o">(</span>Virtual<span class="o">)</span>                  │    │
+│  │          CIDR: 10.96.0.0/12                         │    │
+│  │                                                     │    │
+│  │   ┌─────────────┐    ┌─────────────┐                │    │
+│  │   │ web-service │    │ api-service │                │    │
+│  │   │ 10.96.1.10  │    │ 10.96.1.20  │                │    │
+│  │   └─────────────┘    └─────────────┘                │    │
+│  │          │                  │                       │    │
+│  │          └────────┬─────────┘                       │    │
+│  │                   │                                 │    │
+│  └───────────────────┼─────────────────────────────────┘    │
+│                      │                                      │
+│                      ▼                                      │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │          Pod Network <span class="o">(</span>Actual<span class="o">)</span>                       │    │
+│  │          CIDR: 192.168.0.0/16                       │    │
+│  │                                                     │    │
+│  │   ┌─────────┐ ┌─────────┐ ┌─────────┐               │    │
+│  │   │ Pod 1   │ │ Pod 2   │ │ Pod 3   │               │    │
+│  │   │.1.10    │ │.1.11    │ │.2.10    │               │    │
+│  │   └─────────┘ └─────────┘ └─────────┘               │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="relationship-between-service-and-endpoints">Relationship Between Service and Endpoints</h3>
+
+<p>Service selects Pods through label selectors, and the selected Pods’ IPs are registered in the Endpoints (or EndpointSlice) resource.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Service definition</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Service</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">web-service</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">app</span><span class="pi">:</span> <span class="s">web</span>      <span class="c1"># Selects Pods with this label</span>
+  <span class="na">ports</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+    <span class="na">targetPort</span><span class="pi">:</span> <span class="m">8080</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check Endpoints</span>
+kubectl get endpoints web-service
+
+<span class="c"># Example output</span>
+NAME          ENDPOINTS                                      AGE
+web-service   192.168.1.10:8080,192.168.1.11:8080,192.168.2.10:8080   5m
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check EndpointSlice (Kubernetes 1.21+)</span>
+kubectl get endpointslices <span class="nt">-l</span> kubernetes.io/service-name<span class="o">=</span>web-service
+
+<span class="c"># Example output</span>
+NAME                  ADDRESSTYPE   PORTS   ENDPOINTS                           AGE
+web-service-abc12     IPv4          8080    192.168.1.10,192.168.1.11,192.168.2.10   5m
+</code></pre></div></div>
+
+<p>When a Service receives traffic, it’s forwarded to one of the Pod IPs registered in Endpoints. This process is handled by kube-proxy in Stage 3.</p>
+
+<p><br /></p>
+
+<h2 id="stage-3-kube-proxy-nat-transformation">Stage 3: kube-proxy (NAT Transformation)</h2>
+
+<p>kube-proxy runs on each node and is responsible for transforming (DNAT) traffic coming to the Service IP into actual Pod IPs.</p>
+
+<p><br /></p>
+
+<h3 id="kube-proxy-operating-modes">kube-proxy Operating Modes</h3>
+
+<p>kube-proxy can operate in three modes:</p>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Mode</th>
+        <th>Method</th>
+        <th>Performance</th>
+        <th>Features</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>iptables</td>
+        <td>iptables rules</td>
+        <td>Medium</td>
+        <td>Default mode, linear search</td>
+      </tr>
+      <tr>
+        <td>IPVS</td>
+        <td>IPVS kernel module</td>
+        <td>High</td>
+        <td>Hash table, O(1) lookup</td>
+      </tr>
+      <tr>
+        <td>userspace</td>
+        <td>Proxy process</td>
+        <td>Low</td>
+        <td>Legacy, rarely used</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check kube-proxy mode</span>
+kubectl get cm kube-proxy <span class="nt">-n</span> kube-system <span class="nt">-o</span> yaml | <span class="nb">grep </span>mode
+
+<span class="c"># Example output</span>
+mode: ipvs
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="iptables-mode-packet-flow">iptables Mode Packet Flow</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Client request: 10.96.100.50:80 <span class="o">(</span>Service IP<span class="o">)</span>
+    │
+    ▼
+┌───────────────────────────────────────────────────────┐
+│  Node <span class="o">(</span>iptables rules<span class="o">)</span>                                │
+│                                                       │
+│  PREROUTING chain:                                    │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ <span class="nt">-A</span> PREROUTING <span class="nt">-j</span> KUBE-SERVICES                  │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  KUBE-SERVICES chain:                                 │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ <span class="nt">-A</span> KUBE-SERVICES <span class="nt">-d</span> 10.96.100.50/32 <span class="nt">-p</span> tcp      │  │
+│  │    <span class="nt">--dport</span> 80 <span class="nt">-j</span> KUBE-SVC-XXXXXX                │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  KUBE-SVC-XXXXXX chain <span class="o">(</span>load balancing<span class="o">)</span>:              │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ <span class="nt">-A</span> KUBE-SVC-XXXXXX <span class="nt">-m</span> statistic <span class="nt">--mode</span> random   │  │
+│  │    <span class="nt">--probability</span> 0.33 <span class="nt">-j</span> KUBE-SEP-AAAA          │  │
+│  │ <span class="nt">-A</span> KUBE-SVC-XXXXXX <span class="nt">-m</span> statistic <span class="nt">--mode</span> random   │  │
+│  │    <span class="nt">--probability</span> 0.50 <span class="nt">-j</span> KUBE-SEP-BBBB          │  │
+│  │ <span class="nt">-A</span> KUBE-SVC-XXXXXX <span class="nt">-j</span> KUBE-SEP-CCCC             │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  KUBE-SEP-AAAA chain <span class="o">(</span>DNAT<span class="o">)</span>:                          │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ <span class="nt">-A</span> KUBE-SEP-AAAA <span class="nt">-p</span> tcp <span class="nt">-j</span> DNAT                 │  │
+│  │    <span class="nt">--to-destination</span> 192.168.1.10:8080           │  │ 
+│  └─────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────┘
+    │
+    ▼
+Destination transformed: 192.168.1.10:8080 <span class="o">(</span>Pod IP<span class="o">)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="ipvs-mode-packet-flow">IPVS Mode Packet Flow</h3>
+
+<p>IPVS mode uses the Linux kernel’s IPVS (IP Virtual Server) module to perform more efficient load balancing.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Client request: 10.96.100.50:80 <span class="o">(</span>Service IP<span class="o">)</span>
+    │
+    ▼
+┌───────────────────────────────────────────────────────┐
+│  Node <span class="o">(</span>IPVS rules<span class="o">)</span>                                    │
+│                                                       │
+│  kube-ipvs0 interface:                                │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ inet 10.96.100.50/32 scope global kube-ipvs0    │  │
+│  │ <span class="o">(</span>All ClusterIPs are bound<span class="o">)</span>                      │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  IPVS Virtual Server:                                 │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ TCP  10.96.100.50:80 rr                         │  │
+│  │   -&gt; 192.168.1.10:8080    Masq    1    0    0   │  │
+│  │   -&gt; 192.168.1.11:8080    Masq    1    0    0   │  │
+│  │   -&gt; 192.168.2.10:8080    Masq    1    0    0   │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  Hash table lookup → Real Server selection → DNAT     │
+└───────────────────────────────────────────────────────┘
+    │
+    ▼
+Destination transformed: 192.168.1.10:8080 <span class="o">(</span>Pod IP<span class="o">)</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check IPVS rules</span>
+<span class="nb">sudo </span>ipvsadm <span class="nt">-Ln</span>
+
+<span class="c"># Example output</span>
+IP Virtual Server version 1.2.1 <span class="o">(</span><span class="nv">size</span><span class="o">=</span>4096<span class="o">)</span>
+Prot LocalAddress:Port Scheduler Flags
+  -&gt; RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  10.96.100.50:80 rr
+  -&gt; 192.168.1.10:8080            Masq    1      0          0
+  -&gt; 192.168.1.11:8080            Masq    1      0          0
+  -&gt; 192.168.2.10:8080            Masq    1      0          0
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="dnat-and-snat-in-detail">DNAT and SNAT in Detail</h3>
+
+<p>Let’s examine the NAT transformation performed by kube-proxy in detail:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Request Packet <span class="o">(</span>DNAT - Destination NAT<span class="o">)</span>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<span class="o">[</span>Original Packet]
+┌─────────────────────────────────────┐
+│ Src IP: 203.0.113.10 <span class="o">(</span>Client<span class="o">)</span>       │
+│ Dst IP: 10.96.100.50 <span class="o">(</span>Service<span class="o">)</span>      │
+│ Src Port: 54321                     │
+│ Dst Port: 80                        │
+└─────────────────────────────────────┘
+                │
+                │ DNAT performed
+                ▼
+<span class="o">[</span>Transformed Packet]
+┌─────────────────────────────────────┐
+│ Src IP: 203.0.113.10 <span class="o">(</span>Client<span class="o">)</span>       │
+│ Dst IP: 192.168.1.10 <span class="o">(</span>Pod<span class="o">)</span>          │  ← Destination changed
+│ Src Port: 54321                     │
+│ Dst Port: 8080                      │  ← Port also changed
+└─────────────────────────────────────┘
+
+
+Response Packet <span class="o">(</span>SNAT - Source NAT<span class="o">)</span>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<span class="o">[</span>Original Response]
+┌─────────────────────────────────────┐
+│ Src IP: 192.168.1.10 <span class="o">(</span>Pod<span class="o">)</span>          │
+│ Dst IP: 203.0.113.10 <span class="o">(</span>Client<span class="o">)</span>       │
+│ Src Port: 8080                      │
+│ Dst Port: 54321                     │
+└─────────────────────────────────────┘
+                │
+                │ SNAT performed <span class="o">(</span>conntrack-based<span class="o">)</span>
+                ▼
+<span class="o">[</span>Transformed Response]
+┌─────────────────────────────────────┐
+│ Src IP: 10.96.100.50 <span class="o">(</span>Service<span class="o">)</span>      │  ← Source changed
+│ Dst IP: 203.0.113.10 <span class="o">(</span>Client<span class="o">)</span>       │
+│ Src Port: 80                        │  ← Port also changed
+│ Dst Port: 54321                     │
+└─────────────────────────────────────┘
+</code></pre></div></div>
+
+<p>conntrack (Connection Tracking) matches request and response packets to perform the correct NAT reverse transformation.</p>
+
+<p><br /></p>
+
+<h2 id="stage-4-cni-network">Stage 4: CNI Network</h2>
+
+<p>Packets transformed by DNAT are delivered to the actual Pod through the network configured by the CNI (Container Network Interface).</p>
+
+<p><br /></p>
+
+<h3 id="role-of-cni">Role of CNI</h3>
+
+<p>CNI plugins perform the following roles:</p>
+
+<ol>
+  <li>Create network interface (veth pair) for Pods</li>
+  <li>Assign IP addresses to Pods (IPAM)</li>
+  <li>Set up communication paths between Pods within a node</li>
+  <li>Configure Overlay/Routing for inter-node Pod communication</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────────────────────────────┐
+│  Node 1 <span class="o">(</span>10.100.1.10<span class="o">)</span>                                       │
+│  Pod CIDR: 192.168.1.0/24                                   │
+│                                                             │
+│  ┌───────────────┐    ┌───────────────┐                     │
+│  │    Pod A      │    │    Pod B      │                     │
+│  │ 192.168.1.10  │    │ 192.168.1.11  │                     │
+│  │    ┌─────┐    │    │    ┌─────┐    │                     │
+│  │    │eth0 │    │    │    │eth0 │    │                     │
+│  │    └──┬──┘    │    │    └──┬──┘    │                     │
+│  └───────┼───────┘    └───────┼───────┘                     │
+│          │                    │                             │
+│          │ veth pair          │ veth pair                   │
+│          │                    │                             │
+│  ┌───────┴────────────────────┴───────┐                     │
+│  │           cni0 <span class="o">(</span>Bridge<span class="o">)</span>            │                     │
+│  │           192.168.1.1              │                     │
+│  └────────────────┬───────────────────┘                     │
+│                   │                                         │
+│  ┌────────────────┴───────────────────┐                     │
+│  │         eth0 <span class="o">(</span>Node NIC<span class="o">)</span>            │                     │
+│  │         10.100.1.10                │                     │
+│  └────────────────┬───────────────────┘                     │
+└───────────────────┼─────────────────────────────────────────┘
+                    │
+                    │  Overlay Network <span class="o">(</span>VXLAN/Geneve<span class="o">)</span>
+                    │  or BGP Routing
+                    │
+┌───────────────────┼─────────────────────────────────────────┐
+│  Node 2 <span class="o">(</span>10.100.1.11<span class="o">)</span>                                       │
+│  Pod CIDR: 192.168.2.0/24                                   │
+│                   │                                         │
+│  ┌────────────────┴───────────────────┐                     │
+│  │         eth0 <span class="o">(</span>Node NIC<span class="o">)</span>            │                     │
+│  │         10.100.1.11                │                     │
+│  └────────────────┬───────────────────┘                     │
+│                   │                                         │
+│  ┌────────────────┴───────────────────┐                     │
+│  │           cni0 <span class="o">(</span>Bridge<span class="o">)</span>            │                     │
+│  │           192.168.2.1              │                     │
+│  └───────┬────────────────────┬───────┘                     │
+│          │                    │                             │
+│  ┌───────┴───────┐    ┌───────┴───────┐                     │
+│  │    Pod C      │    │    Pod D      │                     │
+│  │ 192.168.2.10  │    │ 192.168.2.11  │                     │
+│  └───────────────┘    └───────────────┘                     │
+└─────────────────────────────────────────────────────────────┘
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="major-cni-plugin-comparison">Major CNI Plugin Comparison</h3>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>CNI</th>
+        <th>Network Mode</th>
+        <th>Features</th>
+        <th>Use Case</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Calico</td>
+        <td>BGP/VXLAN</td>
+        <td>High performance, Network Policy</td>
+        <td>On-premises, Cloud</td>
+      </tr>
+      <tr>
+        <td>Flannel</td>
+        <td>VXLAN/host-gw</td>
+        <td>Simple setup, lightweight</td>
+        <td>Small clusters</td>
+      </tr>
+      <tr>
+        <td>Cilium</td>
+        <td>eBPF</td>
+        <td>High performance, L7 policies</td>
+        <td>Large scale, Security-focused</td>
+      </tr>
+      <tr>
+        <td>AWS VPC CNI</td>
+        <td>Native VPC</td>
+        <td>AWS native, high performance</td>
+        <td>AWS EKS</td>
+      </tr>
+      <tr>
+        <td>Weave</td>
+        <td>VXLAN</td>
+        <td>Encryption support, simple</td>
+        <td>Multi-cloud</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="same-node-vs-different-node-communication">Same Node vs Different Node Communication</h3>
+
+<h4 id="pod-to-pod-communication-within-the-same-node">Pod-to-Pod communication within the same node:</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Pod A <span class="o">(</span>192.168.1.10<span class="o">)</span> → Pod B <span class="o">(</span>192.168.1.11<span class="o">)</span>
+
+┌─────────────────────────────────────┐
+│  Node 1                             │
+│                                     │
+│  Pod A          Bridge         Pod B│
+│  ┌─────┐       ┌─────┐       ┌─────┐│
+│  │eth0 │──veth─│cni0 │─veth──│eth0 ││
+│  └─────┘       └─────┘       └─────┘│
+│                                     │
+│  Packet path: eth0 → veth → cni0 → veth → eth0
+│  <span class="o">(</span>Does not leave the node<span class="o">)</span>          │
+└─────────────────────────────────────┘
+</code></pre></div></div>
+
+<h4 id="pod-to-pod-communication-across-different-nodes">Pod-to-Pod communication across different nodes:</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Pod A <span class="o">(</span>192.168.1.10<span class="o">)</span> → Pod C <span class="o">(</span>192.168.2.10<span class="o">)</span>
+
+┌─────────────┐                      ┌─────────────┐
+│   Node 1    │                      │   Node 2    │
+│             │                      │             │
+│  ┌───────┐  │    Overlay/BGP       │  ┌───────┐  │
+│  │ Pod A │  │  ┌──────────────┐    │  │ Pod C │  │
+│  │.1.10  │──┼──│ VXLAN Tunnel │────┼──│.2.10  │  │
+│  └───────┘  │  │ or BGP       │    │  └───────┘  │
+│             │  └──────────────┘    │             │
+└─────────────┘                      └─────────────┘
+
+Packet path:
+1. Pod A eth0 → veth → cni0 → Node1 eth0
+2. Node1 eth0 → <span class="o">[</span>VXLAN encapsulation] → Physical network
+3. Physical network → Node2 eth0 → <span class="o">[</span>VXLAN decapsulation]
+4. cni0 → veth → Pod C eth0
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="stage-5-final-destination-pod-container">Stage 5: Final Destination (Pod Container)</h2>
+
+<p>Packets delivered through the CNI network finally reach the Container inside the Pod.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌──────────────────────────────────────────────────────────────┐
+│  Pod <span class="o">(</span>192.168.1.10<span class="o">)</span>                                          │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │  Network Namespace                                  │     │
+│  │                                                     │     │
+│  │  ┌─────────┐                                        │     │
+│  │  │  eth0   │ ← Packet received <span class="o">(</span>dst: 192.168.1.10:8080<span class="o">)</span> │ │
+│  │  └────┬────┘                                        │     │
+│  │       │                                             │     │
+│  │       │ iptables/network stack                      │     │
+│  │       │                                             │     │
+│  │       ▼                                             │     │
+│  │  ┌─────────────────────────────────────────────┐    │     │
+│  │  │              localhost                      │    │     │
+│  │  │                                             │    │     │
+│  │  │  ┌─────────────┐    ┌─────────────┐         │    │     │
+│  │  │  │ Container 1 │    │ Container 2 │         │    │     │
+│  │  │  │ <span class="o">(</span>App<span class="o">)</span>       │    │ <span class="o">(</span>Sidecar<span class="o">)</span>   │         │    │     │
+│  │  │  │ :8080       │    │ :9090       │         │    │     │
+│  │  │  └─────────────┘    └─────────────┘         │    │     │
+│  │  │                                             │    │     │
+│  │  │  Containers <span class="k">in </span>same Pod communicate via localhost  │   │
+│  │  └─────────────────────────────────────────────┘    │     │
+│  └─────────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────────┘
+</code></pre></div></div>
+
+<p>Containers within a Pod share the same Network Namespace, allowing them to communicate with each other via localhost.</p>
+
+<p><br /></p>
+
+<h2 id="complete-packet-flow-summary">Complete Packet Flow Summary</h2>
+
+<p>Here’s a consolidated diagram summarizing the complete packet flow from external client to Pod:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────────────────────────────────────────┐
+│                     Complete Packet Flow Summary                        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+External Client <span class="o">(</span>203.0.113.10<span class="o">)</span>
+    │
+    │ ① HTTPS request: app.example.com/api <span class="o">(</span>203.0.113.10:54321 → 34.123.45.67:443<span class="o">)</span>
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 1: Ingress/Gateway            │
+│ - TLS Termination                   │
+│ - Host/Path routing                 │
+│ - Backend Service selection         │
+└─────────────────────────────────────┘
+    │
+    │ ② HTTP request: <span class="o">(</span>Ingress Pod IP:port → 10.96.100.50:80<span class="o">)</span>
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 2: Service <span class="o">(</span>ClusterIP<span class="o">)</span>        │
+│ - Virtual IP: 10.96.100.50          │
+│ - Endpoints: Pod IP list management │
+└─────────────────────────────────────┘
+    │
+    │ ③ DNAT performed <span class="o">(</span>kube-proxy<span class="o">)</span>
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 3: kube-proxy <span class="o">(</span>iptables/IPVS<span class="o">)</span> │
+│ - 10.96.100.50:80 → 192.168.1.10:8080│
+│ - Load balancing <span class="o">(</span>RR/LC/SH<span class="o">)</span>         │
+│ - conntrack recording               │
+└─────────────────────────────────────┘
+    │
+    │ ④ Pod Network delivery
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 4: CNI Network                │
+│ - Same node: Bridge traversal       │
+│ - Different node: Overlay/Routing   │
+└─────────────────────────────────────┘
+    │
+    │ ⑤ Container port reached
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 5: Pod Container              │
+│ - 192.168.1.10:8080                 │
+│ - Application processing            │
+└─────────────────────────────────────┘
+    │
+    │ ⑥ Response <span class="o">(</span>SNAT applied <span class="k">in </span>reverse<span class="o">)</span>
+    ▼
+External Client <span class="o">(</span>203.0.113.10<span class="o">)</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="packet-analysis-lab">Packet Analysis Lab</h2>
+
+<p>Let’s learn how to verify packet flow in an actual environment.</p>
+
+<p><br /></p>
+
+<h3 id="test-environment-setup">Test Environment Setup</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create test namespace</span>
+kubectl create namespace traffic-test
+
+<span class="c"># Deploy backend Pods</span>
+kubectl create deployment nginx <span class="nt">--image</span><span class="o">=</span>nginx:latest <span class="nt">--replicas</span><span class="o">=</span>3 <span class="nt">-n</span> traffic-test
+
+<span class="c"># Create Service</span>
+kubectl expose deployment nginx <span class="nt">--port</span><span class="o">=</span>80 <span class="nt">--target-port</span><span class="o">=</span>80 <span class="nt">--name</span><span class="o">=</span>nginx-service <span class="nt">-n</span> traffic-test
+
+<span class="c"># Create client Pod</span>
+kubectl run client-pod <span class="nt">--image</span><span class="o">=</span>nicolaka/netshoot <span class="nt">-n</span> traffic-test <span class="nt">--command</span> <span class="nt">--</span> <span class="nb">sleep </span>infinity
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="packet-capture-at-each-stage">Packet Capture at Each Stage</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 1. Check Service IP</span>
+<span class="nv">SERVICE_IP</span><span class="o">=</span><span class="si">$(</span>kubectl get svc nginx-service <span class="nt">-n</span> traffic-test <span class="nt">-o</span> <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.clusterIP}'</span><span class="si">)</span>
+<span class="nb">echo</span> <span class="s2">"Service IP: </span><span class="nv">$SERVICE_IP</span><span class="s2">"</span>
+
+<span class="c"># 2. Check IPVS rules on node</span>
+ssh &lt;node&gt; <span class="s2">"sudo ipvsadm -Ln | grep -A 5 </span><span class="nv">$SERVICE_IP</span><span class="s2">"</span>
+
+<span class="c"># 3. tcpdump in client Pod</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> client-pod <span class="nt">-n</span> traffic-test <span class="nt">--</span> tcpdump <span class="nt">-i</span> any <span class="nt">-nn</span> host <span class="nv">$SERVICE_IP</span>
+
+<span class="c"># 4. tcpdump on node (verify before/after DNAT)</span>
+ssh &lt;node&gt; <span class="s2">"sudo tcpdump -i any -nn host </span><span class="nv">$SERVICE_IP</span><span class="s2">"</span>
+
+<span class="c"># 5. tcpdump in backend Pod</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> &lt;nginx-pod&gt; <span class="nt">-n</span> traffic-test <span class="nt">--</span> tcpdump <span class="nt">-i</span> any <span class="nt">-nn</span> port 80
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="traffic-generation-and-analysis">Traffic Generation and Analysis</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generate request from client Pod</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> client-pod <span class="nt">-n</span> traffic-test <span class="nt">--</span> curl <span class="nt">-v</span> http://nginx-service
+
+<span class="c"># Verify load balancing with multiple requests</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> client-pod <span class="nt">-n</span> traffic-test <span class="nt">--</span> bash <span class="nt">-c</span> <span class="s2">"for i in {1..10}; do curl -s http://nginx-service | head -1; done"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="troubleshooting-guide">Troubleshooting Guide</h2>
+
+<p>Here’s a summary of common issues and solutions for external traffic flow.</p>
+
+<p><br /></p>
+
+<h3 id="problem-1-cannot-connect-to-service">Problem 1: Cannot Connect to Service</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Diagnostic sequence</span>
+<span class="c"># 1. Verify Service exists</span>
+kubectl get svc <span class="nt">-n</span> &lt;namespace&gt;
+
+<span class="c"># 2. Check Endpoints (verify Pods are registered)</span>
+kubectl get endpoints &lt;service-name&gt; <span class="nt">-n</span> &lt;namespace&gt;
+
+<span class="c"># 3. Check Pod status</span>
+kubectl get pods <span class="nt">-n</span> &lt;namespace&gt; <span class="nt">-l</span> &lt;selector&gt;
+
+<span class="c"># 4. Check kube-proxy status</span>
+kubectl get pods <span class="nt">-n</span> kube-system <span class="nt">-l</span> k8s-app<span class="o">=</span>kube-proxy
+
+<span class="c"># 5. Check IPVS/iptables rules</span>
+<span class="nb">sudo </span>ipvsadm <span class="nt">-Ln</span> | <span class="nb">grep</span> &lt;service-ip&gt;
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="problem-2-ingressgateway-not-working">Problem 2: Ingress/Gateway Not Working</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 1. Check Ingress Controller Pod status</span>
+kubectl get pods <span class="nt">-n</span> ingress-nginx
+
+<span class="c"># 2. Verify Ingress resource</span>
+kubectl describe ingress &lt;ingress-name&gt; <span class="nt">-n</span> &lt;namespace&gt;
+
+<span class="c"># 3. Check Ingress Controller logs</span>
+kubectl logs <span class="nt">-n</span> ingress-nginx <span class="nt">-l</span> app.kubernetes.io/name<span class="o">=</span>ingress-nginx
+
+<span class="c"># 4. Test backend Service connection</span>
+kubectl <span class="nb">exec</span> <span class="nt">-it</span> &lt;ingress-pod&gt; <span class="nt">-n</span> ingress-nginx <span class="nt">--</span> curl http://&lt;service-ip&gt;
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="problem-3-intermittent-connection-failures">Problem 3: Intermittent Connection Failures</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 1. Check backend Pod status (Readiness)</span>
+kubectl get pods <span class="nt">-o</span> wide | <span class="nb">grep</span> <span class="nt">-v</span> Running
+
+<span class="c"># 2. Check EndpointSlice status</span>
+kubectl get endpointslices <span class="nt">-l</span> kubernetes.io/service-name<span class="o">=</span>&lt;service&gt;
+
+<span class="c"># 3. Check conntrack table</span>
+<span class="nb">sudo </span>conntrack <span class="nt">-L</span> <span class="nt">-d</span> &lt;service-ip&gt; | <span class="nb">head</span> <span class="nt">-20</span>
+
+<span class="c"># 4. Check network policies</span>
+kubectl get networkpolicies <span class="nt">-n</span> &lt;namespace&gt;
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This guide provided a step-by-step analysis of the complete process from when external traffic enters a Kubernetes cluster to when it reaches the final Pod.</p>
+
+<h3 id="key-takeaways">Key Takeaways</h3>
+
+<h4 id="choosing-entry-points">Choosing Entry Points</h4>
+<ul>
+  <li>Ingress Controller: Web applications requiring L7 routing, TLS termination, URL-based routing</li>
+  <li>Gateway API: Microservice environments requiring complex routing, traffic splitting, role-based management (next-generation standard)</li>
+  <li>LoadBalancer: L4 level TCP/UDP service exposure</li>
+  <li>NodePort: Development/test environments or direct external load balancer integration</li>
+</ul>
+
+<h4 id="gateway-api-advantages">Gateway API Advantages</h4>
+<ul>
+  <li>Role-based resource separation (GatewayClass → Gateway → Route)</li>
+  <li>Native traffic splitting (weight-based canary deployments)</li>
+  <li>Multi-protocol support (HTTP, HTTPS, gRPC, TCP, UDP)</li>
+  <li>Cross-namespace routing support</li>
+  <li>Standardized extension method (Policy Attachment)</li>
+</ul>
+
+<h4 id="role-of-service">Role of Service</h4>
+<ul>
+  <li>ClusterIP is a virtual IP that doesn’t exist on actual networks</li>
+  <li>Endpoints/EndpointSlice manage actual Pod IP lists</li>
+  <li>Dynamic Pod selection through label selectors</li>
+</ul>
+
+<h4 id="kube-proxy-nat-transformation">kube-proxy NAT Transformation</h4>
+<ul>
+  <li>Performs DNAT: Service IP → Pod IP</li>
+  <li>iptables mode: Linear search, suitable for small clusters</li>
+  <li>IPVS mode: Hash table-based O(1) lookup, suitable for large clusters</li>
+  <li>Response packet SNAT through conntrack</li>
+</ul>
+
+<h4 id="cni-network">CNI Network</h4>
+<ul>
+  <li>Assigns network interfaces and IPs to Pods</li>
+  <li>Same node: Direct communication through Bridge</li>
+  <li>Different nodes: Overlay (VXLAN) or BGP Routing</li>
+</ul>
+
+<blockquote>
+  <p>With this understanding, you can systematically analyze and resolve Kubernetes network issues. Using tcpdump for packet analysis and verifying the status of each component is crucial for accurately identifying the root cause of problems.</p>
+</blockquote>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="reference">Reference</h2>
+
+<ul>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/service/">Kubernetes Documentation - Service</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/ingress/">Kubernetes Documentation - Ingress</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/">Kubernetes Documentation - Ingress Controllers</a></li>
+  <li><a href="https://gateway-api.sigs.k8s.io/">Kubernetes Gateway API Documentation</a></li>
+  <li><a href="https://gateway-api.sigs.k8s.io/guides/">Kubernetes Gateway API - Getting Started</a></li>
+  <li><a href="https://docs.nginx.com/nginx-gateway-fabric/">NGINX Gateway Fabric Documentation</a></li>
+  <li><a href="https://gateway.envoyproxy.io/">Envoy Gateway Documentation</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/">Kubernetes Documentation - Network Policies</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/cluster-administration/networking/">Kubernetes Documentation - Cluster Networking</a></li>
+  <li><a href="https://kubernetes.github.io/ingress-nginx/">NGINX Ingress Controller Documentation</a></li>
+  <li><a href="https://docs.tigera.io/calico/latest/about/">Calico Documentation - About Kubernetes Networking</a></li>
+  <li><a href="https://docs.cilium.io/en/stable/network/kubernetes/policy/">Cilium Documentation - Kubernetes Network Policy</a></li>
+  <li><a href="https://kubernetes-sigs.github.io/aws-load-balancer-controller/">AWS Load Balancer Controller Documentation</a></li>
+  <li><a href="http://www.linuxvirtualserver.org/Documents.html">LVS (Linux Virtual Server) Documentation</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/linux/linux-server-hardware-monitoring/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767851611/linux-server-hardware-monitoring-1_ogglq4.png" alt="Linux Physical Server Hardware Monitoring Guide: Complete Toolkit">
+                                    
+                                    <h3>Linux Physical Server Hardware Monitoring Guide: Complete Toolkit</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/kubernetes/trouble-shooting-cilium-cni/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767757722/cilium-cni-network-1_rvl8os.png" alt="Troubleshooting Kubernetes Networks in Cilium CNI Environments">
+                                    
+                                    <h3>Troubleshooting Kubernetes Networks in Cilium CNI Environments</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/kubernetes/k8s-source-ip-preservation/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767841728/kuberentes-sourceip-1_hffnie.png" alt="Preserving Source IP in Kubernetes: A Complete Guide">
+                                    
+                                    <h3>Preserving Source IP in Kubernetes: A Complete Guide</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="29">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/linux/linux-server-hardware-monitoring/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767851611/linux-server-hardware-monitoring-1_ogglq4.png" alt="Linux Physical Server Hardware Monitoring Guide: Complete Toolkit">
+                
+            </div>
+            <h3 class="title">Linux Physical Server Hardware Monitoring Guide: Complete Toolkit</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Step-by-step analysis of how external traffic enters Kubernetes clusters and reaches Pods. Covers the roles of Ingress Controller, Gateway API, Service, kube-proxy, and CNI along with detailed packet transformation processes.&quot;%20https://somaz.blog/category/kubernetes/kubernetes-external-traffic-flow/%20via%20&#64;&hashtags=kubernetes,networking,ingress,gateway-api,loadbalancer,nodeport,kube-proxy,service,cni,nat,traffic-flow"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/kubernetes/kubernetes-external-traffic-flow/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile.png" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  <script type="application/ld+json">
+  {
+      "@context": "http://schema.org",
+      "@type": "Person",
+      "name": "Somaz",
+      
+      "image": "/assets/img/uploads/profile.png",
+      
+      "jobTitle": "DevOps Engineer",
+      "url": "https://somaz.blog/authors/somaz/",
+      "sameAs": [
+        "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://{{ author.tistory_username }}.tistory.com"
+      ]
+  }
+  </script>
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/kubernetes/kubernetes-external-traffic-flow/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/economy">Economy</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "Organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": "600",
+      "height": "315"
+  },
+  "sameAs": [
+    "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://{{ site.tistory_username }}.tistory.com"
+  ]
+}
+</script>
+
+<!-- Include the script that allows Netlify CMS login -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id="></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "http://schema.org",
+            "@type": "BlogPosting",
+            "name": "Complete Guide to External Traffic Flow into Kubernetes Clusters",
+            "headline": "Deep dive into packet flow and NAT transformation through Ingress, Gateway API, LoadBalancer, and NodePort",
+            "description": "Step-by-step analysis of how external traffic enters Kubernetes clusters and reaches Pods. Covers the roles of Ingress Controller, Gateway API, Service, kube-proxy, and CNI along with detailed packet transformation processes.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1767757938/kubernetes-external-traffic-1_ge4ahh.png",
+            "url": "https://somaz.blog/category/kubernetes/kubernetes-external-traffic-flow/",
+            "articleBody": "
+
+
+
+Overview
+
+Understanding how external traffic reaches internal Pods in a Kubernetes cluster is essential for operations and troubleshooting. Incoming requests don’t simply connect directly to Pods—they traverse multiple network components before reaching their final destination.
+
+External traffic first enters the cluster through an Ingress Controller or LoadBalancer. It’s then forwarded to a Service object’s ClusterIP, which is a virtual IP rather than an actual IP address. kube-proxy manages iptables or IPVS rules on each node, performing DNAT (Destination NAT) to transform packets destined for the Service IP into actual Pod IPs. Finally, packets are delivered to the container port through the network configured by the CNI (Container Network Interface). If the Pod resides on a different node, inter-node communication occurs through an Overlay network (such as VXLAN).
+
+This guide provides a step-by-step analysis of the entire journey from when external traffic enters the Kubernetes cluster to when it reaches the actual container.
+
+
+
+Complete Traffic Flow Overview
+
+The process of external traffic reaching a Pod inside a Kubernetes cluster can be divided into five major stages.
+
+External Client (Internet)
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 1: Entry Point               │
+│  - Ingress Controller (L7)          │
+│  - Gateway API (L7)                 │
+│  - LoadBalancer (L4)                │
+│  - NodePort (specific node port)    │
+└─────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 2: Service (Virtual IP)      │
+│  - ClusterIP: 10.96.x.x             │
+│  - Does not exist on actual network │
+└─────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 3: kube-proxy (NAT)          │
+│  - iptables or IPVS rules           │
+│  - DNAT: Service IP → Pod IP        │
+└─────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 4: CNI Network               │
+│  - Pod Network (192.168.x.x)        │
+│  - Inter-node: Overlay/Routing      │
+└─────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────┐
+│  Stage 5: Final Destination         │
+│  - Pod Container (targetPort)       │
+└─────────────────────────────────────┘
+
+
+
+
+Stage 1: Entry Point
+
+There are four main ways for external traffic to enter a Kubernetes cluster. Each operates at a different layer and is chosen based on the intended purpose.
+
+External Client
+    │
+    ▼
+┌─────────────────────┐
+│  Ingress Controller │ (L7) - HTTP/HTTPS
+│  or                 │
+│  Gateway API        │ (L7) - HTTP/HTTPS/gRPC
+│  or                 │
+│  LoadBalancer       │ (L4) - TCP/UDP
+│  or                 │
+│  NodePort           │ (specific node port)
+└─────────────────────┘
+
+
+
+
+Ingress Controller (L7 Load Balancer)
+
+Ingress Controller is an L7 (Application Layer) load balancer that handles HTTP/HTTPS traffic. It performs application-level routing based on URL paths, host headers, and TLS termination.
+
+# Ingress resource example
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: api-service
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-service
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - app.example.com
+    secretName: tls-secret
+
+
+
+
+The packet flow for Ingress Controller is as follows:
+
+Client (203.0.113.10)
+    │
+    │ HTTPS request: app.example.com/api/users
+    ▼
+┌───────────────────────────────────────┐
+│  External LoadBalancer                │
+│  (AWS ALB / GCP GLB / MetalLB)        │
+│  Public IP: 34.123.45.67              │
+└───────────────────────────────────────┘
+    │
+    │ Port 443 → NodePort or LoadBalancer IP
+    ▼
+┌───────────────────────────────────────┐
+│  Ingress Controller Pod              │
+│  (nginx-ingress / traefik / etc)     │
+│  ┌─────────────────────────────────┐ │
+│  │ 1. TLS Termination              │ │
+│  │ 2. Host header verification     │ │
+│  │ 3. URL path matching            │ │
+│  │ 4. Backend Service selection    │ │
+│  └─────────────────────────────────┘ │
+└───────────────────────────────────────┘
+    │
+    │ HTTP request → ClusterIP Service
+    ▼
+┌───────────────────────────────────────┐
+│  api-service (ClusterIP)              │
+│  10.96.100.50:80                      │
+└───────────────────────────────────────┘
+
+
+
+
+Major Ingress Controller types include:
+
+
+  
+    
+      
+        Ingress Controller
+        Features
+        Use Case
+      
+    
+    
+      
+        NGINX Ingress
+        Most widely used, stable
+        General purpose
+      
+      
+        Traefik
+        Auto-configuration, Let&apos;s Encrypt integration
+        Small to medium scale
+      
+      
+        HAProxy
+        High performance, fine-grained settings
+        High traffic
+      
+      
+        AWS ALB Ingress
+        AWS native integration
+        AWS EKS
+      
+      
+        GKE Ingress
+        GCP native integration
+        GCP GKE
+      
+      
+        Istio Gateway
+        Service mesh integration
+        Microservices
+      
+    
+  
+
+
+
+
+Gateway API (Next-Generation Ingress)
+
+Gateway API is the next-generation version of Ingress developed by Kubernetes SIG-Network. It offers more expressive capabilities, role-based resource separation, and excellent extensibility. As of Kubernetes 1.29, Gateway, GatewayClass, and HTTPRoute have been promoted to GA (General Availability).
+
+┌─────────────────────────────────────────────────────────────┐
+│                 Gateway API Resource Hierarchy              │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Infrastructure Admin (Cluster Operator)                    │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  GatewayClass                                       │    │
+│  │  - Defines Gateway implementation (nginx, envoy, etc)│   │
+│  │  - Cluster-scoped resource                          │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                          │                                  │
+│                          ▼                                  │
+│  Cluster Operator (Platform Team)                           │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Gateway                                            │    │
+│  │  - Actual load balancer/proxy instance              │    │
+│  │  - Listener (port, protocol, TLS) configuration     │    │
+│  │  - Namespace-scoped resource                        │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                          │                                  │
+│                          ▼                                  │
+│  Application Developer (App Team)                           │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  HTTPRoute / GRPCRoute / TCPRoute / TLSRoute        │    │
+│  │  - Defines traffic routing rules                    │    │
+│  │  - Backend Service connection                       │    │
+│  │  - Namespace-scoped resource                        │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+
+
+
+GatewayClass Example:
+
+# Created by infrastructure admin - Using NGINX Gateway Fabric
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: nginx
+spec:
+  controllerName: gateway.nginx.org/nginx-gateway-controller
+
+
+Gateway Example:
+
+# Created by cluster operator - Actual Gateway instance
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: main-gateway
+  namespace: gateway-system
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: All  # Allow Routes from all namespaces
+  - name: https
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: tls-secret
+        kind: Secret
+    allowedRoutes:
+      namespaces:
+        from: Selector
+        selector:
+          matchLabels:
+            gateway-access: &quot;true&quot;
+
+
+HTTPRoute Example:
+
+# Created by application developer - Routing rules
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: api-routes
+  namespace: app-namespace
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: gateway-system
+  hostnames:
+  - &quot;api.example.com&quot;
+  rules:
+  # /v1/* requests → api-v1-service
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1
+    backendRefs:
+    - name: api-v1-service
+      port: 80
+      weight: 100
+  # /v2/* requests → api-v2-service (canary deployment)
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v2
+    backendRefs:
+    - name: api-v2-stable
+      port: 80
+      weight: 90
+    - name: api-v2-canary
+      port: 80
+      weight: 10
+  # Header-based routing
+  - matches:
+    - headers:
+      - name: X-Version
+        value: beta
+    backendRefs:
+    - name: api-beta-service
+      port: 80
+
+
+
+
+The packet flow for Gateway API is as follows:
+
+Client (203.0.113.10)
+    │
+    │ HTTPS request: api.example.com/v1/users
+    ▼
+┌───────────────────────────────────────┐
+│  External LoadBalancer               │
+│  (Cloud LB / MetalLB)                │
+│  Public IP: 34.123.45.67             │
+└───────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────┐
+│  Gateway (main-gateway)              │
+│  ┌─────────────────────────────────┐ │
+│  │ Listener: HTTPS (443)           │ │
+│  │ - TLS Termination               │ │
+│  │ - Host matching: api.example.com│ │
+│  └─────────────────────────────────┘ │
+│               │                       │
+│               ▼                       │
+│  ┌─────────────────────────────────┐ │
+│  │ HTTPRoute Matching              │ │
+│  │ - Path: /v1/* → api-v1-service │ │
+│  │ - Weight-based load balancing   │ │
+│  └─────────────────────────────────┘ │
+└───────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────┐
+│  api-v1-service (ClusterIP)          │
+│  10.96.100.50:80                     │
+└───────────────────────────────────────┘
+
+
+
+
+Major Gateway API Implementations:
+
+
+  
+    
+      
+        Implementation
+        Features
+        Status
+      
+    
+    
+      
+        NGINX Gateway Fabric
+        NGINX-based, enterprise support
+        GA
+      
+      
+        Envoy Gateway
+        Envoy proxy-based, CNCF project
+        GA
+      
+      
+        Istio
+        Service mesh integration, advanced traffic management
+        GA
+      
+      
+        Cilium
+        eBPF-based, high performance
+        GA
+      
+      
+        Traefik
+        Auto-configuration, easy to use
+        GA
+      
+      
+        Kong
+        API Gateway features integrated
+        GA
+      
+      
+        HAProxy Kubernetes Ingress
+        High performance, fine-grained settings
+        Beta
+      
+    
+  
+
+
+
+
+Ingress vs Gateway API Comparison:
+
+
+  
+    
+      
+        Feature
+        Ingress
+        Gateway API
+      
+    
+    
+      
+        API Maturity
+        Stable (v1)
+        Stable (v1) - 1.29+
+      
+      
+        Role Separation
+        Single resource
+        GatewayClass/Gateway/Route
+      
+      
+        Protocol Support
+        HTTP/HTTPS
+        HTTP, HTTPS, TCP, UDP, gRPC, TLS
+      
+      
+        Traffic Splitting
+        Limited (annotations)
+        Native support (weight)
+      
+      
+        Header-based Routing
+        Implementation-dependent
+        Standard spec
+      
+      
+        Extensibility
+        Annotation-based
+        Policy Attachment
+      
+      
+        Cross-namespace
+        Limited
+        Native support
+      
+    
+  
+
+
+
+
+LoadBalancer (L4 Load Balancer)
+
+LoadBalancer type Service operates at L4 (Transport Layer) and directly handles TCP/UDP traffic. In cloud environments, the CSP (Cloud Service Provider) automatically provisions the load balancer.
+
+# LoadBalancer Service example
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  annotations:
+    # When using AWS NLB
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    # For internal LB
+    service.beta.kubernetes.io/aws-load-balancer-internal: &quot;true&quot;
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: https
+    port: 443
+    targetPort: 8443
+
+
+
+
+The packet flow for LoadBalancer is as follows:
+
+Client (203.0.113.10)
+    │
+    │ TCP connection: 34.123.45.67:80
+    ▼
+┌───────────────────────────────────────┐
+│  Cloud Load Balancer                  │
+│  (AWS NLB / GCP LB / Azure LB)        │
+│  ┌─────────────────────────────────┐  │
+│  │ External IP: 34.123.45.67       │  │
+│  │ Health Check: /healthz          │  │
+│  │ Load Balancing: Round Robin     │  │
+│  └─────────────────────────────────┘  │
+└───────────────────────────────────────┘
+    │
+    │ Traffic distribution → Each node&apos;s NodePort
+    ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Node 1    │  │   Node 2    │  │   Node 3    │
+│ :30080      │  │ :30080      │  │ :30080      │
+└─────────────┘  └─────────────┘  └─────────────┘
+    │                  │                  │
+    └──────────────────┼──────────────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ ClusterIP       │
+              │ 10.96.100.50:80 │
+              └─────────────────┘
+
+
+
+
+NodePort (Direct Node Port Exposure)
+
+NodePort exposes a Service externally through a specific port (30000-32767) on all nodes. It’s the most basic external exposure method and serves as the foundation for LoadBalancer.
+
+# NodePort Service example
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: NodePort
+  selector:
+    app: web
+  ports:
+  - port: 80          # Service port (used with ClusterIP)
+    targetPort: 8080  # Pod container port
+    nodePort: 30080   # Port opened on nodes (auto-assigned if omitted)
+
+
+
+
+The packet flow for NodePort is as follows:
+
+Client (203.0.113.10)
+    │
+    │ TCP connection: 10.100.1.10:30080 (Node 1 IP)
+    ▼
+┌───────────────────────────────────────┐
+│  Node 1 (10.100.1.10)                 │
+│  ┌─────────────────────────────────┐  │
+│  │ kube-proxy listening on 30080   │  │
+│  │                                 │  │
+│  │ iptables/IPVS rules:            │  │
+│  │ :30080 → ClusterIP:80           │  │
+│  └─────────────────────────────────┘  │
+└───────────────────────────────────────┘
+    │
+    │ DNAT: 10.100.1.10:30080 → 10.96.100.50:80
+    ▼
+┌───────────────────────────────────────┐
+│  Service (ClusterIP)                  │
+│  10.96.100.50:80                      │
+└───────────────────────────────────────┘
+
+
+
+
+Entry Point Comparison Summary
+
+
+  
+    
+      
+        Feature
+        Ingress
+        Gateway API
+        LoadBalancer
+        NodePort
+      
+    
+    
+      
+        OSI Layer
+        L7 (HTTP/HTTPS)
+        L7 (HTTP/HTTPS/gRPC)
+        L4 (TCP/UDP)
+        L4 (TCP/UDP)
+      
+      
+        TLS Termination
+        Supported
+        Supported
+        Separate config needed
+        Not supported
+      
+      
+        URL Routing
+        Supported
+        Supported (advanced)
+        Not supported
+        Not supported
+      
+      
+        Traffic Splitting
+        Limited
+        Native (weight)
+        Not supported
+        Not supported
+      
+      
+        Role Separation
+        Single resource
+        3-tier separation
+        Single resource
+        Single resource
+      
+      
+        External IP
+        1 LB IP
+        1 per Gateway
+        1 per Service
+        Node IP used
+      
+      
+        Cost
+        1 LB
+        1 LB
+        1 LB per Service
+        Free
+      
+      
+        Use Case
+        Web applications
+        Complex routing, MSA
+        TCP services, DB
+        Dev/Test
+      
+    
+  
+
+
+
+
+Stage 2: Service (Virtual IP)
+
+Traffic entering through entry points is forwarded to the Service’s ClusterIP. ClusterIP is a completely virtual IP that doesn’t exist on any actual network interface.
+
+
+
+Understanding Service Network
+
+┌─────────────────────────────────────────────────────────────┐
+│                    Kubernetes Cluster                       │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │          Service Network (Virtual)                  │    │
+│  │          CIDR: 10.96.0.0/12                         │    │
+│  │                                                     │    │
+│  │   ┌─────────────┐    ┌─────────────┐                │    │
+│  │   │ web-service │    │ api-service │                │    │
+│  │   │ 10.96.1.10  │    │ 10.96.1.20  │                │    │
+│  │   └─────────────┘    └─────────────┘                │    │
+│  │          │                  │                       │    │
+│  │          └────────┬─────────┘                       │    │
+│  │                   │                                 │    │
+│  └───────────────────┼─────────────────────────────────┘    │
+│                      │                                      │
+│                      ▼                                      │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │          Pod Network (Actual)                       │    │
+│  │          CIDR: 192.168.0.0/16                       │    │
+│  │                                                     │    │
+│  │   ┌─────────┐ ┌─────────┐ ┌─────────┐               │    │
+│  │   │ Pod 1   │ │ Pod 2   │ │ Pod 3   │               │    │
+│  │   │.1.10    │ │.1.11    │ │.2.10    │               │    │
+│  │   └─────────┘ └─────────┘ └─────────┘               │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+
+
+
+Relationship Between Service and Endpoints
+
+Service selects Pods through label selectors, and the selected Pods’ IPs are registered in the Endpoints (or EndpointSlice) resource.
+
+# Service definition
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  selector:
+    app: web      # Selects Pods with this label
+  ports:
+  - port: 80
+    targetPort: 8080
+
+
+# Check Endpoints
+kubectl get endpoints web-service
+
+# Example output
+NAME          ENDPOINTS                                      AGE
+web-service   192.168.1.10:8080,192.168.1.11:8080,192.168.2.10:8080   5m
+
+
+# Check EndpointSlice (Kubernetes 1.21+)
+kubectl get endpointslices -l kubernetes.io/service-name=web-service
+
+# Example output
+NAME                  ADDRESSTYPE   PORTS   ENDPOINTS                           AGE
+web-service-abc12     IPv4          8080    192.168.1.10,192.168.1.11,192.168.2.10   5m
+
+
+When a Service receives traffic, it’s forwarded to one of the Pod IPs registered in Endpoints. This process is handled by kube-proxy in Stage 3.
+
+
+
+Stage 3: kube-proxy (NAT Transformation)
+
+kube-proxy runs on each node and is responsible for transforming (DNAT) traffic coming to the Service IP into actual Pod IPs.
+
+
+
+kube-proxy Operating Modes
+
+kube-proxy can operate in three modes:
+
+
+  
+    
+      
+        Mode
+        Method
+        Performance
+        Features
+      
+    
+    
+      
+        iptables
+        iptables rules
+        Medium
+        Default mode, linear search
+      
+      
+        IPVS
+        IPVS kernel module
+        High
+        Hash table, O(1) lookup
+      
+      
+        userspace
+        Proxy process
+        Low
+        Legacy, rarely used
+      
+    
+  
+
+
+# Check kube-proxy mode
+kubectl get cm kube-proxy -n kube-system -o yaml | grep mode
+
+# Example output
+mode: ipvs
+
+
+
+
+iptables Mode Packet Flow
+
+Client request: 10.96.100.50:80 (Service IP)
+    │
+    ▼
+┌───────────────────────────────────────────────────────┐
+│  Node (iptables rules)                                │
+│                                                       │
+│  PREROUTING chain:                                    │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ -A PREROUTING -j KUBE-SERVICES                  │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  KUBE-SERVICES chain:                                 │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ -A KUBE-SERVICES -d 10.96.100.50/32 -p tcp      │  │
+│  │    --dport 80 -j KUBE-SVC-XXXXXX                │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  KUBE-SVC-XXXXXX chain (load balancing):              │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ -A KUBE-SVC-XXXXXX -m statistic --mode random   │  │
+│  │    --probability 0.33 -j KUBE-SEP-AAAA          │  │
+│  │ -A KUBE-SVC-XXXXXX -m statistic --mode random   │  │
+│  │    --probability 0.50 -j KUBE-SEP-BBBB          │  │
+│  │ -A KUBE-SVC-XXXXXX -j KUBE-SEP-CCCC             │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  KUBE-SEP-AAAA chain (DNAT):                          │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ -A KUBE-SEP-AAAA -p tcp -j DNAT                 │  │
+│  │    --to-destination 192.168.1.10:8080           │  │ 
+│  └─────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────┘
+    │
+    ▼
+Destination transformed: 192.168.1.10:8080 (Pod IP)
+
+
+
+
+IPVS Mode Packet Flow
+
+IPVS mode uses the Linux kernel’s IPVS (IP Virtual Server) module to perform more efficient load balancing.
+
+Client request: 10.96.100.50:80 (Service IP)
+    │
+    ▼
+┌───────────────────────────────────────────────────────┐
+│  Node (IPVS rules)                                    │
+│                                                       │
+│  kube-ipvs0 interface:                                │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ inet 10.96.100.50/32 scope global kube-ipvs0    │  │
+│  │ (All ClusterIPs are bound)                      │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  IPVS Virtual Server:                                 │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │ TCP  10.96.100.50:80 rr                         │  │
+│  │   -&amp;gt; 192.168.1.10:8080    Masq    1    0    0   │  │
+│  │   -&amp;gt; 192.168.1.11:8080    Masq    1    0    0   │  │
+│  │   -&amp;gt; 192.168.2.10:8080    Masq    1    0    0   │  │
+│  └─────────────────────────────────────────────────┘  │
+│                      │                                │
+│                      ▼                                │
+│  Hash table lookup → Real Server selection → DNAT     │
+└───────────────────────────────────────────────────────┘
+    │
+    ▼
+Destination transformed: 192.168.1.10:8080 (Pod IP)
+
+
+# Check IPVS rules
+sudo ipvsadm -Ln
+
+# Example output
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -&amp;gt; RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  10.96.100.50:80 rr
+  -&amp;gt; 192.168.1.10:8080            Masq    1      0          0
+  -&amp;gt; 192.168.1.11:8080            Masq    1      0          0
+  -&amp;gt; 192.168.2.10:8080            Masq    1      0          0
+
+
+
+
+DNAT and SNAT in Detail
+
+Let’s examine the NAT transformation performed by kube-proxy in detail:
+
+Request Packet (DNAT - Destination NAT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Original Packet]
+┌─────────────────────────────────────┐
+│ Src IP: 203.0.113.10 (Client)       │
+│ Dst IP: 10.96.100.50 (Service)      │
+│ Src Port: 54321                     │
+│ Dst Port: 80                        │
+└─────────────────────────────────────┘
+                │
+                │ DNAT performed
+                ▼
+[Transformed Packet]
+┌─────────────────────────────────────┐
+│ Src IP: 203.0.113.10 (Client)       │
+│ Dst IP: 192.168.1.10 (Pod)          │  ← Destination changed
+│ Src Port: 54321                     │
+│ Dst Port: 8080                      │  ← Port also changed
+└─────────────────────────────────────┘
+
+
+Response Packet (SNAT - Source NAT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Original Response]
+┌─────────────────────────────────────┐
+│ Src IP: 192.168.1.10 (Pod)          │
+│ Dst IP: 203.0.113.10 (Client)       │
+│ Src Port: 8080                      │
+│ Dst Port: 54321                     │
+└─────────────────────────────────────┘
+                │
+                │ SNAT performed (conntrack-based)
+                ▼
+[Transformed Response]
+┌─────────────────────────────────────┐
+│ Src IP: 10.96.100.50 (Service)      │  ← Source changed
+│ Dst IP: 203.0.113.10 (Client)       │
+│ Src Port: 80                        │  ← Port also changed
+│ Dst Port: 54321                     │
+└─────────────────────────────────────┘
+
+
+conntrack (Connection Tracking) matches request and response packets to perform the correct NAT reverse transformation.
+
+
+
+Stage 4: CNI Network
+
+Packets transformed by DNAT are delivered to the actual Pod through the network configured by the CNI (Container Network Interface).
+
+
+
+Role of CNI
+
+CNI plugins perform the following roles:
+
+
+  Create network interface (veth pair) for Pods
+  Assign IP addresses to Pods (IPAM)
+  Set up communication paths between Pods within a node
+  Configure Overlay/Routing for inter-node Pod communication
+
+
+┌─────────────────────────────────────────────────────────────┐
+│  Node 1 (10.100.1.10)                                       │
+│  Pod CIDR: 192.168.1.0/24                                   │
+│                                                             │
+│  ┌───────────────┐    ┌───────────────┐                     │
+│  │    Pod A      │    │    Pod B      │                     │
+│  │ 192.168.1.10  │    │ 192.168.1.11  │                     │
+│  │    ┌─────┐    │    │    ┌─────┐    │                     │
+│  │    │eth0 │    │    │    │eth0 │    │                     │
+│  │    └──┬──┘    │    │    └──┬──┘    │                     │
+│  └───────┼───────┘    └───────┼───────┘                     │
+│          │                    │                             │
+│          │ veth pair          │ veth pair                   │
+│          │                    │                             │
+│  ┌───────┴────────────────────┴───────┐                     │
+│  │           cni0 (Bridge)            │                     │
+│  │           192.168.1.1              │                     │
+│  └────────────────┬───────────────────┘                     │
+│                   │                                         │
+│  ┌────────────────┴───────────────────┐                     │
+│  │         eth0 (Node NIC)            │                     │
+│  │         10.100.1.10                │                     │
+│  └────────────────┬───────────────────┘                     │
+└───────────────────┼─────────────────────────────────────────┘
+                    │
+                    │  Overlay Network (VXLAN/Geneve)
+                    │  or BGP Routing
+                    │
+┌───────────────────┼─────────────────────────────────────────┐
+│  Node 2 (10.100.1.11)                                       │
+│  Pod CIDR: 192.168.2.0/24                                   │
+│                   │                                         │
+│  ┌────────────────┴───────────────────┐                     │
+│  │         eth0 (Node NIC)            │                     │
+│  │         10.100.1.11                │                     │
+│  └────────────────┬───────────────────┘                     │
+│                   │                                         │
+│  ┌────────────────┴───────────────────┐                     │
+│  │           cni0 (Bridge)            │                     │
+│  │           192.168.2.1              │                     │
+│  └───────┬────────────────────┬───────┘                     │
+│          │                    │                             │
+│  ┌───────┴───────┐    ┌───────┴───────┐                     │
+│  │    Pod C      │    │    Pod D      │                     │
+│  │ 192.168.2.10  │    │ 192.168.2.11  │                     │
+│  └───────────────┘    └───────────────┘                     │
+└─────────────────────────────────────────────────────────────┘
+
+
+
+
+Major CNI Plugin Comparison
+
+
+  
+    
+      
+        CNI
+        Network Mode
+        Features
+        Use Case
+      
+    
+    
+      
+        Calico
+        BGP/VXLAN
+        High performance, Network Policy
+        On-premises, Cloud
+      
+      
+        Flannel
+        VXLAN/host-gw
+        Simple setup, lightweight
+        Small clusters
+      
+      
+        Cilium
+        eBPF
+        High performance, L7 policies
+        Large scale, Security-focused
+      
+      
+        AWS VPC CNI
+        Native VPC
+        AWS native, high performance
+        AWS EKS
+      
+      
+        Weave
+        VXLAN
+        Encryption support, simple
+        Multi-cloud
+      
+    
+  
+
+
+
+
+Same Node vs Different Node Communication
+
+Pod-to-Pod communication within the same node:
+
+Pod A (192.168.1.10) → Pod B (192.168.1.11)
+
+┌─────────────────────────────────────┐
+│  Node 1                             │
+│                                     │
+│  Pod A          Bridge         Pod B│
+│  ┌─────┐       ┌─────┐       ┌─────┐│
+│  │eth0 │──veth─│cni0 │─veth──│eth0 ││
+│  └─────┘       └─────┘       └─────┘│
+│                                     │
+│  Packet path: eth0 → veth → cni0 → veth → eth0
+│  (Does not leave the node)          │
+└─────────────────────────────────────┘
+
+
+Pod-to-Pod communication across different nodes:
+
+Pod A (192.168.1.10) → Pod C (192.168.2.10)
+
+┌─────────────┐                      ┌─────────────┐
+│   Node 1    │                      │   Node 2    │
+│             │                      │             │
+│  ┌───────┐  │    Overlay/BGP       │  ┌───────┐  │
+│  │ Pod A │  │  ┌──────────────┐    │  │ Pod C │  │
+│  │.1.10  │──┼──│ VXLAN Tunnel │────┼──│.2.10  │  │
+│  └───────┘  │  │ or BGP       │    │  └───────┘  │
+│             │  └──────────────┘    │             │
+└─────────────┘                      └─────────────┘
+
+Packet path:
+1. Pod A eth0 → veth → cni0 → Node1 eth0
+2. Node1 eth0 → [VXLAN encapsulation] → Physical network
+3. Physical network → Node2 eth0 → [VXLAN decapsulation]
+4. cni0 → veth → Pod C eth0
+
+
+
+
+Stage 5: Final Destination (Pod Container)
+
+Packets delivered through the CNI network finally reach the Container inside the Pod.
+
+┌──────────────────────────────────────────────────────────────┐
+│  Pod (192.168.1.10)                                          │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │  Network Namespace                                  │     │
+│  │                                                     │     │
+│  │  ┌─────────┐                                        │     │
+│  │  │  eth0   │ ← Packet received (dst: 192.168.1.10:8080) │ │
+│  │  └────┬────┘                                        │     │
+│  │       │                                             │     │
+│  │       │ iptables/network stack                      │     │
+│  │       │                                             │     │
+│  │       ▼                                             │     │
+│  │  ┌─────────────────────────────────────────────┐    │     │
+│  │  │              localhost                      │    │     │
+│  │  │                                             │    │     │
+│  │  │  ┌─────────────┐    ┌─────────────┐         │    │     │
+│  │  │  │ Container 1 │    │ Container 2 │         │    │     │
+│  │  │  │ (App)       │    │ (Sidecar)   │         │    │     │
+│  │  │  │ :8080       │    │ :9090       │         │    │     │
+│  │  │  └─────────────┘    └─────────────┘         │    │     │
+│  │  │                                             │    │     │
+│  │  │  Containers in same Pod communicate via localhost  │   │
+│  │  └─────────────────────────────────────────────┘    │     │
+│  └─────────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────────┘
+
+
+Containers within a Pod share the same Network Namespace, allowing them to communicate with each other via localhost.
+
+
+
+Complete Packet Flow Summary
+
+Here’s a consolidated diagram summarizing the complete packet flow from external client to Pod:
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     Complete Packet Flow Summary                        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+External Client (203.0.113.10)
+    │
+    │ ① HTTPS request: app.example.com/api (203.0.113.10:54321 → 34.123.45.67:443)
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 1: Ingress/Gateway            │
+│ - TLS Termination                   │
+│ - Host/Path routing                 │
+│ - Backend Service selection         │
+└─────────────────────────────────────┘
+    │
+    │ ② HTTP request: (Ingress Pod IP:port → 10.96.100.50:80)
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 2: Service (ClusterIP)        │
+│ - Virtual IP: 10.96.100.50          │
+│ - Endpoints: Pod IP list management │
+└─────────────────────────────────────┘
+    │
+    │ ③ DNAT performed (kube-proxy)
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 3: kube-proxy (iptables/IPVS) │
+│ - 10.96.100.50:80 → 192.168.1.10:8080│
+│ - Load balancing (RR/LC/SH)         │
+│ - conntrack recording               │
+└─────────────────────────────────────┘
+    │
+    │ ④ Pod Network delivery
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 4: CNI Network                │
+│ - Same node: Bridge traversal       │
+│ - Different node: Overlay/Routing   │
+└─────────────────────────────────────┘
+    │
+    │ ⑤ Container port reached
+    ▼
+┌─────────────────────────────────────┐
+│ Stage 5: Pod Container              │
+│ - 192.168.1.10:8080                 │
+│ - Application processing            │
+└─────────────────────────────────────┘
+    │
+    │ ⑥ Response (SNAT applied in reverse)
+    ▼
+External Client (203.0.113.10)
+
+
+
+
+Packet Analysis Lab
+
+Let’s learn how to verify packet flow in an actual environment.
+
+
+
+Test Environment Setup
+
+# Create test namespace
+kubectl create namespace traffic-test
+
+# Deploy backend Pods
+kubectl create deployment nginx --image=nginx:latest --replicas=3 -n traffic-test
+
+# Create Service
+kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service -n traffic-test
+
+# Create client Pod
+kubectl run client-pod --image=nicolaka/netshoot -n traffic-test --command -- sleep infinity
+
+
+
+
+Packet Capture at Each Stage
+
+# 1. Check Service IP
+SERVICE_IP=$(kubectl get svc nginx-service -n traffic-test -o jsonpath=&apos;{.spec.clusterIP}&apos;)
+echo &quot;Service IP: $SERVICE_IP&quot;
+
+# 2. Check IPVS rules on node
+ssh &amp;lt;node&amp;gt; &quot;sudo ipvsadm -Ln | grep -A 5 $SERVICE_IP&quot;
+
+# 3. tcpdump in client Pod
+kubectl exec -it client-pod -n traffic-test -- tcpdump -i any -nn host $SERVICE_IP
+
+# 4. tcpdump on node (verify before/after DNAT)
+ssh &amp;lt;node&amp;gt; &quot;sudo tcpdump -i any -nn host $SERVICE_IP&quot;
+
+# 5. tcpdump in backend Pod
+kubectl exec -it &amp;lt;nginx-pod&amp;gt; -n traffic-test -- tcpdump -i any -nn port 80
+
+
+
+
+Traffic Generation and Analysis
+
+# Generate request from client Pod
+kubectl exec -it client-pod -n traffic-test -- curl -v http://nginx-service
+
+# Verify load balancing with multiple requests
+kubectl exec -it client-pod -n traffic-test -- bash -c &quot;for i in {1..10}; do curl -s http://nginx-service | head -1; done&quot;
+
+
+
+
+Troubleshooting Guide
+
+Here’s a summary of common issues and solutions for external traffic flow.
+
+
+
+Problem 1: Cannot Connect to Service
+
+# Diagnostic sequence
+# 1. Verify Service exists
+kubectl get svc -n &amp;lt;namespace&amp;gt;
+
+# 2. Check Endpoints (verify Pods are registered)
+kubectl get endpoints &amp;lt;service-name&amp;gt; -n &amp;lt;namespace&amp;gt;
+
+# 3. Check Pod status
+kubectl get pods -n &amp;lt;namespace&amp;gt; -l &amp;lt;selector&amp;gt;
+
+# 4. Check kube-proxy status
+kubectl get pods -n kube-system -l k8s-app=kube-proxy
+
+# 5. Check IPVS/iptables rules
+sudo ipvsadm -Ln | grep &amp;lt;service-ip&amp;gt;
+
+
+
+
+Problem 2: Ingress/Gateway Not Working
+
+# 1. Check Ingress Controller Pod status
+kubectl get pods -n ingress-nginx
+
+# 2. Verify Ingress resource
+kubectl describe ingress &amp;lt;ingress-name&amp;gt; -n &amp;lt;namespace&amp;gt;
+
+# 3. Check Ingress Controller logs
+kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
+
+# 4. Test backend Service connection
+kubectl exec -it &amp;lt;ingress-pod&amp;gt; -n ingress-nginx -- curl http://&amp;lt;service-ip&amp;gt;
+
+
+
+
+Problem 3: Intermittent Connection Failures
+
+# 1. Check backend Pod status (Readiness)
+kubectl get pods -o wide | grep -v Running
+
+# 2. Check EndpointSlice status
+kubectl get endpointslices -l kubernetes.io/service-name=&amp;lt;service&amp;gt;
+
+# 3. Check conntrack table
+sudo conntrack -L -d &amp;lt;service-ip&amp;gt; | head -20
+
+# 4. Check network policies
+kubectl get networkpolicies -n &amp;lt;namespace&amp;gt;
+
+
+
+
+Conclusion
+
+This guide provided a step-by-step analysis of the complete process from when external traffic enters a Kubernetes cluster to when it reaches the final Pod.
+
+Key Takeaways
+
+Choosing Entry Points
+
+  Ingress Controller: Web applications requiring L7 routing, TLS termination, URL-based routing
+  Gateway API: Microservice environments requiring complex routing, traffic splitting, role-based management (next-generation standard)
+  LoadBalancer: L4 level TCP/UDP service exposure
+  NodePort: Development/test environments or direct external load balancer integration
+
+
+Gateway API Advantages
+
+  Role-based resource separation (GatewayClass → Gateway → Route)
+  Native traffic splitting (weight-based canary deployments)
+  Multi-protocol support (HTTP, HTTPS, gRPC, TCP, UDP)
+  Cross-namespace routing support
+  Standardized extension method (Policy Attachment)
+
+
+Role of Service
+
+  ClusterIP is a virtual IP that doesn’t exist on actual networks
+  Endpoints/EndpointSlice manage actual Pod IP lists
+  Dynamic Pod selection through label selectors
+
+
+kube-proxy NAT Transformation
+
+  Performs DNAT: Service IP → Pod IP
+  iptables mode: Linear search, suitable for small clusters
+  IPVS mode: Hash table-based O(1) lookup, suitable for large clusters
+  Response packet SNAT through conntrack
+
+
+CNI Network
+
+  Assigns network interfaces and IPs to Pods
+  Same node: Direct communication through Bridge
+  Different nodes: Overlay (VXLAN) or BGP Routing
+
+
+
+  With this understanding, you can systematically analyze and resolve Kubernetes network issues. Using tcpdump for packet analysis and verifying the status of each component is crucial for accurately identifying the root cause of problems.
+
+
+
+
+
+
+Reference
+
+
+  Kubernetes Documentation - Service
+  Kubernetes Documentation - Ingress
+  Kubernetes Documentation - Ingress Controllers
+  Kubernetes Gateway API Documentation
+  Kubernetes Gateway API - Getting Started
+  NGINX Gateway Fabric Documentation
+  Envoy Gateway Documentation
+  Kubernetes Documentation - Network Policies
+  Kubernetes Documentation - Cluster Networking
+  NGINX Ingress Controller Documentation
+  Calico Documentation - About Kubernetes Networking
+  Cilium Documentation - Kubernetes Network Policy
+  AWS Load Balancer Controller Documentation
+  LVS (Linux Virtual Server) Documentation
+
+",
+            "wordcount": "5346",
+            "inLanguage": "en",
+            "dateCreated": "2026-06-17T00:00:00+00:00",
+            "datePublished": "2026-06-17T00:00:00+00:00",
+            "dateModified": "2026-06-17T00:00:00+00:00",
+            "author": {
+                "@type": "Person",
+                "name": "Somaz",
+                
+                "image": "/assets/img/uploads/profile.png",
+                
+                "jobTitle": "DevOps Engineer",
+                "url": "https://somaz.blog/authors/somaz/",
+                "sameAs": [
+                    "https://github.com/somaz94","https://www.linkedin.com/in/somaz"
+                ]
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "somaz",
+                "url": "https://somaz.blog/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://somaz.blog/assets/img/blog-image.png",
+                    "width": "600",
+                    "height": "315"
+                }
+            },
+            "mainEntityOfPage": "https://somaz.blog/category/kubernetes/kubernetes-external-traffic-flow/",
+            "genre": "KUBERNETES",
+            "articleSection": "KUBERNETES",
+            "keywords": ["kubernetes","networking","ingress","gateway-api","loadbalancer","nodeport","kube-proxy","service","cni","nat","traffic-flow"]
+        }
+        </script>
+    </body>
+</html>
