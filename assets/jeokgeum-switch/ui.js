@@ -92,7 +92,9 @@ function boot() {
   drawBankOptions();
   drawNotes();
   drawLinkedRateHelp();
-  const savedState = loadSaved();
+  // A shared link (?s=...) takes priority over the locally saved state so the
+  // recipient sees exactly the scenario that was shared with them.
+  const savedState = loadShared() || loadSaved();
   if (savedState) {
     restoreSaved(savedState);
   } else {
@@ -149,7 +151,7 @@ function drawBankOptions(selectedBank = "우리은행") {
   dom.bankPick.value = FUTURE_BANK_TABLE.some((bank) => bank.bank === selectedBank)
     ? selectedBank
     : "우리은행";
-  dom.rateDateText.textContent = `전국은행연합회 비교공시 기준일자: 2026. 6. 19.`;
+  dom.rateDateText.textContent = `전국은행연합회 비교공시 기준일자: ${fmtDotDate(FUTURE_SPEC.asOf)}`;
   drawBankDetail();
   drawBankCards();
 }
@@ -202,6 +204,35 @@ function wireEvents() {
   });
 
   document.querySelector("#clearSaved").addEventListener("click", clearSaved);
+
+  document.querySelector("#applyTierToAll").addEventListener("click", () => {
+    const selects = Array.from(document.querySelectorAll(".tier-select"));
+    if (!selects.length) {
+      return;
+    }
+    const firstValue = selects[0].value;
+    selects.forEach((select) => {
+      select.value = firstValue;
+    });
+    markStale();
+    runCalc();
+    const label = INCOME_TIERS.find((tier) => tier.id === firstValue)?.label || firstValue;
+    flashToast(`1년차 소득구간(${label})을 전체 연차에 적용했어요`);
+  });
+
+  document.querySelector("#copyResultButton").addEventListener("click", async () => {
+    if (!latestOutcome) {
+      flashToast("먼저 계산을 완료해 주세요");
+      return;
+    }
+    const ok = await copyText(buildResultSummary(latestOutcome));
+    flashToast(ok ? "결과 요약을 복사했어요" : "복사에 실패했어요. 화면에서 직접 확인해 주세요");
+  });
+
+  document.querySelector("#shareButton").addEventListener("click", async () => {
+    const ok = await copyText(buildShareUrl());
+    flashToast(ok ? "공유 링크를 복사했어요" : "복사에 실패했어요. 주소창의 링크를 사용해 주세요");
+  });
 
   document.querySelector("#addDepositRow").addEventListener("click", () => {
     depositsTouched = true;
@@ -365,6 +396,103 @@ function clearSaved() {
   // visibly instead of leaving the form in a silent "변경사항 있음" state.
   runCalc();
   flashToast("기본값으로 초기화했어요");
+}
+
+// Read a shared scenario from the ?s= query param. Same shape as the saved state
+// so restoreSaved() can consume it directly.
+function loadShared() {
+  try {
+    const raw = new URLSearchParams(window.location.search).get("s");
+    if (!raw) {
+      return null;
+    }
+    const parsed = decodeState(raw);
+    return parsed?.version === 1 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildShareUrl() {
+  const state = {
+    version: 1,
+    settings: readInputs(),
+    selectedBank: dom.bankPick.value,
+    activeTab: currentTab(),
+    depositsTouched,
+    // Only embed rows when the user hand-edited them; auto-generated rows are
+    // rebuilt from settings on the recipient side to keep the link short.
+    depositRows: depositsTouched
+      ? depositRows.map((row) => ({ date: row.date, amount: row.amount }))
+      : [],
+  };
+  const url = new URL(window.location.href);
+  url.searchParams.set("s", encodeState(state));
+  return url.toString();
+}
+
+function buildResultSummary(result) {
+  const verdict =
+    result.winner === "switch"
+      ? "청년미래적금 전환 우위"
+      : result.winner === "keep"
+        ? "청년도약계좌 유지 우위"
+        : "두 선택이 거의 동일";
+  const diff = `${result.difference >= 0 ? "+" : "-"}${fmtWon(Math.abs(result.difference))}`;
+  const evenRate = result.breakEven
+    ? `${fmtPct(result.breakEven.preTaxRate)} 세전 (${fmtPct(result.breakEven.afterTaxRate)} 세후)`
+    : "범위 내 없음";
+  return [
+    "[청년 적금 갈아타기 손익 계산]",
+    `판정: ${verdict}`,
+    `최종 외부 현금 차이: ${diff}`,
+    `도약 유지: ${fmtWon(result.cash.finalA)}`,
+    `미래 전환: ${fmtWon(result.cash.finalB)}`,
+    `손익분기 세전 연이율: ${evenRate}`,
+    `계산 종료일: ${result.dates.comparisonEndDate}`,
+    `${window.location.origin}/jeokgeum-switch/`,
+  ].join("\n");
+}
+
+// UTF-8 safe base64 round-trip for the share payload (Korean labels included).
+function encodeState(obj) {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+function decodeState(text) {
+  const binary = atob(text);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+async function copyText(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Clipboard API can be blocked outside secure contexts; fall back below.
+  }
+  try {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "absolute";
+    area.style.left = "-9999px";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 let toastTimer = null;
@@ -783,6 +911,14 @@ function fmtWon(value) {
 
 function fmtPct(value) {
   return `${Number(value || 0).toFixed(2)}%`;
+}
+
+function fmtDotDate(iso) {
+  const [year, month, day] = String(iso || "").split("-").map(Number);
+  if (!year || !month || !day) {
+    return String(iso || "");
+  }
+  return `${year}. ${month}. ${day}.`;
 }
 
 function fmtManwon(value) {
