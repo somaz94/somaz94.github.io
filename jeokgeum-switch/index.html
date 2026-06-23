@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>청년 적금 갈아타기 손익 계산기 · somaz.blog</title>
+    <meta
+      name="description"
+      content="청년도약계좌를 끝까지 유지할지, 청년미래적금으로 갈아탈지 — 정부기여금·비과세·은행 우대금리를 모두 반영해 최종 손익과 손익분기 금리를 계산합니다."
+    />
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/assets/jeokgeum-switch/theme.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__row">
+        <div>
+          <p class="eyebrow">갈아타기 손익 시뮬레이터</p>
+          <h1>도약계좌 유지 vs 미래적금 전환, 뭐가 이득일까?</h1>
+        </div>
+        <div class="topbar-tags">
+          <span>5년 만기 · 3년 만기 비교</span>
+          <span>정부기여금 · 비과세 반영</span>
+          <span>은행 우대금리 반영</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-frame">
+      <section class="verdict-band" aria-label="계산 결과 요약">
+        <div class="verdict-main">
+          <div>
+            <p class="verdict-label">판정</p>
+            <div class="verdict-title" id="verdictText">계산 중</div>
+            <p class="verdict-caption" id="verdictNote"></p>
+          </div>
+          <div class="verdict-delta" id="gapText">0원</div>
+        </div>
+        <div class="stat-grid">
+          <div class="metric">
+            <span>손익분기 세전 연이율</span>
+            <strong id="evenRateText">계산 중</strong>
+          </div>
+          <div class="metric">
+            <span>외부 세후 연이율</span>
+            <strong id="netRateText">0.00%</strong>
+          </div>
+          <div class="metric">
+            <span>계산 종료일</span>
+            <strong id="finishDateText">-</strong>
+          </div>
+          <div class="metric">
+            <span>추가 납입필요</span>
+            <strong id="topupText">0원</strong>
+          </div>
+        </div>
+        <div class="bars-compare" aria-label="최종 외부 현금 비교">
+          <div class="bars-row">
+            <span>도약 유지</span>
+            <div class="bars-track"><div id="holdBar" class="bars-fill keep"></div></div>
+            <strong id="holdTotalText">0원</strong>
+          </div>
+          <div class="bars-row">
+            <span>미래 전환</span>
+            <div class="bars-track"><div id="moveBar" class="bars-fill switch"></div></div>
+            <strong id="moveTotalText">0원</strong>
+          </div>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="계산기 탭">
+        <div class="tabset-list">
+          <button class="tab is-active" type="button" data-tab="inputs">입력</button>
+          <button class="tab" type="button" data-tab="history">납입 내역</button>
+          <button class="tab" type="button" data-tab="details">상세 내역</button>
+          <button class="tab" type="button" data-tab="rates">은행 금리</button>
+          <button class="tab" type="button" data-tab="logic">계산 규칙</button>
+        </div>
+        <div class="run-actions" id="runActions">
+          <span class="run-status" id="runStatus" aria-live="polite">계산 완료</span>
+          <button class="run-button" id="runButton" type="button">계산하기</button>
+        </div>
+      </nav>
+
+      <section class="tabset-pane is-active" id="tab-inputs">
+        <div class="input-grid">
+          <section class="panel">
+            <div class="card-heading">
+              <h2>기본 일정과 납입</h2>
+              <div class="button-set">
+                <button class="ghost-button" id="rebuildDeposits" type="button">납입 이력 자동 생성</button>
+                <button class="ghost-button" id="clearSaved" type="button">저장값 초기화</button>
+              </div>
+            </div>
+            <div class="field-set">
+              <label>
+                청년도약계좌 가입일
+                <input id="leapOpenDate" type="date" />
+              </label>
+              <label>
+                청년도약계좌 해지일
+                <input id="leapCloseDate" type="date" />
+              </label>
+              <div class="field-cell">
+                <div class="field-labelrow">
+                  <label for="futureOpenDate">청년미래적금 가입일</label>
+                  <span class="tip-wrap">
+                    <button class="tip-button" type="button" aria-describedby="overlapBonusHelp">해지 다음 날 가입으로 둔 이유</button>
+                    <div class="tip-panel rate-tip-panel help-panel--align-left" id="overlapBonusHelp" role="tooltip">
+                      <div class="tip-panel-head">
+                        <div class="tip-title">왜 해지 다음 날 가입으로 잡았나요?</div>
+                        <button class="tip-close" type="button" aria-label="도움말 닫기">닫기</button>
+                      </div>
+                      <p class="tip-summary">기본값은 2026년 7월에 갈아타는 경우예요. 도약계좌를 7/27에 특별중도해지하고, 바로 다음 날 7/28에 미래적금에 가입하는 것으로 잡았습니다.</p>
+                      <p class="tip-summary">하루 차이로 둔 이유는 <strong>같은 7월에 양쪽 정부기여금을 모두 받기 위해서</strong>예요.</p>
+                      <p class="tip-summary">순서는 이렇습니다.<br>① 도약계좌에 7월분을 먼저 납입한다.<br>② 그 달 안에 해지하면 도약 7월분 기여금을 받는다(해지할 때 은행이 먼저 지급).<br>③ 다음 영업일에 미래적금에 가입해 7월분을 납입하면 미래적금 7월분 기여금도 받는다.</p>
+                      <p class="tip-summary">청년금융콜센터 확인 결과, 같은 날 납입하고 바로 해지해도 7월분 기여금은 지급된다고 합니다.</p>
+                      <p class="tip-summary">단, 도약 7월분 기여금은 해지할 때 미리 받는 것으로 보고, 그 뒤에 붙는 기여금 이자는 계산에 넣지 않았습니다.</p>
+                      <p class="tip-summary">날짜를 바꾸면 계산도 그에 맞게 다시 됩니다. 위 날짜는 예시예요.</p>
+                    </div>
+                  </span>
+                </div>
+                <input id="futureOpenDate" type="date" />
+              </div>
+              <label>
+                기본 입금일
+                <input id="depositDom" type="number" min="1" max="31" step="1" />
+              </label>
+              <label>
+                자동 생성 납입금액
+                <input id="autoDepositAmount" type="number" min="0" step="1000" />
+              </label>
+              <label>
+                향후 월납입 설정금액
+                <input id="planDepositAmount" type="number" min="0" step="1000" />
+              </label>
+            </div>
+            <p class="hint">청년미래적금은 공식 월 한도에 맞춰 설정금액과 무관하게 월 50만원까지만 반영됩니다.</p>
+          </section>
+
+          <section class="panel">
+            <div class="card-heading">
+              <h2>금리와 외부 돈</h2>
+            </div>
+            <div class="field-set">
+              <div class="field-cell">
+                <div class="field-labelrow">
+                  <label for="leapEarlyRate">도약 특별중도해지 금리(%)</label>
+                  <span class="tip-wrap">
+                    <button class="tip-button" type="button" aria-describedby="linkedRateHelp">은행별 기준</button>
+                    <div class="tip-panel" id="linkedRateHelp" role="tooltip"></div>
+                  </span>
+                </div>
+                <input id="leapEarlyRate" type="number" step="0.01" />
+              </div>
+              <div class="field-cell">
+                <div class="field-labelrow">
+                  <label for="leapMatureRate1">도약 만기 금리 1~36개월(%)</label>
+                  <span class="tip-wrap">
+                    <button class="tip-button" type="button" aria-describedby="leapMatureHelp1">기준</button>
+                    <div class="tip-panel rate-tip-panel" id="leapMatureHelp1" role="tooltip">
+                      <div class="tip-panel-head">
+                        <div class="tip-title">만기 금리 1~36개월 산정 기준</div>
+                        <button class="tip-close" type="button" aria-label="만기 금리 1~36개월 기준 닫기">닫기</button>
+                      </div>
+                      <p class="tip-summary">이 구간(가입~36개월)은 3년 고정금리예요. 기본값 6%는 기본금리 4.5%에 우대금리 1.5%p를 더한 값으로 가정했습니다.</p>
+                      <p class="tip-summary">금리가 바뀌는 시점부터는 그동안 쌓인 원금과 새 납입금 전체에 바뀐 금리가 적용돼요. 바뀌기 전에 이미 붙은 이자는 예전 금리 그대로 두고 계산합니다. (우리은행 상담 기준)</p>
+                    </div>
+                  </span>
+                </div>
+                <input id="leapMatureRate1" type="number" step="0.01" />
+              </div>
+              <div class="field-cell">
+                <div class="field-labelrow">
+                  <label for="leapMatureRate2">도약 만기 금리 37~48개월(%)</label>
+                  <span class="tip-wrap">
+                    <button class="tip-button" type="button" aria-describedby="leapMatureHelp2">기준</button>
+                    <div class="tip-panel rate-tip-panel" id="leapMatureHelp2" role="tooltip">
+                      <div class="tip-panel-head">
+                        <div class="tip-title">만기 금리 37~48개월 산정 기준</div>
+                        <button class="tip-close" type="button" aria-label="만기 금리 37~48개월 기준 닫기">닫기</button>
+                      </div>
+                      <p class="tip-summary">37개월부터는 변동금리예요. 국민·농협·우리·신한이 공지한 기본금리 3%에 우대금리 1.5%p를 더해 기본값 4.5%로 가정했습니다.</p>
+                      <p class="tip-summary">금리가 바뀌는 시점부터는 그동안 쌓인 원금과 새 납입금 전체에 바뀐 금리가 적용돼요. 바뀌기 전에 이미 붙은 이자는 예전 금리 그대로 두고 계산합니다. (우리은행 상담 기준)</p>
+                    </div>
+                  </span>
+                </div>
+                <input id="leapMatureRate2" type="number" step="0.01" />
+              </div>
+              <div class="field-cell">
+                <div class="field-labelrow">
+                  <label for="leapMatureRate3">도약 만기 금리 49~60개월(%)</label>
+                  <span class="tip-wrap">
+                    <button class="tip-button" type="button" aria-describedby="leapMatureHelp3">기준</button>
+                    <div class="tip-panel rate-tip-panel" id="leapMatureHelp3" role="tooltip">
+                      <div class="tip-panel-head">
+                        <div class="tip-title">만기 금리 49~60개월 산정 기준</div>
+                        <button class="tip-close" type="button" aria-label="만기 금리 49~60개월 기준 닫기">닫기</button>
+                      </div>
+                      <p class="tip-summary">49~60개월도 37~48개월과 똑같이 봤어요. 기본금리 3%에 우대금리 1.5%p를 더한 4.5%를 기본값으로 가정했습니다.</p>
+                      <p class="tip-summary">금리가 바뀌는 시점부터는 그동안 쌓인 원금과 새 납입금 전체에 바뀐 금리가 적용돼요. 바뀌기 전에 이미 붙은 이자는 예전 금리 그대로 두고 계산합니다. (우리은행 상담 기준)</p>
+                    </div>
+                  </span>
+                </div>
+                <input id="leapMatureRate3" type="number" step="0.01" />
+              </div>
+              <label>
+                도약 기여금 이자 금리 1~36개월(%)
+                <input id="leapBonusRate1" type="number" step="0.01" />
+              </label>
+              <div class="field-cell">
+                <div class="field-labelrow">
+                  <label for="leapBonusRate2">도약 기여금 이자 금리 37~48개월(%)</label>
+                  <span class="tip-wrap">
+                    <button class="tip-button" type="button" aria-describedby="leapBonusHelp2">기준</button>
+                    <div class="tip-panel rate-tip-panel" id="leapBonusHelp2" role="tooltip">
+                      <div class="tip-panel-head">
+                        <div class="tip-title">기여금 이자 금리 37~48개월 산정 기준</div>
+                        <button class="tip-close" type="button" aria-label="기여금 이자 금리 37~48개월 기준 닫기">닫기</button>
+                      </div>
+                      <p class="tip-summary">정부기여금에도 이자가 붙는데, 그 금리예요. 37개월부터 기본금리 3%를 그대로 기본값으로 가정했습니다. 기여금 이자에는 우대금리를 더하지 않아요.</p>
+                      <p class="tip-summary">금리가 바뀌는 시점부터는 그동안 쌓인 원금과 새 납입금 전체에 바뀐 금리가 적용돼요. 바뀌기 전에 이미 붙은 이자는 예전 금리 그대로 두고 계산합니다. (우리은행 상담 기준)</p>
+                    </div>
+                  </span>
+                </div>
+                <input id="leapBonusRate2" type="number" step="0.01" />
+              </div>
+              <div class="field-cell">
+                <div class="field-labelrow">
+                  <label for="leapBonusRate3">도약 기여금 이자 금리 49~60개월(%)</label>
+                  <span class="tip-wrap">
+                    <button class="tip-button" type="button" aria-describedby="leapBonusHelp3">기준</button>
+                    <div class="tip-panel rate-tip-panel" id="leapBonusHelp3" role="tooltip">
+                      <div class="tip-panel-head">
+                        <div class="tip-title">기여금 이자 금리 49~60개월 산정 기준</div>
+                        <button class="tip-close" type="button" aria-label="기여금 이자 금리 49~60개월 기준 닫기">닫기</button>
+                      </div>
+                      <p class="tip-summary">49~60개월도 37~48개월과 같은 기본금리 3% 가정을 그대로 썼어요. 기여금 이자에는 우대금리를 더하지 않습니다.</p>
+                      <p class="tip-summary">금리가 바뀌는 시점부터는 그동안 쌓인 원금과 새 납입금 전체에 바뀐 금리가 적용돼요. 바뀌기 전에 이미 붙은 이자는 예전 금리 그대로 두고 계산합니다. (우리은행 상담 기준)</p>
+                    </div>
+                  </span>
+                </div>
+                <input id="leapBonusRate3" type="number" step="0.01" />
+              </div>
+              <label>
+                미래적금 적용 금리(%)
+                <input id="futureRate" type="number" step="0.01" />
+              </label>
+              <label>
+                미래적금 기여금 이자 금리(%)
+                <input id="futureBonusRate" type="number" step="0.01" />
+              </label>
+              <label>
+                외부 돈 세전 연이율(%)
+                <input id="sideFundRate" type="number" step="0.01" />
+              </label>
+              <label>
+                미래적금 정부기여금
+                <select id="futureBonusPlan"></select>
+              </label>
+            </div>
+            <div class="inline-note">
+              <span>외부 돈은 15.4% 과세 후 세후 연이율 <strong id="netRateInline">0.00%</strong>로 계산됩니다.</span>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="card-heading">
+              <h2>도약 소득구간</h2>
+            </div>
+            <div class="tier-grid" id="tierFields"></div>
+          </section>
+
+          <section class="panel">
+            <div class="card-heading">
+              <h2>가입은행 우대조건</h2>
+            </div>
+            <label class="full-label">
+              청년미래적금 가입은행
+              <select id="bankPick"></select>
+            </label>
+            <div class="bank-detail" id="bankDetail"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="tabset-pane" id="tab-history">
+        <section class="panel">
+          <div class="card-heading">
+            <div>
+              <h2>청년도약계좌 납입 이력</h2>
+              <p class="card-subtitle">해지일까지의 납입을 기준으로 특별중도해지 지급액을 계산합니다.</p>
+            </div>
+            <button class="solid-button" id="addDepositRow" type="button">행 추가</button>
+          </div>
+          <div class="alert-list" id="limitAlerts"></div>
+          <div class="table-scroll">
+            <table class="deposit-table">
+              <thead>
+                <tr>
+                  <th>납입일</th>
+                  <th>금액</th>
+                  <th>작업</th>
+                </tr>
+              </thead>
+              <tbody id="depositRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="tabset-pane" id="tab-rates">
+        <section class="panel">
+          <div class="card-heading">
+            <div>
+              <h2>청년미래적금 은행별 우대금리</h2>
+              <p class="card-subtitle" id="rateDateText"></p>
+            </div>
+            <input class="filter-input" id="bankFilter" type="search" placeholder="은행명 또는 조건 검색" />
+          </div>
+          <div class="bank-grid" id="bankCards"></div>
+        </section>
+      </section>
+
+      <section class="tabset-pane" id="tab-details">
+        <div class="detail-grid">
+          <section class="panel">
+            <div class="card-heading">
+              <h2>지급액 구성</h2>
+            </div>
+            <div class="part-list" id="breakdownList"></div>
+          </section>
+          <section class="panel">
+            <div class="card-heading">
+              <h2>추가 납입필요 내역</h2>
+            </div>
+            <div id="topupList" class="log-list"></div>
+          </section>
+          <section class="panel card-wide">
+            <div class="card-heading">
+              <h2>계산 기준</h2>
+            </div>
+            <div id="noteList" class="ref-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="tabset-pane" id="tab-logic">
+        <section class="panel">
+          <div class="card-heading">
+            <div>
+              <h2>사용된 계산 논리</h2>
+              <p class="card-subtitle">현재 입력값으로 계산할 때 적용되는 규칙과 가정을 정리합니다.</p>
+            </div>
+          </div>
+          <div id="ruleList" class="rule-list"></div>
+        </section>
+      </section>
+      <footer class="app-credit">
+        <p class="hint">
+          참고용 계산기입니다. 실제 가입 전 각 은행 상품설명서와
+          <a href="https://ylaccount.kinfa.or.kr/" target="_blank" rel="noopener">서민금융진흥원</a>
+          공식 안내를 반드시 확인하세요.
+        </p>
+        <p class="hint">
+          <a href="/">← somaz.blog 로 돌아가기</a>&nbsp;&middot;&nbsp;
+          계산 로직 출처:
+          <a href="https://noname-176103741.github.io/youth-savings-switch-calculator/" target="_blank" rel="noopener">youth-savings-switch-calculator</a>&nbsp;&middot;&nbsp;
+          제도 기준: 2026-06
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="/assets/jeokgeum-switch/ui.js"></script>
+  </body>
+</html>
