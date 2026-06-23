@@ -44,7 +44,7 @@ export const INCOME_TIERS = [
   },
   {
     id: "lte7500",
-    label: "총급여 7,500만원 이하",
+    label: "총급여 7,500만원 이하 (기여금 없음)",
     oldLimit: 0,
     oldRate: 0,
     extraRate: 0,
