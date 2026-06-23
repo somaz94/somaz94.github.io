@@ -35,6 +35,8 @@ const dom = {
     sideFundRate: document.querySelector("#sideFundRate"),
     futureBonusPlan: document.querySelector("#futureBonusPlan"),
   },
+  autoDepositAmountHint: document.querySelector("#autoDepositAmountHint"),
+  planDepositAmountHint: document.querySelector("#planDepositAmountHint"),
   tierFields: document.querySelector("#tierFields"),
   bankPick: document.querySelector("#bankPick"),
   bankDetail: document.querySelector("#bankDetail"),
@@ -98,6 +100,7 @@ function boot() {
   }
   wireEvents();
   drawDepositRows();
+  drawAmountHints(readInputs());
   saveReady = true;
   openTab(savedState?.activeTab || "inputs");
   runCalc();
@@ -221,7 +224,9 @@ function onSettingInput(key) {
       // The user may be midway through editing a date; the explicit calculation step will report the error.
     }
   }
-  drawNetRate(readInputs());
+  const settings = readInputs();
+  drawNetRate(settings);
+  drawAmountHints(settings);
   markStale();
 }
 
@@ -230,7 +235,9 @@ function openTab(tabName) {
     return;
   }
   document.querySelectorAll(".tab").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.tab === tabName);
+    const selected = button.dataset.tab === tabName;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-selected", selected ? "true" : "false");
   });
   document.querySelectorAll(".tabset-pane").forEach((panel) => {
     panel.classList.toggle("is-active", panel.id === `tab-${tabName}`);
@@ -482,6 +489,12 @@ function runCalc() {
 
 function drawNetRate(settings) {
   dom.netRateInline.textContent = fmtPct(afterTaxRate(settings.sideFundRate));
+}
+
+// Show a "= NN만원" readout under raw-won amount inputs so large numbers are easy to read.
+function drawAmountHints(settings) {
+  dom.autoDepositAmountHint.textContent = fmtManwon(settings.autoDepositAmount);
+  dom.planDepositAmountHint.textContent = fmtManwon(settings.planDepositAmount);
 }
 
 function markStale() {
@@ -770,6 +783,18 @@ function fmtWon(value) {
 
 function fmtPct(value) {
   return `${Number(value || 0).toFixed(2)}%`;
+}
+
+function fmtManwon(value) {
+  const won = Number(value || 0);
+  if (!won) {
+    return "";
+  }
+  const man = won / 10000;
+  const text = Number.isInteger(man)
+    ? new Intl.NumberFormat("ko-KR").format(man)
+    : man.toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+  return `= ${text}만원`;
 }
 
 function htmlEscape(value) {
