@@ -529,6 +529,9 @@ function drawResult(result) {
     dom.verdictNote.textContent = "최종 외부 현금 차이가 1원 미만입니다.";
   }
 
+  dom.summaryBand.classList.toggle("winner-keep", result.winner === "keep");
+  dom.summaryBand.classList.toggle("winner-switch", result.winner === "switch");
+
   dom.gapText.textContent = `${result.difference >= 0 ? "+" : "-"}${fmtWon(differenceAbs)}`;
   dom.topupText.textContent = fmtWon(result.cash.totalInjected);
   dom.netRateText.textContent = fmtPct(result.rates.externalAfterTaxRate);
