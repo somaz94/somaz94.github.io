@@ -726,19 +726,19 @@ App → Load Balancer → <span class="o">[</span>Node 1, Node 2, Node 3] → Di
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Gradual migration with dual writes
 </span><span class="k">class</span> <span class="nc">DatabaseRouter</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># Write to both old and new DB
-</span>        <span class="n">old_db</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</span>        <span class="n">old_db</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">new_db</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">new_db</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">log_migration_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="nf">log_migration_error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
         
-    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
         <span class="c1"># Read from old DB initially
-</span>        <span class="k">if</span> <span class="n">migration_percentage</span> <span class="o">&gt;</span> <span class="n">random</span><span class="p">():</span>
-            <span class="k">return</span> <span class="n">new_db</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">old_db</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+</span>        <span class="k">if</span> <span class="n">migration_percentage</span> <span class="o">&gt;</span> <span class="nf">random</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">new_db</span><span class="p">.</span><span class="nf">read</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">old_db</span><span class="p">.</span><span class="nf">read</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
 </code></pre></div></div>
 
 <p><br /></p>
@@ -791,10 +791,10 @@ kubectl patch service db-service <span class="nt">-p</span> <span class="s1">'{"
 <h3 id="optimization-2-connection-pooling">Optimization 2: Connection Pooling</h3>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Efficient connection management
-</span><span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">create_engine</span><span class="p">,</span> <span class="n">pool</span>
+</span><span class="kn">from</span> <span class="n">sqlalchemy</span> <span class="kn">import</span> <span class="n">create_engine</span><span class="p">,</span> <span class="n">pool</span>
 
-<span class="n">engine</span> <span class="o">=</span> <span class="n">create_engine</span><span class="p">(</span>
-    <span class="s">"postgresql://user:pass@cockroachdb-cluster:26257/db"</span><span class="p">,</span>
+<span class="n">engine</span> <span class="o">=</span> <span class="nf">create_engine</span><span class="p">(</span>
+    <span class="sh">"</span><span class="s">postgresql://user:pass@cockroachdb-cluster:26257/db</span><span class="sh">"</span><span class="p">,</span>
     <span class="n">poolclass</span><span class="o">=</span><span class="n">pool</span><span class="p">.</span><span class="n">QueuePool</span><span class="p">,</span>
     <span class="n">pool_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>          <span class="c1"># Max connections
 </span>    <span class="n">max_overflow</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>       <span class="c1"># Burst capacity
@@ -854,14 +854,14 @@ kubectl patch service db-service <span class="nt">-p</span> <span class="s1">'{"
 <h3 id="distributed-tracing">Distributed Tracing</h3>
 
 <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># OpenTelemetry integration
-</span><span class="kn">from</span> <span class="nn">opentelemetry</span> <span class="kn">import</span> <span class="n">trace</span>
-<span class="kn">from</span> <span class="nn">opentelemetry.instrumentation.sqlalchemy</span> <span class="kn">import</span> <span class="n">SQLAlchemyInstrumentor</span>
+</span><span class="kn">from</span> <span class="n">opentelemetry</span> <span class="kn">import</span> <span class="n">trace</span>
+<span class="kn">from</span> <span class="n">opentelemetry.instrumentation.sqlalchemy</span> <span class="kn">import</span> <span class="n">SQLAlchemyInstrumentor</span>
 
-<span class="n">tracer</span> <span class="o">=</span> <span class="n">trace</span><span class="p">.</span><span class="n">get_tracer</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+<span class="n">tracer</span> <span class="o">=</span> <span class="n">trace</span><span class="p">.</span><span class="nf">get_tracer</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
 
-<span class="k">with</span> <span class="n">tracer</span><span class="p">.</span><span class="n">start_as_current_span</span><span class="p">(</span><span class="s">"database_query"</span><span class="p">):</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">session</span><span class="p">.</span><span class="n">execute</span><span class="p">(</span>
-        <span class="s">"SELECT * FROM orders WHERE user_id = ?"</span><span class="p">,</span> 
+<span class="k">with</span> <span class="n">tracer</span><span class="p">.</span><span class="nf">start_as_current_span</span><span class="p">(</span><span class="sh">"</span><span class="s">database_query</span><span class="sh">"</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">session</span><span class="p">.</span><span class="nf">execute</span><span class="p">(</span>
+        <span class="sh">"</span><span class="s">SELECT * FROM orders WHERE user_id = ?</span><span class="sh">"</span><span class="p">,</span> 
         <span class="p">(</span><span class="n">user_id</span><span class="p">,)</span>
     <span class="p">)</span>
 </code></pre></div></div>
@@ -1099,29 +1099,29 @@ It’s an evolutionary database that simultaneously achieves the stability of re
                         
                         
                             <li>
-                                <a href="/category/kubernetes/kubernetes-static-file-server/">
+                                <a href="/category/gcp/gcp-database/">
                                     
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767855724/static-file-server-1_llosdd.png" alt="Deploy Static File Server on Kubernetes: Complete Guide">
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767750063/gcp-database-1_wsn9lk.png" alt="GCP Database Selection Complete Guide - Cloud SQL vs Spanner vs Firestore vs BigQuery">
                                     
-                                    <h3>Deploy Static File Server on Kubernetes: Complete Guide</h3>
+                                    <h3>GCP Database Selection Complete Guide - Cloud SQL vs Spanner vs Firestore vs BigQuery</h3>
                                 </a>
                             </li>
                         
                             <li>
-                                <a href="/category/kubernetes/kagent/">
+                                <a href="/category/openstack/openstack-storage/">
                                     
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767761956/kagent-1_ea3qjm.png" alt="Kagent: Bringing AI Agents to Kubernetes!">
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1756113713/openstack-storage-1_af6k1n.png" alt="Deep Dive into OpenStack Storage Services">
                                     
-                                    <h3>Kagent: Bringing AI Agents to Kubernetes!</h3>
+                                    <h3>Deep Dive into OpenStack Storage Services</h3>
                                 </a>
                             </li>
                         
                             <li>
-                                <a href="/category/kubernetes/kubernetes-gateway-api/">
+                                <a href="/category/kubernetes/kubernetes-install-kubespray-2026/">
                                     
-                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767855056/kuberentes-gateway-api-1_ocrhia.png" alt="Kubernetes Gateway API Complete Guide: The Future of Ingress">
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1775697495/kubespray-2026-1_t2hfd1.png" alt="Building a Kubernetes Cluster with Kubespray (2026V.)">
                                     
-                                    <h3>Kubernetes Gateway API Complete Guide: The Future of Ingress</h3>
+                                    <h3>Building a Kubernetes Cluster with Kubespray (2026V.)</h3>
                                 </a>
                             </li>
                         
@@ -1158,13 +1158,13 @@ It’s an evolutionary database that simultaneously achieves the stability of re
     </div>
     <div id="previewSection" class="preview-section">
         
-        <a href="/category/kubernetes/kubernetes-static-file-server/" class="post-preview">
+        <a href="/category/monitoring/elk-to-efk-migration/" class="post-preview">
             <div class="image">
                 
-                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767855724/static-file-server-1_llosdd.png" alt="Deploy Static File Server on Kubernetes: Complete Guide">
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1775727908/elk-efk-migration-1_ldco2a.png" alt="ELK to EFK Migration: Why and How We Replaced Logstash with Fluentd">
                 
             </div>
-            <h3 class="title">Deploy Static File Server on Kubernetes: Complete Guide</h3>
+            <h3 class="title">ELK to EFK Migration: Why and How We Replaced Logstash with Fluentd</h3>
         </a>
     </div>
 </div>
@@ -2356,21 +2356,21 @@ References
   NewSQL Database Systems for Distributed Applications
 
 ",
-            "wordcount": "2883",
+            "wordcount": "2889",
             "inLanguage": "en",
             "dateCreated": "2026-07-05T00:00:00+00:00",
             "datePublished": "2026-07-05T00:00:00+00:00",
             "dateModified": "2026-07-05T00:00:00+00:00",
             "author": {
                 "@type": "Person",
-                "name": "Somaz",
+                "name": "",
                 
-                "image": "/assets/img/uploads/profile.png",
+                "image": https://somaz.blog/assets/img/user.jpg,
                 
-                "jobTitle": "DevOps Engineer",
-                "url": "https://somaz.blog/authors/somaz/",
+                "jobTitle": "",
+                "url": "https://somaz.blog",
                 "sameAs": [
-                    "https://github.com/somaz94","https://www.linkedin.com/in/somaz"
+                    
                 ]
             },
             "publisher": {
