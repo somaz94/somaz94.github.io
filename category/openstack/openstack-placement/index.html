@@ -1,0 +1,2441 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- Google Tag Manager -->
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+    <!-- End Google Tag Manager -->
+
+    <!-- Mermaid.js -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+
+    <title>Deep Dive into OpenStack Placement | somaz</title>
+    <meta name="description" content="A comprehensive guide to OpenStack Placement, its architecture, and how it manages resource allocation in the cloud">
+    <!-- TDM Reservation Protocol. Machine-readable reservation of
+         text-and-data-mining rights under the EU DSM Directive Art. 4(3);
+         the canonical form is /.well-known/tdmrep.json and this is the
+         per-page variant for crawlers that only read the document. -->
+    <meta name="tdm-reservation" content="1">
+    
+        <meta name="keywords" content="openstack, placement, resource management, nova, cloud">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Deep Dive into OpenStack Placement | somaz">
+    <meta name="twitter:description" content="A comprehensive guide to OpenStack Placement, its architecture, and how it manages resource allocation in the cloud">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1755833039/openstack-placement-1_f62ne8.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/openstack/openstack-placement/">
+    <meta property="og:title" content="Deep Dive into OpenStack Placement | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1755833039/openstack-placement-1_f62ne8.png">
+    <meta property="og:description" content="A comprehensive guide to OpenStack Placement, its architecture, and how it manages resource allocation in the cloud">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2025-06-06T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:300,400,700" rel="stylesheet">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/openstack/openstack-placement/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
+    <!-- <link href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;700&display=swap" rel="stylesheet"> -->
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<!-- Google Tag Manager (noscript) -->
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+<!-- End Google Tag Manager (noscript) -->
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    <!-- Resume, then Career, then Portfolio — the order Korean hiring asks for
+         those documents in, and the order the same three appear in on /about/
+         and in the slide-out menu.
+
+         An earlier pass ordered them by depth (resume, portfolio, career) and
+         that was wrong for a reason worth writing down: the resume and the
+         career description are ONE SET — same YAML pair, same stylesheet, both
+         emitted by `make pdf` — and putting a browsable web page between them
+         splits a pair to satisfy a gradient nobody asked for. The portfolio is
+         a different kind of destination, so it goes after both rather than
+         between them.
+
+         Change all three places together or they stop agreeing.
+
+         The three documents about the author, kept small and out of `site.menu`
+         on purpose: adding them there would also grow the footer nav and the
+         sidebar's main list, and these are a different kind of destination from
+         Home / Category / Tools.
+
+         Floated right, so DOM order here is right-to-left on screen: `#search`
+         is already floated and takes the rightmost slot, this sits to its left.
+
+         Hidden below `sm` (600px) like `.get-theme` beside it — the header has
+         no room for three more labels next to the logo on a phone. What makes
+         that acceptable is /about/, which lists all three with a line each and
+         is itself in `site.menu`, so it is one tap away from the slide-out menu
+         at every width. These three were briefly mirrored into that menu as
+         well; it turned a six-item site nav into nine to save a tap on a page
+         that exists to be that tap. If /about/ ever stops linking them, this
+         group has to stop being hidden. -->
+    <nav class="bar-links" aria-label="Author">
+        <a href="/resume/">Resume</a>
+        <a href="/career/">Career</a>
+        <a href="/portfolio/">Portfolio</a>
+    </nav>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2025-06-06T00:00:00+00:00">
+                            
+
+
+June 6, 2025
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>11 min to read</span>
+                </p>
+                <h1 class="post-title">Deep Dive into OpenStack Placement</h1>
+                <p class="post-subtitle">Understanding OpenStack's Resource Management Service</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/v1755833039/openstack-placement-1_f62ne8.png" alt="Deep Dive into OpenStack Placement" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="understanding-openstack-placement">Understanding OpenStack Placement</h2>
+
+<p>Placement is OpenStack’s resource management service that provides a centralized system for tracking and managing physical and virtual resources in the cloud. It was introduced in the Newton release and has evolved into a crucial component since the Stein version, working closely with Nova and other OpenStack services.</p>
+
+<p><br /></p>
+
+<h3 id="what-is-placement">What is Placement?</h3>
+
+<p><br /></p>
+
+<h4 id="the-resource-management-layer">The Resource Management Layer</h4>
+
+<p>Placement serves as the central resource manager in OpenStack, providing essential functionality:</p>
+
+<ul>
+  <li><strong>Resource Tracking</strong>: Monitors physical and virtual resources (RAM, vCPU, storage, IP)</li>
+  <li><strong>Standardized Units</strong>: Manages resources using standardized Resource Classes</li>
+  <li><strong>Service Integration</strong>: Supports efficient resource allocation for Nova, Neutron, and Cinder</li>
+  <li><strong>API-Driven</strong>: Provides RESTful APIs for resource management and allocation</li>
+</ul>
+
+<p>By centralizing resource management, Placement enables optimal resource utilization and efficient scheduling across the OpenStack cloud.</p>
+
+<p><br /></p>
+
+<h4 id="placement-architecture-overview-diagram-description">Placement Architecture Overview (Diagram Description)</h4>
+
+<ul>
+  <li>OpenStack Placement
+    <ul>
+      <li>Core Services: Resource Tracking, Allocation Management, API Services, Database</li>
+      <li>Resource Types: Compute, Network, Storage</li>
+      <li>Integration Points: Nova, Neutron, Cinder</li>
+      <li>Management Features: Resource Classes, Allocation Policies, Usage Monitoring</li>
+    </ul>
+  </li>
+</ul>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      A[OpenStack Placement]
+      A --&gt; B[Core Services]
+      A --&gt; C[Resource Types]
+      A --&gt; D[Integration Points]
+      A --&gt; E[Management Features]
+      
+      B --&gt; B1[Resource Tracking]
+      B --&gt; B2[Allocation Management]
+      B --&gt; B3[API Services]
+      B --&gt; B4[Database]
+      
+      C --&gt; C1[Compute Resources]
+      C --&gt; C2[Network Resources]
+      C --&gt; C3[Storage Resources]
+      
+      D --&gt; D1[Nova Integration]
+      D --&gt; D2[Neutron Integration]
+      D --&gt; D3[Cinder Integration]
+      
+      E --&gt; E1[Resource Classes]
+      E --&gt; E2[Allocation Policies]
+      E --&gt; E3[Usage Monitoring]
+
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  </div>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="placement-architecture-and-components">Placement Architecture and Components</h2>
+
+<p>Placement employs a modular architecture with a central API server and database that work together to provide comprehensive resource management services.</p>
+
+<p>This design enables efficient resource tracking and allocation across the OpenStack cloud.</p>
+
+<p><br /></p>
+
+<h3 id="core-components">Core Components</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 20%;">Component</th>
+      <th style="width: 25%;">Role</th>
+      <th style="width: 55%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Placement API</strong></td>
+      <td>Resource Management Service</td>
+      <td>
+        <ul>
+          <li>Provides RESTful API for resource management</li>
+          <li>Processes resource allocation requests</li>
+          <li>Maintains resource state in the database</li>
+          <li>Validates and authorizes resource operations</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Placement Database</strong></td>
+      <td>Resource State Storage</td>
+      <td>
+        <ul>
+          <li>Stores resource provider information</li>
+          <li>Maintains allocation records</li>
+          <li>Tracks resource usage and availability</li>
+          <li>Manages resource class definitions</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Nova Integration</strong></td>
+      <td>Compute Resource Management</td>
+      <td>
+        <ul>
+          <li>Coordinates with Nova-compute for resource updates</li>
+          <li>Supports Nova-scheduler in node selection</li>
+          <li>Manages instance resource allocation</li>
+          <li>Provides health check functionality</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="resource-management-flow">Resource Management Flow</h3>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    sequenceDiagram
+      participant Nova as "Nova Service"
+      participant Placement as "Placement API"
+      participant DB as "Placement DB"
+      participant Compute as "Compute Node"
+      
+      Nova-&gt;&gt;Placement: Request Resource Allocation
+      Placement-&gt;&gt;DB: Check Resource Availability
+      DB--&gt;&gt;Placement: Return Available Resources
+      Placement--&gt;&gt;Nova: Provide Allocation Options
+      Nova-&gt;&gt;Compute: Deploy Instance
+      Compute-&gt;&gt;Placement: Update Resource Usage
+      Placement-&gt;&gt;DB: Update Resource State
+  </div>
+</div>
+
+<p><br /></p>
+
+<h3 id="resource-types-and-classes">Resource Types and Classes</h3>
+
+<p>Placement manages various types of resources:</p>
+
+<ul>
+  <li><strong>Compute Resources</strong>: CPU, RAM, disk space, custom compute resources</li>
+  <li><strong>Network Resources</strong>: IP addresses, VLANs, VXLANs, QoS policies</li>
+  <li><strong>Storage Resources</strong>: Block storage, object storage, custom storage resources</li>
+  <li><strong>Custom Resources</strong>: User-defined resource classes for specific workloads</li>
+</ul>
+
+<p>Each resource type is managed through standardized resource classes, enabling consistent tracking and allocation across the cloud.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="key-features-and-capabilities">Key Features and Capabilities</h2>
+
+<p>Placement provides a comprehensive set of features for resource management, enabling efficient allocation, tracking, and optimization of cloud resources.</p>
+
+<p><br /></p>
+
+<h3 id="resource-management-features">Resource Management Features</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 20%;">Feature</th>
+      <th style="width: 80%;">Description</th>
+    </tr>
+    <tr>
+      <td><strong>Resource Tracking</strong></td>
+      <td>
+        <ul>
+          <li>Real-time monitoring of resource usage and availability</li>
+          <li>Support for both physical and virtual resources</li>
+          <li>Dynamic updates from compute nodes</li>
+          <li>Comprehensive resource state management</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Allocation Management</strong></td>
+      <td>
+        <ul>
+          <li>Efficient resource allocation for new instances</li>
+          <li>Support for resource reservation and quotas</li>
+          <li>Dynamic resource reallocation</li>
+          <li>Multi-tenant resource isolation</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Policy Management</strong></td>
+      <td>
+        <ul>
+          <li>Custom resource allocation policies</li>
+          <li>Project-specific resource limits</li>
+          <li>Workload-specific optimization rules</li>
+          <li>Quality of Service (QoS) policies</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="integration-with-openstack-services">Integration with OpenStack Services</h3>
+
+<p>Placement integrates with various OpenStack services:</p>
+
+<ul>
+  <li><strong>Nova Integration</strong>: Provides resource info for instance scheduling and deployment</li>
+  <li><strong>Neutron Integration</strong>: Manages network resource allocation and tracking</li>
+  <li><strong>Cinder Integration</strong>: Coordinates storage resource allocation</li>
+  <li><strong>Custom Service Integration</strong>: Supports integration with additional OpenStack services</li>
+</ul>
+
+<p>This integration enables comprehensive resource management across the entire OpenStack cloud.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="api-usage-and-cli-examples">API Usage and CLI Examples</h2>
+
+<p>Understanding how to interact with Placement through its API and CLI is essential for effective resource management. Here are practical examples and common usage patterns.</p>
+
+<p><br /></p>
+
+<h3 id="placement-cli-commands">Placement CLI Commands</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 40%;">Command</th>
+      <th style="width: 60%;">Description</th>
+    </tr>
+    <tr>
+      <td><code>openstack resource provider list</code></td>
+      <td>List all resource providers in the cloud</td>
+    </tr>
+    <tr>
+      <td><code>openstack resource provider show &lt;uuid&gt;</code></td>
+      <td>Show detailed information about a specific resource provider</td>
+    </tr>
+    <tr>
+      <td><code>openstack resource class list</code></td>
+      <td>List all available resource classes</td>
+    </tr>
+    <tr>
+      <td><code>openstack allocation candidate list</code></td>
+      <td>Find allocation candidates for resource requirements</td>
+    </tr>
+    <tr>
+      <td><code>openstack resource provider inventory list &lt;uuid&gt;</code></td>
+      <td>Show inventory for a specific resource provider</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="api-request-examples">API Request Examples</h3>
+
+<h4 id="getting-resource-providers">Getting Resource Providers:</h4>
+<script src="https://gist.github.com/somaz94/d9371f8ae8634ffd9632dafab57a3880.js"></script>
+
+<h4 id="creating-allocation">Creating Allocation:</h4>
+<script src="https://gist.github.com/somaz94/e91b6d4da4db1b33d3e8917eb9989539.js"></script>
+
+<h4 id="querying-allocation-candidates">Querying Allocation Candidates:</h4>
+<script src="https://gist.github.com/somaz94/a3d35bbf696733250edafe857b10d467.js"></script>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="real-world-use-cases-and-scenarios">Real-World Use Cases and Scenarios</h2>
+
+<p>Understanding practical applications of Placement helps in designing efficient cloud architectures and solving common resource management challenges.</p>
+
+<p><br /></p>
+
+<h3 id="common-deployment-scenarios">Common Deployment Scenarios</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 25%;">Scenario</th>
+      <th style="width: 35%;">Challenge</th>
+      <th style="width: 40%;">Placement Solution</th>
+    </tr>
+    <tr>
+      <td><strong>High-Density Workloads</strong></td>
+      <td>Optimal resource allocation for microservices</td>
+      <td>
+        <ul>
+          <li>Fine-grained resource tracking</li>
+          <li>Custom resource classes</li>
+          <li>Efficient packing algorithms</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>GPU Workloads</strong></td>
+      <td>Managing specialized hardware resources</td>
+      <td>
+        <ul>
+          <li>Custom GPU resource classes</li>
+          <li>Hardware-specific allocation</li>
+          <li>Resource affinity policies</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Multi-Tenant Isolation</strong></td>
+      <td>Resource isolation between tenants</td>
+      <td>
+        <ul>
+          <li>Project-based resource limits</li>
+          <li>Allocation tracking per tenant</li>
+          <li>Usage monitoring and reporting</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Edge Computing</strong></td>
+      <td>Distributed resource management</td>
+      <td>
+        <ul>
+          <li>Geographic resource placement</li>
+          <li>Network-aware scheduling</li>
+          <li>Edge-specific resource classes</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="custom-resource-class-implementation">Custom Resource Class Implementation</h3>
+
+<p>Example of creating a custom resource class for GPU resources:
+<script src="https://gist.github.com/somaz94/0e1eb38091fb81644fd8a7e59f815621.js"></script></p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="performance-optimization-and-monitoring">Performance Optimization and Monitoring</h2>
+
+<p>Optimizing Placement performance is crucial for large-scale OpenStack deployments. Here are key strategies and monitoring approaches.</p>
+
+<p><br /></p>
+
+<h3 id="performance-optimization-strategies">Performance Optimization Strategies</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 25%;">Optimization Area</th>
+      <th style="width: 35%;">Strategy</th>
+      <th style="width: 40%;">Implementation</th>
+    </tr>
+    <tr>
+      <td><strong>Database Performance</strong></td>
+      <td>Optimize database queries and indexing</td>
+      <td>
+        <ul>
+          <li>Proper database indexing</li>
+          <li>Connection pooling</li>
+          <li>Query optimization</li>
+          <li>Regular maintenance</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>API Response Time</strong></td>
+      <td>Minimize API latency</td>
+      <td>
+        <ul>
+          <li>API caching strategies</li>
+          <li>Load balancing</li>
+          <li>Connection optimization</li>
+          <li>Response compression</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Resource Tracking</strong></td>
+      <td>Efficient resource updates</td>
+      <td>
+        <ul>
+          <li>Batch updates</li>
+          <li>Asynchronous processing</li>
+          <li>Update frequency tuning</li>
+          <li>Delta tracking</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="monitoring-and-alerting">Monitoring and Alerting</h3>
+
+<h4 id="key-metrics-to-monitor">Key Metrics to Monitor:</h4>
+
+<ul>
+  <li><strong>API Response Times</strong>: Track placement API latency</li>
+  <li><strong>Database Performance</strong>: Monitor query execution times</li>
+  <li><strong>Resource Utilization</strong>: Track resource allocation ratios</li>
+  <li><strong>Error Rates</strong>: Monitor failed allocation requests</li>
+  <li><strong>Service Health</strong>: Check placement service availability</li>
+</ul>
+
+<h4 id="sample-monitoring-configuration">Sample Monitoring Configuration:</h4>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Prometheus monitoring example</span>
+<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">placement_api_latency</span>
+  <span class="na">expr</span><span class="pi">:</span> <span class="s">histogram_quantile(0.95, placement_api_request_duration_seconds)</span>
+  
+<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">placement_db_connections</span>
+  <span class="na">expr</span><span class="pi">:</span> <span class="s">placement_database_connections_active</span>
+  
+<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">resource_allocation_ratio</span>
+  <span class="na">expr</span><span class="pi">:</span> <span class="s">(placement_resource_allocated / placement_resource_total) * </span><span class="m">100</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="troubleshooting-common-issues">Troubleshooting Common Issues</h2>
+
+<p>Understanding common Placement issues and their solutions helps maintain a healthy OpenStack environment.</p>
+
+<p><br /></p>
+
+<h3 id="common-problems-and-solutions">Common Problems and Solutions</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 25%;">Problem</th>
+      <th style="width: 35%;">Symptoms</th>
+      <th style="width: 40%;">Solution</th>
+    </tr>
+    <tr>
+      <td><strong>Resource Provider Registration</strong></td>
+      <td>
+        <ul>
+          <li>Compute nodes not appearing</li>
+          <li>Resource inventory missing</li>
+          <li>Allocation failures</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Check nova-compute logs</li>
+          <li>Verify placement endpoint</li>
+          <li>Restart nova-compute service</li>
+          <li>Check network connectivity</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Database Synchronization</strong></td>
+      <td>
+        <ul>
+          <li>Inconsistent resource data</li>
+          <li>Allocation mismatches</li>
+          <li>Scheduling failures</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Run placement database sync</li>
+          <li>Check for data corruption</li>
+          <li>Verify database connectivity</li>
+          <li>Review migration logs</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>API Authentication</strong></td>
+      <td>
+        <ul>
+          <li>401 Unauthorized errors</li>
+          <li>Service integration failures</li>
+          <li>Token validation issues</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Check keystone configuration</li>
+          <li>Verify service credentials</li>
+          <li>Update authentication tokens</li>
+          <li>Review policy settings</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="diagnostic-commands">Diagnostic Commands</h3>
+
+<h4 id="check-placement-service-health">Check Placement Service Health:</h4>
+<script src="https://gist.github.com/somaz94/5cd71787a38ddd0d25d490e749d2c28d.js"></script>
+
+<h4 id="debug-resource-issues">Debug Resource Issues:</h4>
+<script src="https://gist.github.com/somaz94/881615e7cb44ca66688e4f00431f4f26.js"></script>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="security-and-best-practices">Security and Best Practices</h2>
+
+<p>Implementing proper security measures and following best practices ensures a secure and efficient Placement deployment.</p>
+
+<p><br /></p>
+
+<h3 id="security-considerations">Security Considerations</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 25%;">Security Area</th>
+      <th style="width: 75%;">Best Practices</th>
+    </tr>
+    <tr>
+      <td><strong>API Security</strong></td>
+      <td>
+        <ul>
+          <li>Use HTTPS for all API communications</li>
+          <li>Implement proper authentication and authorization</li>
+          <li>Regular security token rotation</li>
+          <li>API rate limiting and throttling</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Database Security</strong></td>
+      <td>
+        <ul>
+          <li>Encrypt database connections</li>
+          <li>Use strong database passwords</li>
+          <li>Implement database access controls</li>
+          <li>Regular database backups</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Network Security</strong></td>
+      <td>
+        <ul>
+          <li>Secure internal network communications</li>
+          <li>Implement proper firewall rules</li>
+          <li>Use VPNs for remote access</li>
+          <li>Regular security audits</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="operational-best-practices">Operational Best Practices</h3>
+
+<h4 id="deployment-guidelines">Deployment Guidelines:</h4>
+<ul>
+  <li>Use configuration management tools (Ansible, Puppet)</li>
+  <li>Implement proper logging and monitoring</li>
+  <li>Regular backup and disaster recovery testing</li>
+  <li>Maintain documentation and runbooks</li>
+</ul>
+
+<h4 id="capacity-planning">Capacity Planning:</h4>
+<ul>
+  <li>Monitor resource utilization trends</li>
+  <li>Plan for growth and scaling requirements</li>
+  <li>Implement resource quotas and limits</li>
+  <li>Regular capacity reviews and adjustments</li>
+</ul>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="migration-and-upgrade-strategies">Migration and Upgrade Strategies</h2>
+
+<p>Planning and executing Placement migrations and upgrades requires careful consideration to maintain service availability.</p>
+
+<p><br /></p>
+
+<h3 id="upgrade-planning">Upgrade Planning</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 20%;">Phase</th>
+      <th style="width: 40%;">Activities</th>
+      <th style="width: 40%;">Considerations</th>
+    </tr>
+    <tr>
+      <td><strong>Pre-upgrade</strong></td>
+      <td>
+        <ul>
+          <li>Backup placement database</li>
+          <li>Test upgrade in staging</li>
+          <li>Review release notes</li>
+          <li>Plan rollback strategy</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Service compatibility</li>
+          <li>Data migration requirements</li>
+          <li>Downtime considerations</li>
+          <li>Resource allocation</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Upgrade</strong></td>
+      <td>
+        <ul>
+          <li>Stop placement services</li>
+          <li>Update packages</li>
+          <li>Run database migrations</li>
+          <li>Update configurations</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Service order dependencies</li>
+          <li>Configuration changes</li>
+          <li>Database migration time</li>
+          <li>Service restart sequence</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Post-upgrade</strong></td>
+      <td>
+        <ul>
+          <li>Verify service functionality</li>
+          <li>Test resource operations</li>
+          <li>Monitor performance</li>
+          <li>Update documentation</li>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>Functionality validation</li>
+          <li>Performance impact</li>
+          <li>Integration testing</li>
+          <li>User communication</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="migration-commands">Migration Commands</h3>
+
+<h4 id="database-migration">Database Migration:</h4>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Backup placement database</span>
+mysqldump placement <span class="o">&gt;</span> placement_backup.sql
+
+<span class="c"># Run database upgrade</span>
+placement-manage db upgrade
+
+<span class="c"># Check migration status</span>
+placement-manage db version
+
+<span class="c"># Online data migrations</span>
+placement-manage db online_data_migrations
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="usage-and-best-practices">Usage and Best Practices</h2>
+
+<p>Effective use of Placement requires understanding its capabilities and implementing appropriate resource management strategies. Here are key considerations and best practices for utilizing Placement effectively.</p>
+
+<p><br /></p>
+
+<h3 id="resource-management-strategies">Resource Management Strategies</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th style="width: 20%;">Strategy</th>
+      <th style="width: 40%;">Description</th>
+      <th style="width: 40%;">Benefits</th>
+    </tr>
+    <tr>
+      <td><strong>Resource Classes</strong></td>
+      <td>Define standardized resource types for consistent management</td>
+      <td>
+        <ul>
+          <li>Consistent resource tracking</li>
+          <li>Simplified allocation policies</li>
+          <li>Better resource utilization</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Allocation Policies</strong></td>
+      <td>Implement custom policies for resource allocation</td>
+      <td>
+        <ul>
+          <li>Optimized resource distribution</li>
+          <li>Workload-specific optimization</li>
+          <li>Improved performance</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Monitoring</strong></td>
+      <td>Regular tracking of resource usage and availability</td>
+      <td>
+        <ul>
+          <li>Proactive resource management</li>
+          <li>Early problem detection</li>
+          <li>Better capacity planning</li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="implementation-guidelines">Implementation Guidelines</h3>
+
+<p>For effective Placement implementation:</p>
+
+<ul>
+  <li><strong>Resource Planning</strong>: Carefully plan resource classes and allocation policies</li>
+  <li><strong>Monitoring</strong>: Implement comprehensive resource monitoring</li>
+  <li><strong>Integration</strong>: Ensure proper integration with all OpenStack services</li>
+  <li><strong>Documentation</strong>: Maintain clear documentation of resource management policies</li>
+</ul>
+
+<p>Following these guidelines helps ensure efficient resource management and optimal cloud performance.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="key-points">Key Points</h2>
+
+<div class="quote-box">
+  <strong>Placement Essentials</strong>
+  <ul>
+    <li>
+      <strong>Core Functionality</strong><br />
+      - Centralized resource management for OpenStack clouds<br />
+      - Real-time resource tracking and allocation<br />
+      - Integration with Nova and other OpenStack services<br />
+      - Support for custom resource classes and policies
+    </li>
+    <li>
+      <strong>Architecture</strong><br />
+      - RESTful API for resource management<br />
+      - Database for resource state storage<br />
+      - Integration with Nova components<br />
+      - Support for various resource types
+    </li>
+    <li>
+      <strong>Key Features</strong><br />
+      - Comprehensive resource tracking<br />
+      - Efficient allocation management<br />
+      - Custom policy support<br />
+      - Service integration capabilities
+    </li>
+    <li>
+      <strong>Best Practices</strong><br />
+      - Implement proper monitoring and alerting<br />
+      - Use security best practices<br />
+      - Plan for scalability and performance<br />
+      - Maintain comprehensive documentation
+    </li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+<ul>
+  <li><a href="https://docs.openstack.org/placement/latest/">OpenStack Placement Documentation</a></li>
+  <li><a href="https://docs.redhat.com/openstack/">Red Hat OpenStack Platform Documentation</a></li>
+  <li><a href="https://wiki.openstack.org/wiki/Placement">OpenStack Wiki - Placement</a></li>
+  <li><a href="https://docs.openstack.org/api-ref/placement/">Placement API Reference</a></li>
+  <li><a href="https://docs.openstack.org/placement/latest/admin/index.html">OpenStack Resource Management Guide</a></li>
+  <li><a href="https://docs.openstack.org/python-openstackclient/latest/">OpenStack CLI Reference</a></li>
+  <li><a href="https://docs.openstack.org/placement/latest/admin/performance.html">Placement Performance Guide</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/cs/context-switching/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767769259/context-switch-1_s1n69e.png" alt="Context Switch Deep Dive - The Hidden Performance Cost in Container Environments">
+                                    
+                                    <h3>Context Switch Deep Dive - The Hidden Performance Cost in Container Environments</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/aws/aws-nacl-sg/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1767938733/aws-security-group-network-acl-1_tjbvpd.png" alt="AWS Network ACL vs Security Group - Complete Comparison and Implementation Guide">
+                                    
+                                    <h3>AWS Network ACL vs Security Group - Complete Comparison and Implementation Guide</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/storage/ceph-erasure-code/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1755133935/ceph-erasure-code_kheagu.png" alt="Advanced Ceph Erasure Code Configuration and Performance Optimization">
+                                    
+                                    <h3>Advanced Ceph Erasure Code Configuration and Performance Optimization</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="11">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/linux/dev-null/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/c_scale,w_380/v1738917615/dev-null_yogt4x.png" alt="Understanding Linux File Descriptors and /dev/null">
+                
+            </div>
+            <h3 class="title">Understanding Linux File Descriptors and /dev/null</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A comprehensive guide to OpenStack Placement, its architecture, and how it manages resource allocation in the cloud&quot;%20https://somaz.blog/category/openstack/openstack-placement/%20via%20&#64;&hashtags=openstack,placement,resource management,nova,cloud"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/openstack/openstack-placement/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile.png" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  <script type="application/ld+json">
+  {
+      "@context": "http://schema.org",
+      "@type": "Person",
+      "name": "Somaz",
+      
+      "image": "/assets/img/uploads/profile.png",
+      
+      "jobTitle": "DevOps Engineer",
+      "url": "https://somaz.blog/authors/somaz/",
+      "sameAs": [
+        "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"
+      ]
+  }
+  </script>
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/openstack/openstack-placement/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+
+    <!-- An explicit ownership claim. Worth having on its own, and it is what a
+         DMCA notice rests on if an article turns up republished elsewhere.
+         No year: copyright runs from creation regardless of notice, and each
+         post already carries its own date in the page, the sitemap and the
+         feed — a footer year would only be one more thing to keep true.
+         Code samples are carved out deliberately: readers are meant to copy
+         commands and manifests out of these posts — that is what the blog is
+         for, and it is why `pre`/`code` stay selectable in
+         _sass/_content-protection.scss. -->
+    <p class="copyright">
+      &copy; Somaz. All rights reserved.<br />
+      Articles may not be reproduced or redistributed without permission.
+      Code samples are free to use.
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "Organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": "600",
+      "height": "315"
+  },
+  "sameAs": [
+    "https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"
+  ]
+}
+</script>
+
+<!-- Include the script that allows Netlify CMS login -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id="></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "http://schema.org",
+            "@type": "BlogPosting",
+            "name": "Deep Dive into OpenStack Placement",
+            "headline": "Understanding OpenStack's Resource Management Service",
+            "description": "A comprehensive guide to OpenStack Placement, its architecture, and how it manages resource allocation in the cloud",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1755833039/openstack-placement-1_f62ne8.png",
+            "url": "https://somaz.blog/category/openstack/openstack-placement/",
+            "articleBody": "
+
+
+
+Understanding OpenStack Placement
+
+Placement is OpenStack’s resource management service that provides a centralized system for tracking and managing physical and virtual resources in the cloud. It was introduced in the Newton release and has evolved into a crucial component since the Stein version, working closely with Nova and other OpenStack services.
+
+
+
+What is Placement?
+
+
+
+The Resource Management Layer
+
+Placement serves as the central resource manager in OpenStack, providing essential functionality:
+
+
+  Resource Tracking: Monitors physical and virtual resources (RAM, vCPU, storage, IP)
+  Standardized Units: Manages resources using standardized Resource Classes
+  Service Integration: Supports efficient resource allocation for Nova, Neutron, and Cinder
+  API-Driven: Provides RESTful APIs for resource management and allocation
+
+
+By centralizing resource management, Placement enables optimal resource utilization and efficient scheduling across the OpenStack cloud.
+
+
+
+Placement Architecture Overview (Diagram Description)
+
+
+  OpenStack Placement
+    
+      Core Services: Resource Tracking, Allocation Management, API Services, Database
+      Resource Types: Compute, Network, Storage
+      Integration Points: Nova, Neutron, Cinder
+      Management Features: Resource Classes, Allocation Policies, Usage Monitoring
+    
+  
+
+
+
+  
+    graph LR
+      A[OpenStack Placement]
+      A --&amp;gt; B[Core Services]
+      A --&amp;gt; C[Resource Types]
+      A --&amp;gt; D[Integration Points]
+      A --&amp;gt; E[Management Features]
+      
+      B --&amp;gt; B1[Resource Tracking]
+      B --&amp;gt; B2[Allocation Management]
+      B --&amp;gt; B3[API Services]
+      B --&amp;gt; B4[Database]
+      
+      C --&amp;gt; C1[Compute Resources]
+      C --&amp;gt; C2[Network Resources]
+      C --&amp;gt; C3[Storage Resources]
+      
+      D --&amp;gt; D1[Nova Integration]
+      D --&amp;gt; D2[Neutron Integration]
+      D --&amp;gt; D3[Cinder Integration]
+      
+      E --&amp;gt; E1[Resource Classes]
+      E --&amp;gt; E2[Allocation Policies]
+      E --&amp;gt; E3[Usage Monitoring]
+
+      style A stroke:#333,stroke-width:1px,fill:#f5f5f5
+      style B stroke:#333,stroke-width:1px,fill:#a5d6a7
+      style C stroke:#333,stroke-width:1px,fill:#64b5f6
+      style D stroke:#333,stroke-width:1px,fill:#ffcc80
+      style E stroke:#333,stroke-width:1px,fill:#ce93d8
+  
+
+
+
+
+
+
+Placement Architecture and Components
+
+Placement employs a modular architecture with a central API server and database that work together to provide comprehensive resource management services.
+
+This design enables efficient resource tracking and allocation across the OpenStack cloud.
+
+
+
+Core Components
+
+
+  
+    
+      Component
+      Role
+      Description
+    
+    
+      Placement API
+      Resource Management Service
+      
+        
+          Provides RESTful API for resource management
+          Processes resource allocation requests
+          Maintains resource state in the database
+          Validates and authorizes resource operations
+        
+      
+    
+    
+      Placement Database
+      Resource State Storage
+      
+        
+          Stores resource provider information
+          Maintains allocation records
+          Tracks resource usage and availability
+          Manages resource class definitions
+        
+      
+    
+    
+      Nova Integration
+      Compute Resource Management
+      
+        
+          Coordinates with Nova-compute for resource updates
+          Supports Nova-scheduler in node selection
+          Manages instance resource allocation
+          Provides health check functionality
+        
+      
+    
+  
+
+
+
+
+Resource Management Flow
+
+
+  
+    sequenceDiagram
+      participant Nova as &quot;Nova Service&quot;
+      participant Placement as &quot;Placement API&quot;
+      participant DB as &quot;Placement DB&quot;
+      participant Compute as &quot;Compute Node&quot;
+      
+      Nova-&amp;gt;&amp;gt;Placement: Request Resource Allocation
+      Placement-&amp;gt;&amp;gt;DB: Check Resource Availability
+      DB--&amp;gt;&amp;gt;Placement: Return Available Resources
+      Placement--&amp;gt;&amp;gt;Nova: Provide Allocation Options
+      Nova-&amp;gt;&amp;gt;Compute: Deploy Instance
+      Compute-&amp;gt;&amp;gt;Placement: Update Resource Usage
+      Placement-&amp;gt;&amp;gt;DB: Update Resource State
+  
+
+
+
+
+Resource Types and Classes
+
+Placement manages various types of resources:
+
+
+  Compute Resources: CPU, RAM, disk space, custom compute resources
+  Network Resources: IP addresses, VLANs, VXLANs, QoS policies
+  Storage Resources: Block storage, object storage, custom storage resources
+  Custom Resources: User-defined resource classes for specific workloads
+
+
+Each resource type is managed through standardized resource classes, enabling consistent tracking and allocation across the cloud.
+
+
+
+
+
+Key Features and Capabilities
+
+Placement provides a comprehensive set of features for resource management, enabling efficient allocation, tracking, and optimization of cloud resources.
+
+
+
+Resource Management Features
+
+
+  
+    
+      Feature
+      Description
+    
+    
+      Resource Tracking
+      
+        
+          Real-time monitoring of resource usage and availability
+          Support for both physical and virtual resources
+          Dynamic updates from compute nodes
+          Comprehensive resource state management
+        
+      
+    
+    
+      Allocation Management
+      
+        
+          Efficient resource allocation for new instances
+          Support for resource reservation and quotas
+          Dynamic resource reallocation
+          Multi-tenant resource isolation
+        
+      
+    
+    
+      Policy Management
+      
+        
+          Custom resource allocation policies
+          Project-specific resource limits
+          Workload-specific optimization rules
+          Quality of Service (QoS) policies
+        
+      
+    
+  
+
+
+
+
+Integration with OpenStack Services
+
+Placement integrates with various OpenStack services:
+
+
+  Nova Integration: Provides resource info for instance scheduling and deployment
+  Neutron Integration: Manages network resource allocation and tracking
+  Cinder Integration: Coordinates storage resource allocation
+  Custom Service Integration: Supports integration with additional OpenStack services
+
+
+This integration enables comprehensive resource management across the entire OpenStack cloud.
+
+
+
+
+
+API Usage and CLI Examples
+
+Understanding how to interact with Placement through its API and CLI is essential for effective resource management. Here are practical examples and common usage patterns.
+
+
+
+Placement CLI Commands
+
+
+  
+    
+      Command
+      Description
+    
+    
+      openstack resource provider list
+      List all resource providers in the cloud
+    
+    
+      openstack resource provider show &amp;lt;uuid&amp;gt;
+      Show detailed information about a specific resource provider
+    
+    
+      openstack resource class list
+      List all available resource classes
+    
+    
+      openstack allocation candidate list
+      Find allocation candidates for resource requirements
+    
+    
+      openstack resource provider inventory list &amp;lt;uuid&amp;gt;
+      Show inventory for a specific resource provider
+    
+  
+
+
+
+
+API Request Examples
+
+Getting Resource Providers:
+
+
+Creating Allocation:
+
+
+Querying Allocation Candidates:
+
+
+
+
+
+
+Real-World Use Cases and Scenarios
+
+Understanding practical applications of Placement helps in designing efficient cloud architectures and solving common resource management challenges.
+
+
+
+Common Deployment Scenarios
+
+
+  
+    
+      Scenario
+      Challenge
+      Placement Solution
+    
+    
+      High-Density Workloads
+      Optimal resource allocation for microservices
+      
+        
+          Fine-grained resource tracking
+          Custom resource classes
+          Efficient packing algorithms
+        
+      
+    
+    
+      GPU Workloads
+      Managing specialized hardware resources
+      
+        
+          Custom GPU resource classes
+          Hardware-specific allocation
+          Resource affinity policies
+        
+      
+    
+    
+      Multi-Tenant Isolation
+      Resource isolation between tenants
+      
+        
+          Project-based resource limits
+          Allocation tracking per tenant
+          Usage monitoring and reporting
+        
+      
+    
+    
+      Edge Computing
+      Distributed resource management
+      
+        
+          Geographic resource placement
+          Network-aware scheduling
+          Edge-specific resource classes
+        
+      
+    
+  
+
+
+
+
+Custom Resource Class Implementation
+
+Example of creating a custom resource class for GPU resources:
+
+
+
+
+
+
+Performance Optimization and Monitoring
+
+Optimizing Placement performance is crucial for large-scale OpenStack deployments. Here are key strategies and monitoring approaches.
+
+
+
+Performance Optimization Strategies
+
+
+  
+    
+      Optimization Area
+      Strategy
+      Implementation
+    
+    
+      Database Performance
+      Optimize database queries and indexing
+      
+        
+          Proper database indexing
+          Connection pooling
+          Query optimization
+          Regular maintenance
+        
+      
+    
+    
+      API Response Time
+      Minimize API latency
+      
+        
+          API caching strategies
+          Load balancing
+          Connection optimization
+          Response compression
+        
+      
+    
+    
+      Resource Tracking
+      Efficient resource updates
+      
+        
+          Batch updates
+          Asynchronous processing
+          Update frequency tuning
+          Delta tracking
+        
+      
+    
+  
+
+
+
+
+Monitoring and Alerting
+
+Key Metrics to Monitor:
+
+
+  API Response Times: Track placement API latency
+  Database Performance: Monitor query execution times
+  Resource Utilization: Track resource allocation ratios
+  Error Rates: Monitor failed allocation requests
+  Service Health: Check placement service availability
+
+
+Sample Monitoring Configuration:
+# Prometheus monitoring example
+- name: placement_api_latency
+  expr: histogram_quantile(0.95, placement_api_request_duration_seconds)
+  
+- name: placement_db_connections
+  expr: placement_database_connections_active
+  
+- name: resource_allocation_ratio
+  expr: (placement_resource_allocated / placement_resource_total) * 100
+
+
+
+
+
+
+Troubleshooting Common Issues
+
+Understanding common Placement issues and their solutions helps maintain a healthy OpenStack environment.
+
+
+
+Common Problems and Solutions
+
+
+  
+    
+      Problem
+      Symptoms
+      Solution
+    
+    
+      Resource Provider Registration
+      
+        
+          Compute nodes not appearing
+          Resource inventory missing
+          Allocation failures
+        
+      
+      
+        
+          Check nova-compute logs
+          Verify placement endpoint
+          Restart nova-compute service
+          Check network connectivity
+        
+      
+    
+    
+      Database Synchronization
+      
+        
+          Inconsistent resource data
+          Allocation mismatches
+          Scheduling failures
+        
+      
+      
+        
+          Run placement database sync
+          Check for data corruption
+          Verify database connectivity
+          Review migration logs
+        
+      
+    
+    
+      API Authentication
+      
+        
+          401 Unauthorized errors
+          Service integration failures
+          Token validation issues
+        
+      
+      
+        
+          Check keystone configuration
+          Verify service credentials
+          Update authentication tokens
+          Review policy settings
+        
+      
+    
+  
+
+
+
+
+Diagnostic Commands
+
+Check Placement Service Health:
+
+
+Debug Resource Issues:
+
+
+
+
+
+
+Security and Best Practices
+
+Implementing proper security measures and following best practices ensures a secure and efficient Placement deployment.
+
+
+
+Security Considerations
+
+
+  
+    
+      Security Area
+      Best Practices
+    
+    
+      API Security
+      
+        
+          Use HTTPS for all API communications
+          Implement proper authentication and authorization
+          Regular security token rotation
+          API rate limiting and throttling
+        
+      
+    
+    
+      Database Security
+      
+        
+          Encrypt database connections
+          Use strong database passwords
+          Implement database access controls
+          Regular database backups
+        
+      
+    
+    
+      Network Security
+      
+        
+          Secure internal network communications
+          Implement proper firewall rules
+          Use VPNs for remote access
+          Regular security audits
+        
+      
+    
+  
+
+
+
+
+Operational Best Practices
+
+Deployment Guidelines:
+
+  Use configuration management tools (Ansible, Puppet)
+  Implement proper logging and monitoring
+  Regular backup and disaster recovery testing
+  Maintain documentation and runbooks
+
+
+Capacity Planning:
+
+  Monitor resource utilization trends
+  Plan for growth and scaling requirements
+  Implement resource quotas and limits
+  Regular capacity reviews and adjustments
+
+
+
+
+
+
+Migration and Upgrade Strategies
+
+Planning and executing Placement migrations and upgrades requires careful consideration to maintain service availability.
+
+
+
+Upgrade Planning
+
+
+  
+    
+      Phase
+      Activities
+      Considerations
+    
+    
+      Pre-upgrade
+      
+        
+          Backup placement database
+          Test upgrade in staging
+          Review release notes
+          Plan rollback strategy
+        
+      
+      
+        
+          Service compatibility
+          Data migration requirements
+          Downtime considerations
+          Resource allocation
+        
+      
+    
+    
+      Upgrade
+      
+        
+          Stop placement services
+          Update packages
+          Run database migrations
+          Update configurations
+        
+      
+      
+        
+          Service order dependencies
+          Configuration changes
+          Database migration time
+          Service restart sequence
+        
+      
+    
+    
+      Post-upgrade
+      
+        
+          Verify service functionality
+          Test resource operations
+          Monitor performance
+          Update documentation
+        
+      
+      
+        
+          Functionality validation
+          Performance impact
+          Integration testing
+          User communication
+        
+      
+    
+  
+
+
+
+
+Migration Commands
+
+Database Migration:
+# Backup placement database
+mysqldump placement &amp;gt; placement_backup.sql
+
+# Run database upgrade
+placement-manage db upgrade
+
+# Check migration status
+placement-manage db version
+
+# Online data migrations
+placement-manage db online_data_migrations
+
+
+
+
+
+
+Usage and Best Practices
+
+Effective use of Placement requires understanding its capabilities and implementing appropriate resource management strategies. Here are key considerations and best practices for utilizing Placement effectively.
+
+
+
+Resource Management Strategies
+
+
+  
+    
+      Strategy
+      Description
+      Benefits
+    
+    
+      Resource Classes
+      Define standardized resource types for consistent management
+      
+        
+          Consistent resource tracking
+          Simplified allocation policies
+          Better resource utilization
+        
+      
+    
+    
+      Allocation Policies
+      Implement custom policies for resource allocation
+      
+        
+          Optimized resource distribution
+          Workload-specific optimization
+          Improved performance
+        
+      
+    
+    
+      Monitoring
+      Regular tracking of resource usage and availability
+      
+        
+          Proactive resource management
+          Early problem detection
+          Better capacity planning
+        
+      
+    
+  
+
+
+
+
+Implementation Guidelines
+
+For effective Placement implementation:
+
+
+  Resource Planning: Carefully plan resource classes and allocation policies
+  Monitoring: Implement comprehensive resource monitoring
+  Integration: Ensure proper integration with all OpenStack services
+  Documentation: Maintain clear documentation of resource management policies
+
+
+Following these guidelines helps ensure efficient resource management and optimal cloud performance.
+
+
+
+
+
+Key Points
+
+
+  Placement Essentials
+  
+    
+      Core Functionality
+      - Centralized resource management for OpenStack clouds
+      - Real-time resource tracking and allocation
+      - Integration with Nova and other OpenStack services
+      - Support for custom resource classes and policies
+    
+    
+      Architecture
+      - RESTful API for resource management
+      - Database for resource state storage
+      - Integration with Nova components
+      - Support for various resource types
+    
+    
+      Key Features
+      - Comprehensive resource tracking
+      - Efficient allocation management
+      - Custom policy support
+      - Service integration capabilities
+    
+    
+      Best Practices
+      - Implement proper monitoring and alerting
+      - Use security best practices
+      - Plan for scalability and performance
+      - Maintain comprehensive documentation
+    
+  
+
+
+
+
+
+
+References
+
+  OpenStack Placement Documentation
+  Red Hat OpenStack Platform Documentation
+  OpenStack Wiki - Placement
+  Placement API Reference
+  OpenStack Resource Management Guide
+  OpenStack CLI Reference
+  Placement Performance Guide
+
+",
+            "wordcount": "2134",
+            "inLanguage": "en",
+            "dateCreated": "2025-06-06T00:00:00+00:00",
+            "datePublished": "2025-06-06T00:00:00+00:00",
+            "dateModified": "2025-06-06T00:00:00+00:00",
+            "author": {
+                "@type": "Person",
+                "name": "",
+                
+                "image": https://somaz.blog/assets/img/user.jpg,
+                
+                "jobTitle": "",
+                "url": "https://somaz.blog",
+                "sameAs": [
+                    
+                ]
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "somaz",
+                "url": "https://somaz.blog/",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://somaz.blog/assets/img/blog-image.png",
+                    "width": "600",
+                    "height": "315"
+                }
+            },
+            "mainEntityOfPage": "https://somaz.blog/category/openstack/openstack-placement/",
+            "genre": "OPENSTACK",
+            "articleSection": "OPENSTACK",
+            "keywords": ["openstack","placement","resource management","nova","cloud"]
+        }
+        </script>
+    </body>
+</html>
