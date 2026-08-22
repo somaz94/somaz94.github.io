@@ -1,0 +1,837 @@
+<!doctype html>
+<!-- `lang="ko"`: the interface language, not the blog's. -->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>로또 번호 분석 · somaz.blog</title>
+    <meta name="description" content="2002년 1회부터 지금까지의 로또 6/45 당첨 기록을 분석합니다. 당첨 확률은 바꿀 수 없지만, 1등이 파리뮤추얼이라 남들이 덜 고르는 조합을 고르면 나눠 갖는 사람이 줄어듭니다. 수동 당첨자 비율로 어떤 번호 모양을 사람들이 실제로 고르는지 검증했습니다.">
+<link rel="canonical" href="https://somaz.blog/lotto/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Somaz Tech Blog">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:url" content="https://somaz.blog/lotto/">
+<meta property="og:title" content="로또 번호 분석">
+<meta property="og:description" content="당첨 확률은 못 바꿉니다. 나눠 갖는 사람 수는 바꿀 수 있습니다 — 1235회분 기록으로 검증한 조합 생성기.">
+<meta property="og:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="로또 번호 분석">
+<meta name="twitter:description" content="당첨 확률은 못 바꿉니다. 나눠 갖는 사람 수는 바꿀 수 있습니다 — 1235회분 기록으로 검증한 조합 생성기.">
+<meta name="twitter:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico" />
+    <!-- Before the stylesheet, and inline: it sets `data-theme` on <html> when
+         the reader has made an explicit choice, and the stylesheet keys off
+         that. With nothing stored it sets nothing and the media query decides,
+         so the CSS-only path this page has always had still works with the
+         script removed. Single definition for all nine tool pages. -->
+    <script>
+  (function () {
+    var KEY = 'tool-theme';
+
+    function read() {
+      try {
+        var t = localStorage.getItem(KEY);
+        if (t === 'dark' || t === 'light') return t;
+        /* One-time adoption of /diagram/'s pre-shared key, then remove it. */
+        var legacy = localStorage.getItem('dg-theme');
+        localStorage.removeItem('dg-theme');
+        if (legacy === 'dark' || legacy === 'light') {
+          localStorage.setItem(KEY, legacy);
+          return legacy;
+        }
+      } catch (e) {
+        /* Private mode or a full quota — fall through to the OS. */
+      }
+      return null;
+    }
+
+    var chosen = read();
+    if (chosen) document.documentElement.setAttribute('data-theme', chosen);
+
+    /* Everything below needs the DOM. Kept in this file rather than in each
+       tool's ui.js so the eight pages cannot drift — the pre-paint half and the
+       toggle half are one decision and belong together. */
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    ready(function () {
+      var btn = document.getElementById('tool-theme');
+      if (!btn) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var icon = btn.querySelector('[data-theme-icon]');
+
+      /* What the reader is ACTUALLY looking at: the explicit choice if there is
+         one, otherwise whatever the OS is currently saying. The button has to
+         report that, not the stored value, or it shows "light" on a page that
+         is plainly dark. */
+      function effective() {
+        var attr = document.documentElement.getAttribute('data-theme');
+        return attr === 'dark' || attr === 'light' ? attr : (mq.matches ? 'dark' : 'light');
+      }
+
+      /* Taken off the button rather than written here, so a Korean-interface
+         tool can localise what its screen reader announces. The visible label
+         is a separate string the button include renders directly. */
+      var toDark = btn.getAttribute('data-to-dark') || 'Switch to the dark theme';
+      var toLight = btn.getAttribute('data-to-light') || 'Switch to the light theme';
+
+      function sync() {
+        var dark = effective() === 'dark';
+        btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        /* The name states what a click DOES, which is the opposite of the
+           current state — a button announced as "Dark" on an already-dark page
+           is ambiguous about which way it goes. */
+        btn.setAttribute('aria-label', dark ? toLight : toDark);
+        btn.title = dark ? toLight : toDark;
+        if (icon) icon.textContent = dark ? '☀️' : '🌙';
+      }
+
+      btn.addEventListener('click', function () {
+        var next = effective() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) { /* choice holds for this visit only */ }
+        sync();
+      });
+
+      /* Only matters while there is no explicit choice — then the page is
+         following the OS and the button has to keep reporting it. `addListener`
+         is the Safari < 14 spelling and is still needed. */
+      var onChange = function () { sync(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+
+      sync();
+    });
+  })();
+</script>
+
+    <link rel="stylesheet" href="/assets/lotto/theme.css" />
+
+    <!-- No pre-paint script: light and dark come from CSS alone, so there is no
+         mode flag for a stylesheet and a script to answer differently. No CDN,
+         no remote font, no analytics — every byte is served from this origin. -->
+  </head>
+
+  <body>
+    <!-- Baked in by Liquid at build time from _data/lotto_data.json. The page
+         makes ZERO runtime requests: the archive is rendered into the HTML, and
+         the generator is arithmetic in the visitor's browser. -->
+    
+
+    <header class="lt-topbar">
+      <!-- A standalone page carries no site header, so this is the only way back
+           to the blog. The label collapses at narrow widths but the link itself
+           is never removed. -->
+      <a class="lt-btn lt-home" href="/" title="somaz.blog으로 돌아가기" aria-label="somaz.blog으로 돌아가기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 10.5 12 3.5l8.5 7" />
+          <path d="M5.5 9.5v10h13v-10" />
+          <path d="M9.75 19.5v-5.5h4.5v5.5" />
+        </svg>
+        <span class="lt-btn-text">Blog</span>
+      </a>
+
+      <!-- No `id` on this or any heading: the site script injects a full-width
+           permalink image into every h1[id]..h6[id], and the CSS that hides it
+           is scoped to `.post-content`. Sections are named with `aria-label`. -->
+      <h1 class="lt-brand">
+        <b>로또 번호 분석</b><span class="lt-brand-site">somaz.blog</span>
+      </h1>
+
+      <p class="lt-updated">1237회까지 · 2026-08-15</p>
+
+      <button id="tool-theme" class="lt-btn" type="button"
+        aria-pressed="false" aria-label="Switch to the dark theme"
+        data-to-dark="Switch to the dark theme" data-to-light="Switch to the light theme">
+  <span data-theme-icon aria-hidden="true">🌙</span>
+  <span class="lt-btn-text">Theme</span>
+</button>
+
+    </header>
+
+    <main class="lt-shell">
+      
+
+      <!-- ── 먼저 말해둘 것 ─────────────────────────────────────────────
+           This has to lead, not sit in a footnote. Every other page of this
+           kind buries it, and the burying is what makes them dishonest. -->
+      <section aria-label="먼저 말해둘 것">
+        <h2 class="lt-section-title">먼저, 이 페이지가 할 수 없는 일</h2>
+        <div class="lt-card">
+          <p style="margin: 0 0 10px">
+            <b>과거 당첨번호로 다음 번호를 맞힐 수는 없습니다.</b> 추첨은 매회
+            독립이고 45개 공은 균등합니다. 어떤 조합이든 1등 확률은 똑같이
+            8,145,060분의 1이고, 이 페이지의 무엇도 그 숫자를 바꾸지 않습니다.
+          </p>
+          <p style="margin: 0">
+            대신 바꿀 수 있는 게 하나 있습니다. 1~4등은 <b>파리뮤추얼</b>이라
+            상금 풀을 당첨자끼리 나눕니다. 남들이 덜 고르는 조합을 고르면
+            <b>당첨될 확률은 그대로지만 나눠 갖는 사람이 줄어듭니다.</b>
+            아래 생성기는 그것만 합니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- ── 최신 회차 ─────────────────────────────────────────────────── -->
+      
+      <section aria-label="최신 당첨번호">
+        <h2 class="lt-section-title">1237회 당첨번호 — 2026-08-15</h2>
+        <div class="lt-card">
+          <div class="lt-balls">
+            
+            
+            
+            <span class="lt-ball lt-ball--1">10</span>
+            
+            
+            
+            <span class="lt-ball lt-ball--2">20</span>
+            
+            
+            
+            <span class="lt-ball lt-ball--3">23</span>
+            
+            
+            
+            <span class="lt-ball lt-ball--4">34</span>
+            
+            
+            
+            <span class="lt-ball lt-ball--4">37</span>
+            
+            
+            
+            <span class="lt-ball lt-ball--4">40</span>
+            
+            <span class="lt-plus">+</span>
+            
+            <span class="lt-ball lt-ball--bonus lt-ball--4">36</span>
+          </div>
+          <p class="lt-note" style="margin: 12px 0 0">
+            1등 23명 · 1인당 12억원대 · 자동 14명 / 수동 9명
+          </p>
+        </div>
+        
+      </section>
+      
+
+      <!-- ── 생성기 ─────────────────────────────────────────────────────── -->
+      <section aria-label="번호 생성기">
+        <h2 class="lt-section-title">덜 겹치는 번호 만들기</h2>
+        <p class="lt-note">
+          후보를 균등 무작위로 많이 뽑은 뒤, 그중 <b>사람이 가장 덜 고를 모양</b>을
+          고릅니다. 후보 자체는 전부 균등하게 뽑히므로 당첨 확률은 손대지
+          않습니다 — 똑같이 가능성 있는 표들 사이에서 덜 붐비는 쪽을 고를 뿐입니다.
+        </p>
+        <div class="lt-card">
+          <!-- Usage first. The page is evidence-heavy, and without this a
+               visitor meets a percentage and three bullets with no idea which
+               way is better. -->
+          <ol class="lt-steps">
+            <li><b>게임 수</b>를 고릅니다. 그냥 <b>번호 뽑기</b>만 눌러도 됩니다.</li>
+            <li>꼭 넣고 싶은 번호가 있으면 아래 표에서 <b>최대 5개까지</b> 눌러 고정합니다. 없으면 건너뛰세요.</li>
+            <li><b>번호 뽑기</b>를 누를 때마다 새로 뽑습니다. 마음에 들 때까지 다시 눌러도 됩니다.</li>
+          </ol>
+
+          <div class="lt-gen-controls">
+            <div class="lt-field">
+              <label for="lt-count">게임 수</label>
+              <select id="lt-count">
+                <option value="1">1게임</option>
+                <option value="5" selected>5게임</option>
+                <option value="10">10게임</option>
+              </select>
+            </div>
+            <div class="lt-field" style="justify-content: flex-end">
+              <button class="lt-btn lt-btn--primary" type="button" id="lt-run">번호 뽑기</button>
+            </div>
+          </div>
+
+          <div class="lt-field">
+            <label id="lt-lock-label">고정할 번호 (선택)</label>
+            <div class="lt-grid" id="lt-grid" aria-labelledby="lt-lock-label"></div>
+            <span class="lt-hint" id="lt-lock-hint"></span>
+          </div>
+
+          <div class="lt-results" id="lt-results"></div>
+
+          <!-- Legend. The percentage is the one number on this page a reader is
+               most likely to misread as "chance of winning", so it is spelled
+               out next to the results rather than only in a 11px label. -->
+          <div class="lt-legend">
+            <p class="lt-legend-title">결과 보는 법</p>
+            <p>
+              각 줄의 <b>%</b>는 <b>예상 수동 선택률</b>입니다 — 사람이 직접 번호를
+              고를 때 그 조합과 비슷한 모양을 고를 비율을 뜻합니다.
+              <b>당첨 확률이 아닙니다.</b> 낮을수록 같은 번호를 쓴 사람이 적어
+              당첨 시 덜 나눠 갖습니다.
+            </p>
+            <ul class="lt-legend-keys">
+              <li><span class="lt-key lt-key--ok"></span>18% 미만 — 겹칠 사람이 적은 편</li>
+              <li><span class="lt-key lt-key--mid"></span>18~28% — 보통</li>
+              <li><span class="lt-key lt-key--high"></span>28% 이상 — 사람들이 선호하는 모양</li>
+            </ul>
+            <p>
+              아래 세 줄은 그 점수가 나온 이유입니다.
+              <b class="lt-key-tick">✓</b> 표시는 남들과 덜 겹치게 만드는 요소,
+              점(·)은 반대로 흔한 요소입니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 근거 ───────────────────────────────────────────────────────
+           The heart of the page. Every claim below was tested against the
+           record and the ones that failed are shown failing — a page that only
+           printed its winners would be indistinguishable from the folklore it
+           is arguing with. -->
+      
+      <section aria-label="근거">
+        <h2 class="lt-section-title">근거 — 사람들은 어떤 모양을 고르는가</h2>
+        <p class="lt-note">
+          1등 당첨자는 <b>자동</b>(기계 무작위)과 <b>수동</b>(사람이 고름)으로
+          나뉘어 발표됩니다. 자동에는 사람의 취향이 없으므로,
+          <b>수동 비율이 높은 조합일수록 사람들이 그 모양을 많이 골랐다는 뜻</b>입니다.
+          회차 안에서 계산한 비율이라 23년간의 판매량 증가에도 영향받지 않습니다.
+          표본 973회(262회부터),
+          전체 평균 수동 비율 28.9%.
+        </p>
+        <div class="lt-ev">
+          
+          
+          
+          <div class="lt-ev-row lt-ev-row--yes">
+            <span class="lt-ev-label">32 이상을 3개 넘게 포함</span>
+            <span class="lt-ev-verdict lt-ev-verdict--yes">확인됨</span>
+            <span class="lt-ev-desc">생일로 고르면 1~31만 쓰게 됩니다. 32 이상이 많은 조합은 수동으로 찍기 어렵습니다.</span>
+            <span class="lt-ev-nums">
+              해당 257회 25.9% · 비해당 716회 30.0%
+              · 차이 -4.1%p · t = -2.85
+            </span>
+          </div>
+          
+          
+          
+          <div class="lt-ev-row lt-ev-row--yes">
+            <span class="lt-ev-label">연속수 포함</span>
+            <span class="lt-ev-verdict lt-ev-verdict--yes">확인됨</span>
+            <span class="lt-ev-desc">연속수는 '무작위처럼 안 보인다'는 이유로 기피된다고 알려져 있습니다.</span>
+            <span class="lt-ev-nums">
+              해당 504회 26.1% · 비해당 469회 31.9%
+              · 차이 -5.8%p · t = -4.46
+            </span>
+          </div>
+          
+          
+          
+          <div class="lt-ev-row lt-ev-row--no">
+            <span class="lt-ev-label">합계가 중앙(138)에서 30 이상 벗어남</span>
+            <span class="lt-ev-verdict lt-ev-verdict--no">효과 없음</span>
+            <span class="lt-ev-desc">사람이 고르는 조합의 합은 중앙에 몰린다고 알려져 있습니다.</span>
+            <span class="lt-ev-nums">
+              해당 311회 27.8% · 비해당 662회 29.4%
+              · 차이 -1.7%p · t = -1.2
+            </span>
+          </div>
+          
+          
+          
+          <div class="lt-ev-row lt-ev-row--flip">
+            <span class="lt-ev-label">용지 한 줄에 3개 이상 몰리지 않음</span>
+            <span class="lt-ev-verdict lt-ev-verdict--flip">반대로 나옴</span>
+            <span class="lt-ev-desc">마킹 용지의 가로·세로 줄을 따라 찍는 사람이 많다고 알려져 있습니다.</span>
+            <span class="lt-ev-nums">
+              해당 601회 30.3% · 비해당 372회 26.7%
+              · 차이 3.6%p · t = 2.69
+            </span>
+          </div>
+          
+        </div>
+        <p class="lt-note" style="margin-top: 12px">
+          |t| 가 2 미만이면 표본 크기를 감안했을 때 우연과 구분되지 않으므로
+          <b>효과 없음</b>으로 적었습니다. 생성기는 여기서 살아남은 항목만
+          사용합니다 — 합계 조건은 검증에 실패해 빠져 있습니다.
+        </p>
+
+        
+        <div class="lt-card" style="margin-top: 14px">
+          <p class="lt-note" style="margin: 0 0 4px">
+            1~31(생일 범위) 포함 개수별 수동 비율 — 많을수록 사람이 고른 조합입니다.
+          </p>
+          <div class="lt-bars">
+            
+            <div class="lt-bar-row">
+              <span>1개</span>
+              <span class="lt-bar-track">
+                <span class="lt-bar-fill" style="width: 44.8%"></span>
+              </span>
+              <span class="lt-bar-val">16.0% <span style="opacity:.6">(9회)</span></span>
+            </div>
+            
+            <div class="lt-bar-row">
+              <span>2개</span>
+              <span class="lt-bar-track">
+                <span class="lt-bar-fill" style="width: 59.92%"></span>
+              </span>
+              <span class="lt-bar-val">21.4% <span style="opacity:.6">(49회)</span></span>
+            </div>
+            
+            <div class="lt-bar-row">
+              <span>3개</span>
+              <span class="lt-bar-track">
+                <span class="lt-bar-fill" style="width: 76.72%"></span>
+              </span>
+              <span class="lt-bar-val">27.4% <span style="opacity:.6">(199회)</span></span>
+            </div>
+            
+            <div class="lt-bar-row">
+              <span>4개</span>
+              <span class="lt-bar-track">
+                <span class="lt-bar-fill" style="width: 85.4%"></span>
+              </span>
+              <span class="lt-bar-val">30.5% <span style="opacity:.6">(351회)</span></span>
+            </div>
+            
+            <div class="lt-bar-row">
+              <span>5개</span>
+              <span class="lt-bar-track">
+                <span class="lt-bar-fill" style="width: 80.92%"></span>
+              </span>
+              <span class="lt-bar-val">28.9% <span style="opacity:.6">(281회)</span></span>
+            </div>
+            
+            <div class="lt-bar-row">
+              <span>6개</span>
+              <span class="lt-bar-track">
+                <span class="lt-bar-fill" style="width: 87.64%"></span>
+              </span>
+              <span class="lt-bar-val">31.3% <span style="opacity:.6">(84회)</span></span>
+            </div>
+            
+          </div>
+        </div>
+        
+      </section>
+      
+
+      <!-- ── 기술통계 ───────────────────────────────────────────────────
+           Labelled as having no predictive power, in the heading and again in
+           the note. These are the numbers people come looking for, and showing
+           them without that label is how the misconception spreads. -->
+      
+      <section aria-label="기술통계">
+        <h2 class="lt-section-title">기술통계 — 재미로 보는 것 (예측력 없음)</h2>
+        <p class="lt-note">
+          아래는 과거를 정확히 기술하지만 <b>다음 회차와는 무관합니다.</b>
+          1237회 동안 번호 하나가 나올 기댓값은
+          164.9회이고, 실제 편차는 우연히 생기는
+          범위 안에 있습니다 — "많이 나온 번호"는 많이 나올 번호가 아닙니다.
+        </p>
+        <div class="lt-cols">
+          <div class="lt-card">
+            <div class="lt-scroll">
+              <table class="lt-table">
+                <thead>
+                  <tr>
+                    <th scope="col">가장 많이 나온 번호</th>
+                    <th scope="col">횟수</th>
+                    <th scope="col">기대 대비</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--4">34</span></td>
+                    <td>186회</td>
+                    <td>1.76σ</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--3">27</span></td>
+                    <td>181회</td>
+                    <td>1.34σ</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--2">12</span></td>
+                    <td>180회</td>
+                    <td>1.26σ</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--2">13</span></td>
+                    <td>179회</td>
+                    <td>1.18σ</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--2">18</span></td>
+                    <td>177회</td>
+                    <td>1.01σ</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--5">45</span></td>
+                    <td>175회</td>
+                    <td>0.84σ</td>
+                  </tr>
+                  
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="lt-card">
+            <div class="lt-scroll">
+              <table class="lt-table">
+                <thead>
+                  <tr>
+                    <th scope="col">가장 오래 안 나온 번호</th>
+                    <th scope="col">경과</th>
+                    <th scope="col">누적</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--1">5</span></td>
+                    <td>24회</td>
+                    <td>153회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--4">32</span></td>
+                    <td>14회</td>
+                    <td>144회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--4">33</span></td>
+                    <td>14회</td>
+                    <td>174회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--3">27</span></td>
+                    <td>13회</td>
+                    <td>181회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--5">45</span></td>
+                    <td>13회</td>
+                    <td>175회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td><span class="lt-ball lt-ball--sm lt-ball--2">17</span></td>
+                    <td>11회</td>
+                    <td>171회</td>
+                  </tr>
+                  
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="lt-card" style="margin-top: 14px">
+          <p class="lt-note" style="margin: 0">
+            번호별 누적 출현 횟수 — 기대값 164.9회
+          </p>
+          <div class="lt-freq">
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">1</span>170
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">2</span>155
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">3</span>172
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">4</span>162
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">5</span>153
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">6</span>166
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">7</span>170
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">8</span>158
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">9</span>136
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">10</span>162
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">11</span>166
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">12</span>180
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">13</span>179
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">14</span>172
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">15</span>170
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">16</span>168
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">17</span>171
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">18</span>177
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">19</span>170
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">20</span>171
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">21</span>167
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">22</span>145
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">23</span>148
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">24</span>166
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">25</span>153
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">26</span>165
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">27</span>181
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">28</span>157
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">29</span>156
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">30</span>158
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">31</span>169
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">32</span>144
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">33</span>174
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">34</span>186
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">35</span>163
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">36</span>164
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">37</span>174
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">38</span>171
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">39</span>168
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">40</span>174
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">41</span>150
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">42</span>157
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">43</span>165
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">44</span>164
+            </div>
+            
+            <div class="lt-freq-cell">
+              <span class="lt-freq-n">45</span>175
+            </div>
+            
+          </div>
+        </div>
+
+        <div class="lt-cols" style="margin-top: 14px">
+          <div class="lt-card">
+            <p class="lt-note" style="margin: 0 0 6px">함께 나온 번호쌍 상위 10</p>
+            <div class="lt-scroll">
+              <table class="lt-table">
+                <tbody>
+                  
+                  <tr>
+                    <td>11 · 21</td>
+                    <td>34회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>33 · 40</td>
+                    <td>33회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>37 · 40</td>
+                    <td>31회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>6 · 38</td>
+                    <td>31회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>12 · 24</td>
+                    <td>31회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>1 · 28</td>
+                    <td>30회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>10 · 31</td>
+                    <td>30회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>34 · 42</td>
+                    <td>30회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>19 · 21</td>
+                    <td>29회</td>
+                  </tr>
+                  
+                  <tr>
+                    <td>14 · 15</td>
+                    <td>29회</td>
+                  </tr>
+                  
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="lt-card">
+            <p class="lt-note" style="margin: 0 0 6px">그 밖의 수치</p>
+            <div class="lt-scroll">
+              <table class="lt-table">
+                <tbody>
+                  <tr><td>6개 합계 평균</td><td>138.3 (이론값 138.0)</td></tr>
+                  <tr><td>합계 범위</td><td>48 ~ 238</td></tr>
+                  <tr><td>직전 회차 번호가 다시 나온 비율</td><td>61.3%</td></tr>
+                  <tr><td>분석한 회차</td><td>1237회</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+
+      
+
+      <!-- The page's only live region. Collapsed with `height: 0`, never
+           `display: none` — a live region removed from the accessibility tree
+           is registered too late to announce its first message. -->
+      <p class="lt-status" id="lt-status" role="status" aria-live="polite"></p>
+    </main>
+
+    <footer class="lt-foot">
+      번호는 이 브라우저 안에서만 생성되며 저장되지도, 전송되지도 않습니다 —
+      새로고침하면 새 번호가 나옵니다. 당첨 기록 출처는
+      smok95.github.io/lotto (동행복권 미러)이며,
+      매주 갱신됩니다. <b>이 페이지는 재미로 만든 것이고 당첨을 보장하지
+      않습니다.</b> 로또의 기댓값은 언제나 구입 금액보다 낮습니다. 도박 문제로
+      어려움을 겪고 있다면 한국도박문제예방치유원(국번 없이 1336)에서 상담받을 수
+      있습니다.
+    </footer>
+
+    <!-- Dependency order: generate → ui. `generate.js` is pure (no DOM, no
+         storage, no network) so the scoring model can be checked without a page
+         around it; `ui.js` is the only file that touches the DOM. -->
+    <script src="/assets/lotto/generate.js"></script>
+    <script src="/assets/lotto/ui.js"></script>
+  </body>
+</html>

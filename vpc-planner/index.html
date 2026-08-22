@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>VPC Subnet Planner · somaz.blog</title>
+    <meta name="description" content="Plan a VPC address space in the browser: split an IPv4 CIDR evenly or by prefix, lay the subnets out across availability zones, check them against ranges you already use, and export Terraform, YAML or CSV. Usable host counts account for the five addresses AWS reserves in every subnet.">
+<link rel="canonical" href="https://somaz.blog/vpc-planner/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Somaz Tech Blog">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://somaz.blog/vpc-planner/">
+<meta property="og:title" content="VPC Subnet Planner">
+<meta property="og:description" content="Split an IPv4 CIDR into subnets across availability zones, detect overlaps, and export Terraform, YAML or CSV. Runs entirely in your browser.">
+<meta property="og:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="VPC Subnet Planner">
+<meta name="twitter:description" content="Split an IPv4 CIDR into subnets across availability zones, detect overlaps, and export Terraform, YAML or CSV. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico" />
+    <!-- Before the stylesheet, and inline: it sets `data-theme` on <html> when
+         the reader has made an explicit choice, and the stylesheet keys off
+         that. With nothing stored it sets nothing and the media query decides,
+         so the CSS-only path this page has always had still works with the
+         script removed. Single definition for all nine tool pages. -->
+    <script>
+  (function () {
+    var KEY = 'tool-theme';
+
+    function read() {
+      try {
+        var t = localStorage.getItem(KEY);
+        if (t === 'dark' || t === 'light') return t;
+        /* One-time adoption of /diagram/'s pre-shared key, then remove it. */
+        var legacy = localStorage.getItem('dg-theme');
+        localStorage.removeItem('dg-theme');
+        if (legacy === 'dark' || legacy === 'light') {
+          localStorage.setItem(KEY, legacy);
+          return legacy;
+        }
+      } catch (e) {
+        /* Private mode or a full quota — fall through to the OS. */
+      }
+      return null;
+    }
+
+    var chosen = read();
+    if (chosen) document.documentElement.setAttribute('data-theme', chosen);
+
+    /* Everything below needs the DOM. Kept in this file rather than in each
+       tool's ui.js so the eight pages cannot drift — the pre-paint half and the
+       toggle half are one decision and belong together. */
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    ready(function () {
+      var btn = document.getElementById('tool-theme');
+      if (!btn) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var icon = btn.querySelector('[data-theme-icon]');
+
+      /* What the reader is ACTUALLY looking at: the explicit choice if there is
+         one, otherwise whatever the OS is currently saying. The button has to
+         report that, not the stored value, or it shows "light" on a page that
+         is plainly dark. */
+      function effective() {
+        var attr = document.documentElement.getAttribute('data-theme');
+        return attr === 'dark' || attr === 'light' ? attr : (mq.matches ? 'dark' : 'light');
+      }
+
+      /* Taken off the button rather than written here, so a Korean-interface
+         tool can localise what its screen reader announces. The visible label
+         is a separate string the button include renders directly. */
+      var toDark = btn.getAttribute('data-to-dark') || 'Switch to the dark theme';
+      var toLight = btn.getAttribute('data-to-light') || 'Switch to the light theme';
+
+      function sync() {
+        var dark = effective() === 'dark';
+        btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        /* The name states what a click DOES, which is the opposite of the
+           current state — a button announced as "Dark" on an already-dark page
+           is ambiguous about which way it goes. */
+        btn.setAttribute('aria-label', dark ? toLight : toDark);
+        btn.title = dark ? toLight : toDark;
+        if (icon) icon.textContent = dark ? '☀️' : '🌙';
+      }
+
+      btn.addEventListener('click', function () {
+        var next = effective() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) { /* choice holds for this visit only */ }
+        sync();
+      });
+
+      /* Only matters while there is no explicit choice — then the page is
+         following the OS and the button has to keep reporting it. `addListener`
+         is the Safari < 14 spelling and is still needed. */
+      var onChange = function () { sync(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+
+      sync();
+    });
+  })();
+</script>
+
+    <link rel="stylesheet" href="/assets/vpc-planner/theme.css" />
+
+    <!-- No pre-paint script, on purpose — the same decision /k8s-inspector/
+         makes. Light and dark come from CSS alone (`color-scheme` +
+         `prefers-color-scheme`), so there is no mode flag for a stylesheet and a
+         script to answer differently. The share link in the location hash is
+         read AFTER paint by share.js and must never become a second pre-paint
+         decision. If a manual theme toggle is added later it has to be settled
+         once, here, before first paint, and recorded on <html data-theme> for
+         both CSS and JS to read back — never derived twice. -->
+  </head>
+
+  <body>
+    <header class="vp-topbar">
+      <!-- A standalone page carries no site header, so this is the only way back
+           to the blog. A wordmark does not read as one, so it is a real labelled
+           button — icon-only once space is tight. -->
+      <a class="vp-btn vp-home" href="/" title="Back to somaz.blog" aria-label="Back to somaz.blog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 10.5 12 3.5l8.5 7" />
+          <path d="M5.5 9.5v10h13v-10" />
+          <path d="M9.75 19.5v-5.5h4.5v5.5" />
+        </svg>
+        <span class="vp-btn-text">Blog</span>
+      </a>
+
+      <!-- The brand doubles as the document's h1. It carries NO `id`: the site
+           script injects a permalink image into every h1[id]..h6[id], and the
+           CSS that hides it is scoped to `.post-content`. No heading on this
+           page has an id — sections are named with `aria-label` instead. -->
+      <h1 class="vp-brand">
+        <b>VPC Subnet Planner</b><span class="vp-brand-site">somaz.blog</span>
+      </h1>
+
+      <div class="vp-actions">
+        <!-- Text-only: no icon, so its label must not be given `.vp-btn-text`,
+             which the narrow breakpoint hides. A button that collapses to an
+             empty box is not an affordance. -->
+        <button id="vp-example" class="vp-btn" type="button"
+                title="Fill the form with an example plan">
+          <span>Example</span>
+        </button>
+        <!-- These two collapse to icon-only on a narrow screen, so they carry an
+             icon and an `aria-label`. `title` is not a substitute: it never
+             appears on touch. -->
+        <button id="vp-share" class="vp-btn" type="button"
+                aria-label="Copy a link that reproduces this plan"
+                title="Copy a link that reproduces this plan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1.2 1.2" />
+            <path d="M13.5 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.2-1.2" />
+          </svg>
+          <span class="vp-btn-text">Share</span>
+        </button>
+        <!-- Labelled for what it actually does: the text fields are cleared, but
+             the subnet count, the AZ count, the split mode and the AWS-reserved
+             checkbox keep their defaults rather than emptying to nothing. -->
+        <button id="vp-reset" class="vp-btn" type="button"
+                aria-label="Clear the CIDR and the ranges"
+                title="Clear the CIDR and the ranges">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4.5 7h15" />
+            <path d="M9.5 7V4.5h5V7" />
+            <path d="M6.5 7l1 12.5h9L17.5 7" />
+          </svg>
+          <span class="vp-btn-text">Reset</span>
+        </button>
+      </div>
+
+      <button id="tool-theme" class="vp-btn" type="button"
+        aria-pressed="false" aria-label="Switch to the dark theme"
+        data-to-dark="Switch to the dark theme" data-to-light="Switch to the light theme">
+  <span data-theme-icon aria-hidden="true">🌙</span>
+  <span class="vp-btn-text">Theme</span>
+</button>
+
+    </header>
+
+    <main class="vp-shell">
+      <!-- Sections are named with `aria-label`, never `id` + `aria-labelledby`:
+           an id on a heading is what triggers the injected permalink image. -->
+      <section class="vp-pane vp-pane--form" aria-label="Plan input">
+        <div class="vp-pane-head">
+          <h2 class="vp-pane-title">Plan</h2>
+          <!-- Filled by ui.js: "10.0.0.0/16 · 65,536 addresses". -->
+          <span id="vp-plan-meta" class="vp-pane-meta"></span>
+        </div>
+
+        <!-- Not a <form>: there is nothing to submit and no server to submit to.
+             Enter must not reload the page. -->
+        <div class="vp-form">
+          <div class="vp-field">
+            <label class="vp-label" for="vp-cidr">VPC CIDR</label>
+            <input id="vp-cidr" class="vp-input vp-input--mono" type="text"
+                   inputmode="text" spellcheck="false" autocapitalize="off"
+                   autocomplete="off" autocorrect="off"
+                   placeholder="10.0.0.0/16"
+                   aria-describedby="vp-cidr-hint" />
+            <p id="vp-cidr-hint" class="vp-hint">
+              IPv4 only. The block is split within itself — nothing outside it is
+              ever allocated.
+            </p>
+          </div>
+
+          <!-- A fieldset, not a heading + div: the legend names the group without
+               putting an id on a heading. -->
+          <fieldset class="vp-fieldset">
+            <legend class="vp-legend">Split</legend>
+
+            <div class="vp-radio-row">
+              <label class="vp-radio">
+                <input type="radio" name="vp-mode" id="vp-mode-even" value="even" checked />
+                <span>Even</span>
+              </label>
+              <label class="vp-radio">
+                <input type="radio" name="vp-mode" id="vp-mode-weighted" value="weighted" />
+                <span>By prefix</span>
+              </label>
+            </div>
+
+            <!-- Both mode panels stay in the DOM; ui.js toggles `hidden` on the
+                 one that does not apply. Rebuilding them would drop whatever the
+                 user typed in the other mode, which they usually want back when
+                 they flip the radio a second time. -->
+            <div id="vp-mode-even-panel" class="vp-subfield">
+              <label class="vp-label" for="vp-count">Number of subnets</label>
+              <input id="vp-count" class="vp-input" type="number" min="1" max="256"
+                     step="1" value="6" />
+              <p class="vp-hint">
+                Rounded up to the next power of two, so every subnet gets the same
+                prefix length.
+              </p>
+            </div>
+
+            <div id="vp-mode-weighted-panel" class="vp-subfield" hidden>
+              <label class="vp-label" for="vp-prefixes">Prefix lengths</label>
+              <input id="vp-prefixes" class="vp-input vp-input--mono" type="text"
+                     spellcheck="false" autocapitalize="off" autocomplete="off"
+                     autocorrect="off" placeholder="24, 24, 24, 26, 26, 28" />
+              <p class="vp-hint">
+                One entry per subnet, allocated largest first so the block does not
+                fragment.
+              </p>
+            </div>
+          </fieldset>
+
+          <div class="vp-field-row">
+            <div class="vp-field">
+              <label class="vp-label" for="vp-azs">Availability zones</label>
+              <input id="vp-azs" class="vp-input" type="number" min="1" max="6"
+                     step="1" value="3" />
+            </div>
+            <div class="vp-field">
+              <label class="vp-label" for="vp-name-prefix">Name prefix</label>
+              <input id="vp-name-prefix" class="vp-input" type="text"
+                     spellcheck="false" autocapitalize="off" autocomplete="off"
+                     placeholder="app" />
+            </div>
+          </div>
+
+          <div class="vp-field">
+            <label class="vp-check" for="vp-aws-reserved">
+              <input id="vp-aws-reserved" type="checkbox" checked />
+              <span>Subtract the 5 addresses AWS reserves per subnet</span>
+            </label>
+            <p class="vp-hint">
+              Network, VPC router, DNS, a reserved address and broadcast. On a /28
+              that is 5 of 16 — the difference is the whole point of the column.
+            </p>
+          </div>
+
+          <div class="vp-field">
+            <label class="vp-label" for="vp-existing">Ranges already in use</label>
+            <textarea id="vp-existing" class="vp-textarea" rows="4"
+                      spellcheck="false" autocapitalize="off" autocomplete="off"
+                      autocorrect="off"
+                      placeholder="One CIDR per line — peered VPCs, on-prem, anything the new block must not collide with.&#10;10.1.0.0/16&#10;192.168.0.0/24"
+                      aria-describedby="vp-existing-hint"></textarea>
+            <p id="vp-existing-hint" class="vp-hint">
+              Checked against the plan, not against each other.
+            </p>
+          </div>
+
+          <!-- An input problem belongs beside the input, not in the result pane
+               where it would read as a finding about the plan.
+               Deliberately NOT a live region: #vp-status is the page's only one,
+               and a second would talk over it. It would not have worked here
+               anyway — the strip is collapsed with `:empty` while it has no
+               message, and `display: none` keeps a node out of the accessibility
+               tree just as `hidden` does, so a region that appears only once it
+               has text is registered too late to announce anything. ui.js sends
+               the same message through #vp-status instead. -->
+          <p id="vp-input-error" class="vp-input-error"></p>
+        </div>
+      </section>
+
+      <section class="vp-pane vp-pane--result" aria-label="Allocation">
+        <div class="vp-pane-head">
+          <h2 class="vp-pane-title">Allocation</h2>
+          <!-- `[hidden]` is a UA-origin rule, so any author `display` beats it
+               whatever the specificity — theme.css re-declares
+               `.vp-tally[hidden] { display: none }` for exactly that reason. -->
+          <div id="vp-tally" class="vp-tally" hidden>
+            <span class="vp-tally-item"><b id="vp-count-subnets">0</b> subnets</span>
+            <span class="vp-tally-item"><b id="vp-count-usable">0</b> usable</span>
+            <span class="vp-tally-item"><b id="vp-count-free">0%</b> free</span>
+          </div>
+        </div>
+
+        <div class="vp-result">
+          <!-- The parent block drawn to scale, one segment per subnet plus the
+               gaps. `role="img"` with a label built by ui.js, because the segment
+               widths carry the whole meaning and a screen reader gets none of it
+               from the divs. The table below is the accessible equivalent. -->
+          <div id="vp-bar" class="vp-bar" role="img"
+               aria-label="Allocation of the parent block"></div>
+          <p id="vp-bar-legend" class="vp-bar-legend"></p>
+
+          <!-- Overlaps: subnet against subnet, and plan against the pasted
+               ranges. Empty in the normal case, so it collapses rather than
+               leaving a labelled empty box.
+               `role="list"` is explicit — Safari drops list semantics from a
+               `<ul>` styled `list-style: none`. -->
+          <ul id="vp-conflicts" class="vp-conflicts" role="list"
+              aria-label="Overlaps"></ul>
+
+          <div class="vp-table-wrap">
+            <table class="vp-table">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">CIDR</th>
+                  <th scope="col">AZ</th>
+                  <th scope="col">Range</th>
+                  <th scope="col" class="vp-num">Usable</th>
+                </tr>
+              </thead>
+              <tbody id="vp-rows"></tbody>
+            </table>
+          </div>
+
+          <section class="vp-export" aria-label="Export">
+            <div class="vp-export-head">
+              <!-- A button group, not a tablist: there is one panel and the
+                   buttons pick its format. `aria-pressed` says which is active
+                   without claiming tab semantics the markup does not implement. -->
+              <div class="vp-export-tabs" role="group" aria-label="Export format">
+                <button class="vp-tab" type="button" data-format="terraform"
+                        aria-pressed="true">Terraform</button>
+                <button class="vp-tab" type="button" data-format="yaml"
+                        aria-pressed="false">YAML</button>
+                <button class="vp-tab" type="button" data-format="csv"
+                        aria-pressed="false">CSV</button>
+              </div>
+              <button id="vp-copy" class="vp-btn vp-btn--small" type="button"
+                      aria-label="Copy the export to the clipboard"
+                      title="Copy the export to the clipboard">
+                <span>Copy</span>
+              </button>
+            </div>
+            <!-- Scrollable, so it is focusable to stay reachable by keyboard. -->
+            <pre id="vp-export-out" class="vp-export-out" tabindex="0"
+                 aria-label="Generated export"></pre>
+          </section>
+        </div>
+
+        <!-- First visit must not be an empty box, so the empty state carries the
+             example button rather than only explaining what to type. -->
+        <div id="vp-empty" class="vp-empty">
+          <h3 class="vp-empty-title">Nothing planned yet</h3>
+          <p>Enter a VPC CIDR on the left, or start from an example and edit it.</p>
+          <button id="vp-example-empty" class="vp-btn vp-btn--primary" type="button">
+            Load an example plan
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- One live region for the whole page. Two would talk over each other. -->
+    <p id="vp-status" class="vp-status" role="status" aria-live="polite"></p>
+
+    <footer class="vp-foot">
+      Everything is computed in the browser — no CIDR you type is uploaded, and
+      the share link carries the plan in the URL rather than storing it anywhere.
+    </footer>
+
+    <noscript>
+      <p class="vp-noscript">
+        This tool computes the split in the browser, so it needs JavaScript
+        enabled.
+      </p>
+    </noscript>
+
+    <!-- Every script is local. No CDN, no remote font, no analytics: the page is
+         expected to keep working offline. Load order is a dependency order —
+         cidr → plan → export → share → ui. ui.js is the only file that touches
+         the DOM. -->
+    <script src="/assets/vpc-planner/cidr.js"></script>
+    <script src="/assets/vpc-planner/plan.js"></script>
+    <script src="/assets/vpc-planner/export.js"></script>
+    <script src="/assets/vpc-planner/share.js"></script>
+    <script src="/assets/vpc-planner/ui.js"></script>
+  </body>
+</html>
