@@ -1,0 +1,1693 @@
+<!doctype html>
+<!-- `lang="ko"`: the interface language, not the blog's. -->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>부동산 지표 · 계산기 · somaz.blog</title>
+    <meta name="description" content="한국은행 ECOS 주택 지표를 빌드 시점에 미리 담아 둔 대시보드 — 주택가격지수, 주택담보대출 금리, 미분양·인허가 물량. 취득세, LTV·DSR 대출한도, 전세↔월세 전환, 중개보수 계산기를 함께 제공합니다. 브라우저에서만 계산하며 입력값은 어디에도 전송되지 않습니다.">
+<link rel="canonical" href="https://somaz.blog/realestate/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Somaz Tech Blog">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:url" content="https://somaz.blog/realestate/">
+<meta property="og:title" content="부동산 지표 · 계산기">
+<meta property="og:description" content="한국은행 ECOS 주택 지표 대시보드와 취득세 · 대출한도 · 전월세 전환 · 중개보수 계산기.">
+<meta property="og:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="부동산 지표 · 계산기">
+<meta name="twitter:description" content="한국은행 ECOS 주택 지표 대시보드와 취득세 · 대출한도 · 전월세 전환 · 중개보수 계산기.">
+<meta name="twitter:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico" />
+    <!-- Before the stylesheet, and inline: it sets `data-theme` on <html> when
+         the reader has made an explicit choice, and the stylesheet keys off
+         that. With nothing stored it sets nothing and the media query decides,
+         so the CSS-only path this page has always had still works with the
+         script removed. Single definition for all nine tool pages. -->
+    <script>
+  (function () {
+    var KEY = 'tool-theme';
+
+    function read() {
+      try {
+        var t = localStorage.getItem(KEY);
+        if (t === 'dark' || t === 'light') return t;
+        /* One-time adoption of /diagram/'s pre-shared key, then remove it. */
+        var legacy = localStorage.getItem('dg-theme');
+        localStorage.removeItem('dg-theme');
+        if (legacy === 'dark' || legacy === 'light') {
+          localStorage.setItem(KEY, legacy);
+          return legacy;
+        }
+      } catch (e) {
+        /* Private mode or a full quota — fall through to the OS. */
+      }
+      return null;
+    }
+
+    var chosen = read();
+    if (chosen) document.documentElement.setAttribute('data-theme', chosen);
+
+    /* Everything below needs the DOM. Kept in this file rather than in each
+       tool's ui.js so the eight pages cannot drift — the pre-paint half and the
+       toggle half are one decision and belong together. */
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    ready(function () {
+      var btn = document.getElementById('tool-theme');
+      if (!btn) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var icon = btn.querySelector('[data-theme-icon]');
+
+      /* What the reader is ACTUALLY looking at: the explicit choice if there is
+         one, otherwise whatever the OS is currently saying. The button has to
+         report that, not the stored value, or it shows "light" on a page that
+         is plainly dark. */
+      function effective() {
+        var attr = document.documentElement.getAttribute('data-theme');
+        return attr === 'dark' || attr === 'light' ? attr : (mq.matches ? 'dark' : 'light');
+      }
+
+      /* Taken off the button rather than written here, so a Korean-interface
+         tool can localise what its screen reader announces. The visible label
+         is a separate string the button include renders directly. */
+      var toDark = btn.getAttribute('data-to-dark') || 'Switch to the dark theme';
+      var toLight = btn.getAttribute('data-to-light') || 'Switch to the light theme';
+
+      function sync() {
+        var dark = effective() === 'dark';
+        btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        /* The name states what a click DOES, which is the opposite of the
+           current state — a button announced as "Dark" on an already-dark page
+           is ambiguous about which way it goes. */
+        btn.setAttribute('aria-label', dark ? toLight : toDark);
+        btn.title = dark ? toLight : toDark;
+        if (icon) icon.textContent = dark ? '☀️' : '🌙';
+      }
+
+      btn.addEventListener('click', function () {
+        var next = effective() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) { /* choice holds for this visit only */ }
+        sync();
+      });
+
+      /* Only matters while there is no explicit choice — then the page is
+         following the OS and the button has to keep reporting it. `addListener`
+         is the Safari < 14 spelling and is still needed. */
+      var onChange = function () { sync(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+
+      sync();
+    });
+  })();
+</script>
+
+    <link rel="stylesheet" href="/assets/realestate/theme.css" />
+
+    <!-- No pre-paint script, the same decision /release-radar/, /vpc-planner/
+         and /k8s-inspector/ make: light and dark come from CSS alone, so there
+         is no mode flag for a stylesheet and a script to answer differently.
+         No CDN, no remote font, no analytics — every byte this page loads is
+         served from this origin, so it keeps working offline. -->
+  </head>
+
+  <body>
+    <!-- Baked in by Liquid at build time. The page makes ZERO runtime requests:
+         _data/realestate_data.json is written by scripts/fetch_realestate_data.py
+         on a schedule and rendered into the HTML below, never fetched. -->
+    
+
+    <header class="re-topbar">
+      <!-- A standalone page carries no site header, so this is the only way back
+           to the blog. The label collapses at narrow widths
+           (`.re-btn-text { display: none }`) but the link itself is never
+           removed — hiding the last affordance leaves a dead end. -->
+      <a class="re-btn re-home" href="/" title="somaz.blog로 돌아가기" aria-label="somaz.blog로 돌아가기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 10.5 12 3.5l8.5 7" />
+          <path d="M5.5 9.5v10h13v-10" />
+          <path d="M9.75 19.5v-5.5h4.5v5.5" />
+        </svg>
+        <span class="re-btn-text">Blog</span>
+      </a>
+
+      <!-- The brand doubles as the document's h1 and carries NO `id`: the site
+           script injects a permalink image into every h1[id]..h6[id], and the
+           CSS that hides it is scoped to `.post-content`. Sections below are
+           named with `aria-label` for the same reason — no heading on this page
+           may ever gain an `id`. -->
+      <h1 class="re-brand">
+        <b>부동산 지표 · 계산기</b><span class="re-brand-site">somaz.blog</span>
+      </h1>
+
+      <p class="re-updated">업데이트 2026-09-04 22:00 KST</p>
+
+      <button id="tool-theme" class="re-btn" type="button"
+        aria-pressed="false" aria-label="Switch to the dark theme"
+        data-to-dark="Switch to the dark theme" data-to-light="Switch to the light theme">
+  <span data-theme-icon aria-hidden="true">🌙</span>
+  <span class="re-btn-text">Theme</span>
+</button>
+
+    </header>
+
+    <main class="re-shell">
+      <!-- ══ Part 1 — Dashboard (build-time data) ═══════════════════════════
+           Guarded on the data file. An empty dashboard and a healthy one must
+           not look alike, so a missing JSON says so instead of rendering
+           blank cards. The calculators sit OUTSIDE this guard on purpose:
+           they are browser-only arithmetic and stay usable on a build where
+           the fetch failed. -->
+      
+
+      <!-- ── 지표 요약 ───────────────────────────────────────────────────
+           A handful of headline figures, not a copy of every section below.
+           Each tile states what its change is measured against, because a bare
+           arrow beside an index is unreadable — +0.4% since when? -->
+      
+      <section class="re-summary" aria-label="지표 요약">
+        <h2 class="re-section-title">지표 요약</h2>
+        <div class="re-tiles">
+          
+          <div class="re-tile">
+            <div class="re-tile-label">아파트 매매가격지수</div>
+            <div class="re-tile-value">
+              102.59<span class="re-tile-unit"></span>
+            </div>
+            <div class="re-tile-foot">
+              
+              <span class="re-chg re-chg--up">+3.99%</span>
+              <span>전년 동월 대비</span>
+              
+            </div>
+            
+            <!-- The points string is built by the fetch script; a viewBox-relative
+                 path cannot be computed in Liquid, and doing it in JS would leave
+                 the chart missing until scripts run. `aria-hidden` because the
+                 figure and its change are already stated above in text. -->
+            <svg class="re-spark" viewBox="0 0 100 28" preserveAspectRatio="none"
+                 aria-hidden="true" focusable="false">
+              <polyline points="0.00,22.30 2.86,21.71 5.71,21.67 8.57,22.36 11.43,23.35 14.29,24.04 17.14,25.06 20.00,26.43 22.86,27.25 25.71,27.85 28.57,27.87 31.43,27.12 34.29,25.98 37.14,25.32 40.00,25.28 42.86,25.89 45.71,26.83 48.57,27.71 51.43,28.00 54.29,27.85 57.14,27.74 60.00,26.75 62.86,25.43 65.71,25.24 68.57,24.58 71.43,22.79 74.29,20.21 77.14,18.19 80.00,16.60 82.86,14.00 85.71,11.19 88.57,9.13 91.43,7.52 94.29,5.38 97.14,2.67 100.00,0.00" />
+            </svg>
+            
+            <div class="re-tile-note">KB 주택가격동향, 전국 아파트 · 2026.08 기준</div>
+          </div>
+          
+          <div class="re-tile">
+            <div class="re-tile-label">아파트 전세가격지수</div>
+            <div class="re-tile-value">
+              103.25<span class="re-tile-unit"></span>
+            </div>
+            <div class="re-tile-foot">
+              
+              <span class="re-chg re-chg--up">+4.62%</span>
+              <span>전년 동월 대비</span>
+              
+            </div>
+            
+            <!-- The points string is built by the fetch script; a viewBox-relative
+                 path cannot be computed in Liquid, and doing it in JS would leave
+                 the chart missing until scripts run. `aria-hidden` because the
+                 figure and its change are already stated above in text. -->
+            <svg class="re-spark" viewBox="0 0 100 28" preserveAspectRatio="none"
+                 aria-hidden="true" focusable="false">
+              <polyline points="0.00,28.00 2.86,27.00 5.71,26.05 8.57,25.52 11.43,25.03 14.29,24.61 17.14,23.97 20.00,23.42 22.86,23.03 25.71,22.53 28.57,21.87 31.43,21.04 34.29,20.07 37.14,19.27 40.00,18.39 42.86,17.93 45.71,17.85 48.57,17.86 51.43,17.78 54.29,17.62 57.14,17.48 60.00,17.16 62.86,16.71 65.71,16.46 68.57,15.95 71.43,15.41 74.29,14.38 77.14,12.89 80.00,11.74 82.86,10.40 85.71,8.83 88.57,7.24 91.43,5.76 94.29,3.62 97.14,1.69 100.00,0.00" />
+            </svg>
+            
+            <div class="re-tile-note">KB 주택가격동향, 전국 아파트 · 2026.08 기준</div>
+          </div>
+          
+          <div class="re-tile">
+            <div class="re-tile-label">주택담보대출 금리</div>
+            <div class="re-tile-value">
+              4.48<span class="re-tile-unit">%</span>
+            </div>
+            <div class="re-tile-foot">
+              
+              <span class="re-chg re-chg--up">+0.52%p</span>
+              <span>전년 동월 대비</span>
+              
+            </div>
+            
+            <!-- The points string is built by the fetch script; a viewBox-relative
+                 path cannot be computed in Liquid, and doing it in JS would leave
+                 the chart missing until scripts run. `aria-hidden` because the
+                 figure and its change are already stated above in text. -->
+            <svg class="re-spark" viewBox="0 0 100 28" preserveAspectRatio="none"
+                 aria-hidden="true" focusable="false">
+              <polyline points="0.00,5.55 2.94,0.00 5.88,2.11 8.82,10.57 11.76,15.06 14.71,15.85 17.65,16.38 20.59,16.64 23.53,17.17 26.47,22.45 29.41,28.00 32.35,27.74 35.29,21.66 38.24,13.47 41.18,6.87 44.12,8.19 47.06,7.66 50.00,8.72 52.94,10.30 55.88,15.32 58.82,18.23 61.76,16.64 64.71,15.85 67.65,15.85 70.59,15.85 73.53,15.32 76.47,10.30 79.41,8.72 82.35,7.13 85.29,6.34 88.24,5.81 91.18,6.60 94.12,6.34 97.06,5.28 100.00,2.11" />
+            </svg>
+            
+            <div class="re-tile-note">예금은행 신규취급액 가중평균 · 2026.07 기준</div>
+          </div>
+          
+          <div class="re-tile">
+            <div class="re-tile-label">미분양주택</div>
+            <div class="re-tile-value">
+              68,217<span class="re-tile-unit">호</span>
+            </div>
+            <div class="re-tile-foot">
+              
+              <span class="re-chg re-chg--up">+9.60%</span>
+              <span>전년 동월 대비</span>
+              
+            </div>
+            
+            <!-- The points string is built by the fetch script; a viewBox-relative
+                 path cannot be computed in Liquid, and doing it in JS would leave
+                 the chart missing until scripts run. `aria-hidden` because the
+                 figure and its change are already stated above in text. -->
+            <svg class="re-spark" viewBox="0 0 100 28" preserveAspectRatio="none"
+                 aria-hidden="true" focusable="false">
+              <polyline points="0.00,24.73 2.94,27.35 5.88,28.00 8.82,20.07 11.76,17.87 14.71,15.92 17.65,15.77 20.59,3.55 23.53,3.32 26.47,0.00 29.41,3.85 32.35,11.27 35.29,12.62 38.24,14.25 41.18,15.45 44.12,6.71 47.06,2.46 50.00,6.91 52.94,8.89 55.88,10.85 58.82,12.79 61.76,17.90 64.71,20.49 67.65,12.90 70.59,12.64 73.53,8.63 76.47,9.11 79.41,13.08 82.35,12.97 85.29,13.61 88.24,15.21 91.18,15.39 94.12,15.29 97.06,11.42 100.00,10.11" />
+            </svg>
+            
+            <div class="re-tile-note">전국, 준공 후 미분양 포함 · 2026.07 기준</div>
+          </div>
+          
+        </div>
+      </section>
+      
+
+      <!-- ── 가격지수 ────────────────────────────────────────────────────
+           Series arrive pre-sorted and pre-formatted from the fetch script:
+           Liquid cannot sort numerically on a computed key, and its `round`
+           filter returns a float whose repr can reintroduce the precision the
+           rounding removed. Every figure below is printed, never computed. -->
+      <section class="re-prices" aria-label="가격지수">
+        <h2 class="re-section-title">가격지수</h2>
+        <p class="re-section-note">
+          가격지수는 특정 기준시점을 100으로 설정해 변동 추이를 나타낸 상대적
+          지표로, 실제 매매 금액을 의미하지 않습니다. 따라서 서로 다른 지수를
+          비교할 때는 반드시 기준시점이 동일한지 확인해야 합니다.
+        </p>
+        <div class="re-cols">
+          
+          
+          
+          
+          <div class="re-card">
+            <div class="re-card-head">
+              <span class="re-card-title">매매가격지수</span>
+              <span class="re-card-period">2026.08 · 2026.01=100</span>
+            </div>
+            <div class="re-scroll" tabindex="0" role="region"
+                 aria-label="주택 가격지수 표">
+              <table class="re-table">
+                <thead>
+                  <tr>
+                    <th scope="col">지역 · 유형</th>
+                    <th scope="col">지수</th>
+                    <th scope="col">전월</th>
+                    <th scope="col">전년</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  
+                  <tr>
+                    <td>전국 총지수</td>
+                    <td><b>101.85</b></td>
+                    <!-- A missing month renders as an em dash, never as 0: a zero
+                         is a claim about the market, a blank is a claim about the
+                         source. -->
+                    <td><span class="re-chg re-chg--up">+0.27%</span></td>
+                    <td><span class="re-chg re-chg--up">+2.94%</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>전국 아파트</td>
+                    <td><b>102.59</b></td>
+                    <!-- A missing month renders as an em dash, never as 0: a zero
+                         is a claim about the market, a blank is a claim about the
+                         source. -->
+                    <td><span class="re-chg re-chg--up">+0.41%</span></td>
+                    <td><span class="re-chg re-chg--up">+3.99%</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>서울 총지수</td>
+                    <td><b>105.45</b></td>
+                    <!-- A missing month renders as an em dash, never as 0: a zero
+                         is a claim about the market, a blank is a claim about the
+                         source. -->
+                    <td><span class="re-chg re-chg--up">+0.75%</span></td>
+                    <td><span class="re-chg re-chg--up">+9.67%</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>서울 아파트</td>
+                    <td><b>108.13</b></td>
+                    <!-- A missing month renders as an em dash, never as 0: a zero
+                         is a claim about the market, a blank is a claim about the
+                         source. -->
+                    <td><span class="re-chg re-chg--up">+1.14%</span></td>
+                    <td><span class="re-chg re-chg--up">+14.69%</span></td>
+                  </tr>
+                  
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          
+          
+          
+          <div class="re-card">
+            <div class="re-card-head">
+              <span class="re-card-title">전세가격지수</span>
+              <span class="re-card-period">2026.08 · 2026.01=100</span>
+            </div>
+            <div class="re-scroll" tabindex="0" role="region"
+                 aria-label="주택 가격지수 표">
+              <table class="re-table">
+                <thead>
+                  <tr>
+                    <th scope="col">지역 · 유형</th>
+                    <th scope="col">지수</th>
+                    <th scope="col">전월</th>
+                    <th scope="col">전년</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  
+                  <tr>
+                    <td>전국 총지수</td>
+                    <td><b>102.20</b></td>
+                    <!-- A missing month renders as an em dash, never as 0: a zero
+                         is a claim about the market, a blank is a claim about the
+                         source. -->
+                    <td><span class="re-chg re-chg--up">+0.30%</span></td>
+                    <td><span class="re-chg re-chg--up">+3.20%</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>전국 아파트</td>
+                    <td><b>103.25</b></td>
+                    <!-- A missing month renders as an em dash, never as 0: a zero
+                         is a claim about the market, a blank is a claim about the
+                         source. -->
+                    <td><span class="re-chg re-chg--up">+0.45%</span></td>
+                    <td><span class="re-chg re-chg--up">+4.62%</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>서울 총지수</td>
+                    <td><b>104.44</b></td>
+                    <!-- A missing month renders as an em dash, never as 0: a zero
+                         is a claim about the market, a blank is a claim about the
+                         source. -->
+                    <td><span class="re-chg re-chg--up">+0.68%</span></td>
+                    <td><span class="re-chg re-chg--up">+6.16%</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>서울 아파트</td>
+                    <td><b>107.09</b></td>
+                    <!-- A missing month renders as an em dash, never as 0: a zero
+                         is a claim about the market, a blank is a claim about the
+                         source. -->
+                    <td><span class="re-chg re-chg--up">+1.10%</span></td>
+                    <td><span class="re-chg re-chg--up">+9.80%</span></td>
+                  </tr>
+                  
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          
+        </div>
+      </section>
+
+      <!-- ── 금리 · 대출 ─────────────────────────────────────────────────
+           Rates are reported in percentage POINTS, not as a relative change —
+           a mortgage rate moving 3.93% → 4.36% is +0.43%p. Rendered as
+           "+10.94%" it reads as a 10.94-point jump, which did not happen. The
+           fetch script decides this per series (`delta_mode`); the template
+           only prints the string it was handed. -->
+      <section class="re-rates" aria-label="금리 및 대출">
+        <h2 class="re-section-title">금리 · 대출</h2>
+        <div class="re-cols">
+          <!-- Guarded like the two sections above it. Unguarded, an ECOS run
+               that returned this one table empty rendered a header row with no
+               body — the "empty and healthy look alike" failure this page is
+               otherwise careful to avoid. -->
+          
+          <div class="re-card">
+            <div class="re-card-head">
+              <span class="re-card-title">예금은행 대출금리 — 신규취급액 기준</span>
+              <span class="re-card-period">2026.07</span>
+            </div>
+            <div class="re-scroll" tabindex="0" role="region"
+                 aria-label="주택담보대출 금리 표">
+              <table class="re-table">
+                <thead>
+                  <tr>
+                    <th scope="col">구분</th>
+                    <th scope="col">금리</th>
+                    <th scope="col">전월</th>
+                    <th scope="col">전년</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  
+                  <tr>
+                    <td>주택담보대출</td>
+                    <td><b>4.48%</b></td>
+                    <td><span class="re-chg re-chg--up">+0.12%p</span></td>
+                    <td><span class="re-chg re-chg--up">+0.52%p</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>가계대출 전체</td>
+                    <td><b>4.64%</b></td>
+                    <td><span class="re-chg re-chg--up">+0.14%p</span></td>
+                    <td><span class="re-chg re-chg--up">+0.44%p</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>대출 평균</td>
+                    <td><b>4.27%</b></td>
+                    <td><span class="re-chg re-chg--down">-0.04%p</span></td>
+                    <td><span class="re-chg re-chg--up">+0.21%p</span></td>
+                  </tr>
+                  
+                  
+                  <tr>
+                    <td>한국은행 기준금리<span class="re-sub">2026.09.02 기준</span></td>
+                    <td><b>3.00%</b></td>
+                    <!-- A policy rate is a step function read off a daily series,
+                         so a change column would report "0.00%p since yesterday"
+                         and read as "held steady this month". Left blank. -->
+                    <td>—</td>
+                    <td>—</td>
+                  </tr>
+                  
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+
+          
+          <div class="re-card">
+            <div class="re-card-head">
+              <span class="re-card-title">가계신용</span>
+              <span class="re-card-period">2026Q2 · 분기</span>
+            </div>
+            <div class="re-scroll" tabindex="0" role="region"
+                 aria-label="가계신용 잔액 표">
+              <table class="re-table">
+                <thead>
+                  <tr>
+                    <th scope="col">구분</th>
+                    <!-- The unit modifies the number, so it belongs over the
+                         number's column. Trailing the row label it rendered as
+                         "가계신용 총액십억원". Every row here shares one unit. -->
+                    <th scope="col">잔액 (십억원)</th>
+                    <th scope="col">전년 동기</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  
+                  <tr>
+                    <td>가계신용 총액</td>
+                    <td><b>2,019,785</b></td>
+                    <td><span class="re-chg re-chg--up">+3.58%</span></td>
+                  </tr>
+                  
+                  <tr>
+                    <td>가계대출</td>
+                    <td><b>1,891,265</b></td>
+                    <td><span class="re-chg re-chg--up">+3.37%</span></td>
+                  </tr>
+                  
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </div>
+      </section>
+
+      <!-- ── 공급 (미분양 · 인허가 · 지가) ───────────────────────────────
+           미분양 is current stock and 인허가 is future supply — they answer
+           different questions, so each keeps its own card and its own scale
+           rather than sharing one axis. Bar widths are computed by the fetch
+           script against the largest absolute value in each set; a negative
+           변동률 would otherwise render as a full-width bar and read as the
+           strongest region when it is the weakest. -->
+      <section class="re-supply" aria-label="공급 및 지가">
+        <h2 class="re-section-title">공급 — 미분양 · 인허가 · 지가</h2>
+        <div class="re-cols">
+          
+          
+          
+          
+          <div class="re-card">
+            <div class="re-card-head">
+              <span class="re-card-title">미분양주택<span class="re-sub">현재 재고</span></span>
+              <span class="re-card-period">2026.07</span>
+            </div>
+            <div class="re-card-value">
+              68,217<span class="re-card-base">호</span>
+            </div>
+            <div class="re-card-foot">
+              
+              <span class="re-chg re-chg--up">+9.60%</span>
+              <span>전년 동월 대비 · 전국</span>
+              
+            </div>
+            
+            <div class="re-bars">
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">부산</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 100.0%"></span>
+                </span>
+                <span class="re-bar-val">8,379호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">인천</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 51.06%"></span>
+                </span>
+                <span class="re-bar-val">4,278호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">광주</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 48.59%"></span>
+                </span>
+                <span class="re-bar-val">4,071호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">대구</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 44.35%"></span>
+                </span>
+                <span class="re-bar-val">3,716호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">세종</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 16.23%"></span>
+                </span>
+                <span class="re-bar-val">1,360호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">대전</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 14.86%"></span>
+                </span>
+                <span class="re-bar-val">1,245호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">경기</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 14.23%"></span>
+                </span>
+                <span class="re-bar-val">1,192호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">서울</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 11.86%"></span>
+                </span>
+                <span class="re-bar-val">994호</span>
+              </div>
+              
+            </div>
+            
+          </div>
+          
+          
+          
+          
+          <div class="re-card">
+            <div class="re-card-head">
+              <span class="re-card-title">주택건설 인허가<span class="re-sub">향후 공급</span></span>
+              <span class="re-card-period">2026.06</span>
+            </div>
+            <div class="re-card-value">
+              116,611<span class="re-card-base">호</span>
+            </div>
+            <div class="re-card-foot">
+              
+              <span class="re-chg re-chg--down">-15.78%</span>
+              <span>전년 동월 대비 · 전국</span>
+              
+            </div>
+            
+            <div class="re-bars">
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">경기</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 100.0%"></span>
+                </span>
+                <span class="re-bar-val">39,493호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">서울</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 52.3%"></span>
+                </span>
+                <span class="re-bar-val">20,655호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">인천</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 19.75%"></span>
+                </span>
+                <span class="re-bar-val">7,798호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">대전</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 14.84%"></span>
+                </span>
+                <span class="re-bar-val">5,860호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">부산</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 14.15%"></span>
+                </span>
+                <span class="re-bar-val">5,590호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">세종</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 9.94%"></span>
+                </span>
+                <span class="re-bar-val">3,927호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">광주</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 3.17%"></span>
+                </span>
+                <span class="re-bar-val">1,251호</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">대구</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 2.4%"></span>
+                </span>
+                <span class="re-bar-val">948호</span>
+              </div>
+              
+            </div>
+            
+          </div>
+          
+          
+          
+          
+          <div class="re-card">
+            <div class="re-card-head">
+              <span class="re-card-title">지가변동률<span class="re-sub">전월 대비</span></span>
+              <span class="re-card-period">2026.06</span>
+            </div>
+            <div class="re-card-value">
+              0.214<span class="re-card-base">%</span>
+            </div>
+            <div class="re-card-foot">
+              
+              <span class="re-chg re-chg--up">+0.02%p</span>
+              <span>전년 동월 대비 · 전국</span>
+              
+            </div>
+            
+            <div class="re-bars">
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">서울</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 100.0%"></span>
+                </span>
+                <span class="re-bar-val">0.421%</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">경기</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 44.18%"></span>
+                </span>
+                <span class="re-bar-val">0.186%</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">세종</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 30.17%"></span>
+                </span>
+                <span class="re-bar-val">0.127%</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">대전</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 29.93%"></span>
+                </span>
+                <span class="re-bar-val">0.126%</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">인천</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 25.18%"></span>
+                </span>
+                <span class="re-bar-val">0.106%</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">부산</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 23.75%"></span>
+                </span>
+                <span class="re-bar-val">0.100%</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">대구</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 15.2%"></span>
+                </span>
+                <span class="re-bar-val">0.064%</span>
+              </div>
+              
+              <div class="re-bar-row">
+                <span class="re-bar-name">광주</span>
+                <span class="re-bar-track">
+                  <span class="re-bar-fill" style="width: 9.74%"></span>
+                </span>
+                <span class="re-bar-val">0.041%</span>
+              </div>
+              
+            </div>
+            
+          </div>
+          
+          
+        </div>
+      </section>
+
+      <!-- ── 실거래가 ────────────────────────────────────────────────────
+           Absent unless the fetch script actually returned trades, which needs
+           a data.go.kr 활용신청 approval on 국토교통부 실거래가. A sample of named
+           districts, never a national average — and never the running month,
+           since a sale is filed up to 30 days after the contract and the
+           current month is always undercounted. -->
+      
+      <section class="re-trades" aria-label="아파트 실거래가">
+        <h2 class="re-section-title">아파트 실거래가 — 2026.08</h2>
+        <!-- The link is the point of this section: the dashboard shows six of
+             thirty-seven, and inline in a grey caveat sentence it was invisible.
+             Given its own line, with button affordance. -->
+        <p class="re-section-lead">
+          평당가 상위 6곳입니다.
+          <a class="re-btn re-btn--go" href="/realestate/trades/">
+            규제지역 37곳 전체 순위 <span aria-hidden="true">→</span>
+          </a>
+        </p>
+        <p class="re-section-note">본 자료는 전국 평균이 아닌, 서울 25개 구 및 경기 규제지역 12곳(2025.10.15 대책 기준)의 아파트 매매 실거래 데이터를 기반으로 합니다. 실거래 신고 기한(계약일로부터 30일) 특성상 당월 수치는 항상 실제보다 적게 집계되므로, 신고가 완료된 가장 최근 월의 데이터만 반영합니다.</p>
+        <div class="re-scroll" tabindex="0" role="region"
+             aria-label="지역별 아파트 매매 실거래가 표">
+          <table class="re-table">
+            <thead>
+              <tr>
+                <th scope="col">지역</th>
+                <th scope="col">거래</th>
+                <th scope="col">평균</th>
+                <th scope="col">중위</th>
+                <th scope="col">평당</th>
+                <th scope="col">최고가</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              <tr>
+                <td>
+                  서울 강남구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 100.0%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>61건</td>
+                <td><b>26억 1,267만</b></td>
+                <td>25억</td>
+                <td>10,516만</td>
+                <td>
+                  90억
+                  <span class="re-sub">한양4</span>
+                </td>
+              </tr>
+              
+              <tr>
+                <td>
+                  과천시
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 98.62%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>10건</td>
+                <td><b>22억 9,850만</b></td>
+                <td>22억 1,000만</td>
+                <td>10,372만</td>
+                <td>
+                  27억 3,000만
+                  <span class="re-sub">과천푸르지오써밋</span>
+                </td>
+              </tr>
+              
+              <tr>
+                <td>
+                  서울 서초구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 89.79%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>54건</td>
+                <td><b>22억 7,242만</b></td>
+                <td>20억 4,500만</td>
+                <td>9,443만</td>
+                <td>
+                  85억
+                  <span class="re-sub">아크로리버파크</span>
+                </td>
+              </tr>
+              
+              <tr>
+                <td>
+                  서울 송파구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 86.53%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>109건</td>
+                <td><b>22억 453만</b></td>
+                <td>21억</td>
+                <td>9,100만</td>
+                <td>
+                  45억 7,500만
+                  <span class="re-sub">주공아파트 5단지</span>
+                </td>
+              </tr>
+              
+              <tr>
+                <td>
+                  서울 용산구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 75.7%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>23건</td>
+                <td><b>20억 4,700만</b></td>
+                <td>17억</td>
+                <td>7,961만</td>
+                <td>
+                  47억 5,000만
+                  <span class="re-sub">신동아</span>
+                </td>
+              </tr>
+              
+              <tr>
+                <td>
+                  서울 성동구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 74.09%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>32건</td>
+                <td><b>19억 6,600만</b></td>
+                <td>16억 9,500만</td>
+                <td>7,792만</td>
+                <td>
+                  92억
+                  <span class="re-sub">갤러리아포레</span>
+                </td>
+              </tr>
+              
+            </tbody>
+          </table>
+        </div>
+
+        <!-- The priciest sales, three levels shallower than the per-district
+             top 10 they lead to. Named apartments are what a reader recognises
+             in a page otherwise made of district averages. -->
+        
+        <h3 class="re-section-title re-section-title--sub">가장 비싸게 거래된 5건</h3>
+        <p class="re-section-lead">
+          규제지역 전체에서 거래금액이 높은 순으로 5건입니다.
+          해제된 계약은 순위에서 뺐고, 거래가 모두 해제된 지역만 예외입니다.
+          <a class="re-btn re-btn--go" href="/realestate/trades/">
+            상위 20건 모두 보기 <span aria-hidden="true">→</span>
+          </a>
+        </p>
+        <div class="re-scroll" tabindex="0" role="region"
+             aria-label="최고가 거래 표">
+          <table class="re-table re-table--rank">
+            <thead>
+              <tr>
+                <th scope="col">순위</th>
+                <th scope="col">아파트</th>
+                <th scope="col">지역</th>
+                <th scope="col">거래금액</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              <tr>
+                <td>1</td>
+                <td>
+                  갤러리아포레
+                  <span class="re-sub">
+                    성수동1가 · 34층 · 217.9㎡
+                  </span>
+                </td>
+                <td><a class="re-patch" href="/realestate/trades/11200/">서울 성동구</a></td>
+                <td><b>92억</b></td>
+              </tr>
+              
+              <tr>
+                <td>2</td>
+                <td>
+                  한양4
+                  <span class="re-sub">
+                    압구정동 · 13층 · 208.7㎡
+                  </span>
+                </td>
+                <td><a class="re-patch" href="/realestate/trades/11680/">서울 강남구</a></td>
+                <td><b>90억</b></td>
+              </tr>
+              
+              <tr>
+                <td>3</td>
+                <td>
+                  아크로리버파크
+                  <span class="re-sub">
+                    반포동 · 34층 · 130.0㎡
+                  </span>
+                </td>
+                <td><a class="re-patch" href="/realestate/trades/11650/">서울 서초구</a></td>
+                <td><b>85억</b></td>
+              </tr>
+              
+              <tr>
+                <td>4</td>
+                <td>
+                  한양3
+                  <span class="re-sub">
+                    압구정동 · 9층 · 161.9㎡
+                  </span>
+                </td>
+                <td><a class="re-patch" href="/realestate/trades/11680/">서울 강남구</a></td>
+                <td><b>68억 5,000만</b></td>
+              </tr>
+              
+              <tr>
+                <td>5</td>
+                <td>
+                  신현대9차
+                  <span class="re-sub">
+                    압구정동 · 4층 · 111.4㎡
+                  </span>
+                </td>
+                <td><a class="re-patch" href="/realestate/trades/11680/">서울 강남구</a></td>
+                <td><b>66억 5,000만</b></td>
+              </tr>
+              
+            </tbody>
+          </table>
+        </div>
+        
+      </section>
+      
+
+      <!-- ── 전월세 실거래가 ─────────────────────────────────────────────
+           The market half of the 전월세 전환 계산기 below, which until now
+           could only answer the statutory ceiling. Same settled-month and
+           regulated-area rules as the sale section above. -->
+      
+      <section class="re-rents" aria-label="아파트 전월세 실거래가">
+        <h2 class="re-section-title">아파트 전월세 실거래가 — 2026.08</h2>
+        <p class="re-section-lead">
+          전세 평당 보증금 상위 6곳입니다.
+          <a class="re-btn re-btn--go" href="/realestate/rents/">
+            규제지역 37곳 전체 순위 <span aria-hidden="true">→</span>
+          </a>
+        </p>
+        <p class="re-section-note">본 자료는 전국 평균이 아닌, 서울 25개 구 및 경기 규제지역 12곳(2025.10.15 대책 기준)의 아파트 전월세 실거래 데이터를 기반으로 합니다. 실거래 신고 기한(계약일로부터 30일) 특성상 당월 수치는 항상 실제보다 적게 집계되므로, 신고가 완료된 가장 최근 월의 데이터만 반영합니다.</p>
+        
+        <p class="re-section-note">
+          실거래로 계산한 <b>시장 전환율 중위값은 4.95%</b>
+          입니다(표본 3,331건). 아래 전환 계산기의 법정
+          상한 5.00%는 <b>기존 계약을 전환할 때</b>
+          적용되는 값이므로, 신규 계약까지 포함한 위 시장 수치와는 성격이 다릅니다.
+        </p>
+        
+        <div class="re-scroll" tabindex="0" role="region"
+             aria-label="지역별 아파트 전월세 실거래가 표">
+          <table class="re-table">
+            <thead>
+              <tr>
+                <th scope="col">지역</th>
+                <th scope="col">계약</th>
+                <th scope="col">전세 중위</th>
+                <th scope="col">평당</th>
+                <th scope="col">전세 비중</th>
+                <th scope="col">전환율</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              <tr>
+                <td>
+                  서울 강남구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 100.0%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>877건</td>
+                <td><b>9억 4,250만</b></td>
+                <td>4,087만</td>
+                <td>51.3%</td>
+                <td>5.01%</td>
+              </tr>
+              
+              <tr>
+                <td>
+                  과천시
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 96.76%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>105건</td>
+                <td><b>8억 9,625만</b></td>
+                <td>3,955만</td>
+                <td>57.1%</td>
+                <td>4.76%</td>
+              </tr>
+              
+              <tr>
+                <td>
+                  서울 송파구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 84.67%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>1019건</td>
+                <td><b>7억 5,000만</b></td>
+                <td>3,461만</td>
+                <td>48.7%</td>
+                <td>4.87%</td>
+              </tr>
+              
+              <tr>
+                <td>
+                  서울 성동구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 83.85%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>536건</td>
+                <td><b>7억 5,000만</b></td>
+                <td>3,427만</td>
+                <td>45.5%</td>
+                <td>4.91%</td>
+              </tr>
+              
+              <tr>
+                <td>
+                  서울 중구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 82.41%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>193건</td>
+                <td><b>6억 9,505만</b></td>
+                <td>3,369만</td>
+                <td>45.6%</td>
+                <td>4.71%</td>
+              </tr>
+              
+              <tr>
+                <td>
+                  서울 용산구
+                  <span class="re-sub">
+                    <span class="re-bar-track re-bar-inline">
+                      <span class="re-bar-fill" style="width: 81.9%"></span>
+                    </span>
+                  </span>
+                </td>
+                <td>286건</td>
+                <td><b>8억</b></td>
+                <td>3,348만</td>
+                <td>47.6%</td>
+                <td>4.80%</td>
+              </tr>
+              
+            </tbody>
+          </table>
+        </div>
+      </section>
+      
+
+      
+
+      <!-- ══ Part 2 — Calculators (browser-only) ════════════════════════════
+           No data dependency, no network, nothing stored: every figure below
+           is computed from what the visitor types, in this tab. That is why
+           this block sits outside the `{% if re %}` guard above. -->
+      <!-- The two build-time rates the calculators want as defaults are handed
+           over as data attributes rather than fetched. `default` covers the
+           build where the dashboard data is missing entirely, so the
+           calculators still open with a sane number instead of NaN. --><!-- Policy figures handed to the calculators at BUILD time, not fetched.
+           One source (_data/realestate_policy.yml) feeds both this island and
+           the reference section below, so the numbers the page quotes and the
+           numbers it computes with cannot drift apart. -->
+      <script type="application/json" id="re-policy">
+        {
+          "capTiers": [{"upTo": 1500000000, "amount": 600000000, "label": "15억 이하"},{"upTo": 2500000000, "amount": 400000000, "label": "15억 초과 ~ 25억 이하"},{"upTo": null, "amount": 200000000, "label": "25억 초과"}],
+          "stress": {
+            "capital": 3.0,
+            "non_capital": 0.75,
+            "default": 1.5
+          },
+          "dsr": { "bank": 40, "nonBank": 50 },
+          "firstHome": {
+            "priceCap": 1200000000,
+            "reliefCap": 2000000
+          },
+          "checked": "2026-08-04"
+        }
+      </script>
+      <!-- The market conversion rate travels the same way the two rates above
+           do — a build-time attribute, never fetched. Absent when the rent
+           sweep returned nothing, and `ui.js` then says nothing about the
+           market rather than inventing one. -->
+      <section class="re-calcs" aria-label="계산기"
+               data-base-rate="3.0"
+               data-mortgage-rate="4.48"
+               data-market-rent-rate="4.95"
+               data-market-rent-sample="3331"
+               data-market-rent-month="2026.08"
+               data-market-rent-regions="37">
+        <h2 class="re-section-title">계산기</h2>
+        <p class="re-section-note">
+          <b>개인정보 보호 안내</b><br />
+          모든 데이터는 서버 전송 없이 브라우저 단에서만 계산되며 저장되지
+          않습니다. (페이지 새로고침 시 입력 내용 초기화)
+        </p>
+
+        <div class="re-tabs" role="tablist" aria-label="계산기 선택">
+          <button class="re-tab" type="button" role="tab" id="re-tab-acq"
+                  aria-controls="re-calc-acq" aria-selected="true">취득세</button>
+          <button class="re-tab" type="button" role="tab" id="re-tab-loan"
+                  aria-controls="re-calc-loan" aria-selected="false">대출한도</button>
+          <button class="re-tab" type="button" role="tab" id="re-tab-rent"
+                  aria-controls="re-calc-rent" aria-selected="false">전세 ↔ 월세</button>
+          <button class="re-tab" type="button" role="tab" id="re-tab-fee"
+                  aria-controls="re-calc-fee" aria-selected="false">중개보수</button>
+        </div>
+
+        <!-- ── 1. 취득세 ──────────────────────────────────────────────── -->
+        <article class="re-calc" id="re-calc-acq" role="tabpanel" aria-labelledby="re-tab-acq">
+          <h3 class="re-calc-title">취득세</h3>
+          <p class="re-calc-lede">
+            주택을 <b>돈을 주고 사는 경우(유상취득)</b>의 취득세 · 지방교육세 ·
+            농어촌특별세입니다. 상속 · 증여 · 신축 · 오피스텔은 과세 체계가 달라
+            대상이 아닙니다.
+          </p>
+          <div class="re-fields">
+            <div class="re-field">
+              <label for="acq-price">취득가액</label>
+              <input id="acq-price" name="acq-price" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="예: 8억 5000만" value="8억5000만" />
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="acq-houses">취득 후 주택 수</label>
+              <select id="acq-houses" name="acq-houses">
+                <option value="1">1주택</option>
+                <option value="2">2주택</option>
+                <option value="3">3주택</option>
+                <option value="4">4주택 이상</option>
+              </select>
+              <span class="re-hint">취득하는 주택을 포함한 수</span>
+            </div>
+            <div class="re-field re-check">
+              <input id="acq-regulated" name="acq-regulated" type="checkbox" />
+              <!-- Naming them matters: after the 2023.01 해제 only four districts
+                   are left, so for most of the country this is a question the
+                   reader could not otherwise answer with confidence. -->
+              <label for="acq-regulated">조정대상지역
+                <span class="re-hint-inline">서울 전역 + 경기 12곳 — 서울 전역 (25개 구), 과천시, 광명시, 성남시 분당구 · 수정구 · 중원구, 수원시 영통구 · 장안구 · 팔달구, 안양시 동안구, 용인시 수지구, 의왕시, 하남시</span>
+              </label>
+            </div>
+            <div class="re-field re-check">
+              <input id="acq-over85" name="acq-over85" type="checkbox" />
+              <label for="acq-over85">전용면적 85㎡ 초과</label>
+            </div>
+            <div class="re-field re-check">
+              <input id="acq-first" name="acq-first" type="checkbox" />
+              <label for="acq-first">생애최초 구입
+                <span class="re-hint-inline">12억 이하 최대 200만원 감면 · 소득요건 없음</span>
+              </label>
+            </div>
+          </div>
+          <div class="re-out">
+            <div class="re-out-head">
+              <span class="re-out-label">취득 관련 세금 합계</span>
+              <span class="re-out-value">—</span>
+            </div>
+            <div class="re-out-rows"></div>
+            <p class="re-out-note"></p>
+          </div>
+        </article>
+
+        <!-- ── 2. 대출한도 (LTV · DSR) ────────────────────────────────── -->
+        <article class="re-calc" id="re-calc-loan" role="tabpanel"
+                 aria-labelledby="re-tab-loan" hidden>
+          <h3 class="re-calc-title">대출한도 — LTV · DSR</h3>
+          <p class="re-calc-lede">
+            두 한도를 각각 구해 <b>낮은 쪽</b>을 실제 한도로 봅니다. 어느 쪽에
+            걸렸는지가 곧 바꿀 수 있는 조건입니다 — LTV면 담보가, DSR이면 소득과
+            만기입니다.
+          </p>
+          <div class="re-fields">
+            <div class="re-field">
+              <label for="loan-region">지역</label>
+              <select id="loan-region" name="loan-region">
+                <option value="capital" selected>수도권 · 규제지역</option>
+                <option value="other">비수도권</option>
+              </select>
+              <span class="re-hint">지역에 따라 규제지역 대출 상한과 스트레스 금리가 달라집니다</span>
+            </div>
+            <div class="re-field">
+              <label for="loan-price">주택가격</label>
+              <input id="loan-price" name="loan-price" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="예: 10억" value="10억" />
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="loan-ltv">LTV 비율 (%)</label>
+              <input id="loan-ltv" name="loan-ltv" type="text" inputmode="decimal"
+                     autocomplete="off" placeholder="70" value="70" />
+              <span class="re-hint">규제지역 · 생애최초 여부에 따라 다릅니다</span>
+            </div>
+            <div class="re-field">
+              <label for="loan-income">연소득</label>
+              <input id="loan-income" name="loan-income" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="예: 8000만" value="8000만" />
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="loan-dsr">DSR 한도 (%)</label>
+              <input id="loan-dsr" name="loan-dsr" type="text" inputmode="decimal"
+                     autocomplete="off" placeholder="40" value="40" />
+              <span class="re-hint">은행권 40 · 제2금융권 50</span>
+            </div>
+            <div class="re-field">
+              <label for="loan-existing">기존 대출 연 상환액</label>
+              <input id="loan-existing" name="loan-existing" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="없으면 비워 두세요" />
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="loan-rate">대출 금리 (%)</label>
+              <input id="loan-rate" name="loan-rate" type="text" inputmode="decimal"
+                     autocomplete="off" />
+              <span class="re-hint">비우면 위 대시보드의 주택담보대출 금리를 씁니다</span>
+            </div>
+            <div class="re-field">
+              <label for="loan-stress">스트레스 가산 (%p)</label>
+              <input id="loan-stress" name="loan-stress" type="text" inputmode="decimal"
+                     autocomplete="off" />
+              <span class="re-hint" id="loan-stress-hint">DSR 한도 산정에만 반영됩니다</span>
+            </div>
+            <div class="re-field">
+              <label for="loan-method">상환 방식</label>
+              <select id="loan-method" name="loan-method">
+                <option value="level" selected>원리금균등</option>
+                <option value="principal">원금균등</option>
+                <option value="graduated">체증식</option>
+              </select>
+              <span class="re-hint" id="loan-method-hint"></span>
+            </div>
+            <div class="re-field" id="loan-growth-field" hidden>
+              <label for="loan-growth">연 증가율 (%)</label>
+              <input id="loan-growth" name="loan-growth" type="text" inputmode="decimal"
+                     autocomplete="off" placeholder="3" value="3" />
+              <span class="re-hint">체증식의 상환액이 해마다 오르는 폭</span>
+            </div>
+            <div class="re-field">
+              <label for="loan-years">만기 (년)</label>
+              <select id="loan-years" name="loan-years">
+                <option value="10">10년</option>
+                <option value="15">15년</option>
+                <option value="20">20년</option>
+                <option value="25">25년</option>
+                <option value="30" selected>30년</option>
+                <option value="35">35년</option>
+                <option value="40">40년</option>
+                <option value="50">50년</option>
+              </select>
+              <span class="re-hint">만기가 길수록 DSR 한도는 커지고 총이자는 늘어납니다</span>
+            </div>
+          </div>
+          <div class="re-out">
+            <div class="re-out-head">
+              <span class="re-out-label">대출 가능 한도</span>
+              <span class="re-out-value">—</span>
+            </div>
+            <div class="re-out-rows"></div>
+            <span class="re-out-flag" hidden></span>
+            <p class="re-out-note"></p>
+          </div>
+        </article>
+
+        <!-- ── 3. 전세 ↔ 월세 전환 ────────────────────────────────────── -->
+        <article class="re-calc" id="re-calc-rent" role="tabpanel"
+                 aria-labelledby="re-tab-rent" hidden>
+          <h3 class="re-calc-title">전세 ↔ 월세 전환</h3>
+          <p class="re-calc-lede">
+            법정 전환율 상한은 연 10%와 <b>기준금리 + 2%p</b> 중 낮은 쪽입니다.
+            기준금리가 바뀌면 상한도 바뀌므로, 기본값은 위 대시보드에 실린
+            기준금리로 계산합니다.
+            시장에서 실제로 적용된 수준은 결과 아래에 함께 싣습니다.
+          </p>
+          <div class="re-fields">
+            <div class="re-field">
+              <label for="rent-dir">방향</label>
+              <select id="rent-dir" name="rent-dir">
+                <option value="to-monthly">전세 → 월세</option>
+                <option value="to-jeonse">월세 → 전세</option>
+              </select>
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="rent-jeonse">전세보증금</label>
+              <input id="rent-jeonse" name="rent-jeonse" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="예: 3억" value="3억" />
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="rent-deposit">전환 후 보증금</label>
+              <input id="rent-deposit" name="rent-deposit" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="예: 1억" value="1억" />
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="rent-monthly">월세</label>
+              <input id="rent-monthly" name="rent-monthly" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="예: 80만" />
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="rent-rate">전환율 (%)</label>
+              <input id="rent-rate" name="rent-rate" type="text" inputmode="decimal"
+                     autocomplete="off" />
+              <span class="re-hint">비우면 법정 상한을 씁니다</span>
+            </div>
+          </div>
+          <div class="re-out">
+            <div class="re-out-head">
+              <span class="re-out-label">환산 결과</span>
+              <span class="re-out-value">—</span>
+            </div>
+            <div class="re-out-rows"></div>
+            <p class="re-out-note"></p>
+          </div>
+        </article>
+
+        <!-- ── 4. 중개보수 ────────────────────────────────────────────── -->
+        <article class="re-calc" id="re-calc-fee" role="tabpanel"
+                 aria-labelledby="re-tab-fee" hidden>
+          <h3 class="re-calc-title">중개보수</h3>
+          <p class="re-calc-lede">
+            공인중개사법 시행규칙의 <b>상한요율</b>로 계산한 한도입니다. 실제
+            보수는 이 범위 안에서 협의로 정하며, 요율은 시 · 도 조례로 달라질 수
+            있습니다.
+          </p>
+          <div class="re-fields">
+            <div class="re-field">
+              <label for="fee-kind">거래 유형</label>
+              <select id="fee-kind" name="fee-kind">
+                <option value="sale">매매 · 교환</option>
+                <option value="lease">임대차 (전세 · 월세)</option>
+              </select>
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="fee-deposit">매매가</label>
+              <input id="fee-deposit" name="fee-deposit" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="예: 8억 5000만" value="8억5000만" />
+              <span class="re-hint"></span>
+            </div>
+            <div class="re-field">
+              <label for="fee-monthly">월세</label>
+              <input id="fee-monthly" name="fee-monthly" type="text" inputmode="numeric"
+                     autocomplete="off" placeholder="없으면 비워 두세요" />
+              <span class="re-hint"></span>
+            </div>
+          </div>
+          <div class="re-out">
+            <div class="re-out-head">
+              <span class="re-out-label">중개보수 상한</span>
+              <span class="re-out-value">—</span>
+            </div>
+            <div class="re-out-rows"></div>
+            <p class="re-out-note"></p>
+          </div>
+        </article>
+
+        <!-- The page's only live region. It is collapsed with `height: 0`, never
+             `display: none` — a live region removed from the accessibility tree
+             is registered too late to announce its first message. -->
+        <p class="re-status" id="re-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <!-- ── 정책 요약 ───────────────────────────────────────────────────
+           The same file the calculators read. Written out so a reader can see
+           what the arithmetic above is actually applying, and check it. -->
+      <section class="re-policy" aria-label="현재 적용 중인 규제 정책 안내">
+        <h2 class="re-section-title">현재 적용 중인 규제 정책 안내</h2>
+        <p class="re-note">
+          아래 내용은 위 계산기가 쓰는 값을 그대로 옮긴 것이라, 설명과 실제
+          계산 결과가 어긋날 일이 없습니다.<br />
+          다만 부동산 규제와 금융 정책은 수시로 바뀌므로, 실제 계약 · 대출
+          전에는 반드시 관할 지자체와 금융기관에 확인하시기 바랍니다.
+        </p>
+        <p class="re-note">
+          정책 값 최종 확인일: <b>2026-08-04</b> (31일 전)
+        </p>
+        
+        <div class="re-cols">
+          <div class="re-card">
+            <div class="re-card-head"><span class="re-card-title">취득세</span></div>
+            <ul class="re-pol">
+              <li>
+                <b>조정대상지역</b>
+                <span>서울 전역 (25개 구), 과천시, 광명시, 성남시 분당구 · 수정구 · 중원구, 수원시 영통구 · 장안구 · 팔달구, 안양시 동안구, 용인시 수지구, 의왕시, 하남시</span>
+                <em>2025.10.15 대책으로 서울 25개 구 전역과 경기 12곳이 조정대상지역·투기과열지구로 지정됐습니다. (2025-10-16~)</em>
+              </li>
+              <li>
+                <b>생애최초 감면</b>
+                <span>최대 200만원</span>
+                <em>취득가액 12억원 이하 생애최초 주택은 취득세를 최대 200만원까지 감면받습니다. 소득요건은 폐지됐습니다. (2022-06-21~)</em>
+              </li>
+            </ul>
+            <p class="re-pol-basis">지방세법 제11조 · 제13조의2, 지방세특례제한법 제36조의3</p>
+          </div>
+
+          <div class="re-card">
+            <div class="re-card-head"><span class="re-card-title">주택담보대출</span></div>
+            <ul class="re-pol">
+              <li>
+                <b>규제지역 대출 상한</b>
+                <span>15억 이하 6억 · 15억 초과 ~ 25억 이하 4억 · 25억 초과 2억</span>
+                <em>수도권 · 규제지역 (서울 전역 + 경기 12곳) · 소득과 LTV에 관계없이 적용되는 절대 상한입니다. 생애최초뿐 아니라 모든 차주가 대상이며, 대출 실행 후 6개월 내 전입 의무가 함께 붙습니다. (2025-10-16~)</em>
+              </li>
+              <li>
+                <b>LTV</b>
+                <span>규제지역 40% · 생애최초 70%</span>
+                <em>규제지역 40%(2025.10.16~), 생애최초 70%(2025.06.28~, 종전 80%). 비규제지역은 종전 비율이 유지됩니다.</em>
+              </li>
+              <li>
+                <b>스트레스 금리</b>
+                <span>수도권 3.0%p · 비수도권 0.75%p</span>
+                <em>수도권·규제지역은 2025.10.15 대책으로 하한이 3.0%p로 올랐고, 비수도권은 2단계 수준인 0.75%p가 한시 적용됩니다. 고정금리 기간이 길수록 실제 적용률은 낮아집니다. (2025-07-01~)</em>
+              </li>
+              <li>
+                <b>DSR 한도</b>
+                <span>은행 40% · 2금융 50%</span>
+                <em>은행권 40%, 제2금융권 50%. 차주 단위로 적용됩니다.</em>
+              </li>
+            </ul>
+            <p class="re-pol-basis">은행업감독규정 · 2025.06.27 가계부채 관리방안 · 2025.10.15 주택시장 안정화 대책</p>
+          </div>
+
+          <div class="re-card">
+            <div class="re-card-head"><span class="re-card-title">전월세 전환 · 중개보수</span></div>
+            <ul class="re-pol">
+              <li>
+                <b>전환율 상한</b>
+                <span>연 10%와 기준금리 + 2%p 중 낮은 쪽</span>
+                <em>법정 전환율 상한은 연 10%와 기준금리 + 2%p 중 낮은 쪽입니다. 기준금리는 위 대시보드가 받아온 값을 씁니다. 기존 계약의 전환에 적용되며 신규 계약에는 강제되지 않습니다.</em>
+              </li>
+              <li>
+                <b>중개보수</b>
+                <span>상한요율 (2021-10-19 개정)</span>
+                <em>표에 적힌 것은 상한요율입니다. 실제 보수는 그 범위에서 협의하며, 요율은 시·도 조례로 달라질 수 있습니다.</em>
+              </li>
+            </ul>
+            <p class="re-pol-basis">주택임대차보호법 제7조의2 · 시행령 제9조 · 공인중개사법 시행규칙 별표1</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 각주 · 출처 ─────────────────────────────────────────────────
+           Every number on this page should be traceable from here; a figure
+           with no source is a figure a reader cannot check. The indicator rows
+           come from `re.sources`; each calculator prints its own statutory
+           basis and rate-check date beside its result rather than only here,
+           because that is where a reader is standing when they need it. -->
+      <section class="re-notes" aria-label="각주 및 출처 안내">
+        <h2 class="re-section-title">각주 및 출처 안내</h2>
+        <div class="re-notes-body">
+          <h3 class="re-notes-h">1. 지표 데이터 출처</h3>
+          <p>
+            이 페이지의 금융 · 부동산 지표는 모두 한국은행 경제통계시스템(ECOS)의
+            공공 데이터에서 가져옵니다. 직접 확인할 수 있도록 항목마다 통계표
+            코드를 함께 적었습니다.
+          </p>
+          
+          <ul class="re-src">
+            
+            <li><span>주택매매가격지수 (KB)</span><code>901Y062 (월)</code></li>
+            
+            <li><span>주택전세가격지수 (KB)</span><code>901Y063 (월)</code></li>
+            
+            <li><span>예금은행 대출금리 (신규취급액)</span><code>121Y006 (월)</code></li>
+            
+            <li><span>한국은행 기준금리</span><code>722Y001 (일)</code></li>
+            
+            <li><span>미분양주택현황</span><code>901Y074 (월)</code></li>
+            
+            <li><span>주택건설 인허가실적</span><code>901Y105 (월)</code></li>
+            
+            <li><span>지역별 지가변동률</span><code>901Y064 (월)</code></li>
+            
+            <li><span>가계신용 (업권별)</span><code>151Y001 (분기)</code></li>
+            
+            <li><span>아파트 매매 실거래가 (국토교통부)</span><code>15126468 (월)</code></li>
+            
+            <li><span>아파트 전월세 실거래가 (국토교통부)</span><code>15126474 (월)</code></li>
+            
+          </ul>
+          
+
+          <h3 class="re-notes-h">2. 수치 및 표기 기준</h3>
+          <p>
+            <b>가격지수</b>: 특정 기준시점을 100으로 설정한 상대값이므로 실제 거래
+            금액이 아닙니다.
+          </p>
+          <p>
+            <b>증감 표기</b>: 금리와 지가변동률의 변동폭은 <b>%p(퍼센트포인트)</b>로,
+            지수 · 물량 · 금액의 변화율은 <b>%(퍼센트)</b>로 구분하여 표기합니다.
+            (예: 금리가 3.93%에서 4.36%로 상승 시, 오해를 방지하고자 상대 변화율인
+            '+10.94%'가 아닌 '+0.43%p'로 표기)
+          </p>
+
+          <h3 class="re-notes-h">3. 계산기 산출 근거</h3>
+          <p>
+            계산 결과 아래에 적용 법령과 요율을 확인한 시점을 함께 적었습니다.
+            (취득세: 지방세법 / 대출한도: 은행업감독규정 / 전월세 전환율:
+            주택임대차보호법 제7조의2 / 중개보수: 공인중개사법 시행규칙 별표1)
+          </p>
+
+          <h3 class="re-notes-h">4. 아파트 실거래가 데이터</h3>
+          <p>
+            국토교통부 공공데이터포털(data.go.kr) 오픈 API를 통해 수집됩니다.
+            API 점검, 승인 지연 또는 데이터 미활성화 기간에는 서비스 신뢰성을 위해
+            해당 데이터 표가 일시적으로 비노출 처리될 수 있습니다.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="re-foot">
+      지표는 한국은행 ECOS에서 평일 하루 두 번 받아와 빌드 시점에 이 페이지에 새겨
+      넣습니다 — 읽는 동안에는 아무것도 요청하지 않습니다. 계산기는 모두
+      브라우저 안에서만 동작하며, 입력한 금액은 저장되지도 전송되지도 않습니다.
+      계산 결과는 참고용 추정치입니다. 세율과 규제는 수시로 바뀌므로 실제 신고
+      · 대출 · 계약 전에는 반드시 관할 기관과 금융기관에 확인하시기 바랍니다.
+    </footer>
+
+    <!-- Dependency order: format → calc → ui.
+         `format.js` parses and renders money; `calc.js` holds the four rate
+         tables and their arithmetic. Both are pure — no DOM, no storage, no
+         network — so a rate table can be checked without a page around it.
+         `ui.js` is the only file that reads an input or writes a result.
+
+         There is no `dashboard.js`. The dashboard is baked into the HTML by
+         Liquid and needs no script to render, so shipping an empty file just
+         to keep a symmetric set would be a request for nothing. The two rates
+         the calculators borrow from it travel as `data-` attributes on
+         `.re-calcs`, written at build time — never fetched. -->
+    <script src="/assets/realestate/format.js"></script>
+    <script src="/assets/realestate/calc.js"></script>
+    <script src="/assets/realestate/ui.js"></script>
+  </body>
+</html>
