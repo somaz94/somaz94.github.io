@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>글자수 계산기 · somaz.blog</title>
+  <!-- Inline and before the styles below: sets `data-theme` on <html> only when
+       the reader has made an explicit choice. With nothing stored it sets
+       nothing and the media query decides, so dark mode still works with the
+       script removed. One definition for all nine tool pages. -->
+  <script>
+  (function () {
+    var KEY = 'tool-theme';
+
+    function read() {
+      try {
+        var t = localStorage.getItem(KEY);
+        if (t === 'dark' || t === 'light') return t;
+        /* One-time adoption of /diagram/'s pre-shared key, then remove it. */
+        var legacy = localStorage.getItem('dg-theme');
+        localStorage.removeItem('dg-theme');
+        if (legacy === 'dark' || legacy === 'light') {
+          localStorage.setItem(KEY, legacy);
+          return legacy;
+        }
+      } catch (e) {
+        /* Private mode or a full quota — fall through to the OS. */
+      }
+      return null;
+    }
+
+    var chosen = read();
+    if (chosen) document.documentElement.setAttribute('data-theme', chosen);
+
+    /* Everything below needs the DOM. Kept in this file rather than in each
+       tool's ui.js so the eight pages cannot drift — the pre-paint half and the
+       toggle half are one decision and belong together. */
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    ready(function () {
+      var btn = document.getElementById('tool-theme');
+      if (!btn) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var icon = btn.querySelector('[data-theme-icon]');
+
+      /* What the reader is ACTUALLY looking at: the explicit choice if there is
+         one, otherwise whatever the OS is currently saying. The button has to
+         report that, not the stored value, or it shows "light" on a page that
+         is plainly dark. */
+      function effective() {
+        var attr = document.documentElement.getAttribute('data-theme');
+        return attr === 'dark' || attr === 'light' ? attr : (mq.matches ? 'dark' : 'light');
+      }
+
+      /* Taken off the button rather than written here, so a Korean-interface
+         tool can localise what its screen reader announces. The visible label
+         is a separate string the button include renders directly. */
+      var toDark = btn.getAttribute('data-to-dark') || 'Switch to the dark theme';
+      var toLight = btn.getAttribute('data-to-light') || 'Switch to the light theme';
+
+      function sync() {
+        var dark = effective() === 'dark';
+        btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        /* The name states what a click DOES, which is the opposite of the
+           current state — a button announced as "Dark" on an already-dark page
+           is ambiguous about which way it goes. */
+        btn.setAttribute('aria-label', dark ? toLight : toDark);
+        btn.title = dark ? toLight : toDark;
+        if (icon) icon.textContent = dark ? '☀️' : '🌙';
+      }
+
+      btn.addEventListener('click', function () {
+        var next = effective() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) { /* choice holds for this visit only */ }
+        sync();
+      });
+
+      /* Only matters while there is no explicit choice — then the page is
+         following the OS and the button has to keep reporting it. `addListener`
+         is the Safari < 14 spelling and is still needed. */
+      var onChange = function () { sync(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+
+      sync();
+    });
+  })();
+</script>
+
+  <meta name="description" content="공백 포함·제외 글자수와 단어 수, 단락·문장·줄 수를 입력하는 즉시 세어 주는 계산기. 가장 많이 나온 문자열 10개도 함께 정리합니다. 브라우저에서만 계산하며 입력한 글은 어디에도 전송되지 않습니다.">
+<link rel="canonical" href="https://somaz.blog/char-counter/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Somaz Tech Blog">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:url" content="https://somaz.blog/char-counter/">
+<meta property="og:title" content="글자수 계산기">
+<meta property="og:description" content="공백 포함·제외 글자수, 단어·단락·문장·줄 수를 입력 즉시 계산합니다. 전송 없이 브라우저 안에서만 동작합니다.">
+<meta property="og:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="글자수 계산기">
+<meta name="twitter:description" content="공백 포함·제외 글자수, 단어·단락·문장·줄 수를 입력 즉시 계산합니다. 전송 없이 브라우저 안에서만 동작합니다.">
+<meta name="twitter:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+  <style>
+    /* No webfont. A standalone tool is meant to keep working offline, and a CSS
+       @import is render-blocking — someone else's outage would hold up first
+       paint on a page that needs nothing from the network. Pretendard is kept
+       first in the stack so it is still used wherever it is installed. */
+    :root {
+      /* Not decoration, and the one line the dark block below cannot do on its
+         own: it tells the browser to render its OWN chrome dark too. This page
+         is mostly a <textarea> plus two scrolling panels, so without it the
+         caret, the selection colour and three scrollbars stay light on a dark
+         surface. Every other standalone tool declares it; this one did not,
+         because it had no dark mode to declare it for. */
+      color-scheme: light dark;
+      --main-bg: linear-gradient(135deg, #f4f6fa 0%, #e9eefd 100%);
+      --card-bg: #fff;
+      /* The three surfaces that used to be written as literals — #f9fafb on the
+         textarea and #f6f8fa on the stat cards, the Top-10 panel and the
+         preview. #f6f8fa appeared three times, so a dark variant would have had
+         to be applied in three places and would eventually miss one. */
+      --field-bg: #f9fafb;
+      --panel-bg: #f6f8fa;
+      --panel-item-bg: #fff;
+      --panel-item-line: #f0f1f3;
+      --primary: #2563eb;
+      /* --accent is used for the textarea focus ring only, which is a UI
+         component and answers to the 3:1 threshold (3.68:1 here). It was ALSO
+         the colour of `.top-count`, which is 16.16px bold — under the 18.66px
+         WCAG calls large, so it needed 4.5:1 and had 3.68:1. Text gets its own
+         token rather than darkening the ring, because the two answer to
+         different thresholds and folding them hides that. */
+      --accent: #3b82f6;
+      --accent-text: #1d4ed8;
+      /* Contrast-bearing, and the reason it is a token rather than the `#fff`
+         literal it replaced: `.home-link:hover` puts this on --primary, and the
+         dark-mode --primary is light enough that white falls to 2.54:1. Same
+         lesson `/vpc-planner/` records for its own --on-accent. */
+      --on-accent: #fff;
+      --border: #e5e7eb;
+      --text-main: #23272f;
+      --text-sub: #6b7280;
+      --radius: 16px;
+      --shadow: 0 4px 24px 0 rgba(60,72,88,0.10);
+      --counter-shadow: 0 1.5px 6px 0 rgba(60,72,88,0.07);
+    }
+
+    /* This page was the only one of the eight tools with no dark support at all
+       — it stayed bright white on a dark-OS machine — and it is still the only
+       one whose styles are inline rather than an `assets/<tool>/theme.scss`,
+       which is why it cannot @include the shared mixins. The VALUES below are
+       the shared ramp from
+       `_sass/_tool-tokens.scss` copied verbatim so this page does not become a
+       third spelling of the same neutrals: --surface #131c2b, --surface-2
+       #182234, --ink #e8edf5, --muted #94a3b8, --line #263349. Every pairing
+       below was measured, not eyeballed; the lowest is 5.44:1. */
+    /* THREE states, not two. Nothing stored -> the OS decides, exactly as before
+       the toggle existed. `data-theme` is an explicit choice that overrides it in
+       either direction, set on <html> before first paint by
+       _includes/tool-theme-boot.html.
+
+       SOURCE ORDER IS LOAD-BEARING. `:root:not([data-theme="light"])` inside the
+       media query and `:root[data-theme="dark"]` outside it have the SAME
+       specificity (0,2,0), so the explicit rule wins only because it comes after.
+
+       The block is written TWICE here, which it is not on the other seven tools:
+       they are .scss and share one @mixin, this page is plain CSS inside a
+       <style> and has no mixin to reach for. Plain CSS cannot apply one
+       declaration block from both a media query and a bare selector. Change one
+       copy and you must change the other — that is the price of this page having
+       no stylesheet file, and it is why the values are also written down in
+       _sass/_tool-tokens.scss's header note. */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --main-bg: linear-gradient(135deg, #0b1220 0%, #131c2b 100%);
+        --card-bg: #131c2b;
+        --field-bg: #0f1826;
+        --panel-bg: #182234;
+        --panel-item-bg: #212d42;
+        --panel-item-line: #2b3854;
+        --primary: #60a5fa;
+        --accent: #60a5fa;
+        --accent-text: #7dd3fc;
+        --on-accent: #0b1220;
+        --border: #263349;
+        --text-main: #e8edf5;
+        --text-sub: #94a3b8;
+        /* rgba(60,72,88,…) is invisible on a dark surface — a shadow that is
+           lighter than nothing. Black, and deeper, or the cards lose their edge. */
+        --shadow: 0 4px 24px 0 rgba(0,0,0,0.45);
+        --counter-shadow: 0 1.5px 6px 0 rgba(0,0,0,0.35);
+      }
+    }
+    :root[data-theme="dark"] {
+        --main-bg: linear-gradient(135deg, #0b1220 0%, #131c2b 100%);
+        --card-bg: #131c2b;
+        --field-bg: #0f1826;
+        --panel-bg: #182234;
+        --panel-item-bg: #212d42;
+        --panel-item-line: #2b3854;
+        --primary: #60a5fa;
+        --accent: #60a5fa;
+        --accent-text: #7dd3fc;
+        --on-accent: #0b1220;
+        --border: #263349;
+        --text-main: #e8edf5;
+        --text-sub: #94a3b8;
+        /* rgba(60,72,88,…) is invisible on a dark surface — a shadow that is
+           lighter than nothing. Black, and deeper, or the cards lose their edge. */
+        --shadow: 0 4px 24px 0 rgba(0,0,0,0.45);
+        --counter-shadow: 0 1.5px 6px 0 rgba(0,0,0,0.35);
+    }
+    /* The browser's own chrome — the textarea's caret and selection, three
+       scrollbars — has to follow an explicit choice too. */
+    :root[data-theme="dark"] { color-scheme: dark; }
+    :root[data-theme="light"] { color-scheme: light; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: var(--main-bg);
+      color: var(--text-main);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+        'Malgun Gothic', 'Noto Sans KR', system-ui, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .container {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 48px 40px 32px 40px;
+      margin-top: 40px;
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-sizing: border-box;
+    }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 32px;
+      color: var(--primary);
+      letter-spacing: -1px;
+      text-align: center;
+    }
+    /* A row rather than the two controls stacking: this page has no topbar of
+       its own — every other tool does — so the home link and the theme button
+       share one line at the top of the card. */
+    .cc-topbar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    /* Two selectors deep on purpose: `.home-link` carries its own
+       `margin-bottom` in the base rule AND in the 600px query, and inside this
+       row the gap belongs to the row. (0,2,0) beats both without either having
+       to be edited. */
+    .cc-topbar > .home-link { margin-bottom: 0; }
+
+    /* Matches `.home-link`'s pill so the two read as one control group. Named
+       with the `cc-` prefix because `tool-theme-button.html` builds its classes
+       from the prefix it is given, the same way every other tool's button
+       reuses that tool's own `-btn` rule. */
+    .cc-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 16px;
+      border: 1.5px solid var(--primary);
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--primary);
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    }
+    .cc-btn:hover,
+    .cc-btn:focus-visible {
+      background: var(--primary);
+      color: var(--on-accent);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
+    }
+
+    /* This page is `layout: null`, so it renders without the blog's header —
+     * without this link there is no way back other than the browser button.
+     * Coloured, not neutral: it is the only navigation on the page. */
+    .home-link {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 20px;
+      padding: 10px 18px;
+      border: 1.5px solid var(--primary);
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--primary);
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    }
+    .home-link:hover,
+    .home-link:focus-visible {
+      background: var(--primary);
+      color: var(--on-accent);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
+    }
+    .home-link svg {
+      width: 17px;
+      height: 17px;
+      flex: none;
+      transition: transform 0.2s;
+    }
+    .home-link:hover svg { transform: translateY(-1px); }
+    .main-row {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+    /* Selection guard — the same rule a blog post carries and the other tools
+       get from `tool-content-lock`, and no unlock. This page is plain CSS in a
+       <style> and has no mixin to reach for, so it is written out; the textarea
+       below is exempted because it is the tool. */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    textarea,
+    input,
+    [contenteditable] {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      max-width: 100%;
+      padding: 18px;
+      font-size: 1.08rem;
+      border-radius: 10px;
+      border: 1.5px solid var(--primary);
+      outline: none;
+      background: var(--field-bg);
+      color: var(--text-main);
+      transition: border 0.2s, box-shadow 0.2s;
+      resize: vertical;
+      box-sizing: border-box;
+      box-shadow: 0 2px 8px 0 rgba(60,72,88,0.06);
+    }
+    textarea:focus {
+      border: 1.5px solid var(--accent);
+      box-shadow: 0 4px 16px 0 rgba(60,72,88,0.10);
+    }
+    .counter-cards {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .counter-card {
+      background: var(--panel-bg);
+      border-radius: 10px;
+      box-shadow: var(--counter-shadow);
+      padding: 16px 10px 10px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 0;
+      border: 1px solid var(--border);
+    }
+    .counter-label {
+      font-size: 0.92rem;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+      font-weight: 500;
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .counter-value {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 1px;
+      letter-spacing: -1px;
+    }
+    .counter-unit {
+      font-size: 0.98rem;
+      color: var(--text-sub);
+      font-weight: 400;
+    }
+    .top-strings {
+      width: 100%;
+      background: var(--panel-bg);
+      border-radius: 10px;
+      padding: 18px 14px 12px 14px;
+      box-sizing: border-box;
+      box-shadow: var(--counter-shadow);
+      border: 1px solid var(--border);
+      margin-top: 24px;
+    }
+    .top-strings h3 {
+      margin: 0 0 10px 0;
+      font-size: 1.01rem;
+      color: var(--primary);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .top-strings ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .top-strings li {
+      background: var(--panel-item-bg);
+      border-radius: 7px;
+      padding: 7px 12px;
+      font-size: 1.01rem;
+      display: flex;
+      align-items: center;
+      font-weight: 500;
+      gap: 10px;
+      border: 1px solid var(--panel-item-line);
+    }
+    .top-rank {
+      font-size: 1.01rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-right: 8px;
+      min-width: 18px;
+      text-align: right;
+    }
+    .top-word {
+      flex: 1 1 0;
+      color: var(--text-main);
+      font-weight: 600;
+      font-size: 1.01rem;
+      margin-right: 6px;
+      word-break: break-all;
+    }
+    .top-count {
+      color: var(--accent-text);
+      font-weight: 700;
+      font-size: 1.01rem;
+      min-width: 32px;
+      text-align: right;
+    }
+    .preview-card {
+      width: 100%;
+      margin-top: 36px;
+      background: var(--panel-bg);
+      border-radius: 12px;
+      box-shadow: var(--counter-shadow);
+      border: 1px solid var(--border);
+      padding: 22px 20px 22px 20px;
+      box-sizing: border-box;
+      min-height: 120px;
+      max-height: 320px;
+      overflow-y: auto;
+      font-size: 1.08rem;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      line-height: 1.7;
+      letter-spacing: -0.01em;
+    }
+    .preview-title {
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+    @media (max-width: 1200px) {
+      .container {
+        padding: 18px 2vw 18px 2vw;
+      }
+      .counter-cards {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 6px 0 6px 0;
+        margin-top: 4px;
+      }
+      h1 {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+      }
+      .home-link {
+        align-self: center;
+        margin-bottom: 10px;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+      }
+      .counter-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+      .counter-card {
+        padding: 12px 6px 8px 6px;
+      }
+      .counter-label {
+        font-size: 0.85rem;
+      }
+      .counter-value {
+        font-size: 1.3rem;
+      }
+      .counter-unit {
+        font-size: 0.85rem;
+      }
+      .preview-card {
+        padding: 10px 6px 10px 6px;
+        font-size: 0.98rem;
+      }
+    }
+
+    /* Keyed off the pointer, never a viewport width — a touch laptop is wide and
+       still needs the bigger target, and a narrow desktop window does not.
+       Declared LAST so the 600px block above cannot undo it: that block cuts
+       `.home-link` padding to 6px 12px at 0.85rem, which computes to about 31px
+       tall, and even at full size the button is only ~42px. This is the page's
+       ONLY control — the textarea is large by definition and nothing else is
+       clickable — so it is also the only rule needed. */
+    @media (pointer: coarse) {
+      .home-link {
+        min-height: 44px;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="cc-topbar">
+    <a class="home-link" href="/" title="somaz.blog 홈으로">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3.5 10.5 12 3.5l8.5 7" />
+        <path d="M5.5 9.5v10h13v-10" />
+        <path d="M9.75 19.5v-5.5h4.5v5.5" />
+      </svg>
+      블로그 홈으로
+    </a>
+      <button id="tool-theme" class="cc-btn" type="button"
+        aria-pressed="false" aria-label="어두운 테마로 전환"
+        data-to-dark="어두운 테마로 전환" data-to-light="밝은 테마로 전환">
+  <span data-theme-icon aria-hidden="true">🌙</span>
+  <span class="cc-btn-text">테마</span>
+</button>
+
+    </div>
+    <h1>글자 수 계산기</h1>
+    <div class="main-row">
+      <div class="left-col">
+        <textarea id="textInput" placeholder="여기에 글을 입력하세요..."></textarea>
+      </div>
+      <div class="right-col">
+        <div class="counter-cards">
+          <div class="counter-card"><div class="counter-label">공백 포함 글자수</div><div class="counter-value" id="charCountWithSpace">0</div><div class="counter-unit">자</div></div>
+          <div class="counter-card"><div class="counter-label">공백 제외 글자수</div><div class="counter-value" id="charCountWithoutSpace">0</div><div class="counter-unit">자</div></div>
+          <div class="counter-card"><div class="counter-label">단어수</div><div class="counter-value" id="wordCount">0</div><div class="counter-unit">개</div></div>
+          <div class="counter-card"><div class="counter-label">단락 수</div><div class="counter-value" id="paragraphCount">0</div><div class="counter-unit">개</div></div>
+          <div class="counter-card"><div class="counter-label">문장 수</div><div class="counter-value" id="sentenceCount">0</div><div class="counter-unit">개</div></div>
+          <div class="counter-card"><div class="counter-label">줄 수</div><div class="counter-value" id="lineCount">1</div><div class="counter-unit">줄</div></div>
+        </div>
+        <div class="top-strings">
+          <h3>가장 많이 출현한 문자열 Top 10</h3>
+          <ul id="topStrings"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="preview-card">
+      <div class="preview-title">미리보기</div>
+      <div id="previewText"></div>
+    </div>
+  </div>
+  <script>
+    const textInput = document.getElementById("textInput");
+    const charCountWithSpace = document.getElementById("charCountWithSpace");
+    const charCountWithoutSpace = document.getElementById("charCountWithoutSpace");
+    const wordCount = document.getElementById("wordCount");
+    const paragraphCount = document.getElementById("paragraphCount");
+    const sentenceCount = document.getElementById("sentenceCount");
+    const lineCount = document.getElementById("lineCount");
+    const topStrings = document.getElementById("topStrings");
+    const previewText = document.getElementById("previewText");
+
+    function updateCounts() {
+      const text = textInput.value;
+      // 공백 포함 글자수
+      charCountWithSpace.textContent = text.length;
+      // 공백 제외 글자수
+      charCountWithoutSpace.textContent = text.replace(/\s/g, '').length;
+      // 단어수 (한글, 영문, 숫자 기준)
+      const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+      wordCount.textContent = words.length;
+      // 단락 수
+      const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+      paragraphCount.textContent = paragraphs.length;
+      // 문장 수 (마침표, 물음표, 느낌표 기준)
+      const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      sentenceCount.textContent = sentences.length;
+      // 줄 수
+      const lines = text.split('\n').filter(line => line.trim().length > 0);
+      lineCount.textContent = lines.length || 1;
+      // 가장 많이 출현한 문자열 Top 10
+      const wordFrequency = {};
+      /* This regex is the sanitiser for the innerHTML below, and that is not
+         obvious three lines away from it. `[가-힣a-zA-Z0-9]` admits no `<`, `>`,
+         `&` or quote, so a word taken straight out of what the visitor typed
+         cannot carry markup into the list. Widening it — punctuation, another
+         script, a lazy `\w` with the unicode flag — reopens injection silently,
+         so widen the escaping in the same edit or build the rows with
+         `textContent` instead. */
+      const words2 = text.toLowerCase().match(/[가-힣a-zA-Z0-9]+/g) || [];
+      words2.forEach(word => {
+        if (word.length > 1) { // 2글자 이상만 카운트
+          wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+        }
+      });
+      const sortedWords = Object.entries(wordFrequency)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10);
+      topStrings.innerHTML = sortedWords
+        .map(([word, count], idx) => `<li><span class='top-rank'>${idx+1}</span><span class='top-word'>${word}</span><span class='top-count'>${count}회</span></li>`)
+        .join('');
+      // 미리보기 영역
+      previewText.textContent = text;
+    }
+    textInput.addEventListener("input", updateCounts);
+    // 최초 렌더링 시 미리보기 초기화
+    updateCounts();
+  </script>
+</body>
+</html>
+

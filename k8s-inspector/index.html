@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Kubernetes Manifest Inspector · somaz.blog</title>
+    <meta name="description" content="Paste Kubernetes manifests and get a per-resource lint — deprecated apiVersions, containers running as root, unset resource requests and limits, unpinned images, missing probes. Converts YAML to JSON and back. Nothing is uploaded.">
+<link rel="canonical" href="https://somaz.blog/k8s-inspector/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Somaz Tech Blog">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://somaz.blog/k8s-inspector/">
+<meta property="og:title" content="Kubernetes Manifest Inspector">
+<meta property="og:description" content="Rule-based lint for Kubernetes manifests, one resource at a time — apiVersion, security context, resource limits, probes. Runs entirely in your browser.">
+<meta property="og:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Kubernetes Manifest Inspector">
+<meta name="twitter:description" content="Rule-based lint for Kubernetes manifests, one resource at a time — apiVersion, security context, resource limits, probes. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico" />
+    <!-- Before the stylesheet, and inline: it sets `data-theme` on <html> when
+         the reader has made an explicit choice, and the stylesheet keys off
+         that. With nothing stored it sets nothing and the media query decides,
+         so the CSS-only path this page has always had still works with the
+         script removed. Single definition for all nine tool pages. -->
+    <script>
+  (function () {
+    var KEY = 'tool-theme';
+
+    function read() {
+      try {
+        var t = localStorage.getItem(KEY);
+        if (t === 'dark' || t === 'light') return t;
+        /* One-time adoption of /diagram/'s pre-shared key, then remove it. */
+        var legacy = localStorage.getItem('dg-theme');
+        localStorage.removeItem('dg-theme');
+        if (legacy === 'dark' || legacy === 'light') {
+          localStorage.setItem(KEY, legacy);
+          return legacy;
+        }
+      } catch (e) {
+        /* Private mode or a full quota — fall through to the OS. */
+      }
+      return null;
+    }
+
+    var chosen = read();
+    if (chosen) document.documentElement.setAttribute('data-theme', chosen);
+
+    /* Everything below needs the DOM. Kept in this file rather than in each
+       tool's ui.js so the eight pages cannot drift — the pre-paint half and the
+       toggle half are one decision and belong together. */
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    ready(function () {
+      var btn = document.getElementById('tool-theme');
+      if (!btn) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var icon = btn.querySelector('[data-theme-icon]');
+
+      /* What the reader is ACTUALLY looking at: the explicit choice if there is
+         one, otherwise whatever the OS is currently saying. The button has to
+         report that, not the stored value, or it shows "light" on a page that
+         is plainly dark. */
+      function effective() {
+        var attr = document.documentElement.getAttribute('data-theme');
+        return attr === 'dark' || attr === 'light' ? attr : (mq.matches ? 'dark' : 'light');
+      }
+
+      /* Taken off the button rather than written here, so a Korean-interface
+         tool can localise what its screen reader announces. The visible label
+         is a separate string the button include renders directly. */
+      var toDark = btn.getAttribute('data-to-dark') || 'Switch to the dark theme';
+      var toLight = btn.getAttribute('data-to-light') || 'Switch to the light theme';
+
+      function sync() {
+        var dark = effective() === 'dark';
+        btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        /* The name states what a click DOES, which is the opposite of the
+           current state — a button announced as "Dark" on an already-dark page
+           is ambiguous about which way it goes. */
+        btn.setAttribute('aria-label', dark ? toLight : toDark);
+        btn.title = dark ? toLight : toDark;
+        if (icon) icon.textContent = dark ? '☀️' : '🌙';
+      }
+
+      btn.addEventListener('click', function () {
+        var next = effective() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) { /* choice holds for this visit only */ }
+        sync();
+      });
+
+      /* Only matters while there is no explicit choice — then the page is
+         following the OS and the button has to keep reporting it. `addListener`
+         is the Safari < 14 spelling and is still needed. */
+      var onChange = function () { sync(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+
+      sync();
+    });
+  })();
+</script>
+
+    <link rel="stylesheet" href="/assets/k8s-inspector/theme.css" />
+
+    <!-- No pre-paint script, on purpose. Light and dark are decided by CSS alone
+         (`color-scheme` + `prefers-color-scheme`), so there is no mode flag that
+         a stylesheet and a script could answer differently — the bug /diagram/
+         has to keep two files in agreement about. If a manual theme toggle is
+         added later it must be set here, before first paint, AND recorded on
+         <html data-theme>, with the script reading it back rather than deriving
+         it a second time. -->
+  </head>
+
+  <body>
+    <header class="ki-topbar">
+      <!-- A standalone page carries no site header, so this is the only way back
+           to the blog. A wordmark does not read as one, so it is a real labelled
+           button — icon-only once space is tight. -->
+      <a class="ki-btn ki-home" href="/" title="Back to somaz.blog" aria-label="Back to somaz.blog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 10.5 12 3.5l8.5 7" />
+          <path d="M5.5 9.5v10h13v-10" />
+          <path d="M9.75 19.5v-5.5h4.5v5.5" />
+        </svg>
+        <span class="ki-btn-text">Blog</span>
+      </a>
+
+      <!-- The brand doubles as the document's h1. It carries NO `id`: the site
+           script injects a permalink image into every h1[id]..h6[id], and the
+           CSS that hides it is scoped to `.post-content`. No heading on this
+           page has an id. -->
+      <h1 class="ki-brand">
+        <b>Manifest Inspector</b><span class="ki-brand-site">somaz.blog</span>
+      </h1>
+
+      <div class="ki-actions">
+        <button id="ki-sample" class="ki-btn" type="button"
+                title="Replace the input with an example manifest">
+          <span>Sample</span>
+        </button>
+        <!-- One button, two directions. ui.js flips the label to "To YAML" when
+             the input is already JSON, so the label always names the result. -->
+        <button id="ki-convert" class="ki-btn" type="button"
+                title="Convert the input between YAML and JSON">
+          <span id="ki-convert-text">To JSON</span>
+        </button>
+        <!-- These two collapse to icon-only on a narrow screen, so they carry an
+             icon. A `.ki-btn-text` label with nothing beside it leaves an empty
+             box at that width — the label is not decoration, it is the whole
+             control. `title` is not a substitute: it never appears on touch. -->
+        <button id="ki-copy" class="ki-btn" type="button"
+                aria-label="Copy the input to the clipboard"
+                title="Copy the input to the clipboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="11" height="12" rx="1.8" />
+            <path d="M15.5 5.5v-1a1 1 0 0 0-1-1h-10a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1" />
+          </svg>
+          <span class="ki-btn-text">Copy</span>
+        </button>
+        <button id="ki-clear" class="ki-btn" type="button"
+                aria-label="Empty the input" title="Empty the input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4.5 7h15" />
+            <path d="M9.5 7V4.5h5V7" />
+            <path d="M6.5 7l1 12.5h9L17.5 7" />
+          </svg>
+          <span class="ki-btn-text">Clear</span>
+        </button>
+      </div>
+
+      <button id="tool-theme" class="ki-btn" type="button"
+        aria-pressed="false" aria-label="Switch to the dark theme"
+        data-to-dark="Switch to the dark theme" data-to-light="Switch to the light theme">
+  <span data-theme-icon aria-hidden="true">🌙</span>
+  <span class="ki-btn-text">Theme</span>
+</button>
+
+    </header>
+
+    <main class="ki-shell">
+      <!-- Sections are named with `aria-label`, never `id` + `aria-labelledby`. -->
+      <section class="ki-pane ki-pane--input" aria-label="Manifest input">
+        <div class="ki-pane-head">
+          <h2 class="ki-pane-title">Manifest</h2>
+          <!-- Filled by ui.js: "3 documents · YAML". -->
+          <span id="ki-input-meta" class="ki-pane-meta"></span>
+        </div>
+
+        <textarea
+          id="ki-input"
+          class="ki-editor"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+          autocorrect="off"
+          placeholder="Paste one or more Kubernetes manifests here. Separate documents with ---&#10;Tab indents; press Escape to move to the report."
+          aria-label="Kubernetes manifest source. Tab inserts an indent; press Escape to move focus to the report."
+        ></textarea>
+
+        <!-- A parse failure is about the input, so it belongs beside the input
+             rather than in the report, where it would read as a finding.
+             Deliberately NOT a live region: #ki-status is the page's only one,
+             and a second would talk over it. It never worked as one anyway —
+             the strip was toggled with `hidden`, and a node that is hidden is
+             not in the accessibility tree, so a region revealed at the same
+             moment it gains text is registered too late to announce anything.
+             ui.js sends the same message through #ki-status instead. -->
+        <p id="ki-parse-error" class="ki-parse-error"></p>
+      </section>
+
+      <section class="ki-pane ki-pane--report" aria-label="Inspection report">
+        <div class="ki-pane-head">
+          <h2 class="ki-pane-title">Report</h2>
+          <div id="ki-tally" class="ki-tally" hidden>
+            <span class="ki-tally-item ki-sev--error"><b id="ki-count-error">0</b> errors</span>
+            <span class="ki-tally-item ki-sev--warn"><b id="ki-count-warn">0</b> warnings</span>
+            <span class="ki-tally-item ki-sev--ok"><b id="ki-count-ok">0</b> passed</span>
+          </div>
+        </div>
+
+        <!-- One entry per parsed document (kind/name), rendered by ui.js.
+             Selecting one filters the findings below to that resource, so a
+             20-document file is still read one resource at a time. -->
+        <!-- `role="list"` is explicit: Safari drops list semantics from a `<ul>`
+             styled `list-style: none`, and this list IS the navigation. -->
+        <ul id="ki-resources" class="ki-resources" role="list" aria-label="Parsed resources"></ul>
+
+        <div id="ki-findings" class="ki-findings" role="region" tabindex="0"
+             aria-label="Findings for the selected resource"></div>
+
+        <!-- First visit must not be an empty box, so the empty state carries the
+             sample button rather than only explaining what to paste. -->
+        <div id="ki-empty" class="ki-empty">
+          <h3 class="ki-empty-title">Nothing to inspect yet</h3>
+          <p>Paste a manifest on the left, or start from an example and edit it.</p>
+          <button id="ki-sample-empty" class="ki-btn ki-btn--primary" type="button">
+            Load a sample manifest
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- One live region for the whole page. Two would talk over each other. -->
+    <p id="ki-status" class="ki-status" role="status" aria-live="polite"></p>
+
+    <footer class="ki-foot">
+      Static checks only — this page never contacts a cluster, and nothing you
+      paste leaves the browser.
+    </footer>
+
+    <noscript>
+      <p class="ki-noscript">
+        This tool parses and checks manifests in the browser, so it needs
+        JavaScript enabled.
+      </p>
+    </noscript>
+
+    <!-- Every script is local. No CDN, no remote font, no analytics: the page is
+         expected to keep working offline. Load order is a dependency order —
+         yaml → rules → samples → inspect → ui. -->
+    <script src="/assets/k8s-inspector/yaml.js"></script>
+    <script src="/assets/k8s-inspector/rules.js"></script>
+    <script src="/assets/k8s-inspector/samples.js"></script>
+    <script src="/assets/k8s-inspector/inspect.js"></script>
+    <script src="/assets/k8s-inspector/ui.js"></script>
+  </body>
+</html>

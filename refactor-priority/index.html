@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Refactor Priority · somaz.blog</title>
+    <meta name="description" content="Paste source code and get a per-function refactoring shortlist: cyclomatic complexity, maximum nesting depth, line count and parameter count, ranked worst first with the metric that drove each rank. Function boundaries are found with brace and indentation heuristics rather than a parser, so the ranking is a shortlist to review, not an exact measurement. Nothing is uploaded.">
+<link rel="canonical" href="https://somaz.blog/refactor-priority/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Somaz Tech Blog">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://somaz.blog/refactor-priority/">
+<meta property="og:title" content="Refactor Priority">
+<meta property="og:description" content="Breaks pasted code into functions and ranks them by complexity, nesting, length and parameter count — so the next refactor is chosen with a figure rather than a hunch. Runs entirely in your browser.">
+<meta property="og:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Refactor Priority">
+<meta name="twitter:description" content="Breaks pasted code into functions and ranks them by complexity, nesting, length and parameter count — so the next refactor is chosen with a figure rather than a hunch. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico" />
+    <!-- Before the stylesheet, and inline: it sets `data-theme` on <html> when
+         the reader has made an explicit choice, and the stylesheet keys off
+         that. With nothing stored it sets nothing and the media query decides,
+         so the CSS-only path this page has always had still works with the
+         script removed. Single definition for all nine tool pages. -->
+    <script>
+  (function () {
+    var KEY = 'tool-theme';
+
+    function read() {
+      try {
+        var t = localStorage.getItem(KEY);
+        if (t === 'dark' || t === 'light') return t;
+        /* One-time adoption of /diagram/'s pre-shared key, then remove it. */
+        var legacy = localStorage.getItem('dg-theme');
+        localStorage.removeItem('dg-theme');
+        if (legacy === 'dark' || legacy === 'light') {
+          localStorage.setItem(KEY, legacy);
+          return legacy;
+        }
+      } catch (e) {
+        /* Private mode or a full quota — fall through to the OS. */
+      }
+      return null;
+    }
+
+    var chosen = read();
+    if (chosen) document.documentElement.setAttribute('data-theme', chosen);
+
+    /* Everything below needs the DOM. Kept in this file rather than in each
+       tool's ui.js so the eight pages cannot drift — the pre-paint half and the
+       toggle half are one decision and belong together. */
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    ready(function () {
+      var btn = document.getElementById('tool-theme');
+      if (!btn) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var icon = btn.querySelector('[data-theme-icon]');
+
+      /* What the reader is ACTUALLY looking at: the explicit choice if there is
+         one, otherwise whatever the OS is currently saying. The button has to
+         report that, not the stored value, or it shows "light" on a page that
+         is plainly dark. */
+      function effective() {
+        var attr = document.documentElement.getAttribute('data-theme');
+        return attr === 'dark' || attr === 'light' ? attr : (mq.matches ? 'dark' : 'light');
+      }
+
+      /* Taken off the button rather than written here, so a Korean-interface
+         tool can localise what its screen reader announces. The visible label
+         is a separate string the button include renders directly. */
+      var toDark = btn.getAttribute('data-to-dark') || 'Switch to the dark theme';
+      var toLight = btn.getAttribute('data-to-light') || 'Switch to the light theme';
+
+      function sync() {
+        var dark = effective() === 'dark';
+        btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        /* The name states what a click DOES, which is the opposite of the
+           current state — a button announced as "Dark" on an already-dark page
+           is ambiguous about which way it goes. */
+        btn.setAttribute('aria-label', dark ? toLight : toDark);
+        btn.title = dark ? toLight : toDark;
+        if (icon) icon.textContent = dark ? '☀️' : '🌙';
+      }
+
+      btn.addEventListener('click', function () {
+        var next = effective() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) { /* choice holds for this visit only */ }
+        sync();
+      });
+
+      /* Only matters while there is no explicit choice — then the page is
+         following the OS and the button has to keep reporting it. `addListener`
+         is the Safari < 14 spelling and is still needed. */
+      var onChange = function () { sync(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+
+      sync();
+    });
+  })();
+</script>
+
+    <link rel="stylesheet" href="/assets/refactor-priority/theme.css" />
+
+    <!-- No pre-paint script, on purpose — the same decision /k8s-inspector/ and
+         /vpc-planner/ make. Light and dark come from CSS alone (`color-scheme` +
+         `prefers-color-scheme`), so there is no mode flag that a stylesheet and a
+         script could answer differently — the bug /diagram/ has to keep two files
+         in agreement about. If a manual theme toggle is added later it has to be
+         settled once, here, before first paint, AND recorded on <html data-theme>
+         for both CSS and JS to read back — never derived twice. -->
+  </head>
+
+  <body>
+    <header class="rp-topbar">
+      <!-- A standalone page carries no site header, so this is the only way back
+           to the blog. A wordmark does not read as one, so it is a real labelled
+           button — icon-only once space is tight. -->
+      <a class="rp-btn rp-home" href="/" title="Back to somaz.blog" aria-label="Back to somaz.blog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 10.5 12 3.5l8.5 7" />
+          <path d="M5.5 9.5v10h13v-10" />
+          <path d="M9.75 19.5v-5.5h4.5v5.5" />
+        </svg>
+        <span class="rp-btn-text">Blog</span>
+      </a>
+
+      <!-- The brand doubles as the document's h1. It carries NO `id`: the site
+           script injects a permalink image into every h1[id]..h6[id], and the
+           CSS that hides it is scoped to `.post-content`. No heading on this
+           page has an id — sections are named with `aria-label` instead. -->
+      <h1 class="rp-brand">
+        <b>Refactor Priority</b><span class="rp-brand-site">somaz.blog</span>
+      </h1>
+
+      <div class="rp-actions">
+        <!-- Text-only: no icon, so its label must not be given `.rp-btn-text`,
+             which the narrow breakpoint hides. A button that collapses to an
+             empty box is not an affordance. -->
+        <button id="rp-sample" class="rp-btn" type="button"
+                title="Replace the input with an example file">
+          <span>Sample</span>
+        </button>
+        <!-- These two collapse to icon-only on a narrow screen, so they carry an
+             icon and an `aria-label`. `title` is not a substitute: it never
+             appears on touch. -->
+        <button id="rp-copy" class="rp-btn" type="button"
+                aria-label="Copy the ranking as a Markdown table"
+                title="Copy the ranking as a Markdown table">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="11" height="12" rx="1.8" />
+            <path d="M15.5 5.5v-1a1 1 0 0 0-1-1h-10a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1" />
+          </svg>
+          <span class="rp-btn-text">Copy</span>
+        </button>
+        <button id="rp-clear" class="rp-btn" type="button"
+                aria-label="Empty the input" title="Empty the input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4.5 7h15" />
+            <path d="M9.5 7V4.5h5V7" />
+            <path d="M6.5 7l1 12.5h9L17.5 7" />
+          </svg>
+          <span class="rp-btn-text">Clear</span>
+        </button>
+      </div>
+
+      <button id="tool-theme" class="rp-btn" type="button"
+        aria-pressed="false" aria-label="Switch to the dark theme"
+        data-to-dark="Switch to the dark theme" data-to-light="Switch to the light theme">
+  <span data-theme-icon aria-hidden="true">🌙</span>
+  <span class="rp-btn-text">Theme</span>
+</button>
+
+    </header>
+
+    <main class="rp-shell">
+      <!-- Sections are named with `aria-label`, never `id` + `aria-labelledby`:
+           an id on a heading is what triggers the injected permalink image. -->
+      <section class="rp-pane rp-pane--input" aria-label="Source input">
+        <div class="rp-pane-head">
+          <h2 class="rp-pane-title">Source</h2>
+          <!-- Filled by ui.js: "412 lines · 9 functions · looks like Go". -->
+          <span id="rp-input-meta" class="rp-pane-meta"></span>
+        </div>
+
+        <textarea
+          id="rp-input"
+          class="rp-editor"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+          autocorrect="off"
+          placeholder="Paste a file here — JavaScript, TypeScript, Go, Java, a C-like, Python or Shell.&#10;Tab indents; press Escape to move to the ranking."
+          aria-label="Source code to analyse. Tab inserts an indent; press Escape to move focus to the ranking."
+        ></textarea>
+
+        <div class="rp-field">
+          <label class="rp-label" for="rp-language">Language</label>
+          <!-- Auto-detect is a guess, so it stays overridable. The guess picks
+               between the brace scanner and the indentation scanner, and getting
+               that wrong is the one failure a reader cannot diagnose from the
+               output — every function comes back the wrong length. -->
+          <select id="rp-language" class="rp-select" aria-describedby="rp-language-hint">
+            <option value="auto" selected>Auto-detect</option>
+            <option value="js">JavaScript / TypeScript</option>
+            <option value="go">Go</option>
+            <option value="clike">Java / C / C++ / C#</option>
+            <option value="python">Python</option>
+            <option value="shell">Shell</option>
+          </select>
+          <p id="rp-language-hint" class="rp-hint">
+            Boundaries are found by matching braces or reading indentation, not by
+            parsing. Override the guess if the function list looks wrong.
+          </p>
+        </div>
+
+        <!-- An input problem belongs beside the input, not in the ranking pane
+             where it would read as a finding about the code.
+             Deliberately NOT a live region: #rp-status is the page's only one,
+             and a second would talk over it. It would not work as one anyway — a
+             strip that is hidden until it has text is not in the accessibility
+             tree when the region is registered, so it announces nothing. ui.js
+             sends the same message through #rp-status instead. -->
+        <p id="rp-input-error" class="rp-input-error"></p>
+      </section>
+
+      <section class="rp-pane rp-pane--report" aria-label="Refactoring ranking">
+        <div class="rp-pane-head">
+          <h2 class="rp-pane-title">Ranking</h2>
+          <!-- `[hidden]` is a UA-origin rule, so any author `display` beats it
+               whatever the specificity — theme.css must re-declare
+               `.rp-tally[hidden] { display: none }` for exactly that reason. -->
+          <div id="rp-tally" class="rp-tally" hidden>
+            <span class="rp-tally-item"><b id="rp-count-functions">0</b> functions</span>
+            <span class="rp-tally-item rp-sev--high"><b id="rp-count-high">0</b> high</span>
+            <span class="rp-tally-item"><b id="rp-max-complexity">0</b> worst complexity</span>
+          </div>
+        </div>
+
+        <!-- The weighting is stated in the page rather than left implicit: a rank
+             the reader cannot audit is a hunch with a number printed on it, which
+             is the thing this tool exists to replace. `<summary>` is not a
+             heading, so it carries no id and trips no permalink injection. -->
+        <details class="rp-note">
+          <summary>How the rank is computed</summary>
+          <p>
+            Each function is scored on four measurements taken from its own body —
+            cyclomatic complexity (branch and loop keywords plus boolean
+            operators), maximum nesting depth, line count, and parameter count.
+            The score is the weighted sum, and every row names the measurement
+            that drove it so a rank can be argued with.
+          </p>
+          <p>
+            Functions are located with brace matching or indentation, depending on
+            the language, so a nested closure, a method on an object literal or a
+            heavily macro-ed file can be split in the wrong place. Treat the
+            output as a shortlist of candidates to open, not as a measurement.
+          </p>
+        </details>
+
+        <!-- Sorting is a button group, not a tablist: there is one list and the
+             buttons choose its order. `aria-pressed` says which is active without
+             claiming tab semantics the markup does not implement.
+             Ships `hidden` for the same reason #rp-tally does: before ui.js runs,
+             and permanently for a visitor with JavaScript off, there is nothing
+             to sort — and four buttons over an empty list are not an affordance. -->
+        <div class="rp-sort" role="group" aria-label="Sort the ranking by" hidden>
+          <button class="rp-tab" type="button" data-sort="priority" aria-pressed="true">Priority</button>
+          <button class="rp-tab" type="button" data-sort="complexity" aria-pressed="false">Complexity</button>
+          <button class="rp-tab" type="button" data-sort="nesting" aria-pressed="false">Nesting</button>
+          <button class="rp-tab" type="button" data-sort="length" aria-pressed="false">Length</button>
+        </div>
+
+        <!-- One entry per detected function, rendered by ui.js. Selecting one
+             shows its metric breakdown below, so a 60-function file is still read
+             one function at a time.
+             `role="list"` is explicit: Safari drops list semantics from a `<ul>`
+             styled `list-style: none`, and this list IS the navigation. -->
+        <ul id="rp-functions" class="rp-functions" role="list"
+            aria-label="Functions ranked worst first"></ul>
+
+        <div id="rp-detail" class="rp-detail" role="region" tabindex="0"
+             aria-label="Metric breakdown for the selected function"></div>
+
+        <!-- First visit must not be an empty box, so the empty state carries the
+             sample button rather than only explaining what to paste. -->
+        <div id="rp-empty" class="rp-empty">
+          <h3 class="rp-empty-title">Nothing analysed yet</h3>
+          <p>Paste a file on the left, or start from an example and edit it.</p>
+          <button id="rp-sample-empty" class="rp-btn rp-btn--primary" type="button">
+            Load an example file
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- One live region for the whole page. Two would talk over each other. -->
+    <p id="rp-status" class="rp-status" role="status" aria-live="polite"></p>
+
+    <footer class="rp-foot">
+      Function boundaries are found with brace and indentation heuristics rather
+      than a parser, so the ranking is a shortlist to review rather than an exact
+      measurement. Everything is computed in the browser — nothing you paste is
+      uploaded or stored.
+    </footer>
+
+    <noscript>
+      <p class="rp-noscript">
+        This tool measures the pasted code in the browser, so it needs JavaScript
+        enabled.
+      </p>
+    </noscript>
+
+    <!-- Every script is local. No CDN, no remote font, no analytics, no vendored
+         parser: the page is expected to keep working offline and to stay small.
+         Load order is a dependency order — detect → metrics → score → report →
+         samples → ui. ui.js is the only file that touches the DOM. -->
+    <script src="/assets/refactor-priority/detect.js"></script>
+    <script src="/assets/refactor-priority/metrics.js"></script>
+    <script src="/assets/refactor-priority/score.js"></script>
+    <script src="/assets/refactor-priority/report.js"></script>
+    <script src="/assets/refactor-priority/samples.js"></script>
+    <script src="/assets/refactor-priority/ui.js"></script>
+  </body>
+</html>
