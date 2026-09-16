@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Cloud Architecture Diagram Editor · somaz.blog</title>
+    <meta name="description" content="Draw AWS and Kubernetes architecture diagrams in the browser. Drag official service icons onto a canvas, connect them, and export a crisp SVG or PNG. Nothing is uploaded — it all runs locally.">
+<link rel="canonical" href="https://somaz.blog/diagram/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Somaz Tech Blog">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://somaz.blog/diagram/">
+<meta property="og:title" content="Cloud Architecture Diagram Editor">
+<meta property="og:description" content="Drag-and-drop AWS + Kubernetes architecture diagrams, exported as SVG or PNG. Runs entirely in your browser.">
+<meta property="og:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cloud Architecture Diagram Editor">
+<meta name="twitter:description" content="Drag-and-drop AWS + Kubernetes architecture diagrams, exported as SVG or PNG. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/assets/diagram/theme.css" />
+    <script>
+      // Set the stored theme before first paint so the chrome never flashes.
+      // Light is the default regardless of the OS setting: the canvas paints
+      // the diagram's own background (white), and dark chrome around a white
+      // canvas is a worse first impression than a fully light editor.
+      // `tool-theme` is shared with the other eight tools; `dg-theme` is this
+      // page's old key, read once here and retired by ui.js on the same load.
+      // Must stay in step with initTheme() in ui.js — two places decide this,
+      // and if they disagree the chrome flashes on load.
+      try {
+        var t = localStorage.getItem('tool-theme');
+        if (t !== 'dark' && t !== 'light') t = localStorage.getItem('dg-theme');
+        document.documentElement.setAttribute(
+          'data-theme', t === 'dark' || t === 'light' ? t : 'light');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+
+      // `?embed=1` strips the editor down to the drawing, for an iframe in a
+      // post. Decided here, before first paint, so the chrome is never shown
+      // and then taken away — and recorded on the root element so the
+      // stylesheet and ui.js read the same answer instead of parsing the query
+      // string twice and eventually disagreeing about it.
+      (function () {
+        var m = /(?:^|[?&])embed(?:=([^&]*))?(?:&|$)/.exec(location.search);
+        if (m && m[1] !== '0' && m[1] !== 'false') {
+          document.documentElement.setAttribute('data-embed', '');
+        }
+      })();
+</script>
+  </head>
+  <body>
+    <header class="dg-topbar">
+      <!-- The only way back to the blog. A wordmark does not read as one, so
+           this is a real button — labelled, and icon-only once space is tight. -->
+      <a class="dg-btn dg-home" href="/" title="Back to somaz.blog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 10.5 12 3.5l8.5 7" />
+          <path d="M5.5 9.5v10h13v-10" />
+          <path d="M9.75 19.5v-5.5h4.5v5.5" />
+        </svg>
+        <span class="dg-btn-text">Blog</span>
+      </a>
+      <span class="dg-brand">
+        <b>Diagram</b><span class="dg-brand-site">somaz.blog</span>
+      </span>
+
+      <!-- Diagram library. Each entry is its own document with its own title,
+           autosave slot, JSON file and share link; the list is rebuilt in JS
+           from the index in localStorage. -->
+      <div id="dg-docs" class="dg-docs">
+        <button
+          id="dg-docs-btn"
+          class="dg-btn dg-docs-btn"
+          type="button"
+          title="Your diagrams"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="8.5" y="3.5" width="12" height="14" rx="1.8" />
+            <path d="M15.5 20.5h-11a1 1 0 0 1-1-1V7" />
+          </svg>
+          <span class="dg-btn-text">Diagrams</span>
+          <span id="dg-docs-count" class="dg-docs-count">1</span>
+        </button>
+
+        <div id="dg-docs-menu" class="dg-docs-menu" role="menu" aria-label="Your diagrams" hidden>
+          <div class="dg-docs-head">
+            <b>Your diagrams</b>
+            <button id="dg-doc-new" class="dg-btn dg-btn--primary" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" aria-hidden="true">
+                <path d="M12 5.5v13M5.5 12h13" />
+              </svg>
+              <span>New</span>
+            </button>
+          </div>
+          <ul id="dg-docs-list" class="dg-docs-list"></ul>
+          <p class="dg-docs-foot">
+            Stored in this browser only. Download the JSON for anything you want to keep.
+          </p>
+        </div>
+      </div>
+
+      <input
+        id="dg-title"
+        class="dg-title-input"
+        type="text"
+        value="Untitled diagram"
+        aria-label="Diagram title"
+        spellcheck="false"
+      />
+
+      <nav class="dg-toolbar" aria-label="Editor actions">
+        <button id="dg-undo" class="dg-btn dg-btn--icon" type="button" title="Undo (Ctrl+Z)" aria-label="Undo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 7v6h6" /><path d="M3.5 13a9 9 0 1 0 2.6-6.4L3 9.5" />
+          </svg>
+        </button>
+        <button id="dg-redo" class="dg-btn dg-btn--icon" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 7v6h-6" /><path d="M20.5 13a9 9 0 1 1-2.6-6.4L21 9.5" />
+          </svg>
+        </button>
+
+        <span class="dg-sep" aria-hidden="true"></span>
+
+        <button id="dg-add-group" class="dg-btn" type="button" title="Add a group box (Ctrl+G)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4.5" width="18" height="15" rx="2" stroke-dasharray="4 3" />
+          </svg>
+          <span class="dg-btn-text">Group</span>
+        </button>
+        <button id="dg-add-text" class="dg-btn" type="button" title="Add a text label (T)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 6h14M12 6v13M9 19h6" />
+          </svg>
+          <span class="dg-btn-text">Text</span>
+        </button>
+        <button id="dg-add-note" class="dg-btn" type="button" title="Add a note box (N)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3.5" y="4.5" width="17" height="15" rx="2.2" />
+            <path d="M7.5 9.5h9M7.5 13h6" />
+          </svg>
+          <span class="dg-btn-text">Note</span>
+        </button>
+
+        <span class="dg-sep" aria-hidden="true"></span>
+
+        <button id="dg-fit" class="dg-btn dg-btn--icon" type="button" title="Fit to content (Ctrl+0)" aria-label="Fit to content">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" />
+          </svg>
+        </button>
+        <button id="dg-clear" class="dg-btn dg-btn--icon" type="button" title="Clear the canvas" aria-label="Clear the canvas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h16M9.5 7V5h5v2M6.5 7l1 13h9l1-13" />
+          </svg>
+        </button>
+        <button id="dg-theme" class="dg-btn dg-btn--icon" type="button" title="Toggle theme" aria-label="Toggle light or dark theme" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z" />
+          </svg>
+        </button>
+        <button id="dg-help" class="dg-btn dg-btn--icon" type="button" title="How to use (?)" aria-label="How to use" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.6 9.4a2.5 2.5 0 0 1 4.9.6c0 1.7-2.5 2.1-2.5 3.8" />
+            <path d="M12 17.3h.01" />
+          </svg>
+        </button>
+
+        <span class="dg-sep" aria-hidden="true"></span>
+
+        <button id="dg-share" class="dg-btn dg-btn--icon" type="button" title="Copy a share link (the whole diagram travels in the URL)" aria-label="Copy a share link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.5 13.5a3.5 3.5 0 0 0 5.1.3l2.6-2.6a3.5 3.5 0 0 0-5-5l-1.4 1.5" />
+            <path d="M13.5 10.5a3.5 3.5 0 0 0-5.1-.3l-2.6 2.6a3.5 3.5 0 0 0 5 5l1.4-1.5" />
+          </svg>
+        </button>
+        <button id="dg-open" class="dg-btn dg-btn--icon" type="button" title="Open a .json diagram" aria-label="Open a diagram file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17z" />
+          </svg>
+        </button>
+        <input id="dg-open-file" type="file" accept=".json,application/json" hidden />
+        <button id="dg-export-json" class="dg-btn dg-btn--icon" type="button" title="Download as JSON (editable, re-openable)" aria-label="Download as JSON">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 4.5H7A1.5 1.5 0 0 0 5.5 6v4L4 12l1.5 2v4A1.5 1.5 0 0 0 7 19.5h2" />
+            <path d="M15 4.5h2A1.5 1.5 0 0 1 18.5 6v4L20 12l-1.5 2v4a1.5 1.5 0 0 1-1.5 1.5h-2" />
+          </svg>
+        </button>
+        <button id="dg-export-svg" class="dg-btn" type="button" title="Download as SVG" aria-label="Download as SVG">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+            <path d="M14 3v5h5" />
+          </svg>
+          <span class="dg-btn-text">SVG</span>
+        </button>
+        <button id="dg-export-png" class="dg-btn dg-btn--primary" type="button" title="Download as PNG (2×)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M4.5 20h15" />
+          </svg>
+          <span class="dg-btn-text">PNG</span>
+        </button>
+      </nav>
+    </header>
+
+    <div class="dg-shell">
+      <!-- ── Palette ───────────────────────────────────────────────── -->
+      <aside id="dg-left" class="dg-panel dg-panel--left" aria-label="Icon palette">
+        <div class="dg-panel-head">
+          <p class="dg-panel-title">
+            Icons
+            <button class="dg-panel-close" type="button" data-close="dg-left" aria-label="Close the icon palette">&times;</button>
+          </p>
+          <input
+            id="dg-search"
+            class="dg-search"
+            type="search"
+            placeholder="Search all icons…"
+            aria-label="Search icons"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div id="dg-tabs" class="dg-tabs" role="tablist" aria-label="Icon sets"></div>
+        </div>
+        <div id="dg-palette" class="dg-palette"></div>
+        <!-- Custom-icon import. The file never leaves the browser; it is read
+             with FileReader and kept in IndexedDB. -->
+        <input
+          id="dg-custom-file"
+          type="file"
+          accept=".svg,image/svg+xml"
+          multiple
+          hidden
+        />
+        <div id="dg-credit" class="dg-credit"></div>
+      </aside>
+
+      <!-- ── Canvas ────────────────────────────────────────────────── -->
+      <main id="dg-stage" class="dg-stage" data-mode="select">
+        <!-- Focusable, so Tab reaches the drawing at all; `application` so a
+             screen reader passes the arrow keys through to the editor instead
+             of consuming them for its own navigation. Tab then steps through
+             the nodes and releases focus at either end. -->
+        <svg
+          id="dg-canvas"
+          class="dg-canvas"
+          xmlns="http://www.w3.org/2000/svg"
+          tabindex="0"
+          role="application"
+          aria-label="Diagram canvas — press Tab to step through the shapes, Enter to rename one"
+        >
+          <defs>
+            <!-- Dots, not rules: at any zoom this stays a hint rather than
+                 graph paper. The fill is set from the canvas background's
+                 luminance, because the canvas colour is the diagram's, not
+                 the UI theme's. -->
+            <pattern id="dg-grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse">
+              <circle id="dg-grid-dot" cx="1" cy="1" r="1" fill="rgba(15,23,42,0.16)" />
+            </pattern>
+          </defs>
+          <!-- Populated by the engine on every render; cloned verbatim on export. -->
+          <defs id="dg-defs"></defs>
+
+          <rect id="dg-canvas-bg" width="100%" height="100%" fill="#ffffff" />
+          <rect width="100%" height="100%" fill="url(#dg-grid-pattern)" />
+
+          <g id="dg-viewport">
+            <g id="dg-content"></g>
+            <g id="dg-overlay"></g>
+          </g>
+        </svg>
+
+        <div class="dg-mobile-tabs">
+          <button id="dg-toggle-palette" class="dg-btn" type="button">Icons</button>
+          <button id="dg-toggle-inspector" class="dg-btn" type="button">Properties</button>
+        </div>
+
+        <div id="dg-hint" class="dg-hint">
+          <h2>Start with an icon</h2>
+          <p>
+            Drag one in from the left, or just click it to drop it in the middle.
+            <span class="dg-hint-desktop">
+              Hover a node and pull one of its side dots to connect it to another.
+            </span>
+          </p>
+        </div>
+
+        <div class="dg-zoombar">
+          <button id="dg-zoom-out" type="button" title="Zoom out (Ctrl+−)" aria-label="Zoom out">−</button>
+          <button id="dg-zoom-reset" class="dg-zoom-level" type="button" title="Reset zoom to 100%">
+            <span id="dg-zoom-level">100%</span>
+          </button>
+          <button id="dg-zoom-in" type="button" title="Zoom in (Ctrl++)" aria-label="Zoom in">+</button>
+        </div>
+
+        <div id="dg-status" class="dg-status" role="status" aria-live="polite"></div>
+
+        <!-- Embed mode only. Opens the same diagram in the full editor: the
+             hash carries the whole model, so the link needs nothing else. -->
+        <a id="dg-embed-open" class="dg-embed-open" target="_blank" rel="noopener">
+          Open in the editor
+        </a>
+      </main>
+
+      <!-- ── Inspector ─────────────────────────────────────────────── -->
+      <aside id="dg-right" class="dg-panel dg-panel--right" aria-label="Properties">
+        <div class="dg-panel-head">
+          <p class="dg-panel-title">
+            Properties
+            <button class="dg-panel-close" type="button" data-close="dg-right" aria-label="Close the properties panel">&times;</button>
+          </p>
+        </div>
+        <div id="dg-inspector" class="dg-inspector"></div>
+      </aside>
+    </div>
+
+    <!-- ── How to use ──────────────────────────────────────────────
+         Opened from the toolbar, on `?`, and once automatically on a
+         first visit. Several controls here are only obvious in hindsight:
+         the side dots are the only way to connect, group presets hide
+         behind a selected group, and the ⛶ button fits rather than zooms. -->
+    <div id="dg-help-backdrop" class="dg-modal-backdrop" hidden>
+      <div class="dg-modal" role="dialog" aria-modal="true" aria-labelledby="dg-help-title">
+        <div class="dg-modal-head">
+          <h2 id="dg-help-title">How to use</h2>
+          <button id="dg-help-close" class="dg-modal-close" type="button" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="dg-modal-body">
+          <ol class="dg-steps">
+            <li>
+              <b>Add something.</b> Drag an icon in from the left palette, or click it
+              to drop it in the middle. <b>Group</b>, <b>Text</b> and <b>Note</b> are in
+              the toolbar above — Text is bare glyphs, Note is a box with a background.
+            </li>
+            <li>
+              <b>Connect two nodes.</b> Click a node; four dots appear on its sides.
+              Drag one of those dots onto another node. Select the line afterwards to
+              change its route, arrowheads, or make it animate.
+            </li>
+            <li>
+              <b>Draw a boundary.</b> Select the nodes that belong together and press
+              <b>Group</b> (<kbd data-mod>Ctrl</kbd> + <kbd>G</kbd>) to wrap them. With the group
+              selected, pick a <b>Preset</b> at the top of Properties — VPC, Public or
+              Private subnet, Availability Zone, Region, AWS Account, Kubernetes Cluster,
+              Namespace, Security Group, On-premise.
+            </li>
+            <li>
+              <b>Restyle it.</b> Everything lives in <b>Properties</b> on the right.
+              Drag a corner handle to resize — except <b>Text</b>, which has no box and
+              is sized with <b>Font size</b>. Notes and groups keep their
+              <b>Text colour</b> separate from their border and fill.
+            </li>
+            <li>
+              <b>Move around.</b> Scroll to pan. To zoom, use the
+              <b>−&nbsp;100%&nbsp;+</b> bar at the <b>bottom-right of the canvas</b> —
+              <b>−</b> zooms out, the middle resets to 100% — or
+              <kbd data-mod>Ctrl</kbd> + scroll, or
+              <kbd data-mod>Ctrl</kbd> + <kbd>−</kbd> / <kbd>+</kbd>. The
+              corner-brackets button in the toolbar <b>fits</b> the whole diagram to
+              the window (<kbd data-mod>Ctrl</kbd> + <kbd>0</kbd>); it is not a
+              zoom-in button.
+            </li>
+            <li>
+              <b>Bring your own icons.</b> The <b>Custom</b> tab imports any SVGs
+              off your machine — a vendor pack such as Azure’s, or your team’s
+              internal marks. They are kept in this browser and never uploaded,
+              which is also why they follow the browser rather than the diagram:
+              a file opened elsewhere shows placeholders for them.
+            </li>
+            <li>
+              <b>Share a link.</b> The chain-link button copies a URL with the whole
+              diagram compressed into it. Nothing is uploaded — a URL fragment is
+              never sent to a server — so the link works for anyone but does get
+              long. Past a few thousand characters, send the JSON instead.
+            </li>
+            <li>
+              <b>Without a mouse.</b> Tab into the canvas, then <kbd>Tab</kbd> and
+              <kbd data-mod>Shift</kbd> + <kbd>Tab</kbd> step through the shapes in
+              reading order — the view follows along. <kbd>Enter</kbd> renames the
+              selected one, the arrow keys move it (hold <kbd data-mod>Shift</kbd> for
+              a bigger step), and <kbd>Delete</kbd> removes it. Tab past either end
+              and focus leaves the canvas as usual.
+            </li>
+            <li>
+              <b>Keep several diagrams.</b> <b>Diagrams</b> at the top-left lists
+              everything you have drawn here — click one to switch, <b>New</b> to
+              start another, and the two buttons on a row duplicate or delete it.
+              Each one keeps its own title, autosave, JSON file and share link.
+            </li>
+            <li>
+              <b>Export.</b> <b>SVG</b> stays editable and sharp at any size;
+              <b>PNG</b> is a 2× raster; <b>JSON</b> is the diagram itself, and the
+              only format you can open again — drop one back on the canvas, or use
+              the folder button. Autosave only covers this browser, so export the
+              JSON if the drawing matters.
+            </li>
+          </ol>
+        </div>
+
+        <div class="dg-modal-foot">
+          Everything runs in this browser — nothing is uploaded. Your diagrams are
+          autosaved locally and restored the next time you open this page.
+        </div>
+      </div>
+    </div>
+
+    <div id="dg-toasts" class="dg-toasts" aria-live="polite"></div>
+
+    <noscript>
+      <p style="padding: 24px; text-align: center">
+        This editor needs JavaScript. Everything runs in your browser — nothing is sent to a server.
+      </p>
+    </noscript>
+
+    <script src="/assets/diagram/icons.js"></script>
+    <script src="/assets/diagram/engine.js"></script>
+    <script src="/assets/diagram/ui.js"></script>
+  </body>
+</html>
