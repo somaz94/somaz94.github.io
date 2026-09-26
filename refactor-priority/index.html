@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Refactor Priority · somaz.blog</title>
+    <meta name="description" content="Paste source code and get a per-function refactoring shortlist: cyclomatic complexity, maximum nesting depth, line count and parameter count, ranked worst first with the metric that drove each rank. Function boundaries are found with brace and indentation heuristics rather than a parser, so the ranking is a shortlist to review, not an exact measurement. Nothing is uploaded.">
+<link rel="canonical" href="https://somaz.blog/refactor-priority/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Somaz Tech Blog">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://somaz.blog/refactor-priority/">
+<meta property="og:title" content="Refactor Priority">
+<meta property="og:description" content="Breaks pasted code into functions and ranks them by complexity, nesting, length and parameter count — so the next refactor is chosen with a figure rather than a hunch. Runs entirely in your browser.">
+<meta property="og:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Refactor Priority">
+<meta name="twitter:description" content="Breaks pasted code into functions and ranks them by complexity, nesting, length and parameter count — so the next refactor is chosen with a figure rather than a hunch. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://somaz.blog/assets/img/blog-image.png">
+
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico" />
+    <script>
+  (function () {
+    var KEY = 'tool-theme';
+
+    function read() {
+      try {
+        var t = localStorage.getItem(KEY);
+        if (t === 'dark' || t === 'light') return t;
+        /* One-time adoption of /diagram/'s pre-shared key, then remove it. */
+        var legacy = localStorage.getItem('dg-theme');
+        localStorage.removeItem('dg-theme');
+        if (legacy === 'dark' || legacy === 'light') {
+          localStorage.setItem(KEY, legacy);
+          return legacy;
+        }
+      } catch (e) {
+        /* Private mode or a full quota — fall through to the OS. */
+      }
+      return null;
+    }
+
+    var chosen = read();
+    if (chosen) document.documentElement.setAttribute('data-theme', chosen);
+
+    /* Kept here, not in each tool's ui.js: the pre-paint half and the toggle
+       are one decision and must not drift apart. */
+    function ready(fn) {
+      if (document.readyState !== 'loading') fn();
+      else document.addEventListener('DOMContentLoaded', fn);
+    }
+
+    ready(function () {
+      var btn = document.getElementById('tool-theme');
+      if (!btn) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var icon = btn.querySelector('[data-theme-icon]');
+
+      /* The effective theme, not the stored value, or the button reports
+         "light" on a page the OS has made dark. */
+      function effective() {
+        var attr = document.documentElement.getAttribute('data-theme');
+        return attr === 'dark' || attr === 'light' ? attr : (mq.matches ? 'dark' : 'light');
+      }
+
+      /* Read off the button so a Korean-interface tool can localise the name. */
+      var toDark = btn.getAttribute('data-to-dark') || 'Switch to the dark theme';
+      var toLight = btn.getAttribute('data-to-light') || 'Switch to the light theme';
+
+      function sync() {
+        var dark = effective() === 'dark';
+        btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+        /* The name states what a click DOES, not the current state. */
+        btn.setAttribute('aria-label', dark ? toLight : toDark);
+        btn.title = dark ? toLight : toDark;
+        if (icon) icon.textContent = dark ? '☀️' : '🌙';
+      }
+
+      btn.addEventListener('click', function () {
+        var next = effective() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) { /* choice holds for this visit only */ }
+        sync();
+      });
+
+      /* Keeps the button in step while the OS decides. `addListener` is the
+         Safari < 14 spelling. */
+      var onChange = function () { sync(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+
+      sync();
+    });
+  })();
+</script>
+
+    <link rel="stylesheet" href="/assets/refactor-priority/theme.css" />
+  </head>
+
+  <body>
+    <header class="rp-topbar">
+      <a class="rp-btn rp-home" href="/" title="Back to somaz.blog" aria-label="Back to somaz.blog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 10.5 12 3.5l8.5 7" />
+          <path d="M5.5 9.5v10h13v-10" />
+          <path d="M9.75 19.5v-5.5h4.5v5.5" />
+        </svg>
+        <span class="rp-btn-text">Blog</span>
+      </a>
+
+      <h1 class="rp-brand">
+        <b>Refactor Priority</b><span class="rp-brand-site">somaz.blog</span>
+      </h1>
+
+      <div class="rp-actions">
+        <button id="rp-sample" class="rp-btn" type="button"
+                title="Replace the input with an example file">
+          <span>Sample</span>
+        </button>
+        <button id="rp-copy" class="rp-btn" type="button"
+                aria-label="Copy the ranking as a Markdown table"
+                title="Copy the ranking as a Markdown table">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="11" height="12" rx="1.8" />
+            <path d="M15.5 5.5v-1a1 1 0 0 0-1-1h-10a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1" />
+          </svg>
+          <span class="rp-btn-text">Copy</span>
+        </button>
+        <button id="rp-clear" class="rp-btn" type="button"
+                aria-label="Empty the input" title="Empty the input">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4.5 7h15" />
+            <path d="M9.5 7V4.5h5V7" />
+            <path d="M6.5 7l1 12.5h9L17.5 7" />
+          </svg>
+          <span class="rp-btn-text">Clear</span>
+        </button>
+      </div>
+
+      <button id="tool-theme" class="rp-btn" type="button"
+        aria-pressed="false" aria-label="Switch to the dark theme"
+        data-to-dark="Switch to the dark theme" data-to-light="Switch to the light theme">
+  <span data-theme-icon aria-hidden="true">🌙</span>
+  <span class="rp-btn-text">Theme</span>
+</button>
+
+    </header>
+
+    <main class="rp-shell">
+      <section class="rp-pane rp-pane--input" aria-label="Source input">
+        <div class="rp-pane-head">
+          <h2 class="rp-pane-title">Source</h2>
+          <span id="rp-input-meta" class="rp-pane-meta"></span>
+        </div>
+
+        <textarea
+          id="rp-input"
+          class="rp-editor"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+          autocorrect="off"
+          placeholder="Paste a file here — JavaScript, TypeScript, Go, Java, a C-like, Python or Shell.&#10;Tab indents; press Escape to move to the ranking."
+          aria-label="Source code to analyse. Tab inserts an indent; press Escape to move focus to the ranking."
+        ></textarea>
+
+        <div class="rp-field">
+          <label class="rp-label" for="rp-language">Language</label>
+          <select id="rp-language" class="rp-select" aria-describedby="rp-language-hint">
+            <option value="auto" selected>Auto-detect</option>
+            <option value="js">JavaScript / TypeScript</option>
+            <option value="go">Go</option>
+            <option value="clike">Java / C / C++ / C#</option>
+            <option value="python">Python</option>
+            <option value="shell">Shell</option>
+          </select>
+          <p id="rp-language-hint" class="rp-hint">
+            Boundaries are found by matching braces or reading indentation, not by
+            parsing. Override the guess if the function list looks wrong.
+          </p>
+        </div>
+
+        <p id="rp-input-error" class="rp-input-error"></p>
+      </section>
+
+      <section class="rp-pane rp-pane--report" aria-label="Refactoring ranking">
+        <div class="rp-pane-head">
+          <h2 class="rp-pane-title">Ranking</h2>
+          <div id="rp-tally" class="rp-tally" hidden>
+            <span class="rp-tally-item"><b id="rp-count-functions">0</b> functions</span>
+            <span class="rp-tally-item rp-sev--high"><b id="rp-count-high">0</b> high</span>
+            <span class="rp-tally-item"><b id="rp-max-complexity">0</b> worst complexity</span>
+          </div>
+        </div>
+
+        <details class="rp-note">
+          <summary>How the rank is computed</summary>
+          <p>
+            Each function is scored on four measurements taken from its own body —
+            cyclomatic complexity (branch and loop keywords plus boolean
+            operators), maximum nesting depth, line count, and parameter count.
+            The score is the weighted sum, and every row names the measurement
+            that drove it so a rank can be argued with.
+          </p>
+          <p>
+            Functions are located with brace matching or indentation, depending on
+            the language, so a nested closure, a method on an object literal or a
+            heavily macro-ed file can be split in the wrong place. Treat the
+            output as a shortlist of candidates to open, not as a measurement.
+          </p>
+        </details>
+
+        <div class="rp-sort" role="group" aria-label="Sort the ranking by" hidden>
+          <button class="rp-tab" type="button" data-sort="priority" aria-pressed="true">Priority</button>
+          <button class="rp-tab" type="button" data-sort="complexity" aria-pressed="false">Complexity</button>
+          <button class="rp-tab" type="button" data-sort="nesting" aria-pressed="false">Nesting</button>
+          <button class="rp-tab" type="button" data-sort="length" aria-pressed="false">Length</button>
+        </div>
+
+        <ul id="rp-functions" class="rp-functions" role="list"
+            aria-label="Functions ranked worst first"></ul>
+
+        <div id="rp-detail" class="rp-detail" role="region" tabindex="0"
+             aria-label="Metric breakdown for the selected function"></div>
+
+        <div id="rp-empty" class="rp-empty">
+          <h3 class="rp-empty-title">Nothing analysed yet</h3>
+          <p>Paste a file on the left, or start from an example and edit it.</p>
+          <button id="rp-sample-empty" class="rp-btn rp-btn--primary" type="button">
+            Load an example file
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <p id="rp-status" class="rp-status" role="status" aria-live="polite"></p>
+
+    <footer class="rp-foot">
+      Function boundaries are found with brace and indentation heuristics rather
+      than a parser, so the ranking is a shortlist to review rather than an exact
+      measurement. Everything is computed in the browser — nothing you paste is
+      uploaded or stored.
+    </footer>
+
+    <noscript>
+      <p class="rp-noscript">
+        This tool measures the pasted code in the browser, so it needs JavaScript
+        enabled.
+      </p>
+    </noscript>
+
+    <script src="/assets/refactor-priority/detect.js"></script>
+    <script src="/assets/refactor-priority/metrics.js"></script>
+    <script src="/assets/refactor-priority/score.js"></script>
+    <script src="/assets/refactor-priority/report.js"></script>
+    <script src="/assets/refactor-priority/samples.js"></script>
+    <script src="/assets/refactor-priority/ui.js"></script>
+  </body>
+</html>

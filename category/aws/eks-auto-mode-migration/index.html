@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+
+    
+
+    <title>Migrating to EKS Auto Mode: Five Traps, Four of Them Silent | somaz</title>
+    <meta name="description" content="Moving a production workload from self-managed Karpenter to EKS Auto Mode — the measured reduction, the five things still left to manage, and five traps, fou...">
+    <meta name="tdm-reservation" content="1">
+    
+        <meta name="keywords" content="eks, auto-mode, karpenter, nodepool, migration, ingress, storageclass, kubernetes, aws, terraform, devops">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Migrating to EKS Auto Mode: Five Traps, Four of Them Silent | somaz">
+    <meta name="twitter:description" content="Moving a production workload from self-managed Karpenter to EKS Auto Mode — the measured reduction, the five things still left to manage, and five traps, fou...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1788500383/migrate-eks-auto-mode-1_ulukjr.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/aws/eks-auto-mode-migration/">
+    <meta property="og:title" content="Migrating to EKS Auto Mode: Five Traps, Four of Them Silent | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1788500383/migrate-eks-auto-mode-1_ulukjr.png">
+    <meta property="og:description" content="Moving a production workload from self-managed Karpenter to EKS Auto Mode — the measured reduction, the five things still left to manage, and five traps, fou...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-09-13T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/aws/eks-auto-mode-migration/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=optional" rel="stylesheet">
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    <nav class="bar-links" aria-label="Author">
+        <a href="/resume/">Resume</a>
+        <a href="/career/">Career</a>
+        <a href="/portfolio/">Portfolio</a>
+    </nav>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-09-13T00:00:00+00:00">
+                            
+
+
+September 13, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>21 min to read</span>
+                </p>
+                <h1 class="post-title">Migrating to EKS Auto Mode: Five Traps, Four of Them Silent</h1>
+                <p class="post-subtitle">102 Terraform addresses became 17 — what the migration deleted, what it left behind, and the failure modes that leave every dashboard green</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/v1788500383/migrate-eks-auto-mode-1_ulukjr.png" alt="Migrating to EKS Auto Mode: Five Traps, Four of Them Silent" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<h2 id="overview">Overview</h2>
+
+<p><a href="/category/aws/eks-compute-modes-fargate-nodegroup-karpenter-automode/">Part 1</a> compared the four ways to get compute in EKS and argued that Auto Mode is, at heart, Karpenter with AWS as the operator. This post is the record of moving a real production workload onto it.</p>
+
+<p>To move a production game workload from a cluster running self-managed Karpenter to a new cluster running EKS Auto Mode, I ported the infrastructure code and validated it against a test workload first. Same team, same application, same region — which makes the two a before-and-after pair measured on real data rather than two opinions about infrastructure.</p>
+
+<p>The reduction in infrastructure code was larger than I expected. So was the residue. And the part worth your attention is neither: <strong>four of the five traps I found while preparing the migration are silent failures — the dashboard reports success.</strong> A <code class="language-plaintext highlighter-rouge">StorageClass</code> that creates cleanly and never provisions a volume. A PVC that reports <code class="language-plaintext highlighter-rouge">Bound</code> while its pod cannot start. An application pod that is <code class="language-plaintext highlighter-rouge">Running</code>, an ArgoCD tile that says <code class="language-plaintext highlighter-rouge">Synced/Healthy</code>, and no load balancer at all.</p>
+
+<p>This post covers the size of the reduction, then the five traps and how each was fixed. Four of them show up while every monitor is green.</p>
+
+<p>Identifiers below are sanitized; the API surface, the counts and the measurements are real.</p>
+
+<p><br /></p>
+
+<h2 id="1-what-disappeared-measured">1. What disappeared, measured</h2>
+
+<p>I counted Terraform state addresses before and after, because “less to manage” is a claim and addresses are a number.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Before</th>
+      <th>After</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Cluster module</td>
+      <td>73</td>
+      <td>17</td>
+    </tr>
+    <tr>
+      <td>Karpenter module</td>
+      <td>29</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><strong>Compute total</strong></td>
+      <td><strong>102</strong></td>
+      <td><strong>17</strong></td>
+    </tr>
+    <tr>
+      <td>Managed addons declared</td>
+      <td>7</td>
+      <td>2 (3 with EFS)</td>
+    </tr>
+    <tr>
+      <td>Infrastructure code</td>
+      <td>433-line <code class="language-plaintext highlighter-rouge">eks.tf</code> + 87-line <code class="language-plaintext highlighter-rouge">karpenter.tf</code></td>
+      <td><strong>32 lines</strong> in the calling stack (the module body is about 340)</td>
+    </tr>
+    <tr>
+      <td>Node-related Terraform arguments</td>
+      <td>12</td>
+      <td><strong>0</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The 29 Karpenter addresses are all jobs Auto Mode took over: the controller IAM role and its Pod Identity association, the Karpenter node IAM role with four policy attachments (Auto Mode’s own node role is counted inside the cluster module’s 17), an EKS access entry, an SQS queue for Spot interruption notices with its policy, and five EventBridge rules with their targets. Auto Mode runs the Karpenter engine itself — interruption handling included — so none of it is needed any more.</p>
+
+<p>The arguments that left the codebase entirely:</p>
+
+<p><code class="language-plaintext highlighter-rouge">instance_types</code> · <code class="language-plaintext highlighter-rouge">capacity_type</code> · <code class="language-plaintext highlighter-rouge">min_size</code> / <code class="language-plaintext highlighter-rouge">max_size</code> / <code class="language-plaintext highlighter-rouge">desired_size</code> · <code class="language-plaintext highlighter-rouge">ami_type</code> · <code class="language-plaintext highlighter-rouge">ami_release_version</code> · <code class="language-plaintext highlighter-rouge">block_device_mappings</code> · <code class="language-plaintext highlighter-rouge">metadata_options</code> · <code class="language-plaintext highlighter-rouge">cloudinit_pre_nodeadm</code> · <code class="language-plaintext highlighter-rouge">taints</code> · <code class="language-plaintext highlighter-rouge">labels</code></p>
+
+<p>Two scripts I wrote for version management have nothing to do on the Auto Mode cluster. The first looked up the addon versions AWS offers for a target Kubernetes version and checked them against the code at every upgrade. The second polled SSM for new AMI releases, because a pinned AMI version means <strong>security patches stop arriving on their own</strong> and something has to tell you they exist. Under Auto Mode the platform manages the AMI, and the two or three managed addons that remain are deliberately left unpinned so they follow the latest compatible version — so neither script is needed. Both stay only for as long as the old cluster runs.</p>
+
+<p>The node stage of the upgrade runbook is gone too. Upgrading the old cluster meant moving the control plane first, blocking node drift with the <code class="language-plaintext highlighter-rouge">karpenter.sh/do-not-disrupt</code> annotation, and then running the node roll as a separate step. On Auto Mode you upgrade the control plane and the platform rolls the nodes.</p>
+
+<p><br /></p>
+
+<h2 id="2-five-things-that-are-still-yours-to-manage">2. Five things that are still yours to manage</h2>
+
+<p>AWS managing compute does not make the engineering disappear.</p>
+
+<ul>
+  <li><strong>CoreDNS changes shape.</strong> It no longer runs as a Deployment of pods; Auto Mode runs it as a node-level system service (<a href="https://aws.amazon.com/blogs/containers/under-the-hood-amazon-eks-auto-mode/">Under the hood: Amazon EKS Auto Mode</a>). If the cluster also has nodes Auto Mode does not manage — a managed node group, say — those nodes cannot reach the node-local DNS service, and you have to keep a CoreDNS Deployment for them.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">NodePool</code> manifests are still yours.</strong> The built-in <code class="language-plaintext highlighter-rouge">system</code> pool is tainted <code class="language-plaintext highlighter-rouge">CriticalAddonsOnly</code>. The pools your application workloads run on are still objects you write and keep under version control.</li>
+  <li><strong>The bootstrap is circular.</strong> The first build deadlocks on scheduling — section 3.</li>
+  <li><strong>EFS is out of scope.</strong> <code class="language-plaintext highlighter-rouge">storage_config</code> covers EBS block storage only. The EFS CSI driver is a managed addon you install yourself.</li>
+  <li><strong>IRSA does not fully retire.</strong> Most pods can move to Pod Identity, but a single third-party workload that cannot — here, ECK-managed Elasticsearch writing S3 snapshots — is enough to keep the OIDC provider and IRSA alive. And while the Pod Identity Agent ships built in, the associations themselves are still Terraform you write.</li>
+</ul>
+
+<p><br /></p>
+
+<h2 id="3-the-bootstrap-is-circular-and-it-bites-on-rebuild">3. The bootstrap is circular, and it bites on rebuild</h2>
+
+<p>Provisioning a cluster with <code class="language-plaintext highlighter-rouge">node_pools = ["system"]</code> creates exactly one node pool, tainted <code class="language-plaintext highlighter-rouge">CriticalAddonsOnly</code>, and no ordinary pod can schedule on it. Enabling the built-in <code class="language-plaintext highlighter-rouge">general-purpose</code> pool as well would avoid the deadlock — but that pool runs amd64 on-demand instances only, and this cluster puts every pool on arm64 (Graviton) and runs its build pool on Spot, so it enables only <code class="language-plaintext highlighter-rouge">system</code> and defines its own pools. So:</p>
+
+<ul>
+  <li>ArgoCD’s controller pods sit <code class="language-plaintext highlighter-rouge">Pending</code>.</li>
+  <li>The GitOps pipeline does not run.</li>
+  <li>The workload <code class="language-plaintext highlighter-rouge">NodePool</code> manifests that would fix it are waiting on the ArgoCD that cannot start.</li>
+</ul>
+
+<p>Breaking the dependency takes a tier that runs before the GitOps engine exists:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Tier 0   NodePools + IngressClass       (helmfile, applied directly)
+Tier 1   ArgoCD                          (helmfile)
+Tier 2   everything else                 (ArgoCD pull)
+</code></pre></div></div>
+
+<p>Adopting Tier 0 into ArgoCD later is possible, and it would reintroduce the circle the one time it matters — rebuilding the cluster from scratch.</p>
+
+<p>The same bottleneck exists one layer down, in Terraform. Enable a managed addon before any workload <code class="language-plaintext highlighter-rouge">NodePool</code> exists and its pods have nowhere to land, so <code class="language-plaintext highlighter-rouge">terraform apply</code> waits out the addon creation timeout (20 minutes by default) and then fails. The first cluster build therefore takes three steps, in this order:</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">apply</code> with the addon flags (<code class="language-plaintext highlighter-rouge">enable_*_addon</code>) set to <code class="language-plaintext highlighter-rouge">false</code></li>
+  <li><code class="language-plaintext highlighter-rouge">kubectl apply</code> the workload <code class="language-plaintext highlighter-rouge">NodePool</code> manifests by hand</li>
+  <li>Set the flags to <code class="language-plaintext highlighter-rouge">true</code> and <code class="language-plaintext highlighter-rouge">apply</code> again</li>
+</ol>
+
+<p>After that, the NodePools move into Tier 0, managed by helmfile.</p>
+
+<p><br /></p>
+
+<h2 id="4-writing-nodepools-for-production">4. Writing NodePools for production</h2>
+
+<p>Three configuration points that came out of building the production environment.</p>
+
+<h3 id="41-do-not-name-a-pool-system">4.1 Do not name a pool <code class="language-plaintext highlighter-rouge">system</code></h3>
+
+<p>Auto Mode already creates and uses a built-in <code class="language-plaintext highlighter-rouge">NodePool</code> named <code class="language-plaintext highlighter-rouge">system</code>. Write a manifest with the same name and the two collide.</p>
+
+<p>Renaming it later — to <code class="language-plaintext highlighter-rouge">platform</code>, say — is expensive. A NodePool’s name is its identity, so a rename is handled as deleting the old pool and creating a new one: every node the old pool launched is drained and terminated. That is a different path from the drift a spec change causes, but the result is the same — every node in the pool is replaced.</p>
+
+<h3 id="42-pick-the-consolidation-policy-for-the-workload">4.2 Pick the consolidation policy for the workload</h3>
+
+<p>Karpenter lets each NodePool choose one of three consolidation policies.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Policy</th>
+      <th>Nodes it consolidates</th>
+      <th>Evicts running pods</th>
+      <th>Fits</th>
+      <th>On this cluster</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">WhenEmpty</code></td>
+      <td>Empty nodes only (nodes left with only pods that carry no disruption cost, such as DaemonSet pods)</td>
+      <td>No</td>
+      <td>Long jobs that are sensitive to interruption; shared cluster components</td>
+      <td>platform and observability (<code class="language-plaintext highlighter-rouge">consolidateAfter: 30m</code>), build and game (<code class="language-plaintext highlighter-rouge">consolidateAfter: 5m</code>)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">WhenEmptyOrUnderutilized</code> (default)</td>
+      <td>Empty nodes, plus nodes whose pods can be rescheduled elsewhere at lower cost</td>
+      <td>Yes — whenever there is any saving</td>
+      <td>Stateless web and API workloads that tolerate restarts</td>
+      <td>game, at first (<code class="language-plaintext highlighter-rouge">consolidateAfter: 5m</code>) — later moved to <code class="language-plaintext highlighter-rouge">WhenEmpty</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Balanced</code> (v1.14+)</td>
+      <td>The same candidates as <code class="language-plaintext highlighter-rouge">WhenEmptyOrUnderutilized</code></td>
+      <td>Yes — only when the saving outweighs the disruption cost</td>
+      <td>A middle ground between cost and stability</td>
+      <td>Not used</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>That decision is made on pod <strong>requests</strong>, not on a node’s actual CPU usage. If the requests fit on other nodes, a node that is genuinely busy still becomes a consolidation candidate.</p>
+
+<p>The default, <code class="language-plaintext highlighter-rouge">WhenEmptyOrUnderutilized</code>, works for an ordinary web application and causes trouble for special-purpose workloads. This cluster ended up on <code class="language-plaintext highlighter-rouge">WhenEmpty</code> for every pool, with only the wait varying by pool:</p>
+
+<ul>
+  <li><strong>Platform and observability</strong>: <code class="language-plaintext highlighter-rouge">WhenEmpty</code> with <code class="language-plaintext highlighter-rouge">consolidateAfter: 30m</code>. Nodes that carry shared components such as ArgoCD and monitoring are more stable when they are reclaimed only once they are completely empty, rather than having their pods moved to pack nodes tighter.</li>
+  <li><strong>Build</strong>: <code class="language-plaintext highlighter-rouge">WhenEmpty</code>. <code class="language-plaintext highlighter-rouge">WhenEmptyOrUnderutilized</code> evicts even a running build pod once it judges the pod can be rescheduled onto another node, and the build starts over from scratch.</li>
+  <li><strong>Game</strong>: started on <code class="language-plaintext highlighter-rouge">WhenEmptyOrUnderutilized</code> with <code class="language-plaintext highlighter-rouge">consolidateAfter: 5m</code>. On the old cluster the same setting consolidated 16 times in two hours, so it moved to <code class="language-plaintext highlighter-rouge">WhenEmpty</code>.</li>
+</ul>
+
+<p>There is also <code class="language-plaintext highlighter-rouge">Balanced</code>, which consolidates only when the saving outweighs the disruption cost. But that judgement comes from Karpenter’s internal scoring, so for workloads where disruption is expensive, such as builds, <code class="language-plaintext highlighter-rouge">WhenEmpty</code> — whose outcome is unambiguous — is the safer choice.</p>
+
+<h3 id="43-medium-passes-the-scheduler-and-starves-the-container">4.3 <code class="language-plaintext highlighter-rouge">medium</code> passes the scheduler and starves the container</h3>
+
+<p>I restricted <code class="language-plaintext highlighter-rouge">instance-size</code> from the permissive default to an explicit <code class="language-plaintext highlighter-rouge">[large, xlarge]</code>, to head off a failure that never announces itself.</p>
+
+<p><strong>Karpenter packs nodes on requests alone; limits are invisible to it.</strong> With a game pod at <code class="language-plaintext highlighter-rouge">requests 500m</code> and <code class="language-plaintext highlighter-rouge">limits 2000m</code>, a 1-vCPU <code class="language-plaintext highlighter-rouge">medium</code> accepts the pod by requests — yet the node is smaller than that one pod’s limit. The moment traffic pushes the pod toward its limit, it is held to the node’s single core and throttled.</p>
+
+<p>(AWS documents that Auto Mode only creates instances with more than one CPU, so on Auto Mode the 1-vCPU case is excluded by construction. The rule below holds for any node smaller than a pod’s limit.)</p>
+
+<p>Cluster monitoring shows the pod <code class="language-plaintext highlighter-rouge">Running</code> and the node within its requests, while inside the container CPU throttling and latency climb steeply.</p>
+
+<p>If a pod’s limits are larger than its requests, the instance-size floor must be at least that one pod’s limit. That is a setting for preventing failures, not for saving money.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Note: a pod with requests &lt; limits is Burstable QoS</strong>
+  <p>Kubernetes assigns every pod a QoS (Quality of Service) class from its requests and limits. The game pod at <code>requests 500m</code> / <code>limits 2000m</code> is Burstable.</p>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>QoS class</th>
+      <th>Condition</th>
+      <th>CPU</th>
+      <th>Under memory pressure</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Guaranteed</td>
+      <td>Every container’s CPU and memory requests equal its limits</td>
+      <td>Requests always guaranteed; cannot use more</td>
+      <td>Evicted last</td>
+    </tr>
+    <tr>
+      <td>Burstable</td>
+      <td>Requests set and different from limits (or only some set)</td>
+      <td>Only requests guaranteed; up to limits while the node has spare CPU</td>
+      <td>Evicted after BestEffort</td>
+    </tr>
+    <tr>
+      <td>BestEffort</td>
+      <td>No requests or limits</td>
+      <td>No guarantee</td>
+      <td>Evicted first</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The CPU a Burstable pod uses above its requests is not a guarantee; it is spare CPU on the node, borrowed. When several pods on one node burst at once, the spare CPU is shared in proportion to their requests (cgroup <code class="language-plaintext highlighter-rouge">cpu.weight</code>). Limits are enforced by the CFS quota, so the moment a pod reaches its limit it is throttled. It does not restart and stays <code class="language-plaintext highlighter-rouge">Running</code>, so from the outside it looks healthy.</p>
+
+<p>That leaves three options for Burstable pods:</p>
+
+<ul>
+  <li><strong>Switch to Guaranteed (requests = limits)</strong>: performance becomes predictable, but requests have to be sized for the peak, which raises node count and cost.</li>
+  <li><strong>Stay Burstable and set a node-size floor</strong>: this cluster’s choice. A node at least one pod’s limit in size lets at least one pod burst all the way to its limit.</li>
+  <li><strong>Remove CPU limits (requests only)</strong>: CFS throttling disappears and a pod can use any spare CPU on the node. In exchange, when one pod takes the node’s CPU, the other pods on it cannot use more than their requests — a noisy neighbour. Memory limits stay regardless of this choice.</li>
+</ul>
+
+<p>Throttling never shows in pod status, so it has to be watched as a metric. This query gives the share of CPU periods that were throttled:</p>
+
+<pre><code class="language-promql">sum by (namespace, pod) (rate(container_cpu_cfs_throttled_periods_total[5m]))
+  /
+sum by (namespace, pod) (rate(container_cpu_cfs_periods_total[5m]))
+</code></pre>
+
+<p>If it stays above 25%, either the limit is too small for the workload or the node has no room to absorb the burst.</p>
+
+<p><br /></p>
+
+<h2 id="5-four-failures-that-reported-success-and-one-false-alarm">5. Four failures that reported success, and one false alarm</h2>
+
+<p>These are the areas that eat the most troubleshooting time if you do not know them in advance.</p>
+
+<h3 id="51-the-ingressgroup-annotation-is-ignored">5.1 The IngressGroup annotation is ignored</h3>
+
+<p>Auto Mode’s built-in load balancer controller <strong>does not read <code class="language-plaintext highlighter-rouge">alb.ingress.kubernetes.io/group.name</code></strong>. Grouping is applied only through the <code class="language-plaintext highlighter-rouge">IngressClassParams.spec.group.name</code> field.</p>
+
+<p>You can tell which controller you are on from the ALB’s tags:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Standalone controller</th>
+      <th>Auto Mode built-in controller</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tag key</td>
+      <td><code class="language-plaintext highlighter-rouge">ingress.k8s.aws/stack</code></td>
+      <td><code class="language-plaintext highlighter-rouge">ingress.eks.amazonaws.com/stack</code></td>
+    </tr>
+    <tr>
+      <td>Tag value</td>
+      <td>The group name you set</td>
+      <td><code class="language-plaintext highlighter-rouge">namespace/name</code> of a single Ingress</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Because Auto Mode does not recognise the group name in the annotation, it treats every Ingress as a stack of its own.</p>
+
+<p>The failure is quiet. While a group holds only one Ingress, nothing surfaces. The moment a second Ingress with the same group settings is deployed, the controller tries to create a separate new ALB — and because every Ingress in the group carries the same <code class="language-plaintext highlighter-rouge">load-balancer-name</code> annotation, it hits <code class="language-plaintext highlighter-rouge">DuplicateLoadBalancerName</code>:</p>
+
+<ul>
+  <li>the application pod stays <code class="language-plaintext highlighter-rouge">Running</code></li>
+  <li>ArgoCD reports <code class="language-plaintext highlighter-rouge">Synced</code> and <code class="language-plaintext highlighter-rouge">Healthy</code></li>
+  <li>only the Ingress <code class="language-plaintext highlighter-rouge">ADDRESS</code> field is empty</li>
+</ul>
+
+<p>The fix is to declare a dedicated <code class="language-plaintext highlighter-rouge">IngressClass</code> and <code class="language-plaintext highlighter-rouge">IngressClassParams</code> for each group, one to one. <code class="language-plaintext highlighter-rouge">group.order</code> still has to be declared as an annotation, and changing an Ingress’s <code class="language-plaintext highlighter-rouge">IngressClass</code> deletes and recreates its ALB, so plan for an endpoint change and a brief outage.</p>
+
+<h3 id="52-the-storageclass-provisioner-was-renamed">5.2 The StorageClass provisioner was renamed</h3>
+
+<p>Auto Mode ships EBS CSI under the provisioner name <code class="language-plaintext highlighter-rouge">ebs.csi.eks.amazonaws.com</code>. The open-source driver’s <code class="language-plaintext highlighter-rouge">ebs.csi.aws.com</code> does not exist in the cluster.</p>
+
+<p>A <code class="language-plaintext highlighter-rouge">StorageClass</code> naming the old provisioner <strong>creates successfully</strong> — the Kubernetes API accepts it without a warning; nothing checks that a driver by that name exists. Every PVC that uses it then sits <code class="language-plaintext highlighter-rouge">Pending</code> forever, and the <code class="language-plaintext highlighter-rouge">StorageClass</code> itself shows no error at all.</p>
+
+<p>Auto Mode also does not create a default <code class="language-plaintext highlighter-rouge">StorageClass</code> — the documentation is explicit: <em>“EKS Auto Mode does not create a <code class="language-plaintext highlighter-rouge">StorageClass</code> for you.”</em> So even with block storage enabled, nothing is provisioned until you deploy a <code class="language-plaintext highlighter-rouge">StorageClass</code> manifest that names the new provisioner.</p>
+
+<h3 id="53-efs-the-pvc-says-bound-and-the-pod-cannot-start">5.3 EFS: the PVC says <code class="language-plaintext highlighter-rouge">Bound</code> and the pod cannot start</h3>
+
+<p>EFS is not inside Auto Mode’s managed scope, and with statically provisioned volumes the gap stays out of sight.</p>
+
+<p>A PVC bound to a statically created PV moves to <code class="language-plaintext highlighter-rouge">Bound</code> immediately, whether or not the driver is actually running. Only when a pod that mounts the volume is deployed does it stop, in <code class="language-plaintext highlighter-rouge">ContainerCreating</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>driver name efs.csi.aws.com not found in the list of registered CSI drivers
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">kubectl get pvc</code> shows every volume bound normally, so the failed pod start is found only after the migration has been declared finished.</p>
+
+<h3 id="54-pods-per-node-drop-110-with-prefix-tuning-27-on-auto-mode">5.4 Pods per node drop: 110 with prefix tuning, 27 on Auto Mode</h3>
+
+<p>The old cluster ran <code class="language-plaintext highlighter-rouge">aws-node</code> with <code class="language-plaintext highlighter-rouge">ENABLE_PREFIX_DELEGATION=true</code> and <code class="language-plaintext highlighter-rouge">WARM_PREFIX_TARGET=1</code>, which let even a <code class="language-plaintext highlighter-rouge">t4g.medium</code> system node hold up to 110 pods (17 by default).</p>
+
+<p>Auto Mode uses <code class="language-plaintext highlighter-rouge">/28</code> prefix delegation by default as well. What it does not support is any of the buffer tuning — warm IP, warm prefix and the rest. With no tuning to rely on, the platform appears to assume the worst case of ENI fragmentation, and so it calculates max-pods very conservatively.</p>
+
+<p>Measured: a <code class="language-plaintext highlighter-rouge">c7g.large</code> Auto Mode node allows 27 pods. To keep the density the old cluster packed onto small nodes, choose larger instance types or run more nodes.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ kubectl get nodes \
+  -o custom-columns=NAME:.metadata.name,TYPE:.metadata.labels.node\\.kubernetes\\.io/instance-type,PODS:.status.allocatable.pods
+
+NAME                  TYPE         PODS
+i-0a1b2c3d4e5f60001   c7g.large    27
+i-0a1b2c3d4e5f60002   m8g.xlarge   56
+i-0a1b2c3d4e5f60003   c7g.large    27
+i-0a1b2c3d4e5f60004   c7g.large    27
+i-0a1b2c3d4e5f60005   m7g.large    27
+i-0a1b2c3d4e5f60006   c7g.large    27
+</code></pre></div></div>
+
+<h3 id="55-bottlerockets-zram-swap-trips-a-memory-alert-on-a-healthy-node">5.5 Bottlerocket’s ZRAM swap trips a memory alert on a healthy node</h3>
+
+<p>Unlike the four above, here the system is healthy and the alert fires. Auto Mode nodes run AWS-managed Bottlerocket, which enables <strong>1 GiB of ZRAM swap</strong> by default.</p>
+
+<p>The memory-pressure rule bundled with <code class="language-plaintext highlighter-rouge">kube-prometheus-stack</code> (<code class="language-plaintext highlighter-rouge">NodeMemoryMajorPagesFaults</code>) was designed on the assumption of disk I/O:</p>
+
+<pre><code class="language-promql">rate(node_vmstat_pgmajfault[5m]) &gt; 500
+</code></pre>
+
+<p>ZRAM is compressed memory: a page fault costs a decompression, not a disk read. In a healthy state with no disk I/O at all, the rule measured <strong>500–8,000 major page faults per second</strong>, and the alert fired constantly.</p>
+
+<p>Replace it with a rule based on PSI (Pressure Stall Information). This cluster turned the default rule off and alerts when memory stall time stays above 0.1 seconds per second for 15 minutes:</p>
+
+<pre><code class="language-promql">rate(node_pressure_memory_stalled_seconds_total[5m]) &gt; 0.1
+</code></pre>
+
+<p><br /></p>
+
+<h2 id="6-controller-metrics-you-can-never-collect-again">6. Controller metrics you can never collect again</h2>
+
+<p>Under Auto Mode, Karpenter and the ALB controller run in the AWS-managed control plane, not inside your cluster. There is no pod endpoint in the cluster that exposes their metrics.</p>
+
+<p>I removed the controller alert rules entirely:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">karpenter-alerts</code> — 3 rules</li>
+  <li><code class="language-plaintext highlighter-rouge">aws-load-balancer-controller-alerts</code> — 2 rules</li>
+</ul>
+
+<p>A query like <code class="language-plaintext highlighter-rouge">absent(karpenter_build_info)</code> can no longer hold. Left in place, the missing metric fires the alert permanently and wears down trust in the alert channel.</p>
+
+<p>Node provisioning and infrastructure health have to move to CloudWatch metrics and the EKS console. Not running the controllers yourself costs you in-cluster metric visibility, and the operating design has to account for that.</p>
+
+<p><br /></p>
+
+<h2 id="7-the-safety-model-changes-underneath-you">7. The safety model changes underneath you</h2>
+
+<p>The change I felt most was the cluster’s isolation mechanism.</p>
+
+<p>The old cluster put system workloads on a managed node group and game and build workloads on Karpenter pools. The system node group was safe without a taint: no autoscaler was attached to it, so it stayed fixed at three nodes. An application pod could stray onto a system node and take its capacity, but the node group itself could never grow.</p>
+
+<p>Under Auto Mode (Karpenter), every pool scales with demand. An application pod that lands in an untainted platform pool makes that pool provision more nodes for it. The logical split between pools stops meaning anything, and the first symptom is an unexpected bill.</p>
+
+<blockquote>
+  <p>The fixed group size used to be the safety mechanism. Now taints (who may land here) and NodePool <code class="language-plaintext highlighter-rouge">limits</code> (how large it may grow) share that job.</p>
+</blockquote>
+
+<p>Every system and platform pool — everything except the workload pool — needs an explicit taint, with tolerations only on the workloads it is meant for, and every pool needs CPU and memory <code class="language-plaintext highlighter-rouge">limits</code>. This cluster taints every pool except <code class="language-plaintext highlighter-rouge">game</code> and sets limits on all of them (the platform pool, for example, is capped at 16 CPUs).</p>
+
+<p><br /></p>
+
+<h2 id="8-pre-migration-checklist">8. Pre-migration checklist</h2>
+
+<p>The items to check before starting the actual migration:</p>
+
+<ol>
+  <li><strong>Grep every manifest.</strong> Change references to <code class="language-plaintext highlighter-rouge">ebs.csi.aws.com</code> and <code class="language-plaintext highlighter-rouge">ingress.k8s.aws</code> to their Auto Mode names. Leave <code class="language-plaintext highlighter-rouge">efs.csi.aws.com</code> as it is, and first check that the EFS CSI addon is installed.</li>
+  <li><strong>Count your Ingresses per group.</strong> If any group has two or more, finish the class-per-group design on <code class="language-plaintext highlighter-rouge">IngressClassParams</code> before cutover.</li>
+  <li><strong>Recompute capacity at conservative pod density.</strong> Prefix-delegation tuning is not available, so re-plan node counts with the lower max-pods per node.</li>
+  <li><strong>Inventory every workload that depends on EFS.</strong> The EFS CSI driver is outside the managed scope, so keep a separate addon deployment path for it.</li>
+  <li><strong>Check the fields in your existing <code class="language-plaintext highlighter-rouge">EC2NodeClass</code>.</strong> <code class="language-plaintext highlighter-rouge">amiFamily</code>, <code class="language-plaintext highlighter-rouge">amiSelectorTerms</code>, <code class="language-plaintext highlighter-rouge">userData</code>, <code class="language-plaintext highlighter-rouge">kubelet</code> and <code class="language-plaintext highlighter-rouge">metadataOptions</code> have no counterpart in Auto Mode’s <code class="language-plaintext highlighter-rouge">NodeClass</code> (<code class="language-plaintext highlighter-rouge">eks.amazonaws.com/v1</code>), so verify your workloads run without them.</li>
+  <li><strong>Identify the workloads that cannot use Pod Identity.</strong> Find any third-party pod that depends on IRSA and decide whether the OIDC provider stays.</li>
+  <li><strong>Check <code class="language-plaintext highlighter-rouge">SwapTotal</code> on a new node,</strong> and move the page-fault alert to a PSI-based rule before Bottlerocket’s ZRAM swap makes it fire falsely.</li>
+  <li><strong>Confirm <code class="language-plaintext highlighter-rouge">AWSServiceRoleForEC2Spot</code> exists.</strong> It is an account-wide resource and the Spot NodePool (this cluster’s build pool) keeps using it, so make sure it is not deleted while the old stack is being cleaned up.</li>
+</ol>
+
+<p><br /></p>
+
+<h2 id="9-wrap-up">9. Wrap-up</h2>
+
+<p>Terraform resources falling from 102 to 17, and the addon- and AMI-tracking scripts no longer being needed, are a substantial improvement for infrastructure operations. Removing the node-roll stage from the cluster upgrade runbook alone cuts a recurring chunk of operational work.</p>
+
+<p>But “AWS manages compute” does not mean “there is nothing left for an engineer to manage”. <code class="language-plaintext highlighter-rouge">NodePool</code> manifests are still a core asset you write, and the consolidation policy, the ratio of your pods’ limits to their requests, and strict taint-based isolation still take careful engineering.</p>
+
+<p>Above all, four of the five traps found here surface without an error, while every indicator reads normal. A successful migration needs more than a deploy: before you start, plan the checks that prove each component is actually working.</p>
+
+<p><br /></p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://docs.aws.amazon.com/eks/latest/userguide/automode.html">EKS Auto Mode — AWS documentation</a></li>
+  <li><a href="https://docs.aws.amazon.com/eks/latest/userguide/auto-configure-alb.html">Auto Mode: load balancing and IngressClassParams</a></li>
+  <li><a href="https://docs.aws.amazon.com/eks/latest/userguide/create-storage-class.html">Auto Mode: storage classes</a></li>
+  <li><a href="https://karpenter.sh/docs/concepts/disruption/">Karpenter — disruption and consolidation</a></li>
+  <li><a href="https://bottlerocket.dev/en/os/">Bottlerocket OS documentation</a></li>
+  <li><a href="https://aws.amazon.com/blogs/containers/under-the-hood-amazon-eks-auto-mode/">Under the hood: Amazon EKS Auto Mode</a></li>
+  <li><a href="/category/aws/eks-compute-modes-fargate-nodegroup-karpenter-automode/">EKS Compute Modes: Fargate, Managed Node Groups, Karpenter, and Auto Mode (Part 1)</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/cicd/gitlab-gitlabrunner/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1737524828/gitlab_1_zviqqo.png" alt="What is GitLab, GitLab Runner?">
+                                    
+                                    <h3>What is GitLab, GitLab Runner?</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/cs/os-cache-disk/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767772401/os-cache-disk-1_psboyl.png" alt="OS Cache and Disk I/O - MySQL and Redis Performance Analysis">
+                                    
+                                    <h3>OS Cache and Disk I/O - MySQL and Redis Performance Analysis</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/data-engineering/data-flow-etl/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767852136/data-etl-pipeline-1_oogqgy.png" alt="Data ETL Pipeline Components and Architecture Guide">
+                                    
+                                    <h3>Data ETL Pipeline Components and Architecture Guide</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="21">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/kubernetes/kubernetes-cri-csi-cni/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767950035/kubernetes-cri-csi-cni-1_ghwbsm.png" alt="Kubernetes Container Interfaces - CRI, CSI, CNI, CDI Complete Guide">
+                
+            </div>
+            <h3 class="title">Kubernetes Container Interfaces - CRI, CSI, CNI, CDI Complete Guide</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Moving a production workload from self-managed Karpenter to EKS Auto Mode — the measured reduction, the five things still left to manage, and five traps, four of which leave every dashboard green&quot;%20https://somaz.blog/category/aws/eks-auto-mode-migration/%20via%20&#64;&hashtags=eks,auto-mode,karpenter,nodepool,migration,ingress,storageclass,kubernetes,aws,terraform,devops"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/aws/eks-auto-mode-migration/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile-400.jpg" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/aws/eks-auto-mode-migration/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+
+    <p class="copyright">
+      &copy; Somaz. All rights reserved.<br />
+      Articles may not be reproduced or redistributed without permission.
+      Code samples are free to use.
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://somaz.blog/#organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": 600,
+      "height": 315
+  },
+  "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+</script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id="></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": "Migrating to EKS Auto Mode: Five Traps, Four of Them Silent",
+            "alternativeHeadline": "102 Terraform addresses became 17 — what the migration deleted, what it left behind, and the failure modes that leave every dashboard green",
+            "description": "Moving a production workload from self-managed Karpenter to EKS Auto Mode — the measured reduction, the five things still left to manage, and five traps, four of which leave every dashboard green",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1788500383/migrate-eks-auto-mode-1_ulukjr.png",
+            "url": "https://somaz.blog/category/aws/eks-auto-mode-migration/",
+            "mainEntityOfPage": "https://somaz.blog/category/aws/eks-auto-mode-migration/",
+            "articleBody": "Overview Part 1 compared the four ways to get compute in EKS and argued that Auto Mode is, at heart, Karpenter with AWS as the operator. This post is the record of moving a real production workload onto it. To move a production game workload from a cluster running self-managed Karpenter to a new cluster running EKS Auto Mode, I ported the infrastructure code and validated it against a test workload first. Same team, same application, same region — which makes the two a before-and-after pair measured on real data rather than two opinions about infrastructure. The reduction in infrastructure code was larger than I expected. So was the residue. And the part worth your attention is neither: four of the five traps I found while preparing the migration are silent failures — the dashboard reports success. A StorageClass that creates cleanly and never provisions a volume. A PVC that reports Bound while its pod cannot start. An application pod that is Running, an ArgoCD tile that says Synced/Healthy, and no load balancer at all. This post covers the size of the reduction, then the five traps and how each was fixed. Four of them show up while every monitor is green. Identifiers below are sanitized; the API surface, the counts and the measurements are real. 1. What disappeared, measured I counted Terraform state addresses before and after, because “less to manage” is a claim and addresses are a number.   Before After Cluster module 73 17 Karpenter module 29 0 Compute total 102 17 Managed addons declared 7 2 (3 with EFS) Infrastructure code 433-line eks.tf + 87-line karpenter.tf 32 lines in the calling stack (the module body is about 340) Node-related Terraform arguments 12 0 The 29 Karpenter addresses are all jobs Auto Mode took over: the controller IAM role and its Pod Identity association, the Karpenter node IAM role with four policy attachments (Auto Mode’s own node role is counted inside the cluster module’s 17), an EKS access entry, an SQS queue for Spot interruption notices with its policy, and five EventBridge rules with their targets. Auto Mode runs the Karpenter engine itself — interruption handling included — so none of it is needed any more. The arguments that left the codebase entirely: instance_types · capacity_type · min_size / max_size / desired_size · ami_type · ami_release_version · block_device_mappings · metadata_options · cloudinit_pre_nodeadm · taints · labels Two scripts I wrote for version management have nothing to do on the Auto Mode cluster. The first looked up the addon versions AWS offers for a target Kubernetes version and checked them against the code at every upgrade. The second polled SSM for new AMI releases, because a pinned AMI version means security patches stop arriving on their own and something has to tell you they exist. Under Auto Mode the platform manages the AMI, and the two or three managed addons that remain are deliberately left unpinned so they follow the latest compatible version — so neither script is needed. Both stay only for as long as the old cluster runs. The node stage of the upgrade runbook is gone too. Upgrading the old cluster meant moving the control plane first, blocking node drift with the karpenter.sh/do-not-disrupt annotation, and then running the node roll as a separate step. On Auto Mode you upgrade the control plane and the platform rolls the nodes. 2. Five things that are still yours to manage AWS managing compute does not make the engineering disappear. CoreDNS changes shape. It no longer runs as a Deployment of pods; Auto Mode runs it as a node-level system service (Under the hood: Amazon EKS Auto Mode). If the cluster also has nodes Auto Mode does not manage — a managed node group, say — those nodes cannot reach the node-local DNS service, and you have to keep a CoreDNS Deployment for them. NodePool manifests are still yours. The built-in system pool is tainted CriticalAddonsOnly. The pools your application workloads run on are still objects you write and keep under version control. The bootstrap is circular. The first build deadlocks on scheduling — section 3. EFS is out of scope. storage_config covers EBS block storage only. The EFS CSI driver is a managed addon you install yourself. IRSA does not fully retire. Most pods can move to Pod Identity, but a single third-party workload that cannot — here, ECK-managed Elasticsearch writing S3 snapshots — is enough to keep the OIDC provider and IRSA alive. And while the Pod Identity Agent ships built in, the associations themselves are still Terraform you write. 3. The bootstrap is circular, and it bites on rebuild Provisioning a cluster with node_pools = [\"system\"] creates exactly one node pool, tainted CriticalAddonsOnly, and no ordinary pod can schedule on it. Enabling the built-in general-purpose pool as well would avoid the deadlock — but that pool runs amd64 on-demand instances only, and this cluster puts every pool on arm64 (Graviton) and runs its build pool on Spot, so it enables only system and defines its own pools. So: ArgoCD’s controller pods sit Pending. The GitOps pipeline does not run. The workload NodePool manifests that would fix it are waiting on the ArgoCD that cannot start. Breaking the dependency takes a tier that runs before the GitOps engine exists: Tier 0 NodePools + IngressClass (helmfile, applied directly) Tier 1 ArgoCD (helmfile) Tier 2 everything else (ArgoCD pull) Adopting Tier 0 into ArgoCD later is possible, and it would reintroduce the circle the one time it matters — rebuilding the cluster from scratch. The same bottleneck exists one layer down, in Terraform. Enable a managed addon before any workload NodePool exists and its pods have nowhere to land, so terraform apply waits out the addon creation timeout (20 minutes by default) and then fails. The first cluster build therefore takes three steps, in this order: apply with the addon flags (enable_*_addon) set to false kubectl apply the workload NodePool manifests by hand Set the flags to true and apply again After that, the NodePools move into Tier 0, managed by helmfile. 4. Writing NodePools for production Three configuration points that came out of building the production environment. 4.1 Do not name a pool system Auto Mode already creates and uses a built-in NodePool named system. Write a manifest with the same name and the two collide. Renaming it later — to platform, say — is expensive. A NodePool’s name is its identity, so a rename is handled as deleting the old pool and creating a new one: every node the old pool launched is drained and terminated. That is a different path from the drift a spec change causes, but the result is the same — every node in the pool is replaced. 4.2 Pick the consolidation policy for the workload Karpenter lets each NodePool choose one of three consolidation policies. Policy Nodes it consolidates Evicts running pods Fits On this cluster WhenEmpty Empty nodes only (nodes left with only pods that carry no disruption cost, such as DaemonSet pods) No Long jobs that are sensitive to interruption; shared cluster components platform and observability (consolidateAfter: 30m), build and game (consolidateAfter: 5m) WhenEmptyOrUnderutilized (default) Empty nodes, plus nodes whose pods can be rescheduled elsewhere at lower cost Yes — whenever there is any saving Stateless web and API workloads that tolerate restarts game, at first (consolidateAfter: 5m) — later moved to WhenEmpty Balanced (v1.14+) The same candidates as WhenEmptyOrUnderutilized Yes — only when the saving outweighs the disruption cost A middle ground between cost and stability Not used That decision is made on pod requests, not on a node’s actual CPU usage. If the requests fit on other nodes, a node that is genuinely busy still becomes a consolidation candidate. The default, WhenEmptyOrUnderutilized, works for an ordinary web application and causes trouble for special-purpose workloads. This cluster ended up on WhenEmpty for every pool, with only the wait varying by pool: Platform and observability: WhenEmpty with consolidateAfter: 30m. Nodes that carry shared components such as ArgoCD and monitoring are more stable when they are reclaimed only once they are completely empty, rather than having their pods moved to pack nodes tighter. Build: WhenEmpty. WhenEmptyOrUnderutilized evicts even a running build pod once it judges the pod can be rescheduled onto another node, and the build starts over from scratch. Game: started on WhenEmptyOrUnderutilized with consolidateAfter: 5m. On the old cluster the same setting consolidated 16 times in two hours, so it moved to WhenEmpty. There is also Balanced, which consolidates only when the saving outweighs the disruption cost. But that judgement comes from Karpenter’s internal scoring, so for workloads where disruption is expensive, such as builds, WhenEmpty — whose outcome is unambiguous — is the safer choice. 4.3 medium passes the scheduler and starves the container I restricted instance-size from the permissive default to an explicit [large, xlarge], to head off a failure that never announces itself. Karpenter packs nodes on requests alone; limits are invisible to it. With a game pod at requests 500m and limits 2000m, a 1-vCPU medium accepts the pod by requests — yet the node is smaller than that one pod’s limit. The moment traffic pushes the pod toward its limit, it is held to the node’s single core and throttled. (AWS documents that Auto Mode only creates instances with more than one CPU, so on Auto Mode the 1-vCPU case is excluded by construction. The rule below holds for any node smaller than a pod’s limit.) Cluster monitoring shows the pod Running and the node within its requests, while inside the container CPU throttling and latency climb steeply. If a pod’s limits are larger than its requests, the instance-size floor must be at least that one pod’s limit. That is a setting for preventing failures, not for saving money. Note: a pod with requests &lt; limits is Burstable QoS Kubernetes assigns every pod a QoS (Quality of Service) class from its requests and limits. The game pod at requests 500m / limits 2000m is Burstable. QoS class Condition CPU Under memory pressure Guaranteed Every container’s CPU and memory requests equal its limits Requests always guaranteed; cannot use more Evicted last Burstable Requests set and different from limits (or only some set) Only requests guaranteed; up to limits while the node has spare CPU Evicted after BestEffort BestEffort No requests or limits No guarantee Evicted first The CPU a Burstable pod uses above its requests is not a guarantee; it is spare CPU on the node, borrowed. When several pods on one node burst at once, the spare CPU is shared in proportion to their requests (cgroup cpu.weight). Limits are enforced by the CFS quota, so the moment a pod reaches its limit it is throttled. It does not restart and stays Running, so from the outside it looks healthy. That leaves three options for Burstable pods: Switch to Guaranteed (requests = limits): performance becomes predictable, but requests have to be sized for the peak, which raises node count and cost. Stay Burstable and set a node-size floor: this cluster’s choice. A node at least one pod’s limit in size lets at least one pod burst all the way to its limit. Remove CPU limits (requests only): CFS throttling disappears and a pod can use any spare CPU on the node. In exchange, when one pod takes the node’s CPU, the other pods on it cannot use more than their requests — a noisy neighbour. Memory limits stay regardless of this choice. Throttling never shows in pod status, so it has to be watched as a metric. This query gives the share of CPU periods that were throttled: sum by (namespace, pod) (rate(container_cpu_cfs_throttled_periods_total[5m])) / sum by (namespace, pod) (rate(container_cpu_cfs_periods_total[5m])) If it stays above 25%, either the limit is too small for the workload or the node has no room to absorb the burst. 5. Four failures that reported success, and one false alarm These are the areas that eat the most troubleshooting time if you do not know them in advance. 5.1 The IngressGroup annotation is ignored Auto Mode’s built-in load balancer controller does not read alb.ingress.kubernetes.io/group.name. Grouping is applied only through the IngressClassParams.spec.group.name field. You can tell which controller you are on from the ALB’s tags:   Standalone controller Auto Mode built-in controller Tag key ingress.k8s.aws/stack ingress.eks.amazonaws.com/stack Tag value The group name you set namespace/name of a single Ingress Because Auto Mode does not recognise the group name in the annotation, it treats every Ingress as a stack of its own. The failure is quiet. While a group holds only one Ingress, nothing surfaces. The moment a second Ingress with the same group settings is deployed, the controller tries to create a separate new ALB — and because every Ingress in the group carries the same load-balancer-name annotation, it hits DuplicateLoadBalancerName: the application pod stays Running ArgoCD reports Synced and Healthy only the Ingress ADDRESS field is empty The fix is to declare a dedicated IngressClass and IngressClassParams for each group, one to one. group.order still has to be declared as an annotation, and changing an Ingress’s IngressClass deletes and recreates its ALB, so plan for an endpoint change and a brief outage. 5.2 The StorageClass provisioner was renamed Auto Mode ships EBS CSI under the provisioner name ebs.csi.eks.amazonaws.com. The open-source driver’s ebs.csi.aws.com does not exist in the cluster. A StorageClass naming the old provisioner creates successfully — the Kubernetes API accepts it without a warning; nothing checks that a driver by that name exists. Every PVC that uses it then sits Pending forever, and the StorageClass itself shows no error at all. Auto Mode also does not create a default StorageClass — the documentation is explicit: “EKS Auto Mode does not create a StorageClass for you.” So even with block storage enabled, nothing is provisioned until you deploy a StorageClass manifest that names the new provisioner. 5.3 EFS: the PVC says Bound and the pod cannot start EFS is not inside Auto Mode’s managed scope, and with statically provisioned volumes the gap stays out of sight. A PVC bound to a statically created PV moves to Bound immediately, whether or not the driver is actually running. Only when a pod that mounts the volume is deployed does it stop, in ContainerCreating: driver name efs.csi.aws.com not found in the list of registered CSI drivers kubectl get pvc shows every volume bound normally, so the failed pod start is found only after the migration has been declared finished. 5.4 Pods per node drop: 110 with prefix tuning, 27 on Auto Mode The old cluster ran aws-node with ENABLE_PREFIX_DELEGATION=true and WARM_PREFIX_TARGET=1, which let even a t4g.medium system node hold up to 110 pods (17 by default). Auto Mode uses /28 prefix delegation by default as well. What it does not support is any of the buffer tuning — warm IP, warm prefix and the rest. With no tuning to rely on, the platform appears to assume the worst case of ENI fragmentation, and so it calculates max-pods very conservatively. Measured: a c7g.large Auto Mode node allows 27 pods. To keep the density the old cluster packed onto small nodes, choose larger instance types or run more nodes. $ kubectl get nodes \\ -o custom-columns=NAME:.metadata.name,TYPE:.metadata.labels.node\\\\.kubernetes\\\\.io/instance-type,PODS:.status.allocatable.pods NAME TYPE PODS i-0a1b2c3d4e5f60001 c7g.large 27 i-0a1b2c3d4e5f60002 m8g.xlarge 56 i-0a1b2c3d4e5f60003 c7g.large 27 i-0a1b2c3d4e5f60004 c7g.large 27 i-0a1b2c3d4e5f60005 m7g.large 27 i-0a1b2c3d4e5f60006 c7g.large 27 5.5 Bottlerocket’s ZRAM swap trips a memory alert on a healthy node Unlike the four above, here the system is healthy and the alert fires. Auto Mode nodes run AWS-managed Bottlerocket, which enables 1 GiB of ZRAM swap by default. The memory-pressure rule bundled with kube-prometheus-stack (NodeMemoryMajorPagesFaults) was designed on the assumption of disk I/O: rate(node_vmstat_pgmajfault[5m]) &gt; 500 ZRAM is compressed memory: a page fault costs a decompression, not a disk read. In a healthy state with no disk I/O at all, the rule measured 500–8,000 major page faults per second, and the alert fired constantly. Replace it with a rule based on PSI (Pressure Stall Information). This cluster turned the default rule off and alerts when memory stall time stays above 0.1 seconds per second for 15 minutes: rate(node_pressure_memory_stalled_seconds_total[5m]) &gt; 0.1 6. Controller metrics you can never collect again Under Auto Mode, Karpenter and the ALB controller run in the AWS-managed control plane, not inside your cluster. There is no pod endpoint in the cluster that exposes their metrics. I removed the controller alert rules entirely: karpenter-alerts — 3 rules aws-load-balancer-controller-alerts — 2 rules A query like absent(karpenter_build_info) can no longer hold. Left in place, the missing metric fires the alert permanently and wears down trust in the alert channel. Node provisioning and infrastructure health have to move to CloudWatch metrics and the EKS console. Not running the controllers yourself costs you in-cluster metric visibility, and the operating design has to account for that. 7. The safety model changes underneath you The change I felt most was the cluster’s isolation mechanism. The old cluster put system workloads on a managed node group and game and build workloads on Karpenter pools. The system node group was safe without a taint: no autoscaler was attached to it, so it stayed fixed at three nodes. An application pod could stray onto a system node and take its capacity, but the node group itself could never grow. Under Auto Mode (Karpenter), every pool scales with demand. An application pod that lands in an untainted platform pool makes that pool provision more nodes for it. The logical split between pools stops meaning anything, and the first symptom is an unexpected bill. The fixed group size used to be the safety mechanism. Now taints (who may land here) and NodePool limits (how large it may grow) share that job. Every system and platform pool — everything except the workload pool — needs an explicit taint, with tolerations only on the workloads it is meant for, and every pool needs CPU and memory limits. This cluster taints every pool except game and sets limits on all of them (the platform pool, for example, is capped at 16 CPUs). 8. Pre-migration checklist The items to check before starting the actual migration: Grep every manifest. Change references to ebs.csi.aws.com and ingress.k8s.aws to their Auto Mode names. Leave efs.csi.aws.com as it is, and first check that the EFS CSI addon is installed. Count your Ingresses per group. If any group has two or more, finish the class-per-group design on IngressClassParams before cutover. Recompute capacity at conservative pod density. Prefix-delegation tuning is not available, so re-plan node counts with the lower max-pods per node. Inventory every workload that depends on EFS. The EFS CSI driver is outside the managed scope, so keep a separate addon deployment path for it. Check the fields in your existing EC2NodeClass. amiFamily, amiSelectorTerms, userData, kubelet and metadataOptions have no counterpart in Auto Mode’s NodeClass (eks.amazonaws.com/v1), so verify your workloads run without them. Identify the workloads that cannot use Pod Identity. Find any third-party pod that depends on IRSA and decide whether the OIDC provider stays. Check SwapTotal on a new node, and move the page-fault alert to a PSI-based rule before Bottlerocket’s ZRAM swap makes it fire falsely. Confirm AWSServiceRoleForEC2Spot exists. It is an account-wide resource and the Spot NodePool (this cluster’s build pool) keeps using it, so make sure it is not deleted while the old stack is being cleaned up. 9. Wrap-up Terraform resources falling from 102 to 17, and the addon- and AMI-tracking scripts no longer being needed, are a substantial improvement for infrastructure operations. Removing the node-roll stage from the cluster upgrade runbook alone cuts a recurring chunk of operational work. But “AWS manages compute” does not mean “there is nothing left for an engineer to manage”. NodePool manifests are still a core asset you write, and the consolidation policy, the ratio of your pods’ limits to their requests, and strict taint-based isolation still take careful engineering. Above all, four of the five traps found here surface without an error, while every indicator reads normal. A successful migration needs more than a deploy: before you start, plan the checks that prove each component is actually working. References EKS Auto Mode — AWS documentation Auto Mode: load balancing and IngressClassParams Auto Mode: storage classes Karpenter — disruption and consolidation Bottlerocket OS documentation Under the hood: Amazon EKS Auto Mode EKS Compute Modes: Fargate, Managed Node Groups, Karpenter, and Auto Mode (Part 1)",
+            "wordCount": 3806,
+            "inLanguage": "en",
+            "datePublished": "2026-09-13T00:00:00+00:00",
+            "author": {
+    "@type": "Person",
+    "@id": "https://somaz.blog/authors/somaz/#person",
+    "name": "Somaz",
+    "image": "https://somaz.blog/assets/img/uploads/profile-400.jpg",
+    "jobTitle": "DevOps Engineer",
+    "url": "https://somaz.blog/authors/somaz/",
+    "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+,
+            "publisher": { "@id": "https://somaz.blog/#organization" },
+            "articleSection": "Aws",
+            "keywords": ["eks","auto-mode","karpenter","nodepool","migration","ingress","storageclass","kubernetes","aws","terraform","devops"]
+        }
+        </script>
+    </body>
+</html>
