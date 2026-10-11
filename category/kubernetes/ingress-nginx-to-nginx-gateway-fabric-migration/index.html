@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <script>
+        (function(w,d,s,l,i){
+            w[l]=w[l]||[];
+            w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+            var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+            j.async=true;
+            j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+            f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MBP83N4Q');
+    </script>
+
+    
+
+    <title>ingress-nginx → nginx-gateway-fabric Migration: A Field Report | somaz</title>
+    <meta name="description" content="An end-to-end account of migrating 11 ingress-nginx instances on an on-prem Kubespray cluster to NGINX Gateway Fabric 2.x. Architecture decisions, annotation...">
+    <meta name="tdm-reservation" content="1">
+    
+        <meta name="keywords" content="kubernetes, gateway-api, nginx-gateway-fabric, ingress-nginx, migration, metallb, helm, helmfile, networking, on-premises">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ingress-nginx → nginx-gateway-fabric Migration: A Field Report | somaz">
+    <meta name="twitter:description" content="An end-to-end account of migrating 11 ingress-nginx instances on an on-prem Kubespray cluster to NGINX Gateway Fabric 2.x. Architecture decisions, annotation...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1776822648/nginx-gateway-fabric-1_j34wak.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/kubernetes/ingress-nginx-to-nginx-gateway-fabric-migration/">
+    <meta property="og:title" content="ingress-nginx → nginx-gateway-fabric Migration: A Field Report | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1776822648/nginx-gateway-fabric-1_j34wak.png">
+    <meta property="og:description" content="An end-to-end account of migrating 11 ingress-nginx instances on an on-prem Kubespray cluster to NGINX Gateway Fabric 2.x. Architecture decisions, annotation...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-10-09T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/kubernetes/ingress-nginx-to-nginx-gateway-fabric-migration/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154"
+        crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=optional" rel="stylesheet">
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MBP83N4Q"
+            height="0" width="0" style="display:none;visibility:hidden">
+    </iframe>
+</noscript>
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    <nav class="bar-links" aria-label="Author">
+        <a href="/resume/">Resume</a>
+        <a href="/career/">Career</a>
+        <a href="/portfolio/">Portfolio</a>
+    </nav>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-10-09T00:00:00+00:00">
+                            
+
+
+October 9, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>26 min to read</span>
+                </p>
+                <h1 class="post-title">ingress-nginx → nginx-gateway-fabric Migration: A Field Report</h1>
+                <p class="post-subtitle">Cutting over 11 ingress-nginx instances on bare-metal Kubernetes to a single NGF control plane with eleven Gateways — without a DNS or firewall change</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/v1776822648/nginx-gateway-fabric-1_j34wak.png" alt="ingress-nginx → nginx-gateway-fabric Migration: A Field Report" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>ingress-nginx has entered maintenance mode, and the Kubernetes Gateway API reached v1.2 GA. With the writing on the wall, I migrated the <strong>11 ingress-nginx instances</strong> running on our on-premises cluster to <strong>NGINX Gateway Fabric (NGF) 2.x</strong>.</p>
+
+<p>Scope and scale:</p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Item</th>
+      <th>Value</th>
+    </tr>
+    <tr>
+      <td>Target cluster</td>
+      <td>On-prem Kubespray (K8s v1.34)</td>
+    </tr>
+    <tr>
+      <td>Existing controllers</td>
+      <td>11 ingress-nginx instances (1 default <code>nginx</code> + 10 <code>nginx-public-a</code>–<code>j</code>)</td>
+    </tr>
+    <tr>
+      <td>LoadBalancer</td>
+      <td>MetalLB L2 (14 fixed internal IPs)</td>
+    </tr>
+    <tr>
+      <td>Migration targets</td>
+      <td>11 infra-deployed apps + 9 ArgoCD ApplicationSet apps + 2 standalone repos</td>
+    </tr>
+    <tr>
+      <td>Final shape</td>
+      <td>Single NGF control plane + 11 Gateway CRs (per-Gateway Deployment)</td>
+    </tr>
+    <tr>
+      <td>Downtime per class</td>
+      <td>~30s–1m (only during the IP swap window)</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>Three core goals drove the work:</p>
+
+<ol>
+  <li><strong>Cut operational surface</strong> — collapse 11 ingress-nginx Helm releases into a single NGF install plus 11 Gateway CRs.</li>
+  <li><strong>No DNS or firewall changes</strong> — keep the same MetalLB IPs so external routing rules don’t need to be touched.</li>
+  <li><strong>Easy rollback</strong> — run NGF in parallel with ingress-nginx and cut over class-by-class with a single values toggle for instant fallback.</li>
+</ol>
+
+<p><br /></p>
+
+<p>This isn’t a tutorial — it’s a field report covering the architectural decisions, the dead ends, and the eight cutover gotchas that only show up when you actually flip the switch on production traffic. If you’re staring at the same migration, hopefully this saves you a few hours.</p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="https://somaz.blog/category/kubernetes/kubernetes-gateway-api/">Kubernetes Gateway API Complete Guide</a></li>
+  <li><a href="https://somaz.blog/category/kubernetes/building-public-helm-chart-repository/">Building a Public Helm Chart Repository</a></li>
+</ul>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="1-why-nginx-gateway-fabric">1. Why nginx-gateway-fabric?</h2>
+
+<p>The ingress-nginx project announced a transition to maintenance mode, and the official successor direction is the <strong>Gateway API</strong> standardized by Kubernetes SIG Network. Multiple implementations exist (Istio, Envoy Gateway, Cilium, Contour, NGF), but I picked <strong>NGF 2.x</strong> for four reasons:</p>
+
+<ol>
+  <li><strong>Stack reuse</strong> — the data plane stays NGINX, so existing log/tuning know-how transfers directly.</li>
+  <li><strong>Native per-Gateway Deployment</strong> — each Gateway CR auto-provisions an isolated NGINX Deployment, mapping cleanly onto our existing “class-per-release” model.</li>
+  <li><strong>One control plane, N data planes</strong> — 11 Helm releases collapse to 1, while still keeping IP and process isolation.</li>
+  <li><strong>CRD-based policy extensions</strong> — <code class="language-plaintext highlighter-rouge">ClientSettingsPolicy</code>, <code class="language-plaintext highlighter-rouge">UpstreamSettingsPolicy</code>, <code class="language-plaintext highlighter-rouge">BackendTLSPolicy</code>, etc. cover most of the annotations we relied on.</li>
+</ol>
+
+<p><br /></p>
+
+<p>The structural win of Gateway API over Ingress is <strong>clear resource boundaries</strong>. Ingress mixed cluster-scoped concerns (listeners, TLS, class) with app-scoped concerns (route rules) in a single object. Gateway API splits these into <code class="language-plaintext highlighter-rouge">GatewayClass</code> / <code class="language-plaintext highlighter-rouge">Gateway</code> / <code class="language-plaintext highlighter-rouge">HTTPRoute</code> — the cluster admin and the app developer get a natural permission boundary.</p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="2-architecture-decision-1-gatewayclass--11-gateways">2. Architecture Decision: 1 GatewayClass + 11 Gateways</h2>
+
+<p><br /></p>
+
+<h3 id="the-wrong-assumption">The wrong assumption</h3>
+
+<p>Initial design assumed: “11 ingress-nginx instances → 11 ingressClasses → therefore 11 GatewayClasses.” Wrong.</p>
+
+<p><strong>NGF 2.x reconciles a single GatewayClass per install.</strong> The controller is started with <code class="language-plaintext highlighter-rouge">--gatewayclass=ngf</code> and ignores all others. If you need multiple GatewayClasses, you have to install NGF multiple times.</p>
+
+<p><br /></p>
+
+<h3 id="corrected-design">Corrected design</h3>
+
+<ul>
+  <li><strong>1 GatewayClass</strong>: <code class="language-plaintext highlighter-rouge">ngf</code> (created automatically by the NGF chart)</li>
+  <li><strong>11 Gateways</strong>: <code class="language-plaintext highlighter-rouge">ngf</code>, <code class="language-plaintext highlighter-rouge">ngf-public-a</code> … <code class="language-plaintext highlighter-rouge">ngf-public-j</code>, all with <code class="language-plaintext highlighter-rouge">gatewayClassName: ngf</code></li>
+  <li><strong>11 NginxProxy CRs</strong> referenced via each Gateway’s <code class="language-plaintext highlighter-rouge">infrastructure.parametersRef</code>, pinning the MetalLB IP through <code class="language-plaintext highlighter-rouge">service.loadBalancerIP</code></li>
+  <li><strong>Tenancy boundary = Gateway name.</strong> Each app’s HTTPRoute attaches to a specific Gateway via <code class="language-plaintext highlighter-rouge">parentRefs</code>, automatically routing through that Gateway’s data plane (and its IP)</li>
+</ul>
+
+<p><br /></p>
+
+<p>So the multi-tenancy split is not “11 classes” but “11 Gateways.” Because NGF spins up an independent NGINX Deployment per Gateway, <strong>process-level isolation is preserved</strong> with no extra effort.</p>
+
+<p><br /></p>
+
+<h3 id="final-directory-layout">Final directory layout</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>network/nginx-gateway-fabric/
+├── Chart.yaml                      # upstream mirror — version + appVersion = single source
+├── helmfile.yaml.gotmpl            # references Chart.yaml via readFile + fromYaml
+├── values.yaml                     # upstream default (helm pull)
+├── values.schema.json              # upstream schema
+├── values/
+│   └── mgmt.yaml                   # custom override (replicas, telemetry off, etc.)
+├── cr-chart/                       # Phase 7+ refactor result
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   └── templates/
+│       ├── gateways.yaml           # 11 Gateways
+│       ├── nginxproxies.yaml       # 11 NginxProxies (LB IP pin)
+│       └── servicemonitor.yaml
+└── upgrade.sh                      # external-oci canonical
+</code></pre></div></div>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Chart.yaml as single source</strong>
+  <p>The chart's <code>version</code> and <code>appVersion</code> (= NGF software git tag) live as a single source of truth in <code>Chart.yaml</code>. <code>helmfile.yaml.gotmpl</code> reads it via <code>readFile</code> + <code>fromYaml</code>, so updating <code>Chart.yaml</code> alone keeps both the chart version and the prepare hook's <code>?ref=v&lt;APP_VER&gt;</code> path in sync.</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="hook-design-apply--destroy">Hook design (apply / destroy)</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Phase</th>
+      <th>Hook</th>
+      <th>Action</th>
+    </tr>
+    <tr>
+      <td>Before any command</td>
+      <td><code>prepare</code></td>
+      <td>Pre-install Gateway API CRDs + NGF's own CRDs</td>
+    </tr>
+    <tr>
+      <td>After apply</td>
+      <td><code>postsync</code></td>
+      <td>Apply Gateway / NginxProxy (initially via <code>kubectl apply</code>, later via local chart)</td>
+    </tr>
+    <tr>
+      <td>Before destroy</td>
+      <td><code>preuninstall</code></td>
+      <td>Remove custom CRs while the controller is still alive (so finalizers complete)</td>
+    </tr>
+    <tr>
+      <td>After destroy</td>
+      <td><code>postuninstall</code></td>
+      <td>Remove CRDs + namespace</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="oci-chart-upgrade-script">OCI chart upgrade script</h3>
+
+<p>NGF only ships via OCI registry (<code class="language-plaintext highlighter-rouge">oci://ghcr.io/nginx/charts/nginx-gateway-fabric</code>). The existing <code class="language-plaintext highlighter-rouge">upgrade.sh</code> canonical relied on <code class="language-plaintext highlighter-rouge">helm search repo</code> to detect the latest version — but <code class="language-plaintext highlighter-rouge">helm search repo</code> doesn’t support OCI.</p>
+
+<p>So I added an <code class="language-plaintext highlighter-rouge">external-oci.sh</code> canonical. The version-discovery logic now hits the GitHub Releases API (<code class="language-plaintext highlighter-rouge">api.github.com/repos/$GITHUB_REPO/releases/latest</code>) and strips the prefix (default <code class="language-plaintext highlighter-rouge">v</code>) from <code class="language-plaintext highlighter-rouge">tag_name</code>. With <code class="language-plaintext highlighter-rouge">GITHUB_TOKEN</code> set, the rate limit goes from 60 to 5,000 req/h.</p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="3-annotation--gateway-api-translation-map">3. Annotation → Gateway API Translation Map</h2>
+
+<p>A practical table of every annotation we actually used and what it became under Gateway API + NGF CRDs:</p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>ingress-nginx annotation</th>
+      <th>Gateway API / NGF replacement</th>
+      <th>Use case</th>
+    </tr>
+    <tr>
+      <td><code>force-ssl-redirect: "true"</code></td>
+      <td><code>HTTPRoute</code> + <code>RequestRedirect</code> filter (HTTP listener only)</td>
+      <td>Apps requiring HTTPS</td>
+    </tr>
+    <tr>
+      <td><code>force-ssl-redirect: "false"</code></td>
+      <td>None (default)</td>
+      <td>Most apps</td>
+    </tr>
+    <tr>
+      <td><code>ssl-passthrough: "true"</code></td>
+      <td><code>TLSRoute</code> + listener <code>tls.mode: Passthrough</code></td>
+      <td>None in scope — excluded</td>
+    </tr>
+    <tr>
+      <td><code>backend-protocol: "HTTPS"</code></td>
+      <td><code>BackendTLSPolicy</code> (<code>gateway.networking.k8s.io/v1</code>)</td>
+      <td>TLS-backend apps</td>
+    </tr>
+    <tr>
+      <td><code>backend-protocol: "HTTP"</code></td>
+      <td>Default</td>
+      <td>Plain HTTP backends</td>
+    </tr>
+    <tr>
+      <td><code>rewrite-target: /</code></td>
+      <td><code>URLRewrite</code> filter (<code>ReplacePrefixMatch</code>)</td>
+      <td>Path rewrite apps</td>
+    </tr>
+    <tr>
+      <td><code>proxy-body-size: "500m"</code></td>
+      <td><code>ClientSettingsPolicy.spec.body.maxSize: "500m"</code></td>
+      <td>Apps with large uploads</td>
+    </tr>
+    <tr>
+      <td><code>proxy-body-size: "0"</code> (unlimited)</td>
+      <td><code>ClientSettingsPolicy.spec.body.maxSize: "0"</code></td>
+      <td>Container registry</td>
+    </tr>
+    <tr>
+      <td><code>proxy-read/send-timeout: "300"</code></td>
+      <td><code>HTTPRoute</code> <code>timeouts.request</code> + <code>timeouts.backendRequest</code></td>
+      <td>Long-lived requests</td>
+    </tr>
+    <tr>
+      <td><code>proxy-buffering: "off"</code></td>
+      <td><code>ProxySettingsPolicy.spec.buffering.disable</code></td>
+      <td>SSE streaming</td>
+    </tr>
+    <tr>
+      <td><code>proxy-http-version: "1.1"</code></td>
+      <td>NGF default → no-op, drop</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><code>limit-rps: "15"</code></td>
+      <td><code>RateLimitPolicy</code> (key, rate, burst)</td>
+      <td>Rate limits</td>
+    </tr>
+    <tr>
+      <td><code>limit-connections: "25"</code></td>
+      <td><strong>Not natively supported</strong> (workaround via <code>SnippetsFilter</code>)</td>
+      <td>Concurrent-connection limits</td>
+    </tr>
+    <tr>
+      <td><code>configuration-snippet</code></td>
+      <td><code>SnippetsFilter</code> CRD (NGF 1.4+)</td>
+      <td>Last resort</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="practical-notes-from-the-field">Practical notes from the field</h3>
+
+<p><strong><code class="language-plaintext highlighter-rouge">force-ssl-redirect</code>: split into two sibling HTTPRoutes.</strong>
+One attaches to the HTTP listener with only a <code class="language-plaintext highlighter-rouge">RequestRedirect</code> filter. The other attaches to the HTTPS listener with the actual routing rules. <strong>Use 307, not 301</strong> — <code class="language-plaintext highlighter-rouge">301</code> rewrites <code class="language-plaintext highlighter-rouge">POST</code> to <code class="language-plaintext highlighter-rouge">GET</code>, breaking webhooks and API receivers.</p>
+
+<p><br /></p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">backend-protocol: HTTPS</code>: solve via <code class="language-plaintext highlighter-rouge">BackendTLSPolicy</code>.</strong>
+For ECK-managed Elasticsearch, the operator stores the CA in an internal Secret. We added a chart helper that uses <code class="language-plaintext highlighter-rouge">lookup</code> to read it and replicate it as a ConfigMap. When the operator rotates the CA, the next <code class="language-plaintext highlighter-rouge">helm upgrade</code> picks it up automatically.</p>
+
+<p><br /></p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">limit-connections</code>: feature dropped.</strong>
+NGINX’s <code class="language-plaintext highlighter-rouge">limit_conn</code> directive is not exposed as an NGF policy. We accepted the loss and pushed the responsibility down to the application layer. A <code class="language-plaintext highlighter-rouge">SnippetsFilter</code> workaround exists, but it widens the attack surface — out of scope.</p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="4-zero-downtime-parallel-mode">4. Zero-Downtime Parallel Mode</h2>
+
+<p>The single most important strategic decision: <strong>how do you cut over without affecting live traffic, while keeping rollback to a single toggle?</strong></p>
+
+<p><br /></p>
+
+<h3 id="core-principle-ingress--httproute-coexist">Core principle: ingress + httproute coexist</h3>
+
+<p>Throughout the migration window, every app stayed in <strong><code class="language-plaintext highlighter-rouge">ingress.enabled: true</code> + <code class="language-plaintext highlighter-rouge">httproute.enabled: true</code></strong> simultaneously. This satisfies four conditions at once:</p>
+
+<ul>
+  <li><strong>DNS still points at the existing MetalLB IPs</strong> → user traffic flows through ingress-nginx</li>
+  <li><strong>HTTPRoute is reachable only via temp IPs</strong> → developers can verify with <code class="language-plaintext highlighter-rouge">curl --resolve</code></li>
+  <li><strong>Rollback = <code class="language-plaintext highlighter-rouge">httproute.enabled: false</code> toggle</strong> (the ingress was never touched, so no recovery needed)</li>
+  <li><strong>Identical procedure across prod / dev / qa / staging</strong> — no per-environment branching</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="metallb-pool-expansion">MetalLB pool expansion</h3>
+
+<p>We added 11 temporary verification IPs to the MetalLB pool, carefully avoiding clashes with existing services and manually reserved IPs (e.g., bare-metal node IPs). These temp IPs get <strong>swapped to the real IPs during Phase 6 cutover</strong>.</p>
+
+<p><br /></p>
+
+<h3 id="verification-pattern">Verification pattern</h3>
+
+<p>Standard smoke-test commands during the parallel period:</p>
+
+<script src="https://gist.github.com/somaz94/f5cf2e4999db3557a21982bec7916043.js"></script>
+
+<p><br /></p>
+
+<p>If the two responses match, OK. <strong>One mandatory rollback drill per phase</strong>:</p>
+
+<ol>
+  <li>Toggle <code class="language-plaintext highlighter-rouge">httproute.enabled: false</code> → <code class="language-plaintext highlighter-rouge">helmfile apply</code> → temp IP returns 404, real IP returns 200 (existing path unaffected)</li>
+  <li>Toggle <code class="language-plaintext highlighter-rouge">httproute.enabled: true</code> back → temp IP returns 200 again</li>
+  <li>Each step under 10 seconds; live traffic untouched throughout</li>
+</ol>
+
+<p><br /></p>
+
+<h3 id="unified-httproute-template-across-charts">Unified HTTPRoute template across charts</h3>
+
+<p>To make this manageable across many charts, we standardized a <code class="language-plaintext highlighter-rouge">httproute</code> values schema. Both individual app charts and the ApplicationSet shared base chart use the same shape:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">httproute</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">false</span>
+  <span class="na">parentRefs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">ngf</span>
+      <span class="na">namespace</span><span class="pi">:</span> <span class="s">nginx-gateway</span>
+      <span class="c1"># sectionName: https   # use when HTTPS only</span>
+  <span class="na">hostnames</span><span class="pi">:</span> <span class="pi">[]</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">matches</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="pi">{</span> <span class="nv">type</span><span class="pi">:</span> <span class="nv">PathPrefix</span><span class="pi">,</span> <span class="nv">value</span><span class="pi">:</span> <span class="nv">/</span> <span class="pi">}</span>
+      <span class="c1"># filters:</span>
+      <span class="c1">#   - type: URLRewrite</span>
+      <span class="c1">#     urlRewrite: { path: { type: ReplacePrefixMatch, replacePrefixMatch: / } }</span>
+      <span class="c1"># timeouts:</span>
+      <span class="c1">#   request: 300s</span>
+      <span class="c1">#   backendRequest: 300s</span>
+      <span class="na">backendRefs</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>   <span class="c1"># `name` defaults to chart fullname when omitted</span>
+  <span class="na">httpsRedirect</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="kc">false</span>   <span class="c1"># if true, auto-generates a sibling HTTP→HTTPS 301 route</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p>This single schema covers basic routing, rewrites, timeouts, and HTTPS redirects. We validated the pattern on one app first, then replicated.</p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="5-tls-wildcard-centralization--cert-manager-future-path">5. TLS Wildcard Centralization + cert-manager Future Path</h2>
+
+<p><br /></p>
+
+<h3 id="constraint">Constraint</h3>
+
+<p>Our domains are managed at a registrar without a DNS API. This shaped everything:</p>
+
+<ul>
+  <li><strong>cert-manager + Let’s Encrypt DNS-01 challenge: not feasible</strong> (no DNS API)</li>
+  <li><strong>HTTP-01: cannot issue wildcard certs</strong> (ACME spec restriction)</li>
+  <li>→ Manual self-signed wildcard cert is essentially the only option today</li>
+</ul>
+
+<p><br /></p>
+
+<p>Previously, every app held its own self-signed Secret. We consolidated into a <strong>single wildcard Secret centrally managed</strong>.</p>
+
+<p><br /></p>
+
+<h3 id="centralized-secret-structure">Centralized Secret structure</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Secret "wildcard-tls" (nginx-gateway ns)
+  └─ CN = *.example.com
+     SAN: example.com, *.example.com
+     10-year validity
+  │
+  ▼
+Gateway "ngf" listeners:
+  - name: http   (port 80)
+  - name: https  (port 443, hostname: "*.example.com",
+                  certificateRefs: wildcard-tls)
+  │
+  ▼
+Each app's HTTPRoute:
+  parentRefs[*].sectionName omitted    : auto-attaches to BOTH HTTP and HTTPS listeners
+  parentRefs[*].sectionName: https     : explicit HTTPS-only
+  parentRefs[*].sectionName: http      : reserved for the httpsRedirect sibling route
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="charts-role-nothing-deliberately">Chart’s role: nothing (deliberately)</h3>
+
+<p>This is the design point I went back and forth on the longest. <strong>Where should TLS ownership live?</strong></p>
+
+<p><strong>Conclusion: charts stay TLS-agnostic. TLS is a Gateway-layer responsibility.</strong></p>
+
+<ul>
+  <li><strong>No <code class="language-plaintext highlighter-rouge">Certificate</code> CR template in any chart</strong> — avoids forcing cert-manager dependency, avoids violating Gateway API’s separation of concerns</li>
+  <li><strong>No <code class="language-plaintext highlighter-rouge">Secret</code> / <code class="language-plaintext highlighter-rouge">secretName</code> values in charts</strong> — the Gateway layer owns it</li>
+  <li><strong>Charts only expose <code class="language-plaintext highlighter-rouge">httproute.parentRefs[].sectionName</code> + <code class="language-plaintext highlighter-rouge">httpsRedirect.enabled</code></strong> — per-app listener selection and HTTPS-enforcement are the only knobs apps need</li>
+</ul>
+
+<p><br /></p>
+
+<p>This buys near-zero migration cost when we eventually move to cert-manager:</p>
+
+<ul>
+  <li><strong>Gateway change</strong>: 0 (Secret name/ns stays identical)</li>
+  <li><strong>Chart change</strong>: 0 (charts don’t know about the Secret)</li>
+  <li><strong>App values change</strong>: 0</li>
+  <li><strong>Work</strong>: add a cert-manager CA Issuer + a <code class="language-plaintext highlighter-rouge">Certificate</code> CR. Configure it to overwrite the existing Secret → automatic renewal kicks in</li>
+</ul>
+
+<p><br /></p>
+
+<p>Manual renewal load drops too: from N per-app self-signed Secrets to <strong>one wildcard Secret valid for 10 years</strong>.</p>
+
+<p><br /></p>
+
+<h3 id="why-we-didnt-unify-everything-to-https-redirect">Why we didn’t unify everything to HTTPS-redirect</h3>
+
+<p>A reasonable question: <em>“Now that we have a wildcard, why not switch every app to <code class="language-plaintext highlighter-rouge">sectionName: https</code> + <code class="language-plaintext highlighter-rouge">httpsRedirect: true</code> for consistency?”</em></p>
+
+<p>I rejected it for three reasons:</p>
+
+<ol>
+  <li>cert-manager migration ergonomics are already secured by <strong>fixed Secret name/ns alone</strong> — has nothing to do with <code class="language-plaintext highlighter-rouge">sectionName</code> uniformity.</li>
+  <li>Internal API clients vary in how reliably they follow 301/307 redirects — verifying every consumer per-app is a real cost.</li>
+  <li>External port-forward paths break under redirects (<code class="language-plaintext highlighter-rouge">RequestRedirect</code> flips scheme but preserves host/port).</li>
+</ol>
+
+<p><br /></p>
+
+<p>Principle: <strong>preserve existing Ingress behavior</strong>. Apps that were HTTP stay HTTP; apps that already enforced HTTPS keep enforcing it.</p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="6-phase-6-cutover-the-eight-gotchas">6. Phase 6 Cutover: The Eight Gotchas</h2>
+
+<p>This is where the lessons live. We cut over 11 classes in ascending order of blast radius, leaving the production-critical class for last. The original plan was simple — and reality found eight ways to complicate it.</p>
+
+<p><br /></p>
+
+<h3 id="the-naive-plan">The naive plan</h3>
+
+<ol>
+  <li>Scale ingress-nginx controller to <code class="language-plaintext highlighter-rouge">replicas=0</code> → IP releases</li>
+  <li>Patch the matching NginxProxy’s <code class="language-plaintext highlighter-rouge">loadBalancerIP</code> to the real IP → <code class="language-plaintext highlighter-rouge">helmfile apply</code></li>
+  <li>Done</li>
+</ol>
+
+<p><br /></p>
+
+<p>The first class blew up immediately.</p>
+
+<p><br /></p>
+
+<h3 id="issue-1-replicas0-does-not-release-the-metallb-ip">Issue 1: <code class="language-plaintext highlighter-rouge">replicas=0</code> does NOT release the MetalLB IP</h3>
+
+<p>After <code class="language-plaintext highlighter-rouge">kubectl scale deploy/&lt;release&gt;-controller --replicas=0</code>, the pod count went to 0 but <strong>MetalLB kept holding the IP</strong>. With the pool saturated, NGF couldn’t claim the same IP.</p>
+
+<p><strong>Cause</strong>: with <code class="language-plaintext highlighter-rouge">externalTrafficPolicy: Cluster</code> + <code class="language-plaintext highlighter-rouge">spec.loadBalancerIP</code> set + a saturated pool, MetalLB does not release the IP <strong>as long as the Service object exists</strong>. Pod presence is irrelevant.</p>
+
+<p><strong>Fix</strong>: patch the Service to <code class="language-plaintext highlighter-rouge">ClusterIP</code> and explicitly remove <code class="language-plaintext highlighter-rouge">loadBalancerIP</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl patch svc &lt;release&gt;-controller <span class="nt">-n</span> ingress-nginx <span class="nt">--type</span><span class="o">=</span>json <span class="nt">-p</span><span class="o">=</span><span class="s1">'[
+  {"op":"replace","path":"/spec/type","value":"ClusterIP"},
+  {"op":"remove","path":"/spec/loadBalancerIP"}
+]'</span>
+</code></pre></div></div>
+
+<p>This became Step 2 of <code class="language-plaintext highlighter-rouge">cutover.sh</code>.</p>
+
+<p><br /></p>
+
+<h3 id="issue-2-helmfile-apply-doesnt-pick-up-manifests-changes">Issue 2: <code class="language-plaintext highlighter-rouge">helmfile apply</code> doesn’t pick up <code class="language-plaintext highlighter-rouge">manifests/</code> changes</h3>
+
+<p>Edited <code class="language-plaintext highlighter-rouge">manifests/nginxproxies.yaml</code> with the new IP, ran <code class="language-plaintext highlighter-rouge">helmfile apply</code>, and the postsync hook never executed.</p>
+
+<p><strong>Cause</strong>: helmfile skips release-level <code class="language-plaintext highlighter-rouge">postsync</code> hooks if there is no chart-level diff. <code class="language-plaintext highlighter-rouge">manifests/</code> files were raw <code class="language-plaintext highlighter-rouge">kubectl</code> targets, invisible to helmfile’s diff machinery.</p>
+
+<p><strong>Workaround</strong>: drive manifest-only changes via <code class="language-plaintext highlighter-rouge">kubectl</code> directly:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl diff <span class="nt">-f</span> manifests/nginxproxies.yaml
+kubectl apply <span class="nt">-f</span> manifests/nginxproxies.yaml
+</code></pre></div></div>
+
+<p><strong>Structural fix (Phase 7+)</strong>: refactor <code class="language-plaintext highlighter-rouge">manifests/</code> into a local CR chart so <code class="language-plaintext highlighter-rouge">helmfile diff</code> covers Gateway/NginxProxy IP changes end-to-end. We later split this chart out as a public Helm chart — see Section 7.5.</p>
+
+<p><br /></p>
+
+<h3 id="issue-3-validatingwebhookconfiguration-blocks-ingress-update--delete">Issue 3: <code class="language-plaintext highlighter-rouge">ValidatingWebhookConfiguration</code> blocks Ingress UPDATE / DELETE</h3>
+
+<p>Right after the first class cutover, ArgoCD prune timed out at 2 minutes trying to delete the now-orphaned Ingress resources.</p>
+
+<p><strong>Cause</strong>: the <code class="language-plaintext highlighter-rouge">&lt;release&gt;-admission</code> ValidatingWebhookConfiguration (VWC) is still alive. Its endpoint Service was just patched to ClusterIP, and there are 0 backing pods. <strong>All admission webhook calls hang → every Ingress UPDATE / DELETE fails (including ArgoCD prune).</strong></p>
+
+<p><strong>Fix</strong>: pre-delete the VWC during cutover:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl delete validatingwebhookconfiguration &lt;release&gt;-admission
+</code></pre></div></div>
+
+<p>Pre-emption is essential — skip this and you cascade into Issue 4.</p>
+
+<p><br /></p>
+
+<h3 id="issue-4-foregrounddeletion-finalizer-stuck">Issue 4: <code class="language-plaintext highlighter-rouge">foregroundDeletion</code> finalizer stuck</h3>
+
+<p>On the first class, Ingress resources stayed in <code class="language-plaintext highlighter-rouge">Terminating</code> indefinitely after deletion.</p>
+
+<p><strong>Cause</strong>: ArgoCD cascade delete attached a <code class="language-plaintext highlighter-rouge">foregroundDeletion</code> finalizer. Even though the Ingress had no dependents, garbage collection couldn’t make progress.</p>
+
+<p><strong>Fix</strong>: strip the finalizer manually:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl get ingress &lt;name&gt; <span class="nt">-n</span> &lt;ns&gt; <span class="nt">-o</span> <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.metadata.finalizers}'</span>
+<span class="c"># if [foregroundDeletion]:</span>
+kubectl patch ingress &lt;name&gt; <span class="nt">-n</span> &lt;ns&gt; <span class="nt">-p</span> <span class="s1">'{"metadata":{"finalizers":null}}'</span> <span class="nt">--type</span><span class="o">=</span>merge
+</code></pre></div></div>
+
+<p><strong>Key observation</strong>: handle Issue 3 (VWC pre-delete) first and <strong>this finalizer stuck never happens</strong>. It didn’t recur on subsequent classes. The VWC was the root cause; the stuck finalizer was just a symptom.</p>
+
+<p><br /></p>
+
+<h3 id="issue-5-internal-pod--public-domain--lb-ip-times-out-for-2-minutes">Issue 5: internal pod → public domain → LB IP times out for 2 minutes</h3>
+
+<p>Discovered on the sixth class cutover. Internal CI generator stages started hanging. External clients saw nothing wrong; only <strong>cluster-internal pod → LB IP</strong> was broken.</p>
+
+<p><strong>Cause</strong>: the NGF chart defaults <code class="language-plaintext highlighter-rouge">NginxProxy.kubernetes.service.externalTrafficPolicy</code> to <code class="language-plaintext highlighter-rouge">Local</code>. For traffic from internal pods to the LB IP, kube-proxy only forwards if the receiving node has a local endpoint. With NGF data-plane pods at <code class="language-plaintext highlighter-rouge">replica=1</code>, most nodes missed and dropped the traffic. The previous ingress-nginx ran with <code class="language-plaintext highlighter-rouge">Cluster</code>, so the issue was masked.</p>
+
+<p><strong>Fix</strong>: explicitly set <code class="language-plaintext highlighter-rouge">service.externalTrafficPolicy: Cluster</code> on all 11 NginxProxies:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">gateway.nginx.org/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">NginxProxy</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">ngf-public-f</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">nginx-gateway</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">kubernetes</span><span class="pi">:</span>
+    <span class="na">service</span><span class="pi">:</span>
+      <span class="na">type</span><span class="pi">:</span> <span class="s">LoadBalancer</span>
+      <span class="na">externalTrafficPolicy</span><span class="pi">:</span> <span class="s">Cluster</span>   <span class="c1"># ← this one line</span>
+      <span class="na">loadBalancerIP</span><span class="pi">:</span> <span class="s">&lt;real-ip&gt;</span>
+</code></pre></div></div>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Trade-off</strong>
+  <p><code>ETP: Cluster</code> SNATs the client source IP. If your HTTPRoute backends rely on the original client IP, switch to <code>X-Forwarded-For</code> (NGF injects it by default). Anything that keys off client IP — e.g., the <code>source_ip</code> column in container registry audit logs — needs to be re-validated against XFF.</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="issue-6-router-arp-cache">Issue 6: Router ARP cache</h3>
+
+<p>With the MetalLB pool saturated, one temp IP showed RST from external clients but worked fine internally — a strange asymmetric failure.</p>
+
+<p><strong>Cause</strong>: stale ARP cache on the router.</p>
+
+<p><strong>Fix</strong>: self-resolved when we cut over to the real IP. The temp IP’s ARP entry expired and got cleaned up.</p>
+
+<p><strong>Bonus discovery</strong>: an audit of the router UI showed every forward rule was keyed on <code class="language-plaintext highlighter-rouge">MetalLB LB IP:80</code>. Because Phase 6 reassigns the <strong>same IP</strong> to NGF, <strong>no router config change is required</strong> — the cutover is transparent at the network layer. Forward rules: zero edits.</p>
+
+<p><br /></p>
+
+<h3 id="issue-7-argocd-recreates-ingress-if-values-arent-toggled">Issue 7: ArgoCD recreates Ingress if values aren’t toggled</h3>
+
+<p>For ApplicationSet apps, if you don’t set <code class="language-plaintext highlighter-rouge">ingress.enabled: false</code> post-cutover, ArgoCD keeps recreating the Ingress.</p>
+
+<p><strong>Fix</strong>: add to cutover Step 5 as a permanent procedure:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># applicationset/values/&lt;project&gt;/&lt;service&gt;/&lt;env&gt;.values.yaml</span>
+<span class="na">ingress</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">false</span>   <span class="c1"># required after Phase 6 cutover</span>
+<span class="na">httproute</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="c1"># ...</span>
+</code></pre></div></div>
+
+<p>To trigger ArgoCD refresh immediately after pushing the values change:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl annotate application &lt;name&gt; <span class="nt">-n</span> argocd argocd.argoproj.io/refresh<span class="o">=</span>normal <span class="nt">--overwrite</span>
+</code></pre></div></div>
+
+<p>Default auto-sync polling is 3 minutes — easy to think nothing’s happening if you don’t force-refresh.</p>
+
+<p><br /></p>
+
+<h3 id="issue-8-cutoversh-smoke-output-rendered-as-http-2000">Issue 8: <code class="language-plaintext highlighter-rouge">cutover.sh</code> smoke output rendered as “HTTP 2000”</h3>
+
+<p>When the curl succeeded, <code class="language-plaintext highlighter-rouge">$(curl ... || echo "0")</code> concatenated the stdout success code with <code class="language-plaintext highlighter-rouge">echo "0"</code>, producing nonsense output.</p>
+
+<p><strong>Fix</strong>: separated <code class="language-plaintext highlighter-rouge">HTTP_CODE</code> capture and used <code class="language-plaintext highlighter-rouge">${CODE:-000}</code> defaults. Trivial bug, but the kind of thing that adds noise during a midnight cutover. Worth recording.</p>
+
+<p><br /></p>
+
+<h3 id="final-cutoversh-procedure-per-class">Final cutover.sh procedure (per class)</h3>
+
+<p>All eight issues folded in:</p>
+
+<ol>
+  <li><strong>Wait check</strong>: <code class="language-plaintext highlighter-rouge">kubectl get svc -n ingress-nginx &lt;release&gt;-controller -o wide</code></li>
+  <li><strong>ingress-nginx Service</strong> → patch to <code class="language-plaintext highlighter-rouge">ClusterIP</code> + remove <code class="language-plaintext highlighter-rouge">loadBalancerIP</code> (Issue 1)</li>
+  <li><strong>ingress-nginx Deployment</strong> → <code class="language-plaintext highlighter-rouge">replicas=0</code></li>
+  <li><strong>Edit</strong> <code class="language-plaintext highlighter-rouge">manifests/nginxproxies.yaml</code> to set this Gateway’s IP to the real IP</li>
+  <li><code class="language-plaintext highlighter-rouge">kubectl diff -f manifests/nginxproxies.yaml</code> → <code class="language-plaintext highlighter-rouge">kubectl apply -f</code> (Issue 2)</li>
+  <li><strong>Toggle</strong> <code class="language-plaintext highlighter-rouge">ingress.enabled: false</code> in the relevant values files (Issue 7)</li>
+  <li><strong>Pre-delete VWC</strong>: <code class="language-plaintext highlighter-rouge">kubectl delete validatingwebhookconfiguration &lt;release&gt;-admission</code> (Issue 3)</li>
+  <li><strong>Confirm</strong> MetalLB reassignment + smoke test (<code class="language-plaintext highlighter-rouge">curl --resolve &lt;host&gt;:80:&lt;real-ip&gt;</code>)</li>
+  <li><strong>Strip finalizers</strong> from any leftover Ingress in <code class="language-plaintext highlighter-rouge">Terminating</code> (Issue 4)</li>
+  <li><strong>Monitor for 24h.</strong> Non-critical classes can run in parallel with the next cutover; reserve 1–2 days of soak time before the production-critical class.</li>
+</ol>
+
+<p>Real downtime per class spans only Step 2 (patch) → Step 5 (NGF IP swap completion): <strong>roughly 30s–1m</strong>.</p>
+
+<p>Reference repo: <a href="https://github.com/somaz94/network/tree/main/nginx-gateway-fabric">github.com/somaz94/network/tree/main/nginx-gateway-fabric</a></p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="7-results-and-lessons">7. Results and Lessons</h2>
+
+<p><br /></p>
+
+<h3 id="final-state">Final state</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <tr>
+      <th>Metric</th>
+      <th>Before</th>
+      <th>After</th>
+    </tr>
+    <tr>
+      <td>Helm releases</td>
+      <td>11 (ingress-nginx)</td>
+      <td>1 (NGF)</td>
+    </tr>
+    <tr>
+      <td>Ingress resources</td>
+      <td>24</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>HTTPRoute resources</td>
+      <td>0</td>
+      <td>15</td>
+    </tr>
+    <tr>
+      <td>Gateway CRs</td>
+      <td>0</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <td>MetalLB allocated IPs</td>
+      <td>unchanged scale</td>
+      <td>unchanged scale</td>
+    </tr>
+    <tr>
+      <td>Self-signed TLS Secrets</td>
+      <td>one per app</td>
+      <td>1 (wildcard)</td>
+    </tr>
+    <tr>
+      <td>Cert renewal cadence</td>
+      <td>per app</td>
+      <td>once every 10 years</td>
+    </tr>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The MetalLB pool was trimmed back after cutover — most of the temp verification IPs returned to free, with a small reserve.</p>
+
+<p><br /></p>
+
+<h3 id="phase-7-follow-ups">Phase 7+ follow-ups</h3>
+
+<p>Originally planned for a one-week soak window, but compressed into the same day. Rationale: rollback cost is identical whether the old releases are in <code class="language-plaintext highlighter-rouge">drift</code> state or <code class="language-plaintext highlighter-rouge">destroyed</code> state — both recover via a single <code class="language-plaintext highlighter-rouge">helmfile apply</code>.</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">helmfile destroy</code> on all 11 ingress-nginx releases (namespaces wiped clean)</li>
+  <li>Move <code class="language-plaintext highlighter-rouge">network/ingress-nginx/</code> → <code class="language-plaintext highlighter-rouge">network/_optional/ingress-nginx/</code> (<code class="language-plaintext highlighter-rouge">git mv</code> + README archive note)</li>
+  <li>Shrink the MetalLB pool</li>
+  <li>Convert NGF <code class="language-plaintext highlighter-rouge">manifests/</code> → local CR chart (manually attach Helm ownership labels/annotations to adopt)</li>
+  <li>Migrate the container registry to chart-native HTTPRoute (zero-downtime, four-step swap)</li>
+  <li>Retire all per-app self-signed TLS Secrets</li>
+</ol>
+
+<p><br /></p>
+
+<p>The chart-native HTTPRoute swap was the most interesting move. New routes were created <strong>alongside the old ones</strong>, sharing the same hostname (older-wins keeps existing routes serving traffic while new policies sit in <code class="language-plaintext highlighter-rouge">TargetConflict</code> state). Deleting the old HTTPRoute releases the conflict — the new policy flips to <code class="language-plaintext highlighter-rouge">Accepted=True</code> instantly, and traffic swaps transparently.</p>
+
+<p><br /></p>
+
+<h3 id="75-nginx-gateway-cr--published-as-a-public-helm-chart">7.5 nginx-gateway-cr — published as a public Helm chart</h3>
+
+<p>The single biggest Phase 7+ effort was refactoring <code class="language-plaintext highlighter-rouge">manifests/</code> into a local Helm chart, then <strong>separating that chart out as a public repo</strong>.</p>
+
+<p><strong>Background</strong>: the internal <code class="language-plaintext highlighter-rouge">manifests/</code> approach worked around Issue 2 (helmfile skipping hooks) by going through <code class="language-plaintext highlighter-rouge">kubectl apply -f</code>. Structurally, those resources sat outside the helmfile pipeline. During Phase 6 IP swaps, this meant manually mixing <code class="language-plaintext highlighter-rouge">kubectl diff</code> and <code class="language-plaintext highlighter-rouge">kubectl apply</code> every time.</p>
+
+<p><strong>Why publish?</strong></p>
+
+<ul>
+  <li>The upstream NGF chart releases actively on OCI and has 20+ templates — non-trivial to track manually</li>
+  <li>What we override is <strong>not</strong> NGF’s internal templates, but the separate CRs the controller reconciles (Gateway, NginxProxy)</li>
+  <li>These resources have <strong>no environment-specific quirks</strong> — “Gateway + NginxProxy (LB IP pin) + ServiceMonitor” is the common shape for anyone wanting per-Gateway multi-tenancy on NGF</li>
+  <li>Standard Helm chart practice → publish</li>
+</ul>
+
+<p>Chart repo: <a href="https://github.com/somaz94/helm-charts/tree/main/charts/nginx-gateway-cr">github.com/somaz94/helm-charts/tree/main/charts/nginx-gateway-cr</a></p>
+
+<p><br /></p>
+
+<p><strong>What the chart provisions</strong></p>
+
+<ul>
+  <li><strong>Gateway</strong> — 1 or N, declared as a values array. Each Gateway defaults to <code class="language-plaintext highlighter-rouge">gatewayClassName: ngf</code></li>
+  <li><strong>NginxProxy</strong> — referenced by each Gateway’s <code class="language-plaintext highlighter-rouge">infrastructure.parametersRef</code>. <code class="language-plaintext highlighter-rouge">service.loadBalancerIP</code> pins the MetalLB / cloud-LB IP. <code class="language-plaintext highlighter-rouge">externalTrafficPolicy: Cluster</code> is the default (Issue 5 baked in)</li>
+  <li><strong>ServiceMonitor</strong> — Prometheus metrics resource that the upstream NGF chart doesn’t ship. Ready to scrape if Prometheus Operator is installed</li>
+</ul>
+
+<p><br /></p>
+
+<p><strong>Usage with helmfile</strong></p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># helmfile.yaml.gotmpl — two releases linked via `needs`</span>
+<span class="na">repositories</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">somaz</span>
+    <span class="na">url</span><span class="pi">:</span> <span class="s">https://charts.somaz.blog</span>
+
+<span class="na">releases</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-gateway-fabric</span>
+    <span class="na">namespace</span><span class="pi">:</span> <span class="s">nginx-gateway</span>
+    <span class="na">chart</span><span class="pi">:</span> <span class="s">oci://ghcr.io/nginx/charts/nginx-gateway-fabric</span>
+    <span class="na">version</span><span class="pi">:</span> <span class="s">2.5.1</span>
+    <span class="c1"># ... NGF controller config</span>
+
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">nginx-gateway-cr</span>
+    <span class="na">namespace</span><span class="pi">:</span> <span class="s">nginx-gateway</span>
+    <span class="na">chart</span><span class="pi">:</span> <span class="s">somaz/nginx-gateway-cr</span>
+    <span class="na">version</span><span class="pi">:</span> <span class="s">&lt;chart-version&gt;</span>
+    <span class="na">needs</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">nginx-gateway/nginx-gateway-fabric</span>
+    <span class="na">values</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">values/cr.yaml</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p><strong>Per-Gateway multi-tenancy values</strong> (verify exact field names against the chart README):</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># values/cr.yaml</span>
+<span class="na">gateways</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">ngf</span>
+    <span class="na">loadBalancerIP</span><span class="pi">:</span> <span class="s">&lt;main-ip&gt;</span>
+    <span class="na">listeners</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">http</span>
+        <span class="na">port</span><span class="pi">:</span> <span class="m">80</span>
+        <span class="na">protocol</span><span class="pi">:</span> <span class="s">HTTP</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">https</span>
+        <span class="na">port</span><span class="pi">:</span> <span class="m">443</span>
+        <span class="na">protocol</span><span class="pi">:</span> <span class="s">HTTPS</span>
+        <span class="na">tls</span><span class="pi">:</span>
+          <span class="na">certificateRefs</span><span class="pi">:</span>
+            <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">wildcard-tls</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">ngf-public-a</span>
+    <span class="na">loadBalancerIP</span><span class="pi">:</span> <span class="s">&lt;public-a-ip&gt;</span>
+    <span class="c1"># ...</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<p><strong>Who this chart is for</strong></p>
+
+<ul>
+  <li>Per-Gateway multi-tenancy — assigning a separate LoadBalancer IP per Gateway</li>
+  <li>Migrators from the ingress-nginx-multi-instance pattern (one ingressClass per release)</li>
+  <li>Bare-metal / on-prem with MetalLB where IPs need to be manually pinned</li>
+  <li>Anyone who wants ServiceMonitor auto-provisioned alongside</li>
+</ul>
+
+<p><strong>Who this chart is overkill for</strong>: setups with a single Gateway, or cloud LBs with dynamic allocation. The upstream NGF chart’s <code class="language-plaintext highlighter-rouge">nginxGateway.gateway</code> section may suffice; v2.5+ also provides some Gateway provisioning natively.</p>
+
+<p><br /></p>
+
+<p><strong>What we got</strong></p>
+
+<ul>
+  <li>One <code class="language-plaintext highlighter-rouge">helmfile diff</code> covers Gateway / NginxProxy IP changes end-to-end</li>
+  <li>Cutover collapses to “edit one values line → <code class="language-plaintext highlighter-rouge">helmfile apply</code>”</li>
+  <li>The internal <code class="language-plaintext highlighter-rouge">manifests/</code> + manual <code class="language-plaintext highlighter-rouge">kubectl</code> combo disappears</li>
+  <li>Reusable across the next cluster with only values changes</li>
+</ul>
+
+<p><br /></p>
+
+<p>In hindsight, starting with the public chart from day one would have made Phases 1–6 cleaner. But evolving through <code class="language-plaintext highlighter-rouge">manifests/</code> → local chart → public chart in that order was instructive — each step exposed which abstraction layer solves which class of problem. The destination is obvious in retrospect; getting there required the intermediate steps.</p>
+
+<p><br /></p>
+
+<h3 id="lessons">Lessons</h3>
+
+<p><strong>Question your design assumptions before reading documentation.</strong> “11 instances → 11 GatewayClasses” was a mental-model carryover, not a fact. Verify implementation-specific constraints from primary sources <em>before</em> sketching the architecture.</p>
+
+<p><br /></p>
+
+<p><strong>The value of parallel mode is psychological safety, not literal rollback.</strong> We never triggered a rollback during the parallel window. But the fact that we <em>could</em> — with one toggle — is what made it OK to cut over on a Friday evening. Worth repeating in any future migration.</p>
+
+<p><br /></p>
+
+<p><strong>80% of the problems live in the cutover hour.</strong> Design, chart authoring, parallel-mode validation: relatively calm. The IP-swap moment fired Issues 1–6 in sequence. Issue 5 (<code class="language-plaintext highlighter-rouge">ETP: Local</code>) in particular was a silent failure — internal services timing out for 2 minutes at a time, easy to miss. Wire up internal-traffic monitoring (CI, webhooks, cross-service calls) <strong>before</strong> the cutover window starts.</p>
+
+<p><br /></p>
+
+<p><strong>One default value can rewrite operations.</strong> NGF’s <code class="language-plaintext highlighter-rouge">ETP: Local</code> default is sensible (security + performance), but it silently breaks internal reachability when migrating from ingress-nginx’s <code class="language-plaintext highlighter-rouge">Cluster</code> default. For the next migration, build a checklist comparing tool defaults against the assumptions of the existing environment, item by item.</p>
+
+<p><br /></p>
+
+<p><strong>TLS ownership belongs at the Gateway layer.</strong> It’s tempting to put cert/secret values on the chart. Resist it. Following Gateway API’s resource-boundary model — chart knows HTTP routing, Gateway knows TLS — gave us a free path to cert-manager later, with zero chart code changes.</p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This wasn’t just a controller swap. Migrating 11 instances drove home, viscerally, how Kubernetes’ L7 routing model has evolved from Ingress’s “everything in one object” toward Gateway API’s “explicit resource boundaries.”</p>
+
+<p>The numbers shifted: 11 Helm releases collapsed to 1, scattered self-signed certs unified to a single wildcard, ad-hoc annotations consolidated into CRD-based policies. From outside, DNS and firewall rules look identical. From inside, the operational load is meaningfully lower.</p>
+
+<p>The two patterns that will travel to the next migration are <strong>parallel mode</strong> (rollback cost reduced to a values toggle) and <strong>TLS-as-a-Gateway-layer-responsibility</strong> (cert-manager future-migration cost reduced to near zero).</p>
+
+<p>Phase 6’s Issues 1–8 don’t appear in any documentation — they only surface under the actual conditions of a production cutover. The <code class="language-plaintext highlighter-rouge">externalTrafficPolicy: Local</code> default in particular was the closest thing to a true silent failure. If this post saves someone an hour during their own cutover, that’s the post doing its job.</p>
+
+<p>Next on the list: restoring X-Forwarded-For-based audit logging, and evaluating Gateway API v1.3 features (especially full GRPCRoute adoption). Those will get their own writeups.</p>
+
+<p><br /><br /></p>
+
+<hr />
+
+<h2 id="reference">Reference</h2>
+
+<ul>
+  <li><a href="https://gateway-api.sigs.k8s.io/">Kubernetes Gateway API</a></li>
+  <li><a href="https://github.com/nginx/nginx-gateway-fabric">nginx-gateway-fabric (GitHub)</a></li>
+  <li><a href="https://github.com/nginx/nginx-gateway-fabric/pkgs/container/charts%2Fnginx-gateway-fabric">NGF Helm Chart on GHCR (OCI)</a></li>
+  <li><a href="https://github.com/somaz94/helm-charts/tree/main/charts/nginx-gateway-cr">nginx-gateway-cr — public chart from this migration</a></li>
+  <li><a href="https://github.com/kubernetes-sigs/gateway-api/releases">Gateway API v1.2 Release Notes</a></li>
+  <li><a href="https://gateway-api.sigs.k8s.io/guides/migrating-from-ingress/">ingress-nginx → Gateway API migration guide</a></li>
+  <li><a href="https://metallb.universe.tf/">MetalLB Documentation</a></li>
+  <li><a href="https://docs.nginx.com/nginx-gateway-fabric/overview/custom-policies/">NGF Custom Policies</a></li>
+  <li><a href="https://gateway-api.sigs.k8s.io/api-types/backendtlspolicy/">BackendTLSPolicy spec</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/virtualization/kvm-nested/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1755588581/kvm-nested_efue7m.png" alt="KVM Nested Virtualization Complete Guide">
+                                    
+                                    <h3>KVM Nested Virtualization Complete Guide</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/cicd/git-sparse-checkout/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767839744/git-sprase-1_au7wpi.png" alt="Cutting CI/CD Time in Half with Git Sparse Checkout: A Practical Guide">
+                                    
+                                    <h3>Cutting CI/CD Time in Half with Git Sparse Checkout: A Practical Guide</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/openstack/openstack-glance/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1756112363/openstack-glance-1_ub5wpn.png" alt="Deep Dive into OpenStack Glance">
+                                    
+                                    <h3>Deep Dive into OpenStack Glance</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="26">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/database/acid-cap-theory/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767839436/acid-cap-1_wgt85s.png" alt="Understanding ACID and CAP: Database Design Principles">
+                
+            </div>
+            <h3 class="title">Understanding ACID and CAP: Database Design Principles</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;An end-to-end account of migrating 11 ingress-nginx instances on an on-prem Kubespray cluster to NGINX Gateway Fabric 2.x. Architecture decisions, annotation-to-CRD mapping, parallel-mode strategy, TLS centralization, and the eight non-obvious cutover gotchas that no documentation warned us about.&quot;%20https://somaz.blog/category/kubernetes/ingress-nginx-to-nginx-gateway-fabric-migration/%20via%20&#64;&hashtags=kubernetes,gateway-api,nginx-gateway-fabric,ingress-nginx,migration,metallb,helm,helmfile,networking,on-premises"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/kubernetes/ingress-nginx-to-nginx-gateway-fabric-migration/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile-400.jpg" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/kubernetes/ingress-nginx-to-nginx-gateway-fabric-migration/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+
+    <p class="copyright">
+      &copy; Somaz. All rights reserved.<br />
+      Articles may not be reproduced or redistributed without permission.
+      Code samples are free to use.
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://somaz.blog/#organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": 600,
+      "height": 315
+  },
+  "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+</script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include Google Analytics script -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id="></script>
+<script>
+  var host = window.location.hostname;
+  if (host != 'localhost') {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', '');
+  }
+</script>
+  
+
+
+<!-- Include extra scripts -->
+
+
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": "ingress-nginx → nginx-gateway-fabric Migration: A Field Report",
+            "alternativeHeadline": "Cutting over 11 ingress-nginx instances on bare-metal Kubernetes to a single NGF control plane with eleven Gateways — without a DNS or firewall change",
+            "description": "An end-to-end account of migrating 11 ingress-nginx instances on an on-prem Kubespray cluster to NGINX Gateway Fabric 2.x. Architecture decisions, annotation-to-CRD mapping, parallel-mode strategy, TLS centralization, and the eight non-obvious cutover gotchas that no documentation warned us about.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1776822648/nginx-gateway-fabric-1_j34wak.png",
+            "url": "https://somaz.blog/category/kubernetes/ingress-nginx-to-nginx-gateway-fabric-migration/",
+            "mainEntityOfPage": "https://somaz.blog/category/kubernetes/ingress-nginx-to-nginx-gateway-fabric-migration/",
+            "articleBody": "Overview ingress-nginx has entered maintenance mode, and the Kubernetes Gateway API reached v1.2 GA. With the writing on the wall, I migrated the 11 ingress-nginx instances running on our on-premises cluster to NGINX Gateway Fabric (NGF) 2.x. Scope and scale: Item Value Target cluster On-prem Kubespray (K8s v1.34) Existing controllers 11 ingress-nginx instances (1 default nginx + 10 nginx-public-a–j) LoadBalancer MetalLB L2 (14 fixed internal IPs) Migration targets 11 infra-deployed apps + 9 ArgoCD ApplicationSet apps + 2 standalone repos Final shape Single NGF control plane + 11 Gateway CRs (per-Gateway Deployment) Downtime per class ~30s–1m (only during the IP swap window) Three core goals drove the work: Cut operational surface — collapse 11 ingress-nginx Helm releases into a single NGF install plus 11 Gateway CRs. No DNS or firewall changes — keep the same MetalLB IPs so external routing rules don’t need to be touched. Easy rollback — run NGF in parallel with ingress-nginx and cut over class-by-class with a single values toggle for instant fallback. This isn’t a tutorial — it’s a field report covering the architectural decisions, the dead ends, and the eight cutover gotchas that only show up when you actually flip the switch on production traffic. If you’re staring at the same migration, hopefully this saves you a few hours. Related Articles Kubernetes Gateway API Complete Guide Building a Public Helm Chart Repository 1. Why nginx-gateway-fabric? The ingress-nginx project announced a transition to maintenance mode, and the official successor direction is the Gateway API standardized by Kubernetes SIG Network. Multiple implementations exist (Istio, Envoy Gateway, Cilium, Contour, NGF), but I picked NGF 2.x for four reasons: Stack reuse — the data plane stays NGINX, so existing log/tuning know-how transfers directly. Native per-Gateway Deployment — each Gateway CR auto-provisions an isolated NGINX Deployment, mapping cleanly onto our existing “class-per-release” model. One control plane, N data planes — 11 Helm releases collapse to 1, while still keeping IP and process isolation. CRD-based policy extensions — ClientSettingsPolicy, UpstreamSettingsPolicy, BackendTLSPolicy, etc. cover most of the annotations we relied on. The structural win of Gateway API over Ingress is clear resource boundaries. Ingress mixed cluster-scoped concerns (listeners, TLS, class) with app-scoped concerns (route rules) in a single object. Gateway API splits these into GatewayClass / Gateway / HTTPRoute — the cluster admin and the app developer get a natural permission boundary. 2. Architecture Decision: 1 GatewayClass + 11 Gateways The wrong assumption Initial design assumed: “11 ingress-nginx instances → 11 ingressClasses → therefore 11 GatewayClasses.” Wrong. NGF 2.x reconciles a single GatewayClass per install. The controller is started with --gatewayclass=ngf and ignores all others. If you need multiple GatewayClasses, you have to install NGF multiple times. Corrected design 1 GatewayClass: ngf (created automatically by the NGF chart) 11 Gateways: ngf, ngf-public-a … ngf-public-j, all with gatewayClassName: ngf 11 NginxProxy CRs referenced via each Gateway’s infrastructure.parametersRef, pinning the MetalLB IP through service.loadBalancerIP Tenancy boundary = Gateway name. Each app’s HTTPRoute attaches to a specific Gateway via parentRefs, automatically routing through that Gateway’s data plane (and its IP) So the multi-tenancy split is not “11 classes” but “11 Gateways.” Because NGF spins up an independent NGINX Deployment per Gateway, process-level isolation is preserved with no extra effort. Final directory layout network/nginx-gateway-fabric/ ├── Chart.yaml # upstream mirror — version + appVersion = single source ├── helmfile.yaml.gotmpl # references Chart.yaml via readFile + fromYaml ├── values.yaml # upstream default (helm pull) ├── values.schema.json # upstream schema ├── values/ │ └── mgmt.yaml # custom override (replicas, telemetry off, etc.) ├── cr-chart/ # Phase 7+ refactor result │ ├── Chart.yaml │ ├── values.yaml │ └── templates/ │ ├── gateways.yaml # 11 Gateways │ ├── nginxproxies.yaml # 11 NginxProxies (LB IP pin) │ └── servicemonitor.yaml └── upgrade.sh # external-oci canonical Chart.yaml as single source The chart's version and appVersion (= NGF software git tag) live as a single source of truth in Chart.yaml. helmfile.yaml.gotmpl reads it via readFile + fromYaml, so updating Chart.yaml alone keeps both the chart version and the prepare hook's ?ref=v&lt;APP_VER&gt; path in sync. Hook design (apply / destroy) Phase Hook Action Before any command prepare Pre-install Gateway API CRDs + NGF's own CRDs After apply postsync Apply Gateway / NginxProxy (initially via kubectl apply, later via local chart) Before destroy preuninstall Remove custom CRs while the controller is still alive (so finalizers complete) After destroy postuninstall Remove CRDs + namespace OCI chart upgrade script NGF only ships via OCI registry (oci://ghcr.io/nginx/charts/nginx-gateway-fabric). The existing upgrade.sh canonical relied on helm search repo to detect the latest version — but helm search repo doesn’t support OCI. So I added an external-oci.sh canonical. The version-discovery logic now hits the GitHub Releases API (api.github.com/repos/$GITHUB_REPO/releases/latest) and strips the prefix (default v) from tag_name. With GITHUB_TOKEN set, the rate limit goes from 60 to 5,000 req/h. 3. Annotation → Gateway API Translation Map A practical table of every annotation we actually used and what it became under Gateway API + NGF CRDs: ingress-nginx annotation Gateway API / NGF replacement Use case force-ssl-redirect: \"true\" HTTPRoute + RequestRedirect filter (HTTP listener only) Apps requiring HTTPS force-ssl-redirect: \"false\" None (default) Most apps ssl-passthrough: \"true\" TLSRoute + listener tls.mode: Passthrough None in scope — excluded backend-protocol: \"HTTPS\" BackendTLSPolicy (gateway.networking.k8s.io/v1) TLS-backend apps backend-protocol: \"HTTP\" Default Plain HTTP backends rewrite-target: / URLRewrite filter (ReplacePrefixMatch) Path rewrite apps proxy-body-size: \"500m\" ClientSettingsPolicy.spec.body.maxSize: \"500m\" Apps with large uploads proxy-body-size: \"0\" (unlimited) ClientSettingsPolicy.spec.body.maxSize: \"0\" Container registry proxy-read/send-timeout: \"300\" HTTPRoute timeouts.request + timeouts.backendRequest Long-lived requests proxy-buffering: \"off\" ProxySettingsPolicy.spec.buffering.disable SSE streaming proxy-http-version: \"1.1\" NGF default → no-op, drop — limit-rps: \"15\" RateLimitPolicy (key, rate, burst) Rate limits limit-connections: \"25\" Not natively supported (workaround via SnippetsFilter) Concurrent-connection limits configuration-snippet SnippetsFilter CRD (NGF 1.4+) Last resort Practical notes from the field force-ssl-redirect: split into two sibling HTTPRoutes. One attaches to the HTTP listener with only a RequestRedirect filter. The other attaches to the HTTPS listener with the actual routing rules. Use 307, not 301 — 301 rewrites POST to GET, breaking webhooks and API receivers. backend-protocol: HTTPS: solve via BackendTLSPolicy. For ECK-managed Elasticsearch, the operator stores the CA in an internal Secret. We added a chart helper that uses lookup to read it and replicate it as a ConfigMap. When the operator rotates the CA, the next helm upgrade picks it up automatically. limit-connections: feature dropped. NGINX’s limit_conn directive is not exposed as an NGF policy. We accepted the loss and pushed the responsibility down to the application layer. A SnippetsFilter workaround exists, but it widens the attack surface — out of scope. 4. Zero-Downtime Parallel Mode The single most important strategic decision: how do you cut over without affecting live traffic, while keeping rollback to a single toggle? Core principle: ingress + httproute coexist Throughout the migration window, every app stayed in ingress.enabled: true + httproute.enabled: true simultaneously. This satisfies four conditions at once: DNS still points at the existing MetalLB IPs → user traffic flows through ingress-nginx HTTPRoute is reachable only via temp IPs → developers can verify with curl --resolve Rollback = httproute.enabled: false toggle (the ingress was never touched, so no recovery needed) Identical procedure across prod / dev / qa / staging — no per-environment branching MetalLB pool expansion We added 11 temporary verification IPs to the MetalLB pool, carefully avoiding clashes with existing services and manually reserved IPs (e.g., bare-metal node IPs). These temp IPs get swapped to the real IPs during Phase 6 cutover. Verification pattern Standard smoke-test commands during the parallel period: If the two responses match, OK. One mandatory rollback drill per phase: Toggle httproute.enabled: false → helmfile apply → temp IP returns 404, real IP returns 200 (existing path unaffected) Toggle httproute.enabled: true back → temp IP returns 200 again Each step under 10 seconds; live traffic untouched throughout Unified HTTPRoute template across charts To make this manageable across many charts, we standardized a httproute values schema. Both individual app charts and the ApplicationSet shared base chart use the same shape: httproute: enabled: false parentRefs: - name: ngf namespace: nginx-gateway # sectionName: https # use when HTTPS only hostnames: [] rules: - matches: - path: { type: PathPrefix, value: / } # filters: # - type: URLRewrite # urlRewrite: { path: { type: ReplacePrefixMatch, replacePrefixMatch: / } } # timeouts: # request: 300s # backendRequest: 300s backendRefs: - port: 80 # `name` defaults to chart fullname when omitted httpsRedirect: enabled: false # if true, auto-generates a sibling HTTP→HTTPS 301 route This single schema covers basic routing, rewrites, timeouts, and HTTPS redirects. We validated the pattern on one app first, then replicated. 5. TLS Wildcard Centralization + cert-manager Future Path Constraint Our domains are managed at a registrar without a DNS API. This shaped everything: cert-manager + Let’s Encrypt DNS-01 challenge: not feasible (no DNS API) HTTP-01: cannot issue wildcard certs (ACME spec restriction) → Manual self-signed wildcard cert is essentially the only option today Previously, every app held its own self-signed Secret. We consolidated into a single wildcard Secret centrally managed. Centralized Secret structure Secret \"wildcard-tls\" (nginx-gateway ns) └─ CN = *.example.com SAN: example.com, *.example.com 10-year validity │ ▼ Gateway \"ngf\" listeners: - name: http (port 80) - name: https (port 443, hostname: \"*.example.com\", certificateRefs: wildcard-tls) │ ▼ Each app's HTTPRoute: parentRefs[*].sectionName omitted : auto-attaches to BOTH HTTP and HTTPS listeners parentRefs[*].sectionName: https : explicit HTTPS-only parentRefs[*].sectionName: http : reserved for the httpsRedirect sibling route Chart’s role: nothing (deliberately) This is the design point I went back and forth on the longest. Where should TLS ownership live? Conclusion: charts stay TLS-agnostic. TLS is a Gateway-layer responsibility. No Certificate CR template in any chart — avoids forcing cert-manager dependency, avoids violating Gateway API’s separation of concerns No Secret / secretName values in charts — the Gateway layer owns it Charts only expose httproute.parentRefs[].sectionName + httpsRedirect.enabled — per-app listener selection and HTTPS-enforcement are the only knobs apps need This buys near-zero migration cost when we eventually move to cert-manager: Gateway change: 0 (Secret name/ns stays identical) Chart change: 0 (charts don’t know about the Secret) App values change: 0 Work: add a cert-manager CA Issuer + a Certificate CR. Configure it to overwrite the existing Secret → automatic renewal kicks in Manual renewal load drops too: from N per-app self-signed Secrets to one wildcard Secret valid for 10 years. Why we didn’t unify everything to HTTPS-redirect A reasonable question: “Now that we have a wildcard, why not switch every app to sectionName: https + httpsRedirect: true for consistency?” I rejected it for three reasons: cert-manager migration ergonomics are already secured by fixed Secret name/ns alone — has nothing to do with sectionName uniformity. Internal API clients vary in how reliably they follow 301/307 redirects — verifying every consumer per-app is a real cost. External port-forward paths break under redirects (RequestRedirect flips scheme but preserves host/port). Principle: preserve existing Ingress behavior. Apps that were HTTP stay HTTP; apps that already enforced HTTPS keep enforcing it. 6. Phase 6 Cutover: The Eight Gotchas This is where the lessons live. We cut over 11 classes in ascending order of blast radius, leaving the production-critical class for last. The original plan was simple — and reality found eight ways to complicate it. The naive plan Scale ingress-nginx controller to replicas=0 → IP releases Patch the matching NginxProxy’s loadBalancerIP to the real IP → helmfile apply Done The first class blew up immediately. Issue 1: replicas=0 does NOT release the MetalLB IP After kubectl scale deploy/&lt;release&gt;-controller --replicas=0, the pod count went to 0 but MetalLB kept holding the IP. With the pool saturated, NGF couldn’t claim the same IP. Cause: with externalTrafficPolicy: Cluster + spec.loadBalancerIP set + a saturated pool, MetalLB does not release the IP as long as the Service object exists. Pod presence is irrelevant. Fix: patch the Service to ClusterIP and explicitly remove loadBalancerIP: kubectl patch svc &lt;release&gt;-controller -n ingress-nginx --type=json -p='[ {\"op\":\"replace\",\"path\":\"/spec/type\",\"value\":\"ClusterIP\"}, {\"op\":\"remove\",\"path\":\"/spec/loadBalancerIP\"} ]' This became Step 2 of cutover.sh. Issue 2: helmfile apply doesn’t pick up manifests/ changes Edited manifests/nginxproxies.yaml with the new IP, ran helmfile apply, and the postsync hook never executed. Cause: helmfile skips release-level postsync hooks if there is no chart-level diff. manifests/ files were raw kubectl targets, invisible to helmfile’s diff machinery. Workaround: drive manifest-only changes via kubectl directly: kubectl diff -f manifests/nginxproxies.yaml kubectl apply -f manifests/nginxproxies.yaml Structural fix (Phase 7+): refactor manifests/ into a local CR chart so helmfile diff covers Gateway/NginxProxy IP changes end-to-end. We later split this chart out as a public Helm chart — see Section 7.5. Issue 3: ValidatingWebhookConfiguration blocks Ingress UPDATE / DELETE Right after the first class cutover, ArgoCD prune timed out at 2 minutes trying to delete the now-orphaned Ingress resources. Cause: the &lt;release&gt;-admission ValidatingWebhookConfiguration (VWC) is still alive. Its endpoint Service was just patched to ClusterIP, and there are 0 backing pods. All admission webhook calls hang → every Ingress UPDATE / DELETE fails (including ArgoCD prune). Fix: pre-delete the VWC during cutover: kubectl delete validatingwebhookconfiguration &lt;release&gt;-admission Pre-emption is essential — skip this and you cascade into Issue 4. Issue 4: foregroundDeletion finalizer stuck On the first class, Ingress resources stayed in Terminating indefinitely after deletion. Cause: ArgoCD cascade delete attached a foregroundDeletion finalizer. Even though the Ingress had no dependents, garbage collection couldn’t make progress. Fix: strip the finalizer manually: kubectl get ingress &lt;name&gt; -n &lt;ns&gt; -o jsonpath='{.metadata.finalizers}' # if [foregroundDeletion]: kubectl patch ingress &lt;name&gt; -n &lt;ns&gt; -p '{\"metadata\":{\"finalizers\":null}}' --type=merge Key observation: handle Issue 3 (VWC pre-delete) first and this finalizer stuck never happens. It didn’t recur on subsequent classes. The VWC was the root cause; the stuck finalizer was just a symptom. Issue 5: internal pod → public domain → LB IP times out for 2 minutes Discovered on the sixth class cutover. Internal CI generator stages started hanging. External clients saw nothing wrong; only cluster-internal pod → LB IP was broken. Cause: the NGF chart defaults NginxProxy.kubernetes.service.externalTrafficPolicy to Local. For traffic from internal pods to the LB IP, kube-proxy only forwards if the receiving node has a local endpoint. With NGF data-plane pods at replica=1, most nodes missed and dropped the traffic. The previous ingress-nginx ran with Cluster, so the issue was masked. Fix: explicitly set service.externalTrafficPolicy: Cluster on all 11 NginxProxies: apiVersion: gateway.nginx.org/v1alpha1 kind: NginxProxy metadata: name: ngf-public-f namespace: nginx-gateway spec: kubernetes: service: type: LoadBalancer externalTrafficPolicy: Cluster # ← this one line loadBalancerIP: &lt;real-ip&gt; Trade-off ETP: Cluster SNATs the client source IP. If your HTTPRoute backends rely on the original client IP, switch to X-Forwarded-For (NGF injects it by default). Anything that keys off client IP — e.g., the source_ip column in container registry audit logs — needs to be re-validated against XFF. Issue 6: Router ARP cache With the MetalLB pool saturated, one temp IP showed RST from external clients but worked fine internally — a strange asymmetric failure. Cause: stale ARP cache on the router. Fix: self-resolved when we cut over to the real IP. The temp IP’s ARP entry expired and got cleaned up. Bonus discovery: an audit of the router UI showed every forward rule was keyed on MetalLB LB IP:80. Because Phase 6 reassigns the same IP to NGF, no router config change is required — the cutover is transparent at the network layer. Forward rules: zero edits. Issue 7: ArgoCD recreates Ingress if values aren’t toggled For ApplicationSet apps, if you don’t set ingress.enabled: false post-cutover, ArgoCD keeps recreating the Ingress. Fix: add to cutover Step 5 as a permanent procedure: # applicationset/values/&lt;project&gt;/&lt;service&gt;/&lt;env&gt;.values.yaml ingress: enabled: false # required after Phase 6 cutover httproute: enabled: true # ... To trigger ArgoCD refresh immediately after pushing the values change: kubectl annotate application &lt;name&gt; -n argocd argocd.argoproj.io/refresh=normal --overwrite Default auto-sync polling is 3 minutes — easy to think nothing’s happening if you don’t force-refresh. Issue 8: cutover.sh smoke output rendered as “HTTP 2000” When the curl succeeded, $(curl ... || echo \"0\") concatenated the stdout success code with echo \"0\", producing nonsense output. Fix: separated HTTP_CODE capture and used ${CODE:-000} defaults. Trivial bug, but the kind of thing that adds noise during a midnight cutover. Worth recording. Final cutover.sh procedure (per class) All eight issues folded in: Wait check: kubectl get svc -n ingress-nginx &lt;release&gt;-controller -o wide ingress-nginx Service → patch to ClusterIP + remove loadBalancerIP (Issue 1) ingress-nginx Deployment → replicas=0 Edit manifests/nginxproxies.yaml to set this Gateway’s IP to the real IP kubectl diff -f manifests/nginxproxies.yaml → kubectl apply -f (Issue 2) Toggle ingress.enabled: false in the relevant values files (Issue 7) Pre-delete VWC: kubectl delete validatingwebhookconfiguration &lt;release&gt;-admission (Issue 3) Confirm MetalLB reassignment + smoke test (curl --resolve &lt;host&gt;:80:&lt;real-ip&gt;) Strip finalizers from any leftover Ingress in Terminating (Issue 4) Monitor for 24h. Non-critical classes can run in parallel with the next cutover; reserve 1–2 days of soak time before the production-critical class. Real downtime per class spans only Step 2 (patch) → Step 5 (NGF IP swap completion): roughly 30s–1m. Reference repo: github.com/somaz94/network/tree/main/nginx-gateway-fabric 7. Results and Lessons Final state Metric Before After Helm releases 11 (ingress-nginx) 1 (NGF) Ingress resources 24 0 HTTPRoute resources 0 15 Gateway CRs 0 11 MetalLB allocated IPs unchanged scale unchanged scale Self-signed TLS Secrets one per app 1 (wildcard) Cert renewal cadence per app once every 10 years The MetalLB pool was trimmed back after cutover — most of the temp verification IPs returned to free, with a small reserve. Phase 7+ follow-ups Originally planned for a one-week soak window, but compressed into the same day. Rationale: rollback cost is identical whether the old releases are in drift state or destroyed state — both recover via a single helmfile apply. helmfile destroy on all 11 ingress-nginx releases (namespaces wiped clean) Move network/ingress-nginx/ → network/_optional/ingress-nginx/ (git mv + README archive note) Shrink the MetalLB pool Convert NGF manifests/ → local CR chart (manually attach Helm ownership labels/annotations to adopt) Migrate the container registry to chart-native HTTPRoute (zero-downtime, four-step swap) Retire all per-app self-signed TLS Secrets The chart-native HTTPRoute swap was the most interesting move. New routes were created alongside the old ones, sharing the same hostname (older-wins keeps existing routes serving traffic while new policies sit in TargetConflict state). Deleting the old HTTPRoute releases the conflict — the new policy flips to Accepted=True instantly, and traffic swaps transparently. 7.5 nginx-gateway-cr — published as a public Helm chart The single biggest Phase 7+ effort was refactoring manifests/ into a local Helm chart, then separating that chart out as a public repo. Background: the internal manifests/ approach worked around Issue 2 (helmfile skipping hooks) by going through kubectl apply -f. Structurally, those resources sat outside the helmfile pipeline. During Phase 6 IP swaps, this meant manually mixing kubectl diff and kubectl apply every time. Why publish? The upstream NGF chart releases actively on OCI and has 20+ templates — non-trivial to track manually What we override is not NGF’s internal templates, but the separate CRs the controller reconciles (Gateway, NginxProxy) These resources have no environment-specific quirks — “Gateway + NginxProxy (LB IP pin) + ServiceMonitor” is the common shape for anyone wanting per-Gateway multi-tenancy on NGF Standard Helm chart practice → publish Chart repo: github.com/somaz94/helm-charts/tree/main/charts/nginx-gateway-cr What the chart provisions Gateway — 1 or N, declared as a values array. Each Gateway defaults to gatewayClassName: ngf NginxProxy — referenced by each Gateway’s infrastructure.parametersRef. service.loadBalancerIP pins the MetalLB / cloud-LB IP. externalTrafficPolicy: Cluster is the default (Issue 5 baked in) ServiceMonitor — Prometheus metrics resource that the upstream NGF chart doesn’t ship. Ready to scrape if Prometheus Operator is installed Usage with helmfile # helmfile.yaml.gotmpl — two releases linked via `needs` repositories: - name: somaz url: https://charts.somaz.blog releases: - name: nginx-gateway-fabric namespace: nginx-gateway chart: oci://ghcr.io/nginx/charts/nginx-gateway-fabric version: 2.5.1 # ... NGF controller config - name: nginx-gateway-cr namespace: nginx-gateway chart: somaz/nginx-gateway-cr version: &lt;chart-version&gt; needs: - nginx-gateway/nginx-gateway-fabric values: - values/cr.yaml Per-Gateway multi-tenancy values (verify exact field names against the chart README): # values/cr.yaml gateways: - name: ngf loadBalancerIP: &lt;main-ip&gt; listeners: - name: http port: 80 protocol: HTTP - name: https port: 443 protocol: HTTPS tls: certificateRefs: - name: wildcard-tls - name: ngf-public-a loadBalancerIP: &lt;public-a-ip&gt; # ... Who this chart is for Per-Gateway multi-tenancy — assigning a separate LoadBalancer IP per Gateway Migrators from the ingress-nginx-multi-instance pattern (one ingressClass per release) Bare-metal / on-prem with MetalLB where IPs need to be manually pinned Anyone who wants ServiceMonitor auto-provisioned alongside Who this chart is overkill for: setups with a single Gateway, or cloud LBs with dynamic allocation. The upstream NGF chart’s nginxGateway.gateway section may suffice; v2.5+ also provides some Gateway provisioning natively. What we got One helmfile diff covers Gateway / NginxProxy IP changes end-to-end Cutover collapses to “edit one values line → helmfile apply” The internal manifests/ + manual kubectl combo disappears Reusable across the next cluster with only values changes In hindsight, starting with the public chart from day one would have made Phases 1–6 cleaner. But evolving through manifests/ → local chart → public chart in that order was instructive — each step exposed which abstraction layer solves which class of problem. The destination is obvious in retrospect; getting there required the intermediate steps. Lessons Question your design assumptions before reading documentation. “11 instances → 11 GatewayClasses” was a mental-model carryover, not a fact. Verify implementation-specific constraints from primary sources before sketching the architecture. The value of parallel mode is psychological safety, not literal rollback. We never triggered a rollback during the parallel window. But the fact that we could — with one toggle — is what made it OK to cut over on a Friday evening. Worth repeating in any future migration. 80% of the problems live in the cutover hour. Design, chart authoring, parallel-mode validation: relatively calm. The IP-swap moment fired Issues 1–6 in sequence. Issue 5 (ETP: Local) in particular was a silent failure — internal services timing out for 2 minutes at a time, easy to miss. Wire up internal-traffic monitoring (CI, webhooks, cross-service calls) before the cutover window starts. One default value can rewrite operations. NGF’s ETP: Local default is sensible (security + performance), but it silently breaks internal reachability when migrating from ingress-nginx’s Cluster default. For the next migration, build a checklist comparing tool defaults against the assumptions of the existing environment, item by item. TLS ownership belongs at the Gateway layer. It’s tempting to put cert/secret values on the chart. Resist it. Following Gateway API’s resource-boundary model — chart knows HTTP routing, Gateway knows TLS — gave us a free path to cert-manager later, with zero chart code changes. Conclusion This wasn’t just a controller swap. Migrating 11 instances drove home, viscerally, how Kubernetes’ L7 routing model has evolved from Ingress’s “everything in one object” toward Gateway API’s “explicit resource boundaries.” The numbers shifted: 11 Helm releases collapsed to 1, scattered self-signed certs unified to a single wildcard, ad-hoc annotations consolidated into CRD-based policies. From outside, DNS and firewall rules look identical. From inside, the operational load is meaningfully lower. The two patterns that will travel to the next migration are parallel mode (rollback cost reduced to a values toggle) and TLS-as-a-Gateway-layer-responsibility (cert-manager future-migration cost reduced to near zero). Phase 6’s Issues 1–8 don’t appear in any documentation — they only surface under the actual conditions of a production cutover. The externalTrafficPolicy: Local default in particular was the closest thing to a true silent failure. If this post saves someone an hour during their own cutover, that’s the post doing its job. Next on the list: restoring X-Forwarded-For-based audit logging, and evaluating Gateway API v1.3 features (especially full GRPCRoute adoption). Those will get their own writeups. Reference Kubernetes Gateway API nginx-gateway-fabric (GitHub) NGF Helm Chart on GHCR (OCI) nginx-gateway-cr — public chart from this migration Gateway API v1.2 Release Notes ingress-nginx → Gateway API migration guide MetalLB Documentation NGF Custom Policies BackendTLSPolicy spec",
+            "wordCount": 4822,
+            "inLanguage": "en",
+            "datePublished": "2026-10-09T00:00:00+00:00",
+            "author": {
+    "@type": "Person",
+    "@id": "https://somaz.blog/authors/somaz/#person",
+    "name": "Somaz",
+    "image": "https://somaz.blog/assets/img/uploads/profile-400.jpg",
+    "jobTitle": "DevOps Engineer",
+    "url": "https://somaz.blog/authors/somaz/",
+    "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+,
+            "publisher": { "@id": "https://somaz.blog/#organization" },
+            "articleSection": "Kubernetes",
+            "keywords": ["kubernetes","gateway-api","nginx-gateway-fabric","ingress-nginx","migration","metallb","helm","helmfile","networking","on-premises"]
+        }
+        </script>
+    </body>
+</html>
