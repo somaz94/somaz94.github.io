@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MBP83N4Q');</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154" crossorigin="anonymous"></script>
+
+
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    
+
+    <title>How to Write a Postmortem: Blameless Practice and Root Cause Analysis | somaz</title>
+    <meta name="description" content="A guide to writing postmortems: when to write one, what the form needs, and how to separate a trigger from a root cause. It covers the limits of 5 Whys, rewr...">
+    <meta name="tdm-reservation" content="1">
+    
+        <meta name="keywords" content="postmortem, blameless, root-cause-analysis, 5-whys, sre, incident-response, troubleshooting, devops">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="How to Write a Postmortem: Blameless Practice and Root Cause Analysis | somaz">
+    <meta name="twitter:description" content="A guide to writing postmortems: when to write one, what the form needs, and how to separate a trigger from a root cause. It covers the limits of 5 Whys, rewr...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1793698846/postmortem-1_x7ebvb.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/">
+    <meta property="og:title" content="How to Write a Postmortem: Blameless Practice and Root Cause Analysis | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1793698846/postmortem-1_x7ebvb.png">
+    <meta property="og:description" content="A guide to writing postmortems: when to write one, what the form needs, and how to separate a trigger from a root cause. It covers the limits of 5 Whys, rewr...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-11-04T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=optional" rel="stylesheet">
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    <nav class="bar-links" aria-label="Author">
+        <a href="/resume/">Resume</a>
+        <a href="/career/">Career</a>
+        <a href="/portfolio/">Portfolio</a>
+    </nav>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-11-04T00:00:00+00:00">
+                            
+
+
+November 4, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>38 min to read</span>
+                </p>
+                <h1 class="post-title">How to Write a Postmortem: Blameless Practice and Root Cause Analysis</h1>
+                <p class="post-subtitle">What goes in the form, where 5 Whys falls short, how to rewrite sentences that blame a person, and what stays blank when two earlier posts are redone as postmortems</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/v1793698846/postmortem-1_x7ebvb.png" alt="How to Write a Postmortem: Blameless Practice and Root Cause Analysis" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="table-of-contents">Table of Contents</h2>
+
+<ol>
+  <li><a href="#overview">Overview</a></li>
+  <li><a href="#deciding-the-criteria-before-the-outage">Deciding the Criteria Before the Outage</a></li>
+  <li><a href="#the-fields-the-form-needs">The Fields the Form Needs</a></li>
+  <li><a href="#separating-the-trigger-from-the-root-cause">Separating the Trigger from the Root Cause</a></li>
+  <li><a href="#using-5-whys-and-where-it-falls-short">Using 5 Whys, and Where It Falls Short</a></li>
+  <li><a href="#the-trouble-with-assuming-a-single-cause">The Trouble with Assuming a Single Cause</a></li>
+  <li><a href="#rewriting-sentences-that-blame-a-person">Rewriting Sentences That Blame a Person</a></li>
+  <li><a href="#tracking-action-items">Tracking Action Items</a></li>
+  <li><a href="#redoing-real-cases-in-the-form">Redoing Real Cases in the Form</a></li>
+  <li><a href="#conclusion">Conclusion</a></li>
+  <li><a href="#references">References</a></li>
+</ol>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>A postmortem, in the Google SRE Book’s definition, is “a written record of an incident, its impact, the actions taken to mitigate or resolve it, the root cause(s), and the follow-up actions to prevent the incident from recurring.” Fixing an outage and writing it down are different skills, and the second is mostly a matter of form and sentences.</p>
+
+<p>This post is about writing that record: when to write one and what the form holds, how to tell a trigger from a root cause, 5 Whys and its limits, the trouble with assuming a single cause, rewriting sentences that blame a person, and tracking action items.</p>
+
+<p>At the end, two earlier posts from this blog are redone in the form.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="deciding-the-criteria-before-the-outage">Deciding the Criteria Before the Outage</h2>
+
+<p><a href="https://sre.google/sre-book/postmortem-culture/">Chapter 15 of the SRE Book</a> accepts that the process “does present an inherent cost in terms of time or effort, so we are deliberate in choosing when to write one.” It also says the criteria have to be defined before an incident occurs “so that everyone knows when a postmortem is necessary.” These are the common triggers it lists:</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>The book's trigger</th>
+        <th>What the team has to decide</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>User-visible downtime or degradation beyond a certain threshold</td>
+        <td>Which of time, error rate or affected users to measure, and at what value</td>
+      </tr>
+      <tr>
+        <td>Data loss of any kind</td>
+        <td>Nothing to set. If it happens, write one</td>
+      </tr>
+      <tr>
+        <td>On-call engineer intervention (release rollback, rerouting of traffic, etc.)</td>
+        <td>How far "intervention" extends</td>
+      </tr>
+      <tr>
+        <td>A resolution time above some threshold</td>
+        <td>The threshold</td>
+      </tr>
+      <tr>
+        <td>A monitoring failure (which usually implies manual incident discovery)</td>
+        <td>Whether a person noticing before the alert counts</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The book gives no values. They differ per service, so the numbers are the team’s to fill in. Severity levels are another way to draw the line, as in the <a href="https://www.atlassian.com/incident-management/handbook/postmortems">Atlassian handbook</a>: Atlassian carries out postmortems for severity 1 and 2 incidents and leaves the rest optional.</p>
+
+<p>There is one more criterion besides the objective ones. The book says “any stakeholder may request a postmortem for an event,” so a request is enough even when nothing on the list was crossed.</p>
+
+<p><br /></p>
+
+<h3 id="catching-problems-that-repeat">Catching Problems That Repeat</h3>
+
+<p>Most of those criteria measure one event at a time, which lets a short problem that keeps coming back slip through. In the <a href="/category/aws/eks-prod-deploy-guide/">EKS deployment 502 case</a>, the average impact per deployment was 68 seconds. One at a time, that may not cross a time threshold. Taken over two weeks, it happened on all 28 deployments and added up to 17 user inquiries and 4 emergency responses.</p>
+
+<p>The <a href="https://sre.google/workbook/postmortem-culture/">SRE Workbook</a> also says that when teams see failures that mirror previous incidents, “it’s time to dig deeper.” So the example below adds one repeat criterion the book does not have.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Postmortem criteria (&lt;&gt; values are filled in by the team to fit its service goals)
+
+- User-visible downtime or degradation exceeded &lt;time or error rate&gt;
+- Data was lost, at any scale
+- On-call intervened directly, by rollback, rerouting traffic or similar
+- Resolution took &lt;time&gt; or longer
+- Monitoring missed it and a person found it first
+- The same symptom repeated &lt;count&gt; or more times within &lt;period&gt; (not on the book's list)
+- None of the above, but a stakeholder requested one
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="who-writes-it-and-by-when">Who Writes It, and by When</h3>
+
+<p>The Workbook describes an owner as “a single point of contact who is responsible for the postmortem, follow-up, and completion.” The document it uses as a bad example lists four owners. Timing is just as sharp a contrast. The good example was circulated less than a week after the incident closed, and the bad one was published four months after. In the interim, the Workbook says, “had the incident recurred (which in reality, did happen), team members likely would have forgotten key details.”</p>
+
+<p>A week is not a rule the Workbook sets; it is what that example document did. Still, writing a deadline into the criteria document saves debating it every time.</p>
+
+<p>The book is also clear that “Writing a postmortem is not punishment—it is a learning opportunity for the entire company,” and for the same reason that it is important “not to stigmatize frequent production of postmortems by a person or team.” If the teams that write many of them get marked down for it, defining criteria in advance loses its point.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="the-fields-the-form-needs">The Fields the Form Needs</h2>
+
+<p>The <a href="https://sre.google/sre-book/example-postmortem/">example postmortem in Appendix D of the SRE Book</a> runs in the order below. The descriptions come from the book’s footnotes, and fields without a footnote are described from the example document itself.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>What goes in it</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Date, Authors, Status</strong></td>
+        <td>Date, authors and status. The example's status is "Complete, action items in progress"</td>
+      </tr>
+      <tr>
+        <td><strong>Summary</strong></td>
+        <td>What happened, in one sentence</td>
+      </tr>
+      <tr>
+        <td><strong>Impact</strong></td>
+        <td>"the effect on users, revenue, etc."</td>
+      </tr>
+      <tr>
+        <td><strong>Root Causes</strong></td>
+        <td>"An explanation of the circumstances in which this incident happened." The footnote adds that a technique such as the 5 Whys often helps in understanding the contributing factors</td>
+      </tr>
+      <tr>
+        <td><strong>Trigger</strong></td>
+        <td>The event that exposed the latent problem</td>
+      </tr>
+      <tr>
+        <td><strong>Resolution</strong></td>
+        <td>What was done to recover</td>
+      </tr>
+      <tr>
+        <td><strong>Detection</strong></td>
+        <td>What noticed it, and how</td>
+      </tr>
+      <tr>
+        <td><strong>Action Items</strong></td>
+        <td>Action, type, owner and tracking bug</td>
+      </tr>
+      <tr>
+        <td><strong>Lessons Learned</strong></td>
+        <td>What went well, What went wrong, Where we got lucky</td>
+      </tr>
+      <tr>
+        <td><strong>Timeline</strong></td>
+        <td>In the footnote's words, a "screenplay" of the incident, started from the timeline in the Incident Management document</td>
+      </tr>
+      <tr>
+        <td><strong>Supporting information</strong></td>
+        <td>Links, logs, screenshots, graphs, chat logs</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>Where we got lucky, according to its footnote, “is really for near misses.” Weaknesses that simply did not blow up this time end up there.</p>
+
+<p>The Workbook’s good example splits impact into User, Revenue and Team, and adds Background, Glossary and Appendix. There is no need to copy the field names as they are. The form below starts from Appendix D, renames the root cause field, and takes Team for impact and Priority for action items from the Workbook. Status, which used to share the tracking issue (Bug) field, gets its own field, and the due date field is new. The reasons for these changes come later.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Title:
+Date:
+Authors:
+Status: Draft / In review / Complete (action items in progress)
+
+Summary:
+Impact: User / Revenue / Team
+
+Root causes and contributing factors:
+Trigger:
+Resolution:
+Detection: what alerted, how long from onset to awareness
+
+Action items: action / type / priority / owner / due date / tracking issue / status
+
+Lessons learned:
+- What went well:
+- What went wrong:
+- Where we got lucky:
+
+Timeline: time (with time zone) / event / evidence link
+Supporting information:
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="what-goes-in-the-timeline">What Goes in the Timeline</h3>
+
+<p>Appendix D’s timeline states “all times UTC” under the date and records events by the minute. It takes a single clock to argue about what came before what.</p>
+
+<p><a href="https://web.archive.org/web/20230101031813/https://www.etsy.com/codeascraft/blameless-postmortems/">John Allspaw’s Etsy article</a> lists five things an engineer involved in an accident should be able to give a detailed account of “without fear of punishment or retribution.” They work as they stand for timeline entries and interview questions.</p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Allspaw's five accounts</strong>
+  <ul>
+    <li>What actions they took at what time</li>
+    <li>What effects they observed</li>
+    <li>Expectations they had</li>
+    <li>Assumptions they had made</li>
+    <li>Their understanding of the timeline of events as they occurred</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h3 id="what-the-review-looks-for">What the Review Looks For</h3>
+
+<div class="quote-box">
+  <p>An unreviewed postmortem might as well never have existed.</p>
+  <p><cite>Google SRE Book, Chapter 15</cite></p>
+</div>
+
+<p><br /></p>
+
+<p>When a first draft goes to a group of senior engineers to assess, the book says the review criteria might include the following.</p>
+
+<div class="info-box info-box-default">
+  <strong>Review criteria from the book</strong>
+  <ul>
+    <li>Was key incident data collected for posterity?</li>
+    <li>Are the impact assessments complete?</li>
+    <li>Was the root cause sufficiently deep?</li>
+    <li>Is the action plan appropriate and are resulting bug fixes at appropriate priority?</li>
+    <li>Did we share the outcome with relevant stakeholders?</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="separating-the-trigger-from-the-root-cause">Separating the Trigger from the Root Cause</h2>
+
+<p>Appendix D keeps the two in separate fields. Its root cause field describes a “Cascading failure due to combination of exceptionally high load and a resource leak,” and its trigger field holds one sentence: “Latent bug triggered by sudden increase in traffic.” The Workbook folds them into one “Root Causes and Trigger” section and says identifying them “is one of the most important reasons to write a postmortem.”</p>
+
+<p>Neither book’s chapter explicitly defines where one term ends and the other begins. The nearest definition is in the Atlassian handbook: “Proximate causes are reasons that directly led to this incident,” and root causes are “reasons at the optimal place in the chain of events where making a change will prevent this entire class of incident.” A proximate cause and a trigger are not quite the same thing, but both splits ask what has to be fixed to stop a recurrence.</p>
+
+<p>Going by those examples, this post draws the line like this:</p>
+
+<div class="highlight-box">
+  <p>A <strong>trigger</strong> is the event that exposed a condition that was lying dormant. <strong>Root causes and contributing factors</strong> are the conditions that made that event turn into an outage.</p>
+</div>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Case</th>
+        <th>Trigger</th>
+        <th>Condition exposed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SRE Book Appendix D</td>
+        <td>Sudden increase in traffic</td>
+        <td>Exceptionally high load combined with a resource leak that normally goes unnoticed</td>
+      </tr>
+      <tr>
+        <td>SRE Workbook good example</td>
+        <td>Manual re-execution of a workflow</td>
+        <td>A longstanding input validation bug in the Traffic Admin server</td>
+      </tr>
+      <tr>
+        <td><a href="/category/aws/eks-prod-deploy-guide/">EKS deployment 502</a></td>
+        <td>A deployment</td>
+        <td>The timing gap between Pod Ready and ALB healthy</td>
+      </tr>
+      <tr>
+        <td><a href="/category/troubleshooting/jenkins-trouble-shooting-1/">Jenkins power outage</a></td>
+        <td>A server power outage</td>
+        <td>The plugin update before the outage and the plugin version mismatch after it</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="caption">The last two rows apply this split to this blog's posts. Those posts do not classify things this way themselves.</div>
+</div>
+
+<p><br /></p>
+
+<p>These questions help when sorting something into a field.</p>
+
+<div class="info-box info-box-question">
+  <strong>Trigger or condition?</strong>
+  <ul>
+    <li>Would the same condition still be in the system if this event had not happened? If so, the event is a trigger.</li>
+    <li>If this condition were removed, would a different trigger be unable to produce the same result? If so, the action items should aim here.</li>
+    <li>Is a person's action sitting in the cause field? See whether the document still makes sense with that action moved to the trigger field.</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<p>The third question comes from a contrast in the Workbook. Its bad example’s root cause reads “dylanfour@ ignored the automation setup and ran the cluster turnup logic manually, which triggered an existing bug.” The good example puts the bug in the automation in the cause, and moves the same action to the trigger: “the manual reexecution of a workflow.” The action stays on record as a fact and stops being the cause.</p>
+
+<p>The Jenkins case shows why stopping only the trigger is not enough. The prevention list in the source post has measures on both sides:</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph LR
+      UPS["UPS"] -.-&gt;|blocks| Outage["Trigger: power outage"]
+      Backup["Backup before updates,<br />validating in a test environment"] -.-&gt;|addresses| Mismatch["Condition: plugin update,<br />then version mismatch"]
+      Outage --&gt; Failure["UI broken,<br />Job list not displayed"]
+      Mismatch --&gt; Failure
+
+      classDef trigger fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037;
+      classDef condition fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+      classDef failure fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+      class Outage trigger;
+      class Mismatch condition;
+      class Failure failure;
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>The Jenkins case's prevention measures, sorted by what each one acts on. The sorting is this post's.</p>
+</div>
+
+<p><br /></p>
+
+<p>Keep only the UPS, and the outage may be prevented while the conditions for the mismatch go untouched. That the same mismatch could surface on some other restart is this post’s inference, and the source post does not confirm it.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="using-5-whys-and-where-it-falls-short">Using 5 Whys, and Where It Falls Short</h2>
+
+<p>According to <a href="https://www.atlassian.com/incident-management/postmortem/5-whys">Atlassian’s article on 5 Whys</a>, the method came from Toyota founder Sakichi Toyoda in the 1930s and took off in the 1970s. The footnote in Appendix D also gives it as an example for working out contributing factors.</p>
+
+<p><br /></p>
+
+<h3 id="the-procedure">The Procedure</h3>
+
+<p><a href="https://aws.amazon.com/blogs/mt/why-you-should-develop-a-correction-of-error-coe/">AWS’s COE article</a> introduces 5 Whys as the mechanism Amazon uses to determine the root cause, and gives this order:</p>
+
+<ol>
+  <li>Identify the problem.</li>
+  <li>Ask why it happened.</li>
+  <li>Keep asking why of each answer. Do not stop at five; continue until you are confident you have uncovered the complete chain of events.</li>
+  <li>Create a plan to remediate each answer.</li>
+</ol>
+
+<p>The same article says the method should be “focused on finding the ‘why’ rather than blaming ‘who’,” and that when “human error” comes up as a root cause, “you should always ask why the human error was possible.”</p>
+
+<p><br /></p>
+
+<h3 id="allspaws-critique">Allspaw’s Critique</h3>
+
+<p>On the other side is Allspaw’s <a href="https://www.kitchensoap.com/2014/11/14/the-infinite-hows-or-the-dangers-of-the-five-whys/">The Infinite Hows</a>. “The Five Whys is such an approach that I think we should discard,” he writes. His example, which he himself calls “an often-repeated straw man,” begins like this:</p>
+
+<blockquote>
+  <p>“Why did the server fail? Because an obscure subsystem was used in the wrong way.”</p>
+
+  <p>“Why was it used in the wrong way? The engineer who used it didn’t know how to use it properly.”</p>
+</blockquote>
+
+<p>His objections come down to these:</p>
+
+<ul>
+  <li><strong>Each step has only one question.</strong> A server can fail for several reasons, but only one answer carries on to the next question.</li>
+  <li><strong>The answer leans on the outcome.</strong> “Wrong way” is a judgment made after knowing about the failure. Asked at the time, the user would have said they were doing it right.</li>
+  <li><strong>Asking why tends to end at who.</strong> The chain above arrives at an engineer’s knowledge and a manager’s judgment.</li>
+  <li><strong>Where to stop is arbitrary.</strong> “We’ve ‘found’ a root cause when we stop looking,” he writes.</li>
+</ul>
+
+<p>On the stopping point, the Nancy Leveson passage the article quotes is specific. A chain stops because an event is familiar or deviates from a standard, because it is the first point where it feels something can be done, because the information runs out, or because the answer is politically acceptable.</p>
+
+<p>Allspaw’s alternative is to ask “how”: to have people describe the conditions that let the event happen, and to hear how their actions made sense at the time. These are the questions from the article:</p>
+
+<div class="info-box info-box-question-not-check">
+  <strong>Allspaw's "how" questions</strong>
+  <ul>
+    <li>What approach did they take when writing the code?</li>
+    <li>In what ways did they gain confidence before it was deployed (tests, code reviews, etc.)?</li>
+    <li>What history of success or failure have they had with similar pieces of code?</li>
+    <li>What trade-offs did they make or manage in the design?</li>
+    <li>How did they judge the scope of the project?</li>
+    <li>How much, and in what ways, did they experience time pressure?</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<p>Atlassian’s article argues back: never identifying a person as the root cause is one of the method’s foundational rules, there is nothing wrong with the chain turning into “a tree of multiple factors,” and five is “shorthand for a process that pushes you to dig deeper.” That reply describes the method used well, though, and Allspaw objects to more than the commonly presented form. He objects to chaining whys at all.</p>
+
+<p><br /></p>
+
+<h3 id="ground-rules-for-using-5-whys">Ground Rules for Using 5 Whys</h3>
+
+<p>Which side is right is not something to settle here. This post’s position is to use 5 Whys as a tool for producing questions, and not to treat what comes out of it as proof.</p>
+
+<div class="info-box info-box-success">
+  <strong>Ground rules</strong>
+  <ul>
+    <li>If there are several answers, branch. Do not throw the others away to keep a single line.</li>
+    <li>If the answer is a person, do not stop. Ask why the system allowed that action, or why it looked like the right thing to do.</li>
+    <li>Write the evidence for each answer. Without a log or a graph, mark it as a guess.</li>
+    <li>Use how questions alongside it. Where answers run dry is usually where the people involved have not been heard yet.</li>
+    <li>Write down where you stopped and why. Ask yourself which of Leveson's reasons it falls under.</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="the-trouble-with-assuming-a-single-cause">The Trouble with Assuming a Single Cause</h2>
+
+<p>Richard Cook’s <a href="https://how.complexsystems.fail/">How Complex Systems Fail</a> rejects the assumption most forcefully.</p>
+
+<div class="quote-box">
+  <p>Post-accident attribution to a 'root cause' is fundamentally wrong.</p>
+  <p><cite>Richard I. Cook, How Complex Systems Fail, item 7</cite></p>
+</div>
+
+<p><br /></p>
+
+<p>That is the title of item 7. Its reasoning is that overt failure requires multiple faults: each contributor is “necessarily insufficient in itself to create an accident,” and “only jointly” are they sufficient. So Cook concludes that isolating the root cause is not possible, and goes as far as saying such evaluations “do not reflect a technical understanding of the nature of failure but rather the social, cultural need to blame specific, localized forces or events for outcomes.”</p>
+
+<p>Items 3 and 4 back this up. An accident happens when “small, apparently innocuous failures join to create opportunity for a systemic accident,” and complex systems cannot run without multiple flaws present. “Because these are individually insufficient to cause failure they are regarded as minor factors during operations.” The conditions separated from the trigger earlier are exactly this kind of latent fault.</p>
+
+<p>Allspaw’s article gets at the same point through other quotations. Sidney Dekker wrote that “Cause is something we construct, not find,” and John Carroll called the satisfaction of finding one cause “root cause seduction.” Allspaw’s own thought experiment is simple. Use 5 Whys on “Why didn’t we have failure X today?” and the answers do not converge. If success needs many conditions, it is strange to think failure needs only one.</p>
+
+<p><br /></p>
+
+<h3 id="why-the-root-cause-field-stays">Why the Root Cause Field Stays</h3>
+
+<p>The SRE Book writes “root cause(s)” and “contributing root cause(s),” leaving room for several, and Atlassian also writes “root cause(s).” They do not drop the concept the way Cook does.</p>
+
+<p>Read through Atlassian’s definition, the two positions do not collide much, in this post’s view. If a root cause is defined as the optimal place in the chain to make a change, it stops being the discovery of a sole cause and becomes a judgment about where to fix. A judgment can state its grounds, and it gives no reason to erase the other factors. In the document, that judgment shows up like this:</p>
+
+<ul>
+  <li><strong>Name the field “Root causes and contributing factors.”</strong> This is why the form earlier renamed it.</li>
+  <li><strong>Write the combination as a sentence.</strong> Like Appendix D’s “combination of exceptionally high load and a resource leak,” put the conditions that only make an accident together into one sentence.</li>
+  <li><strong>Take the factors out one at a time.</strong> Ask whether the accident would have been avoided without just this one. If that holds for several, write them together.</li>
+  <li><strong>Write why you chose what to fix first.</strong> Factors not being fixed this time stay in the document too.</li>
+</ul>
+
+<p>The Workbook’s good example is a useful reference. Its root cause paragraph is about the input validation bug, but its “Things that went poorly” separately lists that the decom workflow is not rate-limited, that it does not cross-check requests against other data sources, and that the Traffic Admin server lacked appropriate sanity checks.</p>
+
+<p>The post behind this blog’s 502 case also titles a section “Asymmetric Timing Between Two Systems.” As that post explains it, Kubernetes and the ALB each judged by their own standard. The post locates the problem in Kubernetes not knowing the ALB’s state, but the timing gap arises where the two systems’ standards meet. In this post’s judgment, naming only one side as the cause leaves the explanation short.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="rewriting-sentences-that-blame-a-person">Rewriting Sentences That Blame a Person</h2>
+
+<p>The SRE Book says a blameless postmortem “must focus on identifying the contributing causes of the incident without indicting any individual or team for bad or inappropriate behavior.” It “assumes that everyone involved in an incident had good intentions and did the right thing with the information they had.” In the book’s words, “You can’t ‘fix’ people, but you can fix systems and processes.”</p>
+
+<p>The reason is practical. The Workbook points out that highlighting individuals “leads team members to become risk-averse,” and that they “may be motivated to cover up facts critical to understanding and preventing recurrence.” The Etsy article says an engineer who expects a reprimand is disincentivized from giving the details, and that this lack of understanding “all but guarantees that it will repeat.”</p>
+
+<p>Nor does it remove responsibility. The same article says engineers “are not at all ‘off the hook’ with a blameless PostMortem process. They are very much on the hook for helping Etsy become safer and more resilient.” Atlassian likewise says to refer to individuals by role “while remaining clear and unambiguous about the facts.” The action gets recorded; only the blame comes out.</p>
+
+<p><br /></p>
+
+<h3 id="before-and-after">Before and After</h3>
+
+<p>The “before” sentences in the first three rows, and the “after” in the first row, come from the Workbook’s examples. The other “after” sentences and the fourth row were written for this post as illustrations, and the last row comes from this blog.</p>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Before</th>
+        <th>After</th>
+        <th>What changed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>dylanfour@ ignored the automation setup and ran the cluster turnup logic manually, which triggered an existing bug.</td>
+        <td>A longstanding input validation bug in the Traffic Admin server was triggered by the manual reexecution of a workflow.</td>
+        <td>The subject moved from a person to a system, and the action stayed as the trigger</td>
+      </tr>
+      <tr>
+        <td>Due to careless ignorance, they triggered a bad interaction</td>
+        <td>Delete it, and use verifiable figures or facts instead</td>
+        <td>Removed the judgment and emotion the Workbook calls out</td>
+      </tr>
+      <tr>
+        <td>sydneythree@ needs to learn proper cross-site handoff protocol</td>
+        <td>Add the cross-site handoff steps to the on-call playbook and have handoffs logged</td>
+        <td>An action that fixes a person became an action that fixes a procedure</td>
+      </tr>
+      <tr>
+        <td>Of course the error rate should have been checked after the deployment</td>
+        <td>At the time the deployment screen showed normal, and the error rate was visible on a separate dashboard</td>
+        <td>A judgment that knows the outcome became the information visible at the time</td>
+      </tr>
+      <tr>
+        <td>Developer had updated plugins before outage, plugin versions increased during restart</td>
+        <td>Plugins had been updated before the outage, and plugin versions increased during restart</td>
+        <td>The facts stayed, and the sentence's center moved from a person to a change</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The last row’s original comes from the <a href="/category/troubleshooting/jenkins-trouble-shooting-1/">Jenkins post</a>, and it was not written to blame anyone. In a troubleshooting guide it is a fine way to describe the situation. In a postmortem, though, a person as the subject easily sends the next question toward “why did that developer.” The question after the rewritten sentence is different: how the screen conveyed the relationship between the plugin update and the restart, and whether anything checked version compatibility before the restart. The answers to those are not recorded in the source post.</p>
+
+<p><br /></p>
+
+<h3 id="what-to-look-for-when-rewriting">What to Look for When Rewriting</h3>
+
+<div class="info-box info-box-default">
+  <strong>Rewriting checklist</strong>
+  <ul>
+    <li>If a sentence's subject is a person, see whether it can be a system, a procedure or a change.</li>
+    <li>Write names as roles. Atlassian's example is "the on-call Widgets engineer."</li>
+    <li>Delete "should have" and write what was visible at the time. As Cook's item 8 puts it, "Knowledge of the outcome makes it seem that events leading to the outcome should have appeared more salient to practitioners at the time than was actually the case."</li>
+    <li>Turn adjectives into numbers. The Workbook calls a postmortem "a factual artifact" and says to "provide verifiable data to justify the severity of a statement."</li>
+    <li>Change the question. In Atlassian's words, ask not "why did individual x do this", but "why did the system allow them to do this, or lead them to believe this was the right thing to do".</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="tracking-action-items">Tracking Action Items</h2>
+
+<p>The Workbook quotes Ben Treynor Sloss: “To our users, a postmortem without subsequent action is indistinguishable from no postmortem.”</p>
+
+<p>Appendix D’s action table has Action Item, Type, Owner and Bug columns, with DONE or TODO written inside Bug. The Workbook’s example adds Priority. Types take values such as investigate, prevent, mitigate, repair and detect. Neither table has a due date column.</p>
+
+<p>For how to use due dates, see the Atlassian handbook. Priority actions have an agreed SLO “which is either 4 or 8 weeks, depending on the service, with reminders and reports to ensure they are completed.” Root cause fixes are linked as “Priority Action” and other improvements as “Improvement Action,” tracked in Jira. This post’s form adds a due date field along those lines. Without one, the table says whether an item is closed but not whether it is late.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Action</th>
+        <th>Type</th>
+        <th>Priority</th>
+        <th>Owner</th>
+        <th>Due</th>
+        <th>Tracking issue</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Add a rule that alerts when the service exceeds X% errors</td>
+        <td>detect</td>
+        <td>P1</td>
+        <td>One role</td>
+        <td>A date</td>
+        <td>An issue number</td>
+        <td>In progress</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="how-to-word-an-item">How to Word an Item</h3>
+
+<p>The Atlassian handbook follows the advice of Google’s Lueder and Beyer and gives three requirements. <strong>Actionable</strong> means “starting with a verb” and resulting in a useful outcome, not a process. <strong>Specific</strong> means narrowing the scope, “making clear what is and what is not included in the work.” <strong>Bounded</strong> means wording it “to indicate how to tell when it is finished.”</p>
+
+<p><br /></p>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>From</th>
+        <th>To</th>
+        <th>Requirement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Investigate monitoring for this scenario.</td>
+        <td>Add alerting for all cases where this service returns &gt;1% errors.</td>
+        <td>Actionable</td>
+      </tr>
+      <tr>
+        <td>Fix the issue that caused the outage.</td>
+        <td>Handle invalid postal code in user address form input safely.</td>
+        <td>Specific</td>
+      </tr>
+      <tr>
+        <td>Make sure engineer checks that database schema can be parsed before updating.</td>
+        <td>Add automated pre-submit check for schema changes.</td>
+        <td>Bounded</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>“Make automation better.” and “Improve paging and alerting.” in the Workbook’s bad example get called out for the same reason. The items in its good example have “a verifiable end state.”</p>
+
+<p><br /></p>
+
+<h3 id="what-tracking-tends-to-miss">What Tracking Tends to Miss</h3>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Easy to miss</strong>
+  <ul>
+    <li><strong>One owner.</strong> The Workbook says "It's better to have a single owner and multiple collaborators," and that items without clear owners "are less likely to be resolved."</li>
+    <li><strong>Separate priorities.</strong> The bad example gives every item an equal priority, so "There's no way to determine which action to tackle first."</li>
+    <li><strong>A tracking issue.</strong> "Without a formal tracking process, action items from postmortems are often forgotten, resulting in outages," the Workbook writes.</li>
+    <li><strong>Prevention, not only mitigation.</strong> The bad example's items are mostly mitigative, and its one preventative item comes down to making humans less error-prone. The Workbook says that "trying to change human behavior is less reliable than changing automated systems and processes."</li>
+    <li><strong>Knee-jerk items.</strong> Appendix D's footnote says they "often turn out to be too extreme or costly to implement," and warns of "a risk of over-optimizing for a particular issue."</li>
+    <li><strong>A regular look at what is still open.</strong> Atlassian reports how many incidents have not had their root causes fixed, and engineering managers review the list. The Workbook likewise says that with repeating failures you should ask, "Are action items taking too long to close?"</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<p>Whether an action can close is best confirmed by measuring again the metric you first measured. Even if the issue says Done, prevention is not finished if that metric has not moved. The 502 post below makes this check possible because it measured the same items before and after.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="redoing-real-cases-in-the-form">Redoing Real Cases in the Form</h2>
+
+<p>This section moves two posts from this blog into the form above.</p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>What these two cases are</strong>
+  <ul>
+    <li>Both posts are troubleshooting guides, and there is no record that a postmortem was run for either.</li>
+    <li>What follows is an exercise in filling the form with only the facts those posts state. Which fact goes in root cause, trigger, what went well or what went wrong was decided by this post.</li>
+    <li>A field with no record stays "Not recorded" rather than being filled with a guess.</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<p>For the technical explanation of the causes, read the posts themselves.</p>
+
+<p><br /></p>
+
+<h3 id="case-1-a-502-on-every-deployment">Case 1: A 502 on Every Deployment</h3>
+
+<p>This one comes from the <a href="/category/aws/eks-prod-deploy-guide/">EKS Production Deployment Guide</a>. The problem did not happen once and end; it came back on every deployment, so moving it over as a single incident with a start and an end would misstate the facts. That is why the impact field is written per period.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Title: HTTP 502 repeated on every deployment
+Date: Not recorded
+Authors: Not recorded
+Status: Not recorded
+
+Summary: HTTP 502 occurred on every EKS deployment while ArgoCD and Pod status
+         showed normal. After ReadinessGate was applied, 34 deployments produced no 502.
+
+Impact:
+- 502 on 28 of 28 deployments over 2 weeks
+- Average 700 errors per deployment, average impact duration 68 seconds
+- 17 user inquiries, 4 emergency responses
+- Revenue impact: Not recorded
+
+Root causes and contributing factors:
+- There was a 48-second gap between Pod Ready (T+12s) and ALB Target healthy (T+60s)
+- ALB state was not part of Kubernetes's Pod Ready decision
+- Other factors: Not recorded
+
+Trigger: A deployment (repeating on every deployment)
+
+Resolution: Enabled ReadinessGate, accepting the trade-off of 55 seconds more Pod Ready time.
+
+Detection:
+- Alert example in the source post: Grafana "HTTP 502 Spike: 708 errors in 70 seconds",
+  "User Impact: ~2,000 affected requests"
+- ArgoCD at the same moment: Sync Status Healthy, Health Status Healthy, All Pods Running (3/3)
+- When it was first noticed, time from onset to awareness: Not recorded
+- Whether the alert or the user inquiries came first: Not recorded
+
+Lessons learned:
+- What went well: Before and after were measured on the same items (the following 2 weeks, 34 deployments, 0/34)
+- What went wrong: Automation tools reported success while users were seeing error pages.
+  The three attempts below did not solve the problem.
+- Where we got lucky: Not recorded
+
+Timeline:
+- Times: Not recorded
+- Order of telling in the source post: problem recognized → attempt 1 → attempt 2 → attempt 3 → ReadinessGate → measurement
+- Whether this order is the actual chronological order: Not recorded
+</code></pre></div></div>
+
+<p>Failed attempts are a side note in a troubleshooting guide, but they matter in a postmortem: they are the grounds for answering “already tried that” when the same suggestion comes back. The source post kept the results of all three.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Attempt</th>
+        <th>Change</th>
+        <th>Result in the source post</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><code>terminationGracePeriodSeconds</code> 240</td>
+        <td>Deployment time increased 4x (3 min → 12 min), startup timing issue unsolved, 502 errors still occurred during Spot Instance reclamation</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Health check interval 5 seconds, healthy threshold 2</td>
+        <td>Improved from 60s → 10s, still 10 seconds of errors, increased false positives led to instability</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>10 replicas (originally 3)</td>
+        <td>3x cost increase, only reduced probability, not a fundamental fix</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>Moving the action items over, the priority, owner, due date and tracking issue fields are all “Not recorded,” and only one status can be confirmed. The types were assigned by this post to fit the form.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Action</th>
+        <th>Type</th>
+        <th>Priority</th>
+        <th>Owner</th>
+        <th>Due</th>
+        <th>Tracking issue</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Enable ReadinessGate</td>
+        <td>prevent</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Done, confirmed by 0/34</td>
+      </tr>
+      <tr>
+        <td>Tune preStop and <code>terminationGracePeriodSeconds</code></td>
+        <td>prevent</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Given as a recommended setting in the source post; whether applied: not recorded</td>
+      </tr>
+      <tr>
+        <td><code>PodReadinessGateStuck</code> alert</td>
+        <td>detect</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Not recorded</td>
+        <td>Given as a config example in the source post; whether applied: not recorded</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>One more thing stands out for the timeline. The source post’s T+ figures start separately from T+0 on the Pod side and on the ALB side, and it does not say whether the two T+0s are the same moment. The 48 seconds assumes they are. That is enough in a post explaining a cause, but a postmortem timeline would have to line them up again as absolute times on one clock.</p>
+
+<p><br /></p>
+
+<h3 id="the-5-whys-for-case-1-separating-record-from-question">The 5 Whys for Case 1: Separating Record from Question</h3>
+
+<p>Filling in 5 Whys straight makes it easy to invent steps the source does not contain, so this table has a source column that separates what the post records from what this post asks. The source post has no 5 Whys table. Arranging its explanation into a chain from A1 to A3, everything written under “To ask,” and setting up branches B, C and D are this post’s analysis, not established fact. There is also no record that these questions were actually investigated.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Step</th>
+        <th>Why</th>
+        <th>Answer</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>A1</td>
+        <td>Why was there a 502 during deployment?</td>
+        <td>There was a 48-second gap between Pod Ready (T+12s) and ALB Target healthy (T+60s)</td>
+        <td>Source post's record</td>
+      </tr>
+      <tr>
+        <td>A2</td>
+        <td>Why was there a gap?</td>
+        <td>Kubernetes looks at <code>readinessProbe</code> success, and the ALB looks at passing 2 health checks</td>
+        <td>Source post's record</td>
+      </tr>
+      <tr>
+        <td>A3</td>
+        <td>Why was that gap not reflected in the decision?</td>
+        <td>Kubernetes did not know the ALB's state, and ReadinessGate, which connects them, was not enabled</td>
+        <td>Source post's record</td>
+      </tr>
+      <tr>
+        <td>A4</td>
+        <td>Why was it not enabled?</td>
+        <td>Not recorded. To ask: was there a procedure that checks this setting when a namespace is created?</td>
+        <td>This post's question</td>
+      </tr>
+      <tr>
+        <td>B</td>
+        <td>Why did the deployment tooling not see the problem?</td>
+        <td>Recorded up to ArgoCD showing Healthy. To ask: was error rate part of deciding that a deployment succeeded?</td>
+        <td>Record and question</td>
+      </tr>
+      <tr>
+        <td>C</td>
+        <td>Why did it go on for 28 deployments?</td>
+        <td>Not recorded. To ask: when was it recognized as a problem, did it exist before the measured 2 weeks, and what criterion decided the response?</td>
+        <td>This post's question</td>
+      </tr>
+      <tr>
+        <td>D</td>
+        <td>Why did the three attempts not solve it?</td>
+        <td>Recorded up to the results. To ask: when choosing each attempt, what data did people look at and where did they suspect?</td>
+        <td>Record and question</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    graph TD
+      P["HTTP 502 during deployment"] --&gt; A1["A1: 48-second gap"]
+      A1 --&gt; A2["A2: Different checks on each side"]
+      A2 --&gt; A3["A3: ReadinessGate not enabled"]
+      A3 -.-&gt; A4["A4: Why not enabled?"]
+      P --&gt; B["B: Why did the tooling not see it?"]
+      P --&gt; C["C: Why 28 deployments?"]
+      P --&gt; D["D: Why did three attempts fail?"]
+
+      classDef recorded fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+      classDef mixed fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1;
+      classDef question fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037;
+      class A1,A2,A3 recorded;
+      class B,D mixed;
+      class A4,C question;
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>Green is the source post's record, blue is record plus question, and yellow is this post's question. The shape of the tree is this post's analysis.</p>
+</div>
+
+<p><br /></p>
+
+<p>The chain taken from the source post stops at A3. That reads as having reached something fixable, but the post does not give a reason for stopping. For a troubleshooting guide, A3 is enough. A postmortem should keep B through D open as well: the A3 action is what removed the 502, but how quickly the same kind of problem gets noticed depends on B and C.</p>
+
+<p>Branch D is also an example of a how question. Ask why an attempt failed and you only get its result again. Ask how it was chosen and you get the data people were looking at.</p>
+
+<p><br /></p>
+
+<h3 id="case-2-the-jenkins-job-list-after-a-power-outage">Case 2: The Jenkins Job List After a Power Outage</h3>
+
+<p>The <a href="/category/troubleshooting/jenkins-trouble-shooting-1/">post on recovering Jenkins after a power outage</a> has no figures or times about the outage, so “Not recorded” comes up even more.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Title: Jenkins Job list not displayed after a server power outage
+Date: Not recorded
+Authors: Not recorded
+Status: Not recorded
+Target environment: Not recorded (the source post covers macOS, Linux, Docker and Kubernetes)
+
+Summary: A server power outage terminated Jenkins abnormally, and after restart the UI broke
+         and the Job list was not displayed. Recovered by upgrading Jenkins and updating plugins.
+
+Impact:
+- Job list not displayed, warnings on the plugin management page, some plugins failing to load
+- Number of Jobs affected, downtime, users affected: Not recorded
+
+Root causes and contributing factors:
+- Plugins had been updated before the outage, and plugin versions increased during restart
+- The plugin version mismatch caused compatibility problems
+- Jenkins and plugin versions at the time: Not recorded
+
+Trigger: A server power outage (restart after abnormal termination)
+
+Resolution: Upgrade Jenkins → update all plugins → reboot
+
+Detection: Not recorded
+
+Action items: Exist only as recommendations in the source post (backup before updates,
+              gradual updates, validation in a test environment, UPS).
+              Owner, due date, whether applied: Not recorded
+
+Lessons learned:
+- Source post's lessons: backups first, staying up to date, preparing for outages, a systematic approach
+- Where we got lucky: Not recorded
+
+Timeline:
+- Times: Not recorded
+- Order: plugin update → power outage, abnormal termination → restart, plugin versions increase
+  → UI broken, Job list not displayed → Jenkins upgrade → plugin update, reboot → normal operation
+</code></pre></div></div>
+
+<p>Separating trigger from condition produces something to ask. Would the same mismatch have happened on a planned restart instead of an outage? Going by the source post’s order it looks possible, but that is an inference the post cannot confirm. Answering it takes the time of the update and the versions at the time, and neither survives.</p>
+
+<p><br /></p>
+
+<h3 id="what-not-recorded-tells-you">What “Not Recorded” Tells You</h3>
+
+<p>Collect the fields that stayed empty across the two posts, and you get a list of information that cannot be filled in when you write later.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Empty field</th>
+        <th>What should have been kept at the time</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Onset, awareness and recovery times</td>
+        <td>Absolute times in a single time zone, with links to alerts and chat logs</td>
+      </tr>
+      <tr>
+        <td>Detection path</td>
+        <td>What alerted first: an alert or a user inquiry</td>
+      </tr>
+      <tr>
+        <td>Participants and decisions</td>
+        <td>By role, what they looked at and why they chose that action</td>
+      </tr>
+      <tr>
+        <td>Versions and change history at the time</td>
+        <td>State that recovery wipes out, such as the plugin list before and after the restart</td>
+      </tr>
+      <tr>
+        <td>Owners and due dates for actions</td>
+        <td>One owner per item, a date, a tracking issue</td>
+      </tr>
+      <tr>
+        <td>Where we got lucky</td>
+        <td>Weaknesses that passed this time and are dangerous next time</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>Both posts were written to pass on a fix, and they do that well. These blanks exist because a troubleshooting guide and a postmortem have different purposes. The Workbook says “A prompt postmortem tends to be more accurate because information is fresh in the contributors’ minds,” and Allspaw points out that “Memories are faulty and perspectives are limited.” Filling these fields from memory now would produce a plausible document, but not a record. That is why the form is better opened during the outage than after it.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>What matters in a postmortem is less the form itself than the distinctions it forces. Deciding in advance whether to write one keeps the choice from swaying with the mood, and writing trigger and condition in separate fields keeps you from stopping the outage and calling it done.</p>
+
+<p>Use 5 Whys to produce questions, and do not assume the answers converge on one. Even accepting Cook’s and Allspaw’s critiques, the root cause field can stay, as the place to write the grounds for deciding what to fix.</p>
+
+<p>In sentences, take the person out of the subject but do not erase the facts. Give action items one owner, a due date and a tracking issue, and close them with the metric you first measured.</p>
+
+<p>The biggest lesson from moving these two cases over is how much “Not recorded” there was. Times, detection paths and the decisions of the moment fade fast once recovery is done, so they have to be taken down while the outage is still in progress.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://sre.google/sre-book/postmortem-culture/">Postmortem Culture: Learning from Failure - Google SRE Book</a></li>
+  <li><a href="https://sre.google/sre-book/example-postmortem/">Appendix D: Example Postmortem - Google SRE Book</a></li>
+  <li><a href="https://sre.google/workbook/postmortem-culture/">Postmortem Culture: Learning from Failure - Google SRE Workbook</a></li>
+  <li><a href="https://web.archive.org/web/20230101031813/https://www.etsy.com/codeascraft/blameless-postmortems/">Blameless PostMortems and a Just Culture - John Allspaw, Etsy Code as Craft (Internet Archive copy)</a></li>
+  <li><a href="https://www.kitchensoap.com/2014/11/14/the-infinite-hows-or-the-dangers-of-the-five-whys/">The Infinite Hows (or, the Dangers Of The Five Whys) - John Allspaw</a></li>
+  <li><a href="https://how.complexsystems.fail/">How Complex Systems Fail - Richard I. Cook</a></li>
+  <li><a href="https://www.atlassian.com/incident-management/handbook/postmortems">Incident postmortems - Atlassian Incident Management Handbook</a></li>
+  <li><a href="https://www.atlassian.com/incident-management/postmortem/5-whys">The power of 5 Whys: analysis and defense - Atlassian</a></li>
+  <li><a href="https://aws.amazon.com/blogs/mt/why-you-should-develop-a-correction-of-error-coe/">Why you should develop a correction of error (COE) - AWS Cloud Operations Blog</a></li>
+  <li><a href="/category/aws/eks-prod-deploy-guide/">EKS Production Deployment Guide - Achieving Zero 502 Errors</a></li>
+  <li><a href="/category/troubleshooting/jenkins-trouble-shooting-1/">Jenkins Server Recovery After Power Outage - Resolving Plugin Version Mismatch</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/openstack/openstack-placement/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1755833039/openstack-placement-1_f62ne8.png" alt="Deep Dive into OpenStack Placement">
+                                    
+                                    <h3>Deep Dive into OpenStack Placement</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/aws/aws-access-log-alb-s3/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767936825/aws-access-log-s3-1_h1ds5v.png" alt="AWS ALB Access Logs: Enable Logging and Configure S3 Permissions">
+                                    
+                                    <h3>AWS ALB Access Logs: Enable Logging and Configure S3 Permissions</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/kubernetes/k8s-helm-chart-packaging/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1737357972/github-gh-pages_lokj8q.png" alt="Creating and Hosting Helm Charts for Kubernetes Operators">
+                                    
+                                    <h3>Creating and Hosting Helm Charts for Kubernetes Operators</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="38">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/cicd/git-bridge-go/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1773629095/git-bridge-architecture_vbwno2.png" alt="Git-Bridge: Multi-Platform Git Mirroring System Built with Go">
+                
+            </div>
+            <h3 class="title">Git-Bridge: Multi-Platform Git Mirroring System Built with Go</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A guide to writing postmortems: when to write one, what the form needs, and how to separate a trigger from a root cause. It covers the limits of 5 Whys, rewriting blaming sentences, tracking action items, and two earlier posts redone in the form.&quot;%20https://somaz.blog/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/%20via%20&#64;&hashtags=postmortem,blameless,root-cause-analysis,5-whys,sre,incident-response,troubleshooting,devops"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile-400.jpg" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+
+    <p class="copyright">
+      &copy; Somaz. All rights reserved.<br />
+      Articles may not be reproduced or redistributed without permission.
+      Code samples are free to use.
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://somaz.blog/#organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": 600,
+      "height": 315
+  },
+  "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+</script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include extra scripts -->
+
+
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": "How to Write a Postmortem: Blameless Practice and Root Cause Analysis",
+            "alternativeHeadline": "What goes in the form, where 5 Whys falls short, how to rewrite sentences that blame a person, and what stays blank when two earlier posts are redone as postmortems",
+            "description": "A guide to writing postmortems: when to write one, what the form needs, and how to separate a trigger from a root cause. It covers the limits of 5 Whys, rewriting blaming sentences, tracking action items, and two earlier posts redone in the form.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1793698846/postmortem-1_x7ebvb.png",
+            "url": "https://somaz.blog/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/",
+            "mainEntityOfPage": "https://somaz.blog/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/",
+            "articleBody": "Table of Contents Overview Deciding the Criteria Before the Outage The Fields the Form Needs Separating the Trigger from the Root Cause Using 5 Whys, and Where It Falls Short The Trouble with Assuming a Single Cause Rewriting Sentences That Blame a Person Tracking Action Items Redoing Real Cases in the Form Conclusion References Overview A postmortem, in the Google SRE Book’s definition, is “a written record of an incident, its impact, the actions taken to mitigate or resolve it, the root cause(s), and the follow-up actions to prevent the incident from recurring.” Fixing an outage and writing it down are different skills, and the second is mostly a matter of form and sentences. This post is about writing that record: when to write one and what the form holds, how to tell a trigger from a root cause, 5 Whys and its limits, the trouble with assuming a single cause, rewriting sentences that blame a person, and tracking action items. At the end, two earlier posts from this blog are redone in the form. Deciding the Criteria Before the Outage Chapter 15 of the SRE Book accepts that the process “does present an inherent cost in terms of time or effort, so we are deliberate in choosing when to write one.” It also says the criteria have to be defined before an incident occurs “so that everyone knows when a postmortem is necessary.” These are the common triggers it lists: The book's trigger What the team has to decide User-visible downtime or degradation beyond a certain threshold Which of time, error rate or affected users to measure, and at what value Data loss of any kind Nothing to set. If it happens, write one On-call engineer intervention (release rollback, rerouting of traffic, etc.) How far \"intervention\" extends A resolution time above some threshold The threshold A monitoring failure (which usually implies manual incident discovery) Whether a person noticing before the alert counts The book gives no values. They differ per service, so the numbers are the team’s to fill in. Severity levels are another way to draw the line, as in the Atlassian handbook: Atlassian carries out postmortems for severity 1 and 2 incidents and leaves the rest optional. There is one more criterion besides the objective ones. The book says “any stakeholder may request a postmortem for an event,” so a request is enough even when nothing on the list was crossed. Catching Problems That Repeat Most of those criteria measure one event at a time, which lets a short problem that keeps coming back slip through. In the EKS deployment 502 case, the average impact per deployment was 68 seconds. One at a time, that may not cross a time threshold. Taken over two weeks, it happened on all 28 deployments and added up to 17 user inquiries and 4 emergency responses. The SRE Workbook also says that when teams see failures that mirror previous incidents, “it’s time to dig deeper.” So the example below adds one repeat criterion the book does not have. Postmortem criteria (&lt;&gt; values are filled in by the team to fit its service goals) - User-visible downtime or degradation exceeded &lt;time or error rate&gt; - Data was lost, at any scale - On-call intervened directly, by rollback, rerouting traffic or similar - Resolution took &lt;time&gt; or longer - Monitoring missed it and a person found it first - The same symptom repeated &lt;count&gt; or more times within &lt;period&gt; (not on the book's list) - None of the above, but a stakeholder requested one Who Writes It, and by When The Workbook describes an owner as “a single point of contact who is responsible for the postmortem, follow-up, and completion.” The document it uses as a bad example lists four owners. Timing is just as sharp a contrast. The good example was circulated less than a week after the incident closed, and the bad one was published four months after. In the interim, the Workbook says, “had the incident recurred (which in reality, did happen), team members likely would have forgotten key details.” A week is not a rule the Workbook sets; it is what that example document did. Still, writing a deadline into the criteria document saves debating it every time. The book is also clear that “Writing a postmortem is not punishment—it is a learning opportunity for the entire company,” and for the same reason that it is important “not to stigmatize frequent production of postmortems by a person or team.” If the teams that write many of them get marked down for it, defining criteria in advance loses its point. The Fields the Form Needs The example postmortem in Appendix D of the SRE Book runs in the order below. The descriptions come from the book’s footnotes, and fields without a footnote are described from the example document itself. Field What goes in it Date, Authors, Status Date, authors and status. The example's status is \"Complete, action items in progress\" Summary What happened, in one sentence Impact \"the effect on users, revenue, etc.\" Root Causes \"An explanation of the circumstances in which this incident happened.\" The footnote adds that a technique such as the 5 Whys often helps in understanding the contributing factors Trigger The event that exposed the latent problem Resolution What was done to recover Detection What noticed it, and how Action Items Action, type, owner and tracking bug Lessons Learned What went well, What went wrong, Where we got lucky Timeline In the footnote's words, a \"screenplay\" of the incident, started from the timeline in the Incident Management document Supporting information Links, logs, screenshots, graphs, chat logs Where we got lucky, according to its footnote, “is really for near misses.” Weaknesses that simply did not blow up this time end up there. The Workbook’s good example splits impact into User, Revenue and Team, and adds Background, Glossary and Appendix. There is no need to copy the field names as they are. The form below starts from Appendix D, renames the root cause field, and takes Team for impact and Priority for action items from the Workbook. Status, which used to share the tracking issue (Bug) field, gets its own field, and the due date field is new. The reasons for these changes come later. Title: Date: Authors: Status: Draft / In review / Complete (action items in progress) Summary: Impact: User / Revenue / Team Root causes and contributing factors: Trigger: Resolution: Detection: what alerted, how long from onset to awareness Action items: action / type / priority / owner / due date / tracking issue / status Lessons learned: - What went well: - What went wrong: - Where we got lucky: Timeline: time (with time zone) / event / evidence link Supporting information: What Goes in the Timeline Appendix D’s timeline states “all times UTC” under the date and records events by the minute. It takes a single clock to argue about what came before what. John Allspaw’s Etsy article lists five things an engineer involved in an accident should be able to give a detailed account of “without fear of punishment or retribution.” They work as they stand for timeline entries and interview questions. Allspaw's five accounts What actions they took at what time What effects they observed Expectations they had Assumptions they had made Their understanding of the timeline of events as they occurred What the Review Looks For An unreviewed postmortem might as well never have existed. Google SRE Book, Chapter 15 When a first draft goes to a group of senior engineers to assess, the book says the review criteria might include the following. Review criteria from the book Was key incident data collected for posterity? Are the impact assessments complete? Was the root cause sufficiently deep? Is the action plan appropriate and are resulting bug fixes at appropriate priority? Did we share the outcome with relevant stakeholders? Separating the Trigger from the Root Cause Appendix D keeps the two in separate fields. Its root cause field describes a “Cascading failure due to combination of exceptionally high load and a resource leak,” and its trigger field holds one sentence: “Latent bug triggered by sudden increase in traffic.” The Workbook folds them into one “Root Causes and Trigger” section and says identifying them “is one of the most important reasons to write a postmortem.” Neither book’s chapter explicitly defines where one term ends and the other begins. The nearest definition is in the Atlassian handbook: “Proximate causes are reasons that directly led to this incident,” and root causes are “reasons at the optimal place in the chain of events where making a change will prevent this entire class of incident.” A proximate cause and a trigger are not quite the same thing, but both splits ask what has to be fixed to stop a recurrence. Going by those examples, this post draws the line like this: A trigger is the event that exposed a condition that was lying dormant. Root causes and contributing factors are the conditions that made that event turn into an outage. Case Trigger Condition exposed SRE Book Appendix D Sudden increase in traffic Exceptionally high load combined with a resource leak that normally goes unnoticed SRE Workbook good example Manual re-execution of a workflow A longstanding input validation bug in the Traffic Admin server EKS deployment 502 A deployment The timing gap between Pod Ready and ALB healthy Jenkins power outage A server power outage The plugin update before the outage and the plugin version mismatch after it The last two rows apply this split to this blog's posts. Those posts do not classify things this way themselves. These questions help when sorting something into a field. Trigger or condition? Would the same condition still be in the system if this event had not happened? If so, the event is a trigger. If this condition were removed, would a different trigger be unable to produce the same result? If so, the action items should aim here. Is a person's action sitting in the cause field? See whether the document still makes sense with that action moved to the trigger field. The third question comes from a contrast in the Workbook. Its bad example’s root cause reads “dylanfour@ ignored the automation setup and ran the cluster turnup logic manually, which triggered an existing bug.” The good example puts the bug in the automation in the cause, and moves the same action to the trigger: “the manual reexecution of a workflow.” The action stays on record as a fact and stops being the cause. The Jenkins case shows why stopping only the trigger is not enough. The prevention list in the source post has measures on both sides: graph LR UPS[\"UPS\"] -.-&gt;|blocks| Outage[\"Trigger: power outage\"] Backup[\"Backup before updates,validating in a test environment\"] -.-&gt;|addresses| Mismatch[\"Condition: plugin update,then version mismatch\"] Outage --&gt; Failure[\"UI broken,Job list not displayed\"] Mismatch --&gt; Failure classDef trigger fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037; classDef condition fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20; classDef failure fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c; class Outage trigger; class Mismatch condition; class Failure failure; The Jenkins case's prevention measures, sorted by what each one acts on. The sorting is this post's. Keep only the UPS, and the outage may be prevented while the conditions for the mismatch go untouched. That the same mismatch could surface on some other restart is this post’s inference, and the source post does not confirm it. Using 5 Whys, and Where It Falls Short According to Atlassian’s article on 5 Whys, the method came from Toyota founder Sakichi Toyoda in the 1930s and took off in the 1970s. The footnote in Appendix D also gives it as an example for working out contributing factors. The Procedure AWS’s COE article introduces 5 Whys as the mechanism Amazon uses to determine the root cause, and gives this order: Identify the problem. Ask why it happened. Keep asking why of each answer. Do not stop at five; continue until you are confident you have uncovered the complete chain of events. Create a plan to remediate each answer. The same article says the method should be “focused on finding the ‘why’ rather than blaming ‘who’,” and that when “human error” comes up as a root cause, “you should always ask why the human error was possible.” Allspaw’s Critique On the other side is Allspaw’s The Infinite Hows. “The Five Whys is such an approach that I think we should discard,” he writes. His example, which he himself calls “an often-repeated straw man,” begins like this: “Why did the server fail? Because an obscure subsystem was used in the wrong way.” “Why was it used in the wrong way? The engineer who used it didn’t know how to use it properly.” His objections come down to these: Each step has only one question. A server can fail for several reasons, but only one answer carries on to the next question. The answer leans on the outcome. “Wrong way” is a judgment made after knowing about the failure. Asked at the time, the user would have said they were doing it right. Asking why tends to end at who. The chain above arrives at an engineer’s knowledge and a manager’s judgment. Where to stop is arbitrary. “We’ve ‘found’ a root cause when we stop looking,” he writes. On the stopping point, the Nancy Leveson passage the article quotes is specific. A chain stops because an event is familiar or deviates from a standard, because it is the first point where it feels something can be done, because the information runs out, or because the answer is politically acceptable. Allspaw’s alternative is to ask “how”: to have people describe the conditions that let the event happen, and to hear how their actions made sense at the time. These are the questions from the article: Allspaw's \"how\" questions What approach did they take when writing the code? In what ways did they gain confidence before it was deployed (tests, code reviews, etc.)? What history of success or failure have they had with similar pieces of code? What trade-offs did they make or manage in the design? How did they judge the scope of the project? How much, and in what ways, did they experience time pressure? Atlassian’s article argues back: never identifying a person as the root cause is one of the method’s foundational rules, there is nothing wrong with the chain turning into “a tree of multiple factors,” and five is “shorthand for a process that pushes you to dig deeper.” That reply describes the method used well, though, and Allspaw objects to more than the commonly presented form. He objects to chaining whys at all. Ground Rules for Using 5 Whys Which side is right is not something to settle here. This post’s position is to use 5 Whys as a tool for producing questions, and not to treat what comes out of it as proof. Ground rules If there are several answers, branch. Do not throw the others away to keep a single line. If the answer is a person, do not stop. Ask why the system allowed that action, or why it looked like the right thing to do. Write the evidence for each answer. Without a log or a graph, mark it as a guess. Use how questions alongside it. Where answers run dry is usually where the people involved have not been heard yet. Write down where you stopped and why. Ask yourself which of Leveson's reasons it falls under. The Trouble with Assuming a Single Cause Richard Cook’s How Complex Systems Fail rejects the assumption most forcefully. Post-accident attribution to a 'root cause' is fundamentally wrong. Richard I. Cook, How Complex Systems Fail, item 7 That is the title of item 7. Its reasoning is that overt failure requires multiple faults: each contributor is “necessarily insufficient in itself to create an accident,” and “only jointly” are they sufficient. So Cook concludes that isolating the root cause is not possible, and goes as far as saying such evaluations “do not reflect a technical understanding of the nature of failure but rather the social, cultural need to blame specific, localized forces or events for outcomes.” Items 3 and 4 back this up. An accident happens when “small, apparently innocuous failures join to create opportunity for a systemic accident,” and complex systems cannot run without multiple flaws present. “Because these are individually insufficient to cause failure they are regarded as minor factors during operations.” The conditions separated from the trigger earlier are exactly this kind of latent fault. Allspaw’s article gets at the same point through other quotations. Sidney Dekker wrote that “Cause is something we construct, not find,” and John Carroll called the satisfaction of finding one cause “root cause seduction.” Allspaw’s own thought experiment is simple. Use 5 Whys on “Why didn’t we have failure X today?” and the answers do not converge. If success needs many conditions, it is strange to think failure needs only one. Why the Root Cause Field Stays The SRE Book writes “root cause(s)” and “contributing root cause(s),” leaving room for several, and Atlassian also writes “root cause(s).” They do not drop the concept the way Cook does. Read through Atlassian’s definition, the two positions do not collide much, in this post’s view. If a root cause is defined as the optimal place in the chain to make a change, it stops being the discovery of a sole cause and becomes a judgment about where to fix. A judgment can state its grounds, and it gives no reason to erase the other factors. In the document, that judgment shows up like this: Name the field “Root causes and contributing factors.” This is why the form earlier renamed it. Write the combination as a sentence. Like Appendix D’s “combination of exceptionally high load and a resource leak,” put the conditions that only make an accident together into one sentence. Take the factors out one at a time. Ask whether the accident would have been avoided without just this one. If that holds for several, write them together. Write why you chose what to fix first. Factors not being fixed this time stay in the document too. The Workbook’s good example is a useful reference. Its root cause paragraph is about the input validation bug, but its “Things that went poorly” separately lists that the decom workflow is not rate-limited, that it does not cross-check requests against other data sources, and that the Traffic Admin server lacked appropriate sanity checks. The post behind this blog’s 502 case also titles a section “Asymmetric Timing Between Two Systems.” As that post explains it, Kubernetes and the ALB each judged by their own standard. The post locates the problem in Kubernetes not knowing the ALB’s state, but the timing gap arises where the two systems’ standards meet. In this post’s judgment, naming only one side as the cause leaves the explanation short. Rewriting Sentences That Blame a Person The SRE Book says a blameless postmortem “must focus on identifying the contributing causes of the incident without indicting any individual or team for bad or inappropriate behavior.” It “assumes that everyone involved in an incident had good intentions and did the right thing with the information they had.” In the book’s words, “You can’t ‘fix’ people, but you can fix systems and processes.” The reason is practical. The Workbook points out that highlighting individuals “leads team members to become risk-averse,” and that they “may be motivated to cover up facts critical to understanding and preventing recurrence.” The Etsy article says an engineer who expects a reprimand is disincentivized from giving the details, and that this lack of understanding “all but guarantees that it will repeat.” Nor does it remove responsibility. The same article says engineers “are not at all ‘off the hook’ with a blameless PostMortem process. They are very much on the hook for helping Etsy become safer and more resilient.” Atlassian likewise says to refer to individuals by role “while remaining clear and unambiguous about the facts.” The action gets recorded; only the blame comes out. Before and After The “before” sentences in the first three rows, and the “after” in the first row, come from the Workbook’s examples. The other “after” sentences and the fourth row were written for this post as illustrations, and the last row comes from this blog. Before After What changed dylanfour@ ignored the automation setup and ran the cluster turnup logic manually, which triggered an existing bug. A longstanding input validation bug in the Traffic Admin server was triggered by the manual reexecution of a workflow. The subject moved from a person to a system, and the action stayed as the trigger Due to careless ignorance, they triggered a bad interaction Delete it, and use verifiable figures or facts instead Removed the judgment and emotion the Workbook calls out sydneythree@ needs to learn proper cross-site handoff protocol Add the cross-site handoff steps to the on-call playbook and have handoffs logged An action that fixes a person became an action that fixes a procedure Of course the error rate should have been checked after the deployment At the time the deployment screen showed normal, and the error rate was visible on a separate dashboard A judgment that knows the outcome became the information visible at the time Developer had updated plugins before outage, plugin versions increased during restart Plugins had been updated before the outage, and plugin versions increased during restart The facts stayed, and the sentence's center moved from a person to a change The last row’s original comes from the Jenkins post, and it was not written to blame anyone. In a troubleshooting guide it is a fine way to describe the situation. In a postmortem, though, a person as the subject easily sends the next question toward “why did that developer.” The question after the rewritten sentence is different: how the screen conveyed the relationship between the plugin update and the restart, and whether anything checked version compatibility before the restart. The answers to those are not recorded in the source post. What to Look for When Rewriting Rewriting checklist If a sentence's subject is a person, see whether it can be a system, a procedure or a change. Write names as roles. Atlassian's example is \"the on-call Widgets engineer.\" Delete \"should have\" and write what was visible at the time. As Cook's item 8 puts it, \"Knowledge of the outcome makes it seem that events leading to the outcome should have appeared more salient to practitioners at the time than was actually the case.\" Turn adjectives into numbers. The Workbook calls a postmortem \"a factual artifact\" and says to \"provide verifiable data to justify the severity of a statement.\" Change the question. In Atlassian's words, ask not \"why did individual x do this\", but \"why did the system allow them to do this, or lead them to believe this was the right thing to do\". Tracking Action Items The Workbook quotes Ben Treynor Sloss: “To our users, a postmortem without subsequent action is indistinguishable from no postmortem.” Appendix D’s action table has Action Item, Type, Owner and Bug columns, with DONE or TODO written inside Bug. The Workbook’s example adds Priority. Types take values such as investigate, prevent, mitigate, repair and detect. Neither table has a due date column. For how to use due dates, see the Atlassian handbook. Priority actions have an agreed SLO “which is either 4 or 8 weeks, depending on the service, with reminders and reports to ensure they are completed.” Root cause fixes are linked as “Priority Action” and other improvements as “Improvement Action,” tracked in Jira. This post’s form adds a due date field along those lines. Without one, the table says whether an item is closed but not whether it is late. Action Type Priority Owner Due Tracking issue Status Add a rule that alerts when the service exceeds X% errors detect P1 One role A date An issue number In progress How to Word an Item The Atlassian handbook follows the advice of Google’s Lueder and Beyer and gives three requirements. Actionable means “starting with a verb” and resulting in a useful outcome, not a process. Specific means narrowing the scope, “making clear what is and what is not included in the work.” Bounded means wording it “to indicate how to tell when it is finished.” From To Requirement Investigate monitoring for this scenario. Add alerting for all cases where this service returns &gt;1% errors. Actionable Fix the issue that caused the outage. Handle invalid postal code in user address form input safely. Specific Make sure engineer checks that database schema can be parsed before updating. Add automated pre-submit check for schema changes. Bounded “Make automation better.” and “Improve paging and alerting.” in the Workbook’s bad example get called out for the same reason. The items in its good example have “a verifiable end state.” What Tracking Tends to Miss Easy to miss One owner. The Workbook says \"It's better to have a single owner and multiple collaborators,\" and that items without clear owners \"are less likely to be resolved.\" Separate priorities. The bad example gives every item an equal priority, so \"There's no way to determine which action to tackle first.\" A tracking issue. \"Without a formal tracking process, action items from postmortems are often forgotten, resulting in outages,\" the Workbook writes. Prevention, not only mitigation. The bad example's items are mostly mitigative, and its one preventative item comes down to making humans less error-prone. The Workbook says that \"trying to change human behavior is less reliable than changing automated systems and processes.\" Knee-jerk items. Appendix D's footnote says they \"often turn out to be too extreme or costly to implement,\" and warns of \"a risk of over-optimizing for a particular issue.\" A regular look at what is still open. Atlassian reports how many incidents have not had their root causes fixed, and engineering managers review the list. The Workbook likewise says that with repeating failures you should ask, \"Are action items taking too long to close?\" Whether an action can close is best confirmed by measuring again the metric you first measured. Even if the issue says Done, prevention is not finished if that metric has not moved. The 502 post below makes this check possible because it measured the same items before and after. Redoing Real Cases in the Form This section moves two posts from this blog into the form above. What these two cases are Both posts are troubleshooting guides, and there is no record that a postmortem was run for either. What follows is an exercise in filling the form with only the facts those posts state. Which fact goes in root cause, trigger, what went well or what went wrong was decided by this post. A field with no record stays \"Not recorded\" rather than being filled with a guess. For the technical explanation of the causes, read the posts themselves. Case 1: A 502 on Every Deployment This one comes from the EKS Production Deployment Guide. The problem did not happen once and end; it came back on every deployment, so moving it over as a single incident with a start and an end would misstate the facts. That is why the impact field is written per period. Title: HTTP 502 repeated on every deployment Date: Not recorded Authors: Not recorded Status: Not recorded Summary: HTTP 502 occurred on every EKS deployment while ArgoCD and Pod status showed normal. After ReadinessGate was applied, 34 deployments produced no 502. Impact: - 502 on 28 of 28 deployments over 2 weeks - Average 700 errors per deployment, average impact duration 68 seconds - 17 user inquiries, 4 emergency responses - Revenue impact: Not recorded Root causes and contributing factors: - There was a 48-second gap between Pod Ready (T+12s) and ALB Target healthy (T+60s) - ALB state was not part of Kubernetes's Pod Ready decision - Other factors: Not recorded Trigger: A deployment (repeating on every deployment) Resolution: Enabled ReadinessGate, accepting the trade-off of 55 seconds more Pod Ready time. Detection: - Alert example in the source post: Grafana \"HTTP 502 Spike: 708 errors in 70 seconds\", \"User Impact: ~2,000 affected requests\" - ArgoCD at the same moment: Sync Status Healthy, Health Status Healthy, All Pods Running (3/3) - When it was first noticed, time from onset to awareness: Not recorded - Whether the alert or the user inquiries came first: Not recorded Lessons learned: - What went well: Before and after were measured on the same items (the following 2 weeks, 34 deployments, 0/34) - What went wrong: Automation tools reported success while users were seeing error pages. The three attempts below did not solve the problem. - Where we got lucky: Not recorded Timeline: - Times: Not recorded - Order of telling in the source post: problem recognized → attempt 1 → attempt 2 → attempt 3 → ReadinessGate → measurement - Whether this order is the actual chronological order: Not recorded Failed attempts are a side note in a troubleshooting guide, but they matter in a postmortem: they are the grounds for answering “already tried that” when the same suggestion comes back. The source post kept the results of all three. Attempt Change Result in the source post 1 terminationGracePeriodSeconds 240 Deployment time increased 4x (3 min → 12 min), startup timing issue unsolved, 502 errors still occurred during Spot Instance reclamation 2 Health check interval 5 seconds, healthy threshold 2 Improved from 60s → 10s, still 10 seconds of errors, increased false positives led to instability 3 10 replicas (originally 3) 3x cost increase, only reduced probability, not a fundamental fix Moving the action items over, the priority, owner, due date and tracking issue fields are all “Not recorded,” and only one status can be confirmed. The types were assigned by this post to fit the form. Action Type Priority Owner Due Tracking issue Status Enable ReadinessGate prevent Not recorded Not recorded Not recorded Not recorded Done, confirmed by 0/34 Tune preStop and terminationGracePeriodSeconds prevent Not recorded Not recorded Not recorded Not recorded Given as a recommended setting in the source post; whether applied: not recorded PodReadinessGateStuck alert detect Not recorded Not recorded Not recorded Not recorded Given as a config example in the source post; whether applied: not recorded One more thing stands out for the timeline. The source post’s T+ figures start separately from T+0 on the Pod side and on the ALB side, and it does not say whether the two T+0s are the same moment. The 48 seconds assumes they are. That is enough in a post explaining a cause, but a postmortem timeline would have to line them up again as absolute times on one clock. The 5 Whys for Case 1: Separating Record from Question Filling in 5 Whys straight makes it easy to invent steps the source does not contain, so this table has a source column that separates what the post records from what this post asks. The source post has no 5 Whys table. Arranging its explanation into a chain from A1 to A3, everything written under “To ask,” and setting up branches B, C and D are this post’s analysis, not established fact. There is also no record that these questions were actually investigated. Step Why Answer Source A1 Why was there a 502 during deployment? There was a 48-second gap between Pod Ready (T+12s) and ALB Target healthy (T+60s) Source post's record A2 Why was there a gap? Kubernetes looks at readinessProbe success, and the ALB looks at passing 2 health checks Source post's record A3 Why was that gap not reflected in the decision? Kubernetes did not know the ALB's state, and ReadinessGate, which connects them, was not enabled Source post's record A4 Why was it not enabled? Not recorded. To ask: was there a procedure that checks this setting when a namespace is created? This post's question B Why did the deployment tooling not see the problem? Recorded up to ArgoCD showing Healthy. To ask: was error rate part of deciding that a deployment succeeded? Record and question C Why did it go on for 28 deployments? Not recorded. To ask: when was it recognized as a problem, did it exist before the measured 2 weeks, and what criterion decided the response? This post's question D Why did the three attempts not solve it? Recorded up to the results. To ask: when choosing each attempt, what data did people look at and where did they suspect? Record and question graph TD P[\"HTTP 502 during deployment\"] --&gt; A1[\"A1: 48-second gap\"] A1 --&gt; A2[\"A2: Different checks on each side\"] A2 --&gt; A3[\"A3: ReadinessGate not enabled\"] A3 -.-&gt; A4[\"A4: Why not enabled?\"] P --&gt; B[\"B: Why did the tooling not see it?\"] P --&gt; C[\"C: Why 28 deployments?\"] P --&gt; D[\"D: Why did three attempts fail?\"] classDef recorded fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20; classDef mixed fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1; classDef question fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037; class A1,A2,A3 recorded; class B,D mixed; class A4,C question; Green is the source post's record, blue is record plus question, and yellow is this post's question. The shape of the tree is this post's analysis. The chain taken from the source post stops at A3. That reads as having reached something fixable, but the post does not give a reason for stopping. For a troubleshooting guide, A3 is enough. A postmortem should keep B through D open as well: the A3 action is what removed the 502, but how quickly the same kind of problem gets noticed depends on B and C. Branch D is also an example of a how question. Ask why an attempt failed and you only get its result again. Ask how it was chosen and you get the data people were looking at. Case 2: The Jenkins Job List After a Power Outage The post on recovering Jenkins after a power outage has no figures or times about the outage, so “Not recorded” comes up even more. Title: Jenkins Job list not displayed after a server power outage Date: Not recorded Authors: Not recorded Status: Not recorded Target environment: Not recorded (the source post covers macOS, Linux, Docker and Kubernetes) Summary: A server power outage terminated Jenkins abnormally, and after restart the UI broke and the Job list was not displayed. Recovered by upgrading Jenkins and updating plugins. Impact: - Job list not displayed, warnings on the plugin management page, some plugins failing to load - Number of Jobs affected, downtime, users affected: Not recorded Root causes and contributing factors: - Plugins had been updated before the outage, and plugin versions increased during restart - The plugin version mismatch caused compatibility problems - Jenkins and plugin versions at the time: Not recorded Trigger: A server power outage (restart after abnormal termination) Resolution: Upgrade Jenkins → update all plugins → reboot Detection: Not recorded Action items: Exist only as recommendations in the source post (backup before updates, gradual updates, validation in a test environment, UPS). Owner, due date, whether applied: Not recorded Lessons learned: - Source post's lessons: backups first, staying up to date, preparing for outages, a systematic approach - Where we got lucky: Not recorded Timeline: - Times: Not recorded - Order: plugin update → power outage, abnormal termination → restart, plugin versions increase → UI broken, Job list not displayed → Jenkins upgrade → plugin update, reboot → normal operation Separating trigger from condition produces something to ask. Would the same mismatch have happened on a planned restart instead of an outage? Going by the source post’s order it looks possible, but that is an inference the post cannot confirm. Answering it takes the time of the update and the versions at the time, and neither survives. What “Not Recorded” Tells You Collect the fields that stayed empty across the two posts, and you get a list of information that cannot be filled in when you write later. Empty field What should have been kept at the time Onset, awareness and recovery times Absolute times in a single time zone, with links to alerts and chat logs Detection path What alerted first: an alert or a user inquiry Participants and decisions By role, what they looked at and why they chose that action Versions and change history at the time State that recovery wipes out, such as the plugin list before and after the restart Owners and due dates for actions One owner per item, a date, a tracking issue Where we got lucky Weaknesses that passed this time and are dangerous next time Both posts were written to pass on a fix, and they do that well. These blanks exist because a troubleshooting guide and a postmortem have different purposes. The Workbook says “A prompt postmortem tends to be more accurate because information is fresh in the contributors’ minds,” and Allspaw points out that “Memories are faulty and perspectives are limited.” Filling these fields from memory now would produce a plausible document, but not a record. That is why the form is better opened during the outage than after it. Conclusion What matters in a postmortem is less the form itself than the distinctions it forces. Deciding in advance whether to write one keeps the choice from swaying with the mood, and writing trigger and condition in separate fields keeps you from stopping the outage and calling it done. Use 5 Whys to produce questions, and do not assume the answers converge on one. Even accepting Cook’s and Allspaw’s critiques, the root cause field can stay, as the place to write the grounds for deciding what to fix. In sentences, take the person out of the subject but do not erase the facts. Give action items one owner, a due date and a tracking issue, and close them with the metric you first measured. The biggest lesson from moving these two cases over is how much “Not recorded” there was. Times, detection paths and the decisions of the moment fade fast once recovery is done, so they have to be taken down while the outage is still in progress. References Postmortem Culture: Learning from Failure - Google SRE Book Appendix D: Example Postmortem - Google SRE Book Postmortem Culture: Learning from Failure - Google SRE Workbook Blameless PostMortems and a Just Culture - John Allspaw, Etsy Code as Craft (Internet Archive copy) The Infinite Hows (or, the Dangers Of The Five Whys) - John Allspaw How Complex Systems Fail - Richard I. Cook Incident postmortems - Atlassian Incident Management Handbook The power of 5 Whys: analysis and defense - Atlassian Why you should develop a correction of error (COE) - AWS Cloud Operations Blog EKS Production Deployment Guide - Achieving Zero 502 Errors Jenkins Server Recovery After Power Outage - Resolving Plugin Version Mismatch",
+            "wordCount": 6992,
+            "inLanguage": "en",
+            "datePublished": "2026-11-04T00:00:00+00:00",
+            "author": {
+    "@type": "Person",
+    "@id": "https://somaz.blog/authors/somaz/#person",
+    "name": "Somaz",
+    "image": "https://somaz.blog/assets/img/uploads/profile-400.jpg",
+    "jobTitle": "DevOps Engineer",
+    "url": "https://somaz.blog/authors/somaz/",
+    "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+,
+            "publisher": { "@id": "https://somaz.blog/#organization" },
+            "articleSection": "Troubleshooting",
+            "keywords": ["postmortem","blameless","root-cause-analysis","5-whys","sre","incident-response","troubleshooting","devops"]
+        }
+        </script>
+    </body>
+</html>
