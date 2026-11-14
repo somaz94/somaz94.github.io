@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MBP83N4Q');</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154" crossorigin="anonymous"></script>
+
+
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    
+
+    <title>Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries | somaz</title>
+    <meta name="description" content="Two servers that share a database, a config and a deploy still stop as one. This guide counts redundancy by the unit of failure, separates spares from isolat...">
+    <meta name="tdm-reservation" content="1">
+    
+        <meta name="keywords" content="spof, blast-radius, redundancy, cell-based-architecture, shuffle-sharding, reliability, sre, architecture, kubernetes, aws, vpn">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries | somaz">
+    <meta name="twitter:description" content="Two servers that share a database, a config and a deploy still stop as one. This guide counts redundancy by the unit of failure, separates spares from isolat...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1793857991/spof-blast-radius-isolation-boundary-guide_rfomzo.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/cs/spof-blast-radius-isolation-boundary-guide/">
+    <meta property="og:title" content="Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1793857991/spof-blast-radius-isolation-boundary-guide_rfomzo.png">
+    <meta property="og:description" content="Two servers that share a database, a config and a deploy still stop as one. This guide counts redundancy by the unit of failure, separates spares from isolat...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-11-10T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/cs/spof-blast-radius-isolation-boundary-guide/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=optional" rel="stylesheet">
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    <nav class="bar-links" aria-label="Author">
+        <a href="/resume/">Resume</a>
+        <a href="/career/">Career</a>
+        <a href="/portfolio/">Portfolio</a>
+    </nav>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-11-10T00:00:00+00:00">
+                            
+
+
+November 10, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>34 min to read</span>
+                </p>
+                <h1 class="post-title">Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries</h1>
+                <p class="post-subtitle">Count spares by what stops together, then draw the boundary</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/v1793857991/spof-blast-radius-isolation-boundary-guide_rfomzo.png" alt="Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>Add a second server and it is easy to believe the single point of failure is gone. But if the two servers use the same database and the same config and receive the same deploy, they stop as one. Adding machines does not remove the things that make them stop together.</p>
+
+<p>This post shows how to count redundancy by the unit that stops together rather than by the number of machines, and it separates adding spares from drawing boundaries. It then looks at why a bad deploy crosses those boundaries, and tests the distinction against two cases: an internal portal and a VPN server.</p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>How to read the examples</strong>
+  <p>The cases come from real operating experience, with the company, products and addresses generalized. The configs shown were written as examples and are not real production files. Addresses use documentation ranges, and the numbers in tables labeled as examples were chosen for explanation.</p>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="finding-single-points-of-failure">Finding Single Points of Failure</h2>
+
+<p>A single point of failure (<abbr title="Single Point of Failure">SPOF</abbr>) is a component with nothing to take its place, so the whole system stops when that one thing stops. The term is not limited to servers and network lines. The one database that takes writes, an authentication server every service depends on, and the only person who knows a procedure are all single points of failure. Getting a procedure out of one person’s head and into a document is covered in the <a href="/category/troubleshooting/runbook-toil-automation-guide/">runbook post</a>.</p>
+
+<p><br /></p>
+
+<h3 id="stop-each-dependency-in-turn">Stop Each Dependency in Turn</h3>
+
+<p>The method is simple. Write down the path a single request takes and everything that path depends on, then assume each one has stopped. Include what rarely shows up on an architecture diagram. A config store, an image registry and certificate issuance stay out of sight until a restart or a deploy needs them.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Dependency</th>
+        <th>What happens when it stops</th>
+        <th>Dependency type</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Load balancer</td>
+        <td>Every request fails</td>
+        <td>hard</td>
+      </tr>
+      <tr>
+        <td>Database that takes writes</td>
+        <td>Write requests fail</td>
+        <td>hard</td>
+      </tr>
+      <tr>
+        <td>Authentication server</td>
+        <td>New logins are blocked. If services verify already issued tokens themselves, existing users carry on</td>
+        <td>Depends on the implementation</td>
+      </tr>
+      <tr>
+        <td>Cache</td>
+        <td>Reads go straight to the database and get slower</td>
+        <td>soft</td>
+      </tr>
+      <tr>
+        <td>Recommendation API</td>
+        <td>A default list is returned in its place</td>
+        <td>soft</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="caption">An example made up for a typical web service.</div>
+</div>
+
+<p><br /></p>
+
+<p>In networking, the hub of a hub-and-spoke layout is the classic single point of failure. The structure of each topology is laid out in the <a href="/category/network/network-topology/">network topology post</a>.</p>
+
+<p><br /></p>
+
+<h3 id="hard-and-soft-dependencies">Hard and Soft Dependencies</h3>
+
+<p>The <a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/availability.html">Availability page</a> of AWS Well-Architected draws the line this way: a dependency is hard if its interruption translates directly into an interruption of the caller, and soft if the caller can compensate another way when it stops.</p>
+
+<p>The availability of hard dependencies multiplies. In the same page’s example, a system designed for 99.99% availability with a hard dependency on two independent systems, each at 99.99%, can theoretically reach 99.97%.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>99.99% × 99.99% × 99.99% = 99.97%
+</code></pre></div></div>
+
+<p>This multiplication points to one more way of reducing single points of failure. Even without a spare, a dependency turned soft can no longer stop the whole system. The recommendation API in the table above has no spare and still is not a single point of failure. A dependency that only looks soft, like the cache, needs one more check, though: whether the database behind it can take the extra load when the cache is gone.</p>
+
+<p>The same page advises settling the availability you actually need first, because cost rises as availability does. Removing every single point of failure is not the goal. Once you have found them, choose which to remove and which to accept.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="two-servers-that-still-stop-together">Two Servers That Still Stop Together</h2>
+
+<p><br /></p>
+
+<h3 id="the-independence-assumption">The Independence Assumption</h3>
+
+<p><a href="https://docs.aws.amazon.com/whitepapers/latest/availability-and-beyond-improving-resilience/availability-with-redundancy.html">Availability with redundancy</a>, from the AWS whitepaper Availability and Beyond, works the numbers for a component at 99% availability with two copies. The chance of both being down together is 1% × 1% = 0.01%, which gives 99.99% availability. That calculation holds only when the two copies are independent, and the whitepaper too speaks of putting spares on resources that fail independently.</p>
+
+<p>Once the copies share something, the calculation changes. The table below assumes two front-end servers using one database with 99.9% availability. Annual downtime is converted from the availability figure.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Setup</th>
+        <th>Calculation</th>
+        <th>Availability</th>
+        <th>Annual downtime</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1 server</td>
+        <td>99%</td>
+        <td>99%</td>
+        <td>About 3 days 15 hours</td>
+      </tr>
+      <tr>
+        <td>2 servers</td>
+        <td>1 − (1% × 1%)</td>
+        <td>99.99%</td>
+        <td>About 52 minutes</td>
+      </tr>
+      <tr>
+        <td>2 servers + shared database</td>
+        <td>99.99% × 99.9%</td>
+        <td>About 99.89%</td>
+        <td>About 9.6 hours</td>
+      </tr>
+      <tr>
+        <td>More servers added</td>
+        <td>Approaches 99.9% and never passes it</td>
+        <td>Below 99.9%</td>
+        <td>About 8 hours 45 minutes or more</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<div style="width: 80%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart LR
+      subgraph Pair["Front end: 99.99% as a pair"]
+        S1["Server 1<br />99%"]
+        S2["Server 2<br />99%"]
+      end
+
+      S1 --&gt; DB[("Shared database<br />99.9%")]
+      S2 --&gt; DB
+
+      style DB fill:#fff59d
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>The two branches of the example meet again at the shared database.</p>
+</div>
+
+<p><br /></p>
+
+<div class="highlight-box">
+  <p>However many front-end servers you add, overall availability cannot pass the availability of what they share.</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="what-breaks-independence">What Breaks Independence</h3>
+
+<p>Shared dependencies are not always as visible as a database. The things that stop two servers together can be grouped like this.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>What is shared</th>
+        <th>The event that stops both</th>
+        <th>The question to ask</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Power, rack, switch</td>
+        <td>A power problem, a switch failure</td>
+        <td>Where are the two servers physically?</td>
+      </tr>
+      <tr>
+        <td>Database, config store</td>
+        <td>A failure of the shared dependency</td>
+        <td>Where do the two branches meet on the diagram?</td>
+      </tr>
+      <tr>
+        <td>Code and config</td>
+        <td>A bad deploy, a bad config change</td>
+        <td>How many machines change in one change?</td>
+      </tr>
+      <tr>
+        <td>Remaining capacity</td>
+        <td>A cascading failure, where survivors take on the stopped side's share and fall in turn</td>
+        <td>Is the required capacity left after losing one unit?</td>
+      </tr>
+      <tr>
+        <td>Failover mechanism</td>
+        <td>A failure of the single load balancer or of whatever handles the switch</td>
+        <td>If the failover mechanism stops, who fails over?</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The last row is easy to miss. Adding a spare brings a new failover mechanism with it, and that mechanism can become the next single point of failure.</p>
+
+<p><br /></p>
+
+<h3 id="count-by-the-unit-that-stops-together">Count by the Unit That Stops Together</h3>
+
+<p>The same whitepaper says to look at the unit of failure when deciding how many spares to have. Its example workload needs 10 Amazon EC2 instances to handle peak load. Put all 10 in one Availability Zone (<abbr title="Availability Zone">AZ</abbr>) and the entire AZ can stop together, so the unit is the AZ rather than one instance.</p>
+
+<p>In the table below, the second row was added for comparison and the rest are the whitepaper’s example.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Setup</th>
+        <th>Total instances</th>
+        <th>Left after one AZ stops</th>
+        <th>Are the required 10 left?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>10 in 1 AZ</td>
+        <td>10</td>
+        <td>0</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>20 in 1 AZ</td>
+        <td>20</td>
+        <td>0</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>10 each in 2 AZs</td>
+        <td>20</td>
+        <td>10</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>5 each in 3 AZs</td>
+        <td>15</td>
+        <td>10</td>
+        <td>Yes</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>Rows two and three have the same 20 instances, yet counted as spares they have zero and one. In row three, the extra 10 instances look like spares, but the real spare is one AZ. Row four uses one more AZ and five fewer instances and meets the same condition.</p>
+
+<p>More spares are not always better either. The whitepaper holds that for components at 99% availability or higher, going beyond three spares brings no noticeable gain for almost all workloads, so it recommends only as many as the required availability calls for.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="spares-and-boundaries-are-different-jobs">Spares and Boundaries Are Different Jobs</h2>
+
+<p>Blast radius is the range of components and users that one failure, one bad deploy or one security breach can reach. AWS documents use scope of impact for the same idea.</p>
+
+<p>Adding a spare keeps things running through a failure. Drawing a boundary decides how far the failure spreads. Neither can stand in for the other. The table below is an example built to tell the two apart. Cells and AZs are explained further down.</p>
+
+<p><br /></p>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Setup</th>
+        <th>Spare</th>
+        <th>Boundary</th>
+        <th>One server fails</th>
+        <th>Bad deploy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1 server</td>
+        <td>No</td>
+        <td>No</td>
+        <td>Total outage</td>
+        <td>Applied everywhere</td>
+      </tr>
+      <tr>
+        <td>Several servers on the same version, load balancer</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>Remaining servers handle it</td>
+        <td>Applied everywhere</td>
+      </tr>
+      <tr>
+        <td>Spread across AZs, deployed all at once</td>
+        <td>Yes</td>
+        <td>Facility boundary</td>
+        <td>Remaining servers handle it</td>
+        <td>Applied everywhere</td>
+      </tr>
+      <tr>
+        <td>10 cells, 1 server per cell</td>
+        <td>No</td>
+        <td>Yes</td>
+        <td>10% of requests stop</td>
+        <td>Deployed in turn, it can be stopped at one cell</td>
+      </tr>
+      <tr>
+        <td>10 cells, several servers per cell</td>
+        <td>Yes</td>
+        <td>Yes</td>
+        <td>Remaining servers handle it</td>
+        <td>Deployed in turn, it can be stopped at one cell</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The second row is the setup people mean when they say “it’s redundant, so it’s safe.” The fourth row is divided up but has no spare. Neither one solves the other’s problem.</p>
+
+<p><br /></p>
+
+<h3 id="az-a-boundary-for-facility-failures">AZ: A Boundary for Facility Failures</h3>
+
+<p>According to <a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html">REL10-BP01</a>, AZs are locations physically separated so that they do not share disasters such as fires, floods and tornadoes. Each AZ also has its own power, mechanical services and network connectivity.</p>
+
+<p>What this boundary contains is a failure in one facility. Deploy the same code and config to every AZ at once, and a bad deploy goes straight across the AZ boundary. If a service spanning several AZs shares a database or config store, a failure there spreads to all of them.</p>
+
+<p><br /></p>
+
+<h3 id="cell-a-boundary-inside-the-workload">Cell: A Boundary Inside the Workload</h3>
+
+<p><a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_use_bulkhead.html">REL10-BP03</a> draws its analogy from a ship’s bulkheads, which keep hull damage inside one compartment. <a href="https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/reducing-scope-of-impact-with-cell-based-architecture.html">AWS’s guide to cell-based architecture</a> describes the cell structure as bringing the fault isolation concepts used for AZs and Regions down to the workload.</p>
+
+<p>A cell is one independent copy of the workload. It shares no state with other cells and handles only part of all requests. In the document’s example, with 10 cells serving 100 requests, a failure in one cell leaves 90% of all requests unaffected.</p>
+
+<div style="width: 80%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart TD
+      R["Router layer"] --&gt; C1["Cell 1: failed"]
+      R --&gt; C2["Cell 2"]
+      R --&gt; C3["Cells 3 to 9"]
+      R --&gt; C10["Cell 10"]
+
+      classDef fail fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+      classDef ok fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+      class C1 fail;
+      class C2,C3,C10 ok;
+      style R fill:#fff59d
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>The document's 10-cell example with one cell down.</p>
+</div>
+
+<p><br /></p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>Four issues in implementing cells</strong>
+  <ul>
+    <li><strong>Partition key</strong>: pick a value available on every request, such as a customer ID, that keeps interaction between cells to a minimum.</li>
+    <li><strong>Router layer</strong>: this layer is shared by the cells, so it cannot be divided the way they are. Keep it simple, with no complex business logic.</li>
+    <li><strong>Cell size</strong>: set a maximum size by testing. When the workload grows, add cells rather than growing them.</li>
+    <li><strong>Calls between cells</strong>: the more of them there are, the more cells depend on each other and the less isolation you get.</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<p>The router layer is a shared dependency that remains after the boundary is drawn. Creating boundaries does not make every shared dependency disappear, and what counts is how simple you keep the ones that remain.</p>
+
+<p>AWS also calls this structure bulkhead architecture. The bulkhead that appears alongside circuit breakers, where the caller partitions resources such as thread pools, shares only the metaphor.</p>
+
+<p><br /></p>
+
+<h3 id="shuffle-sharding-finer-division-from-the-same-resources">Shuffle Sharding: Finer Division from the Same Resources</h3>
+
+<p><a href="https://builder.aws.com/content/3F06NpJ8YeoIGP8VHTw4n81pFn8/workload-isolation-using-shuffle-sharding">AWS’s article on shuffle sharding</a> explains it with 8 workers. With no shards, all 8 are used together, and a problem caused by one customer spreads to the whole service. Group them in pairs to form 4 shards, and the impact drops to 25%.</p>
+
+<p>Shuffle sharding gives each customer a different combination of workers instead of a fixed group. There are 28 ways to choose 2 workers out of 8.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>worker    1  2  3  4  5  6  7  8
+A         x        x
+B         x                    x
+C                  x     x
+</code></pre></div></div>
+
+<p>Even if customer A breaks workers 1 and 4, customer B can still get a response from worker 8, and customer C from worker 6. Different combinations overlap on at most one worker.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>Units handed out</th>
+        <th>Impact of one problem</th>
+        <th>Precondition</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>No shards</td>
+        <td>1, the whole fleet</td>
+        <td>100%</td>
+        <td>None</td>
+      </tr>
+      <tr>
+        <td>Fixed shards of 2 workers</td>
+        <td>4</td>
+        <td>25%</td>
+        <td>None</td>
+      </tr>
+      <tr>
+        <td>Shuffle sharding</td>
+        <td>28 combinations</td>
+        <td>1/28, about 3.6%</td>
+        <td>The caller must be able to send a retry to a different worker</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The precondition in the last row matters. Retries have to work for the impact customers see to drop to 1/28, and two workers still break either way.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="deploys-that-cross-the-boundary">Deploys That Cross the Boundary</h2>
+
+<p><br /></p>
+
+<h3 id="outages-that-come-from-change">Outages That Come from Change</h3>
+
+<p><a href="https://sre.google/sre-book/introduction/">Chapter 1 of the Google SRE Book</a> says about 70% of outages come from changes to a live system. The responses it names are progressive rollouts, quick and accurate detection of problems, and safe rollback. REL10-BP03 also lists deploying to all cells at once as an anti-pattern.</p>
+
+<p>From the point of view of the multiplication earlier, two servers that received the same version are not independent with respect to that change. Both carry the same bug, so a spare that takes over fails in the same place. Two servers do not stop a bad deploy.</p>
+
+<p><br /></p>
+
+<h3 id="what-a-maxunavailable-percentage-means-in-pods">What a maxUnavailable Percentage Means in Pods</h3>
+
+<p>A Kubernetes rolling update has numbers that look like a boundary. According to the <a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/">Deployment documentation</a>, <code class="language-plaintext highlighter-rouge">maxUnavailable</code> and <code class="language-plaintext highlighter-rouge">maxSurge</code> both default to 25%, and when a percentage is converted to a count, <code class="language-plaintext highlighter-rouge">maxUnavailable</code> rounds down and <code class="language-plaintext highlighter-rouge">maxSurge</code> rounds up. With the defaults, Pod counts work out as follows.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>replicas</th>
+        <th>maxUnavailable 25%</th>
+        <th>maxSurge 25%</th>
+        <th>Minimum available Pods during rollout</th>
+        <th>Maximum Pods during rollout</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>0</td>
+        <td>1</td>
+        <td>1</td>
+        <td>2</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>0</td>
+        <td>1</td>
+        <td>2</td>
+        <td>3</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>0</td>
+        <td>1</td>
+        <td>3</td>
+        <td>4</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>1</td>
+        <td>1</td>
+        <td>3</td>
+        <td>5</td>
+      </tr>
+      <tr>
+        <td>20</td>
+        <td>5</td>
+        <td>5</td>
+        <td>15</td>
+        <td>25</td>
+      </tr>
+      <tr>
+        <td>1,000</td>
+        <td>250</td>
+        <td>250</td>
+        <td>750</td>
+        <td>1,250</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>In the top three rows, rounding down means no Pod comes down first. At the same percentage, the number going down at once grows as you move down the table.</p>
+
+<p>What matters here is what kind of number this is.</p>
+
+<div class="quote-box">
+  <p><code>maxUnavailable</code> is a cap on how many Pods go down at once, not a cap on how far the new version reaches.</p>
+  <p>Change 1,000 Pods at 25% or one at a time, and when the rollout ends all 1,000 run the new version. The value sets the speed. It is not a boundary.</p>
+</div>
+
+<p><br /></p>
+
+<p>Rollouts that stop by themselves also need separating from rollouts that do not.</p>
+
+<ul>
+  <li>A version whose new Pods cannot become Ready: the Deployment controller stops scaling up the new ReplicaSet, so the rollout stalls. Up to <code class="language-plaintext highlighter-rouge">maxUnavailable</code> Pods may already be down by then, though, and the stall is only recorded in status. Nothing is rolled back.</li>
+  <li>A version that passes readiness but behaves wrongly: nothing stops it, and it spreads everywhere.</li>
+</ul>
+
+<p>PodDisruptionBudget is not the answer here either. According to the <a href="https://kubernetes.io/docs/concepts/workloads/pods/disruptions/">Disruptions documentation</a>, workload resources such as Deployment are not limited by PDBs during a rolling update. A PDB deals with voluntary disruptions such as a node drain.</p>
+
+<p><br /></p>
+
+<h3 id="deploy-in-units-that-match-the-boundary">Deploy in Units That Match the Boundary</h3>
+
+<p>To keep a deploy from crossing a boundary, the deploy unit has to match the boundary. AWS’s <a href="https://builder.aws.com/content/3ErTKQOTKc5NIw031UePBPxTQ6I/automating-safe-hands-off-deployments">Automating safe, hands-off deployments</a> groups deployments into waves of increasing size. Each wave starts with a one-box stage that serves 10% of requests or less, and the first wave deploys to only one AZ or one cell at a time. Bake time is set aside to watch before moving to the next stage.</p>
+
+<p>The same thinking carries over to smaller environments. The table below is an example made up for a service spread across two AZs.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Stage</th>
+        <th>Deploy scope</th>
+        <th>Condition for moving on</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>A canary taking part of the traffic</td>
+        <td>Error rate and latency are within the criteria</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>All of one AZ</td>
+        <td>Metrics hold for a set period</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>The remaining AZ</td>
+        <td>None</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>Stages without a condition for moving on do not work as boundaries, because the deploy moves on before anyone notices something is wrong.</p>
+
+<p>Code is not the only thing that gets deployed. A config change reaches every replica by the same path, and the next case is one of those.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="case-1-seven-internal-apps-behind-one-entrance">Case 1: Seven Internal Apps Behind One Entrance</h2>
+
+<p>Internal apps and operations services had each implemented their own authentication, and that was once consolidated into one portal. A new service only had to register its config to join, so the reason for consolidating was clear. But the portal became the only entrance to the 7 apps it proxied. The portal is a hard dependency of every one of them.</p>
+
+<p><br /></p>
+
+<h3 id="every-deploy-cut-all-seven-apps">Every Deploy Cut All Seven Apps</h3>
+
+<p>The early portal kept sessions in an in-memory map on the server. Sessions lived only inside that process, so replicas could not be added, and it was tied to <code class="language-plaintext highlighter-rouge">replicas: 1</code> and the <code class="language-plaintext highlighter-rouge">Recreate</code> strategy. <code class="language-plaintext highlighter-rouge">Recreate</code> takes all existing Pods down before creating new ones.</p>
+
+<p>As a result, every portal deploy cut all 7 apps at once. Editing even one comment line in the config file changed the ConfigMap hash and triggered a rollout, the sessions in memory vanished, and everyone was logged out. The apps had not changed at all, and the edit was a comment with no bearing on behavior, yet the blast radius was all 7 apps and every user. There is no record of how long the cuts lasted, though.</p>
+
+<p>On the earlier table of spares and boundaries, this is the first row, with neither. With sessions in memory, a spare was not even possible. Adding replicas first would not have solved it.</p>
+
+<p><br /></p>
+
+<h3 id="moving-sessions-off-the-server">Moving Sessions Off the Server</h3>
+
+<p>So sessions came off the server before the replica count went up. The claims and the original id_token are compressed and encrypted with AES-256-GCM, and that value itself becomes the cookie. Whichever Pod receives a request can decrypt it with the same key, so Pods have no state to hand over to each other.</p>
+
+<p>Every Pod has to share the encryption key, so with no key the process fails at startup instead of falling back to a random one. A Pod started with a random key cannot decrypt cookies made by the other Pods, and users get logged out depending on which Pod their request reaches.</p>
+
+<p>Only with the state gone could availability settings go on top. The manifest below is an example written to show the applied values, not the real one.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">apps/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Deployment</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">portal</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">replicas</span><span class="pi">:</span> <span class="m">2</span>
+  <span class="na">strategy</span><span class="pi">:</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">RollingUpdate</span>
+    <span class="na">rollingUpdate</span><span class="pi">:</span>
+      <span class="na">maxUnavailable</span><span class="pi">:</span> <span class="m">0</span>
+      <span class="na">maxSurge</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">portal</span>
+  <span class="na">template</span><span class="pi">:</span>
+    <span class="na">metadata</span><span class="pi">:</span>
+      <span class="na">labels</span><span class="pi">:</span>
+        <span class="na">app</span><span class="pi">:</span> <span class="s">portal</span>
+    <span class="na">spec</span><span class="pi">:</span>
+      <span class="na">topologySpreadConstraints</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">maxSkew</span><span class="pi">:</span> <span class="m">1</span>
+          <span class="na">topologyKey</span><span class="pi">:</span> <span class="s">kubernetes.io/hostname</span>
+          <span class="na">whenUnsatisfiable</span><span class="pi">:</span> <span class="s">ScheduleAnyway</span>
+          <span class="na">labelSelector</span><span class="pi">:</span>
+            <span class="na">matchLabels</span><span class="pi">:</span>
+              <span class="na">app</span><span class="pi">:</span> <span class="s">portal</span>
+      <span class="na">containers</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">portal</span>
+          <span class="na">image</span><span class="pi">:</span> <span class="s">registry.example.com/portal:1.0.0</span>
+<span class="nn">---</span>
+<span class="na">apiVersion</span><span class="pi">:</span> <span class="s">policy/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">PodDisruptionBudget</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">portal</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">minAvailable</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">matchLabels</span><span class="pi">:</span>
+      <span class="na">app</span><span class="pi">:</span> <span class="s">portal</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">maxUnavailable: 0</code> and <code class="language-plaintext highlighter-rouge">maxSurge: 1</code> mean an old Pod comes down only after a new Pod is Ready. Node spread is soft because with a hard rule, when Pods reach 3 during a rollout and nodes run short, the new Pod stays Pending and the deploy never finishes. <code class="language-plaintext highlighter-rouge">ScheduleAnyway</code> in the example is one way to get a soft spread. According to the <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/">topology spread documentation</a>, it schedules the Pod even when the constraint cannot be met, while preferring nodes that keep the skew small.</p>
+
+<p><br /></p>
+
+<h3 id="a-test-to-stop-the-config-sliding-back">A Test to Stop the Config Sliding Back</h3>
+
+<p>A one-line value change returns this config to the earlier setup, and the regression does not show until the next deploy. So <code class="language-plaintext highlighter-rouge">make test</code> gained a test that inspects <code class="language-plaintext highlighter-rouge">replicas</code>, <code class="language-plaintext highlighter-rouge">strategy</code> and the PDB among these values and checks whether the setup has gone back to a single point of failure. A spare is not something you build once and forget, and you need something that tells you when it has gone.</p>
+
+<p><br /></p>
+
+<h3 id="the-price-and-the-blast-radius-that-remains">The Price, and the Blast Radius That Remains</h3>
+
+<p>The price of going stateless is that the server cannot forcibly end a session. The expiry time is inside the encrypted content, so the server cannot revoke a cookie it has already issued. Logging out expires the cookie and also ends the SSO session on the authentication server, so getting back in takes a new login, but the issued cookie itself stays valid until it expires. If immediate invalidation becomes necessary, the next step is a revocation list in an external store, and that brings back the state store dependency just removed. No such requirement exists yet, so there is no store.</p>
+
+<div style="width: 90%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart TB
+      subgraph Early["Early portal: no spare, no boundary"]
+        A1["One Pod, Recreate<br />sessions in server memory"] --&gt; A2["7 apps"]
+      end
+
+      subgraph Now["Stateless portal: a spare, still no boundary"]
+        K["Same code, config and encryption key"] -.-&gt; B1["Pod 1"]
+        K -.-&gt; B2["Pod 2"]
+        B1 --&gt; B3["7 apps"]
+        B2 --&gt; B3
+      end
+
+      style A1 fill:#ffebee
+      style K fill:#fff59d
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>The 7 apps are still behind one portal, and both Pods use the same code, config and encryption key.</p>
+</div>
+
+<p><br /></p>
+
+<p>What this work produced is a spare. Deploys no longer cut all 7 apps together. It did not produce a boundary. If a bad version that passes readiness is deployed, both Pods move to it, and if the defect is in the authentication or proxy path, all 7 apps are affected together. <code class="language-plaintext highlighter-rouge">replicas: 2</code> is not a setting that prevents that.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="case-2-two-vpn-servers-and-when-the-client-finds-out">Case 2: Two VPN Servers and When the Client Finds Out</h2>
+
+<p><br /></p>
+
+<h3 id="remote-access-hanging-on-one-server">Remote Access Hanging on One Server</h3>
+
+<p>OpenVPN on a single physical server handled all remote access to the internal network. There was no alternate way in. The PKI, holding the CA and the issuance history, lived only on that server and was not being backed up. The install script was idempotent and preserved an existing PKI, but that only helps when it is rerun on the same server. Lose the server and every user certificate has to be reissued. Nothing alerted on the tunnel itself either, so unless the server’s general resource alerts fired, nobody would know right away that the VPN had stopped.</p>
+
+<p><br /></p>
+
+<h3 id="moving-to-keepalived-active-standby">Moving to keepalived Active-Standby</h3>
+
+<p>Servers A and B were tied together with keepalived active-standby, and the destination of the inbound path changed from the server’s address to a VIP. OpenVPN runs on both servers all the time, and whichever one holds the VIP receives the packets.</p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart LR
+      C["OpenVPN clients"] --&gt; R["Upstream router<br />one public address"]
+      R --&gt; V(["VIP group<br />moves as one"])
+      V --&gt;|"active"| A["Server A<br />OpenVPN always running"]
+      V -.-&gt;|"standby"| B["Server B<br />OpenVPN always running"]
+      B -.-&gt;|"pulls PKI every minute<br />from the VIP side"| A
+
+      style R fill:#fff59d
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>The generalized setup. The highlighted router comes back later in this case.</p>
+</div>
+
+<p><br /></p>
+
+<p>Before the cutover, the first thing measured was whether the upstream router follows a VIP move right away. With packets going to a test port at 0.5-second intervals while the VIP moved, the standby server received packets 0.16 seconds after the gratuitous ARP, and none of the 154 packets were lost or duplicated.</p>
+
+<p>What had to move together was treated as one bundle. A site-to-site tunnel exchanged traffic with OpenVPN inside the same server, and if the two moved separately that forwarding path would break, so they went into the same VIP group. Deciding the unit of failover is the same job as deciding the unit that stops together.</p>
+
+<p>The configs below are examples written to show the setup. The addresses come from a documentation range, and these are not real config files.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Example keepalived.conf for server A. Server B differs in priority and addresses.
+vrrp_instance VPN {
+    state BACKUP
+    interface eth0
+    virtual_router_id 51
+    priority 150
+    advert_int 1
+    nopreempt
+    unicast_src_ip 192.0.2.11
+    unicast_peer {
+        192.0.2.12
+    }
+    virtual_ipaddress {
+        192.0.2.10/32
+    }
+}
+</code></pre></div></div>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Example excerpt from an OpenVPN server.conf
+multihome
+keepalive 10 60
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">nopreempt</code> keeps a higher-priority server from taking the VIP back when it returns, and according to the <a href="https://github.com/acassen/keepalived/blob/master/doc/man/man5/keepalived.conf.5.in">keepalived configuration documentation</a>, it works only if the initial state is not <code class="language-plaintext highlighter-rouge">MASTER</code>. <code class="language-plaintext highlighter-rouge">multihome</code> is an <a href="https://openvpn.net/community-docs/community-articles/openvpn-2-5-manual/">OpenVPN option</a> that makes a server with several addresses send UDP replies from the address the client connected to. Without it, the source of a reply becomes the server’s default address and no longer matches the router’s port-forwarding connection tracking.</p>
+
+<p><br /></p>
+
+<h3 id="syncing-the-standby-a-new-dependency">Syncing the Standby, a New Dependency</h3>
+
+<p>Adding a standby server was not the end of it. The two servers’ PKIs must match for the standby to act as a spare, and the mechanism that keeps them matching is itself a new source of failure.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>New risk</th>
+        <th>What guards against it</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>The standby lacks the latest PKI</td>
+        <td>The standby pulls the PKI from the VIP side every minute. After the first replication, the hashes of the PKI files were confirmed to match</td>
+      </tr>
+      <tr>
+        <td>An empty source wipes the standby's PKI through a sync that deletes</td>
+        <td>The data is received into a temporary directory and applied only after confirming that the CA certificate, the issued list and the revocation list are present</td>
+      </tr>
+      <tr>
+        <td>The next sync erases anything issued or revoked on the standby</td>
+        <td>A server without the VIP refuses issuing and revoking. Issuing was confirmed to be refused on the standby</td>
+      </tr>
+      <tr>
+        <td>The install script creates a new CA on a server with no CA, and when that server goes active nobody can connect</td>
+        <td>If HA settings exist and the CA certificate does not, the script stops rather than create one</td>
+      </tr>
+      <tr>
+        <td>Both servers go active at once</td>
+        <td>Unicast VRRP and <code>nopreempt</code> were meant to reduce the chance, but they cannot prevent it if VRRP packets between the two servers are cut</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>Since the sync runs every minute, anything issued or revoked after the last sync can, by design, be missing from the standby right after a failover.</p>
+
+<p><br /></p>
+
+<h3 id="the-numbers-from-the-failover-drill">The Numbers from the Failover Drill</h3>
+
+<p>The drill stopped keepalived on server A to move the VIP to server B. The results differed widely by path.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Path</th>
+        <th>How it was measured</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>From an internal node through the VIP over a static route</td>
+        <td>Probe at 0.5-second intervals</td>
+        <td>1 failure, within 1.5 seconds</td>
+      </tr>
+      <tr>
+        <td>From another server to an address in the same VIP group</td>
+        <td>Probe at 0.5-second intervals</td>
+        <td>0 failures</td>
+      </tr>
+      <tr>
+        <td>OpenVPN client</td>
+        <td>Client screen and reconnect time</td>
+        <td>Kept showing "connected," then reconnected after 42 seconds</td>
+      </tr>
+      <tr>
+        <td>OpenVPN client when moving back to server A</td>
+        <td>Reconnect time</td>
+        <td>Reconnected after 8 seconds</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The routing path was back within 1.5 seconds, while the user sat cut off for 42 seconds looking at a “connected” status. The 8 seconds on the way back was a case of the client trying to reconnect right away. A wobble in the network path looks like the trigger, but the cause was not established. The interruption a user experiences ranges from a few seconds to about 60 seconds at most, depending on the case.</p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>How far these results hold</strong>
+  <p>This drill shut keepalived down cleanly and did not power off a server. The VIP failover time for a server that halts suddenly was estimated at design time as 3 to 4 seconds, three <code>advert_int</code> intervals plus skew. It is an estimate and was not measured in this drill.</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="time-that-more-servers-do-not-reduce">Time That More Servers Do Not Reduce</h3>
+
+<p>The 42 seconds is not how long a server took to recover. It is how long the client took to reconnect. At the time, this was explained with <code class="language-plaintext highlighter-rouge">ping-restart</code>, and the sequence written down then was as follows.</p>
+
+<ol>
+  <li>The VIP moves to server B, so the client’s packets arrive at server B</li>
+  <li>OpenVPN on server A is still alive, so it sends no shutdown notice</li>
+  <li>Server B discards packets for a session it does not know</li>
+  <li>The client gets no reply, waits until the <code class="language-plaintext highlighter-rouge">ping-restart</code> time has passed, and then reconnects</li>
+</ol>
+
+<p>According to the <a href="https://openvpn.net/community-docs/community-articles/openvpn-2-5-manual/">OpenVPN manual</a>, <code class="language-plaintext highlighter-rouge">keepalive 10 60</code> on the server pushes <code class="language-plaintext highlighter-rouge">ping 10</code> and <code class="language-plaintext highlighter-rouge">ping-restart 60</code> to the client. That means restarting after 60 seconds with no packets of any kind from the peer, so about 60 seconds is the upper limit.</p>
+
+<div class="info-box info-box-question-not-check">
+  <strong>The explanation does not fit the measurement</strong>
+  <p>The server sends a ping once it has gone more than 10 seconds without sending a packet, so this timer alone would not restart the client until about 50 seconds after the switch. The actual reconnect came at 42 seconds. That does not match the explanation above, and the cause of the difference has not been established.</p>
+</div>
+
+<p><br /></p>
+
+<p>Lowering the value lowers the upper limit too, but at a cost. With 30 seconds, users on unstable lines were expected to reconnect more often, so 60 stayed.</p>
+
+<p>Going to three servers would not shorten this time. Spares shorten the time a server failover takes, not the time until the client learns of it. So talking about this setup’s recovery time starts with deciding which moment on which path is the reference. The way one incident gives different values depending on where the start and end are placed is covered in the <a href="/category/monitoring/mttr-recovery-time-metrics-guide/">MTTR measurement post</a>.</p>
+
+<p><br /></p>
+
+<h3 id="a-measuring-tool-tied-to-what-it-measures">A Measuring Tool Tied to What It Measures</h3>
+
+<p>The drill taught one more lesson. The PC of the operator running it was in the office, yet connected to the internal network through a full-tunnel VPN, and that ssh session froze for the same 42 seconds. The tool directing the drill was tied to the drill’s target. Probes should run from a host that does not go through the VPN and write their results to a file.</p>
+
+<p><br /></p>
+
+<h3 id="what-still-stops-together">What Still Stops Together</h3>
+
+<p>Two servers did not solve everything. Both sit behind the same upstream router and the same public address, so if that router stops, there is no way in from outside wherever the VIP is. The spare in this setup has only been counted up to the unit of one server.</p>
+
+<p>Alerts on keepalived state changes and on sync failures were also still follow-up items when this drill was recorded. As of that point, nothing would tell a person right away that a failover had happened or that sync had stopped, and a stale PKI on the standby might only come to light after a failover.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="questions-for-checking-a-design">Questions for Checking a Design</h2>
+
+<p>The table below collects the questions used in this post. If you know from a real outage which group stopped together, look for the answer in that record first. How to keep those records is covered in the <a href="/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/">postmortem writing guide</a>.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Question</th>
+        <th>The risky answer</th>
+        <th>Next action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>When this dependency stops, what does the caller do?</td>
+        <td>It stops too</td>
+        <td>Add a spare, or make the dependency soft</td>
+      </tr>
+      <tr>
+        <td>By what unit were spares counted?</td>
+        <td>Only by instance count</td>
+        <td>Recount by the unit that stops together</td>
+      </tr>
+      <tr>
+        <td>Where do the branches of the path meet again?</td>
+        <td>At one database, config store or router</td>
+        <td>Calculate the overall upper limit from the availability at that point</td>
+      </tr>
+      <tr>
+        <td>Is the required capacity left after losing one unit?</td>
+        <td>The survivors cannot handle it</td>
+        <td>Rework the capacity per unit</td>
+      </tr>
+      <tr>
+        <td>What do users see when one machine goes down?</td>
+        <td>Their sessions are cut</td>
+        <td>Move the state off the server</td>
+      </tr>
+      <tr>
+        <td>When do you find out that sync has stopped?</td>
+        <td>After a failover has happened</td>
+        <td>Put an alert on sync status</td>
+      </tr>
+      <tr>
+        <td>How far does one bad deploy reach?</td>
+        <td>Everywhere</td>
+        <td>Deploy in units that match the boundary</td>
+      </tr>
+      <tr>
+        <td>Is there a stop condition between stages?</td>
+        <td>No</td>
+        <td>Set metrics and a wait time as conditions</td>
+      </tr>
+      <tr>
+        <td>What happens when one comment line is edited?</td>
+        <td>A full restart and a session reset</td>
+        <td>Treat config changes as deploys too</td>
+      </tr>
+      <tr>
+        <td>After a failover finishes, when does the client know?</td>
+        <td>Only when a timer runs out</td>
+        <td>Measure by path and write down the user-facing time</td>
+      </tr>
+      <tr>
+        <td>Does the drill tooling avoid passing through the drill target?</td>
+        <td>It uses the same path</td>
+        <td>Put probes outside the path</td>
+      </tr>
+      <tr>
+        <td>When do you find out that the config has gone back to the old setup?</td>
+        <td>At the next deploy</td>
+        <td>Block it with a test</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Count spares by the unit that stops together, not by the number of machines. Two machines on the same power, the same database or the same version are no different from one machine when that shared part has a problem. However many front-end servers you add, overall availability cannot pass that of what they share.</p>
+
+<p>Spares and boundaries are different jobs. Spares keep things running through a failure, and boundaries set how far it spreads. The internal portal gained a spare by moving sessions off the server, but seven apps still sit behind one entrance, and a <code class="language-plaintext highlighter-rouge">maxUnavailable</code> percentage sets the speed, not how far a new version reaches. To contain a bad deploy as well, the deploy unit has to match the boundary.</p>
+
+<p>Some time does not shrink with spares. In the VPN failover drill, the routing path was back within 1.5 seconds, but the client reconnected only after 42. When describing what redundancy achieves, measure the server failover time and the recovery users actually experience separately.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/availability.html">Availability - AWS Well-Architected Reliability Pillar</a></li>
+  <li><a href="https://docs.aws.amazon.com/whitepapers/latest/availability-and-beyond-improving-resilience/availability-with-redundancy.html">Availability with redundancy - Availability and Beyond</a></li>
+  <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html">REL10-BP01 Deploy the workload to multiple locations</a></li>
+  <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_use_bulkhead.html">REL10-BP03 Use bulkhead architectures to limit scope of impact</a></li>
+  <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/reducing-scope-of-impact-with-cell-based-architecture/reducing-scope-of-impact-with-cell-based-architecture.html">Reducing the Scope of Impact with Cell-Based Architecture</a></li>
+  <li><a href="https://builder.aws.com/content/3F06NpJ8YeoIGP8VHTw4n81pFn8/workload-isolation-using-shuffle-sharding">Workload isolation using shuffle-sharding</a></li>
+  <li><a href="https://builder.aws.com/content/3ErTKQOTKc5NIw031UePBPxTQ6I/automating-safe-hands-off-deployments">Automating safe, hands-off deployments</a></li>
+  <li><a href="https://sre.google/sre-book/introduction/">Introduction - Site Reliability Engineering</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/">Deployments - Kubernetes</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/disruptions/">Disruptions - Kubernetes</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/">Pod Topology Spread Constraints - Kubernetes</a></li>
+  <li><a href="https://openvpn.net/community-docs/community-articles/openvpn-2-5-manual/">OpenVPN 2.5 Manual</a></li>
+  <li><a href="https://github.com/acassen/keepalived/blob/master/doc/man/man5/keepalived.conf.5.in">keepalived.conf man page source - keepalived</a></li>
+  <li><a href="/category/network/network-topology/">Network Topology Models Complete Guide - From Hub-and-Spoke to Mesh</a></li>
+  <li><a href="/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/">How to Write a Postmortem: Blameless Practice and Root Cause Analysis</a></li>
+  <li><a href="/category/monitoring/mttr-recovery-time-metrics-guide/">Measuring MTTR: Four Definitions, When to Measure, and the Average Trap</a></li>
+  <li><a href="/category/troubleshooting/runbook-toil-automation-guide/">From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/aws/aws-access-log-alb-s3/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767936825/aws-access-log-s3-1_h1ds5v.png" alt="AWS ALB Access Logs: Enable Logging and Configure S3 Permissions">
+                                    
+                                    <h3>AWS ALB Access Logs: Enable Logging and Configure S3 Permissions</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/container/docker-compose/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1755654072/docker-compose_l2hvau.png" alt="Docker Compose - Complete Guide to Multi-Container Application Orchestration">
+                                    
+                                    <h3>Docker Compose - Complete Guide to Multi-Container Application Orchestration</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/openstack/openstack-kuryr/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767852260/openstack-kuryr-1_yat2om.png" alt="Deep Dive into OpenStack Kuryr">
+                                    
+                                    <h3>Deep Dive into OpenStack Kuryr</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="34">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1793870467/kubernetes-chaos-mesh-hypothesis-testing-guide_hofvji.png" alt="Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster">
+                
+            </div>
+            <h3 class="title">Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Two servers that share a database, a config and a deploy still stop as one. This guide counts redundancy by the unit of failure, separates spares from isolation boundaries, and checks the split against an internal portal and a VPN failover drill.&quot;%20https://somaz.blog/category/cs/spof-blast-radius-isolation-boundary-guide/%20via%20&#64;&hashtags=spof,blast-radius,redundancy,cell-based-architecture,shuffle-sharding,reliability,sre,architecture,kubernetes,aws,vpn"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/cs/spof-blast-radius-isolation-boundary-guide/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile-400.jpg" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/cs/spof-blast-radius-isolation-boundary-guide/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+
+    <p class="copyright">
+      &copy; Somaz. All rights reserved.<br />
+      Articles may not be reproduced or redistributed without permission.
+      Code samples are free to use.
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://somaz.blog/#organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": 600,
+      "height": 315
+  },
+  "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+</script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include extra scripts -->
+
+
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": "Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries",
+            "alternativeHeadline": "Count spares by what stops together, then draw the boundary",
+            "description": "Two servers that share a database, a config and a deploy still stop as one. This guide counts redundancy by the unit of failure, separates spares from isolation boundaries, and checks the split against an internal portal and a VPN failover drill.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1793857991/spof-blast-radius-isolation-boundary-guide_rfomzo.png",
+            "url": "https://somaz.blog/category/cs/spof-blast-radius-isolation-boundary-guide/",
+            "mainEntityOfPage": "https://somaz.blog/category/cs/spof-blast-radius-isolation-boundary-guide/",
+            "articleBody": "Overview Add a second server and it is easy to believe the single point of failure is gone. But if the two servers use the same database and the same config and receive the same deploy, they stop as one. Adding machines does not remove the things that make them stop together. This post shows how to count redundancy by the unit that stops together rather than by the number of machines, and it separates adding spares from drawing boundaries. It then looks at why a bad deploy crosses those boundaries, and tests the distinction against two cases: an internal portal and a VPN server. How to read the examples The cases come from real operating experience, with the company, products and addresses generalized. The configs shown were written as examples and are not real production files. Addresses use documentation ranges, and the numbers in tables labeled as examples were chosen for explanation. Finding Single Points of Failure A single point of failure (SPOF) is a component with nothing to take its place, so the whole system stops when that one thing stops. The term is not limited to servers and network lines. The one database that takes writes, an authentication server every service depends on, and the only person who knows a procedure are all single points of failure. Getting a procedure out of one person’s head and into a document is covered in the runbook post. Stop Each Dependency in Turn The method is simple. Write down the path a single request takes and everything that path depends on, then assume each one has stopped. Include what rarely shows up on an architecture diagram. A config store, an image registry and certificate issuance stay out of sight until a restart or a deploy needs them. Dependency What happens when it stops Dependency type Load balancer Every request fails hard Database that takes writes Write requests fail hard Authentication server New logins are blocked. If services verify already issued tokens themselves, existing users carry on Depends on the implementation Cache Reads go straight to the database and get slower soft Recommendation API A default list is returned in its place soft An example made up for a typical web service. In networking, the hub of a hub-and-spoke layout is the classic single point of failure. The structure of each topology is laid out in the network topology post. Hard and Soft Dependencies The Availability page of AWS Well-Architected draws the line this way: a dependency is hard if its interruption translates directly into an interruption of the caller, and soft if the caller can compensate another way when it stops. The availability of hard dependencies multiplies. In the same page’s example, a system designed for 99.99% availability with a hard dependency on two independent systems, each at 99.99%, can theoretically reach 99.97%. 99.99% × 99.99% × 99.99% = 99.97% This multiplication points to one more way of reducing single points of failure. Even without a spare, a dependency turned soft can no longer stop the whole system. The recommendation API in the table above has no spare and still is not a single point of failure. A dependency that only looks soft, like the cache, needs one more check, though: whether the database behind it can take the extra load when the cache is gone. The same page advises settling the availability you actually need first, because cost rises as availability does. Removing every single point of failure is not the goal. Once you have found them, choose which to remove and which to accept. Two Servers That Still Stop Together The Independence Assumption Availability with redundancy, from the AWS whitepaper Availability and Beyond, works the numbers for a component at 99% availability with two copies. The chance of both being down together is 1% × 1% = 0.01%, which gives 99.99% availability. That calculation holds only when the two copies are independent, and the whitepaper too speaks of putting spares on resources that fail independently. Once the copies share something, the calculation changes. The table below assumes two front-end servers using one database with 99.9% availability. Annual downtime is converted from the availability figure. Setup Calculation Availability Annual downtime 1 server 99% 99% About 3 days 15 hours 2 servers 1 − (1% × 1%) 99.99% About 52 minutes 2 servers + shared database 99.99% × 99.9% About 99.89% About 9.6 hours More servers added Approaches 99.9% and never passes it Below 99.9% About 8 hours 45 minutes or more flowchart LR subgraph Pair[\"Front end: 99.99% as a pair\"] S1[\"Server 199%\"] S2[\"Server 299%\"] end S1 --&gt; DB[(\"Shared database99.9%\")] S2 --&gt; DB style DB fill:#fff59d The two branches of the example meet again at the shared database. However many front-end servers you add, overall availability cannot pass the availability of what they share. What Breaks Independence Shared dependencies are not always as visible as a database. The things that stop two servers together can be grouped like this. What is shared The event that stops both The question to ask Power, rack, switch A power problem, a switch failure Where are the two servers physically? Database, config store A failure of the shared dependency Where do the two branches meet on the diagram? Code and config A bad deploy, a bad config change How many machines change in one change? Remaining capacity A cascading failure, where survivors take on the stopped side's share and fall in turn Is the required capacity left after losing one unit? Failover mechanism A failure of the single load balancer or of whatever handles the switch If the failover mechanism stops, who fails over? The last row is easy to miss. Adding a spare brings a new failover mechanism with it, and that mechanism can become the next single point of failure. Count by the Unit That Stops Together The same whitepaper says to look at the unit of failure when deciding how many spares to have. Its example workload needs 10 Amazon EC2 instances to handle peak load. Put all 10 in one Availability Zone (AZ) and the entire AZ can stop together, so the unit is the AZ rather than one instance. In the table below, the second row was added for comparison and the rest are the whitepaper’s example. Setup Total instances Left after one AZ stops Are the required 10 left? 10 in 1 AZ 10 0 No 20 in 1 AZ 20 0 No 10 each in 2 AZs 20 10 Yes 5 each in 3 AZs 15 10 Yes Rows two and three have the same 20 instances, yet counted as spares they have zero and one. In row three, the extra 10 instances look like spares, but the real spare is one AZ. Row four uses one more AZ and five fewer instances and meets the same condition. More spares are not always better either. The whitepaper holds that for components at 99% availability or higher, going beyond three spares brings no noticeable gain for almost all workloads, so it recommends only as many as the required availability calls for. Spares and Boundaries Are Different Jobs Blast radius is the range of components and users that one failure, one bad deploy or one security breach can reach. AWS documents use scope of impact for the same idea. Adding a spare keeps things running through a failure. Drawing a boundary decides how far the failure spreads. Neither can stand in for the other. The table below is an example built to tell the two apart. Cells and AZs are explained further down. Setup Spare Boundary One server fails Bad deploy 1 server No No Total outage Applied everywhere Several servers on the same version, load balancer Yes No Remaining servers handle it Applied everywhere Spread across AZs, deployed all at once Yes Facility boundary Remaining servers handle it Applied everywhere 10 cells, 1 server per cell No Yes 10% of requests stop Deployed in turn, it can be stopped at one cell 10 cells, several servers per cell Yes Yes Remaining servers handle it Deployed in turn, it can be stopped at one cell The second row is the setup people mean when they say “it’s redundant, so it’s safe.” The fourth row is divided up but has no spare. Neither one solves the other’s problem. AZ: A Boundary for Facility Failures According to REL10-BP01, AZs are locations physically separated so that they do not share disasters such as fires, floods and tornadoes. Each AZ also has its own power, mechanical services and network connectivity. What this boundary contains is a failure in one facility. Deploy the same code and config to every AZ at once, and a bad deploy goes straight across the AZ boundary. If a service spanning several AZs shares a database or config store, a failure there spreads to all of them. Cell: A Boundary Inside the Workload REL10-BP03 draws its analogy from a ship’s bulkheads, which keep hull damage inside one compartment. AWS’s guide to cell-based architecture describes the cell structure as bringing the fault isolation concepts used for AZs and Regions down to the workload. A cell is one independent copy of the workload. It shares no state with other cells and handles only part of all requests. In the document’s example, with 10 cells serving 100 requests, a failure in one cell leaves 90% of all requests unaffected. flowchart TD R[\"Router layer\"] --&gt; C1[\"Cell 1: failed\"] R --&gt; C2[\"Cell 2\"] R --&gt; C3[\"Cells 3 to 9\"] R --&gt; C10[\"Cell 10\"] classDef fail fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c; classDef ok fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20; class C1 fail; class C2,C3,C10 ok; style R fill:#fff59d The document's 10-cell example with one cell down. Four issues in implementing cells Partition key: pick a value available on every request, such as a customer ID, that keeps interaction between cells to a minimum. Router layer: this layer is shared by the cells, so it cannot be divided the way they are. Keep it simple, with no complex business logic. Cell size: set a maximum size by testing. When the workload grows, add cells rather than growing them. Calls between cells: the more of them there are, the more cells depend on each other and the less isolation you get. The router layer is a shared dependency that remains after the boundary is drawn. Creating boundaries does not make every shared dependency disappear, and what counts is how simple you keep the ones that remain. AWS also calls this structure bulkhead architecture. The bulkhead that appears alongside circuit breakers, where the caller partitions resources such as thread pools, shares only the metaphor. Shuffle Sharding: Finer Division from the Same Resources AWS’s article on shuffle sharding explains it with 8 workers. With no shards, all 8 are used together, and a problem caused by one customer spreads to the whole service. Group them in pairs to form 4 shards, and the impact drops to 25%. Shuffle sharding gives each customer a different combination of workers instead of a fixed group. There are 28 ways to choose 2 workers out of 8. worker 1 2 3 4 5 6 7 8 A x x B x x C x x Even if customer A breaks workers 1 and 4, customer B can still get a response from worker 8, and customer C from worker 6. Different combinations overlap on at most one worker. Method Units handed out Impact of one problem Precondition No shards 1, the whole fleet 100% None Fixed shards of 2 workers 4 25% None Shuffle sharding 28 combinations 1/28, about 3.6% The caller must be able to send a retry to a different worker The precondition in the last row matters. Retries have to work for the impact customers see to drop to 1/28, and two workers still break either way. Deploys That Cross the Boundary Outages That Come from Change Chapter 1 of the Google SRE Book says about 70% of outages come from changes to a live system. The responses it names are progressive rollouts, quick and accurate detection of problems, and safe rollback. REL10-BP03 also lists deploying to all cells at once as an anti-pattern. From the point of view of the multiplication earlier, two servers that received the same version are not independent with respect to that change. Both carry the same bug, so a spare that takes over fails in the same place. Two servers do not stop a bad deploy. What a maxUnavailable Percentage Means in Pods A Kubernetes rolling update has numbers that look like a boundary. According to the Deployment documentation, maxUnavailable and maxSurge both default to 25%, and when a percentage is converted to a count, maxUnavailable rounds down and maxSurge rounds up. With the defaults, Pod counts work out as follows. replicas maxUnavailable 25% maxSurge 25% Minimum available Pods during rollout Maximum Pods during rollout 1 0 1 1 2 2 0 1 2 3 3 0 1 3 4 4 1 1 3 5 20 5 5 15 25 1,000 250 250 750 1,250 In the top three rows, rounding down means no Pod comes down first. At the same percentage, the number going down at once grows as you move down the table. What matters here is what kind of number this is. maxUnavailable is a cap on how many Pods go down at once, not a cap on how far the new version reaches. Change 1,000 Pods at 25% or one at a time, and when the rollout ends all 1,000 run the new version. The value sets the speed. It is not a boundary. Rollouts that stop by themselves also need separating from rollouts that do not. A version whose new Pods cannot become Ready: the Deployment controller stops scaling up the new ReplicaSet, so the rollout stalls. Up to maxUnavailable Pods may already be down by then, though, and the stall is only recorded in status. Nothing is rolled back. A version that passes readiness but behaves wrongly: nothing stops it, and it spreads everywhere. PodDisruptionBudget is not the answer here either. According to the Disruptions documentation, workload resources such as Deployment are not limited by PDBs during a rolling update. A PDB deals with voluntary disruptions such as a node drain. Deploy in Units That Match the Boundary To keep a deploy from crossing a boundary, the deploy unit has to match the boundary. AWS’s Automating safe, hands-off deployments groups deployments into waves of increasing size. Each wave starts with a one-box stage that serves 10% of requests or less, and the first wave deploys to only one AZ or one cell at a time. Bake time is set aside to watch before moving to the next stage. The same thinking carries over to smaller environments. The table below is an example made up for a service spread across two AZs. Stage Deploy scope Condition for moving on 1 A canary taking part of the traffic Error rate and latency are within the criteria 2 All of one AZ Metrics hold for a set period 3 The remaining AZ None Stages without a condition for moving on do not work as boundaries, because the deploy moves on before anyone notices something is wrong. Code is not the only thing that gets deployed. A config change reaches every replica by the same path, and the next case is one of those. Case 1: Seven Internal Apps Behind One Entrance Internal apps and operations services had each implemented their own authentication, and that was once consolidated into one portal. A new service only had to register its config to join, so the reason for consolidating was clear. But the portal became the only entrance to the 7 apps it proxied. The portal is a hard dependency of every one of them. Every Deploy Cut All Seven Apps The early portal kept sessions in an in-memory map on the server. Sessions lived only inside that process, so replicas could not be added, and it was tied to replicas: 1 and the Recreate strategy. Recreate takes all existing Pods down before creating new ones. As a result, every portal deploy cut all 7 apps at once. Editing even one comment line in the config file changed the ConfigMap hash and triggered a rollout, the sessions in memory vanished, and everyone was logged out. The apps had not changed at all, and the edit was a comment with no bearing on behavior, yet the blast radius was all 7 apps and every user. There is no record of how long the cuts lasted, though. On the earlier table of spares and boundaries, this is the first row, with neither. With sessions in memory, a spare was not even possible. Adding replicas first would not have solved it. Moving Sessions Off the Server So sessions came off the server before the replica count went up. The claims and the original id_token are compressed and encrypted with AES-256-GCM, and that value itself becomes the cookie. Whichever Pod receives a request can decrypt it with the same key, so Pods have no state to hand over to each other. Every Pod has to share the encryption key, so with no key the process fails at startup instead of falling back to a random one. A Pod started with a random key cannot decrypt cookies made by the other Pods, and users get logged out depending on which Pod their request reaches. Only with the state gone could availability settings go on top. The manifest below is an example written to show the applied values, not the real one. apiVersion: apps/v1 kind: Deployment metadata: name: portal spec: replicas: 2 strategy: type: RollingUpdate rollingUpdate: maxUnavailable: 0 maxSurge: 1 selector: matchLabels: app: portal template: metadata: labels: app: portal spec: topologySpreadConstraints: - maxSkew: 1 topologyKey: kubernetes.io/hostname whenUnsatisfiable: ScheduleAnyway labelSelector: matchLabels: app: portal containers: - name: portal image: registry.example.com/portal:1.0.0 --- apiVersion: policy/v1 kind: PodDisruptionBudget metadata: name: portal spec: minAvailable: 1 selector: matchLabels: app: portal maxUnavailable: 0 and maxSurge: 1 mean an old Pod comes down only after a new Pod is Ready. Node spread is soft because with a hard rule, when Pods reach 3 during a rollout and nodes run short, the new Pod stays Pending and the deploy never finishes. ScheduleAnyway in the example is one way to get a soft spread. According to the topology spread documentation, it schedules the Pod even when the constraint cannot be met, while preferring nodes that keep the skew small. A Test to Stop the Config Sliding Back A one-line value change returns this config to the earlier setup, and the regression does not show until the next deploy. So make test gained a test that inspects replicas, strategy and the PDB among these values and checks whether the setup has gone back to a single point of failure. A spare is not something you build once and forget, and you need something that tells you when it has gone. The Price, and the Blast Radius That Remains The price of going stateless is that the server cannot forcibly end a session. The expiry time is inside the encrypted content, so the server cannot revoke a cookie it has already issued. Logging out expires the cookie and also ends the SSO session on the authentication server, so getting back in takes a new login, but the issued cookie itself stays valid until it expires. If immediate invalidation becomes necessary, the next step is a revocation list in an external store, and that brings back the state store dependency just removed. No such requirement exists yet, so there is no store. flowchart TB subgraph Early[\"Early portal: no spare, no boundary\"] A1[\"One Pod, Recreatesessions in server memory\"] --&gt; A2[\"7 apps\"] end subgraph Now[\"Stateless portal: a spare, still no boundary\"] K[\"Same code, config and encryption key\"] -.-&gt; B1[\"Pod 1\"] K -.-&gt; B2[\"Pod 2\"] B1 --&gt; B3[\"7 apps\"] B2 --&gt; B3 end style A1 fill:#ffebee style K fill:#fff59d The 7 apps are still behind one portal, and both Pods use the same code, config and encryption key. What this work produced is a spare. Deploys no longer cut all 7 apps together. It did not produce a boundary. If a bad version that passes readiness is deployed, both Pods move to it, and if the defect is in the authentication or proxy path, all 7 apps are affected together. replicas: 2 is not a setting that prevents that. Case 2: Two VPN Servers and When the Client Finds Out Remote Access Hanging on One Server OpenVPN on a single physical server handled all remote access to the internal network. There was no alternate way in. The PKI, holding the CA and the issuance history, lived only on that server and was not being backed up. The install script was idempotent and preserved an existing PKI, but that only helps when it is rerun on the same server. Lose the server and every user certificate has to be reissued. Nothing alerted on the tunnel itself either, so unless the server’s general resource alerts fired, nobody would know right away that the VPN had stopped. Moving to keepalived Active-Standby Servers A and B were tied together with keepalived active-standby, and the destination of the inbound path changed from the server’s address to a VIP. OpenVPN runs on both servers all the time, and whichever one holds the VIP receives the packets. flowchart LR C[\"OpenVPN clients\"] --&gt; R[\"Upstream routerone public address\"] R --&gt; V([\"VIP groupmoves as one\"]) V --&gt;|\"active\"| A[\"Server AOpenVPN always running\"] V -.-&gt;|\"standby\"| B[\"Server BOpenVPN always running\"] B -.-&gt;|\"pulls PKI every minutefrom the VIP side\"| A style R fill:#fff59d The generalized setup. The highlighted router comes back later in this case. Before the cutover, the first thing measured was whether the upstream router follows a VIP move right away. With packets going to a test port at 0.5-second intervals while the VIP moved, the standby server received packets 0.16 seconds after the gratuitous ARP, and none of the 154 packets were lost or duplicated. What had to move together was treated as one bundle. A site-to-site tunnel exchanged traffic with OpenVPN inside the same server, and if the two moved separately that forwarding path would break, so they went into the same VIP group. Deciding the unit of failover is the same job as deciding the unit that stops together. The configs below are examples written to show the setup. The addresses come from a documentation range, and these are not real config files. # Example keepalived.conf for server A. Server B differs in priority and addresses. vrrp_instance VPN { state BACKUP interface eth0 virtual_router_id 51 priority 150 advert_int 1 nopreempt unicast_src_ip 192.0.2.11 unicast_peer { 192.0.2.12 } virtual_ipaddress { 192.0.2.10/32 } } # Example excerpt from an OpenVPN server.conf multihome keepalive 10 60 nopreempt keeps a higher-priority server from taking the VIP back when it returns, and according to the keepalived configuration documentation, it works only if the initial state is not MASTER. multihome is an OpenVPN option that makes a server with several addresses send UDP replies from the address the client connected to. Without it, the source of a reply becomes the server’s default address and no longer matches the router’s port-forwarding connection tracking. Syncing the Standby, a New Dependency Adding a standby server was not the end of it. The two servers’ PKIs must match for the standby to act as a spare, and the mechanism that keeps them matching is itself a new source of failure. New risk What guards against it The standby lacks the latest PKI The standby pulls the PKI from the VIP side every minute. After the first replication, the hashes of the PKI files were confirmed to match An empty source wipes the standby's PKI through a sync that deletes The data is received into a temporary directory and applied only after confirming that the CA certificate, the issued list and the revocation list are present The next sync erases anything issued or revoked on the standby A server without the VIP refuses issuing and revoking. Issuing was confirmed to be refused on the standby The install script creates a new CA on a server with no CA, and when that server goes active nobody can connect If HA settings exist and the CA certificate does not, the script stops rather than create one Both servers go active at once Unicast VRRP and nopreempt were meant to reduce the chance, but they cannot prevent it if VRRP packets between the two servers are cut Since the sync runs every minute, anything issued or revoked after the last sync can, by design, be missing from the standby right after a failover. The Numbers from the Failover Drill The drill stopped keepalived on server A to move the VIP to server B. The results differed widely by path. Path How it was measured Result From an internal node through the VIP over a static route Probe at 0.5-second intervals 1 failure, within 1.5 seconds From another server to an address in the same VIP group Probe at 0.5-second intervals 0 failures OpenVPN client Client screen and reconnect time Kept showing \"connected,\" then reconnected after 42 seconds OpenVPN client when moving back to server A Reconnect time Reconnected after 8 seconds The routing path was back within 1.5 seconds, while the user sat cut off for 42 seconds looking at a “connected” status. The 8 seconds on the way back was a case of the client trying to reconnect right away. A wobble in the network path looks like the trigger, but the cause was not established. The interruption a user experiences ranges from a few seconds to about 60 seconds at most, depending on the case. How far these results hold This drill shut keepalived down cleanly and did not power off a server. The VIP failover time for a server that halts suddenly was estimated at design time as 3 to 4 seconds, three advert_int intervals plus skew. It is an estimate and was not measured in this drill. Time That More Servers Do Not Reduce The 42 seconds is not how long a server took to recover. It is how long the client took to reconnect. At the time, this was explained with ping-restart, and the sequence written down then was as follows. The VIP moves to server B, so the client’s packets arrive at server B OpenVPN on server A is still alive, so it sends no shutdown notice Server B discards packets for a session it does not know The client gets no reply, waits until the ping-restart time has passed, and then reconnects According to the OpenVPN manual, keepalive 10 60 on the server pushes ping 10 and ping-restart 60 to the client. That means restarting after 60 seconds with no packets of any kind from the peer, so about 60 seconds is the upper limit. The explanation does not fit the measurement The server sends a ping once it has gone more than 10 seconds without sending a packet, so this timer alone would not restart the client until about 50 seconds after the switch. The actual reconnect came at 42 seconds. That does not match the explanation above, and the cause of the difference has not been established. Lowering the value lowers the upper limit too, but at a cost. With 30 seconds, users on unstable lines were expected to reconnect more often, so 60 stayed. Going to three servers would not shorten this time. Spares shorten the time a server failover takes, not the time until the client learns of it. So talking about this setup’s recovery time starts with deciding which moment on which path is the reference. The way one incident gives different values depending on where the start and end are placed is covered in the MTTR measurement post. A Measuring Tool Tied to What It Measures The drill taught one more lesson. The PC of the operator running it was in the office, yet connected to the internal network through a full-tunnel VPN, and that ssh session froze for the same 42 seconds. The tool directing the drill was tied to the drill’s target. Probes should run from a host that does not go through the VPN and write their results to a file. What Still Stops Together Two servers did not solve everything. Both sit behind the same upstream router and the same public address, so if that router stops, there is no way in from outside wherever the VIP is. The spare in this setup has only been counted up to the unit of one server. Alerts on keepalived state changes and on sync failures were also still follow-up items when this drill was recorded. As of that point, nothing would tell a person right away that a failover had happened or that sync had stopped, and a stale PKI on the standby might only come to light after a failover. Questions for Checking a Design The table below collects the questions used in this post. If you know from a real outage which group stopped together, look for the answer in that record first. How to keep those records is covered in the postmortem writing guide. Question The risky answer Next action When this dependency stops, what does the caller do? It stops too Add a spare, or make the dependency soft By what unit were spares counted? Only by instance count Recount by the unit that stops together Where do the branches of the path meet again? At one database, config store or router Calculate the overall upper limit from the availability at that point Is the required capacity left after losing one unit? The survivors cannot handle it Rework the capacity per unit What do users see when one machine goes down? Their sessions are cut Move the state off the server When do you find out that sync has stopped? After a failover has happened Put an alert on sync status How far does one bad deploy reach? Everywhere Deploy in units that match the boundary Is there a stop condition between stages? No Set metrics and a wait time as conditions What happens when one comment line is edited? A full restart and a session reset Treat config changes as deploys too After a failover finishes, when does the client know? Only when a timer runs out Measure by path and write down the user-facing time Does the drill tooling avoid passing through the drill target? It uses the same path Put probes outside the path When do you find out that the config has gone back to the old setup? At the next deploy Block it with a test Conclusion Count spares by the unit that stops together, not by the number of machines. Two machines on the same power, the same database or the same version are no different from one machine when that shared part has a problem. However many front-end servers you add, overall availability cannot pass that of what they share. Spares and boundaries are different jobs. Spares keep things running through a failure, and boundaries set how far it spreads. The internal portal gained a spare by moving sessions off the server, but seven apps still sit behind one entrance, and a maxUnavailable percentage sets the speed, not how far a new version reaches. To contain a bad deploy as well, the deploy unit has to match the boundary. Some time does not shrink with spares. In the VPN failover drill, the routing path was back within 1.5 seconds, but the client reconnected only after 42. When describing what redundancy achieves, measure the server failover time and the recovery users actually experience separately. References Availability - AWS Well-Architected Reliability Pillar Availability with redundancy - Availability and Beyond REL10-BP01 Deploy the workload to multiple locations REL10-BP03 Use bulkhead architectures to limit scope of impact Reducing the Scope of Impact with Cell-Based Architecture Workload isolation using shuffle-sharding Automating safe, hands-off deployments Introduction - Site Reliability Engineering Deployments - Kubernetes Disruptions - Kubernetes Pod Topology Spread Constraints - Kubernetes OpenVPN 2.5 Manual keepalived.conf man page source - keepalived Network Topology Models Complete Guide - From Hub-and-Spoke to Mesh How to Write a Postmortem: Blameless Practice and Root Cause Analysis Measuring MTTR: Four Definitions, When to Measure, and the Average Trap From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun",
+            "wordCount": 6125,
+            "inLanguage": "en",
+            "datePublished": "2026-11-10T00:00:00+00:00",
+            "author": {
+    "@type": "Person",
+    "@id": "https://somaz.blog/authors/somaz/#person",
+    "name": "Somaz",
+    "image": "https://somaz.blog/assets/img/uploads/profile-400.jpg",
+    "jobTitle": "DevOps Engineer",
+    "url": "https://somaz.blog/authors/somaz/",
+    "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+,
+            "publisher": { "@id": "https://somaz.blog/#organization" },
+            "articleSection": "Cs",
+            "keywords": ["spof","blast-radius","redundancy","cell-based-architecture","shuffle-sharding","reliability","sre","architecture","kubernetes","aws","vpn"]
+        }
+        </script>
+    </body>
+</html>

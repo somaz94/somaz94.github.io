@@ -1,0 +1,1738 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MBP83N4Q');</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154" crossorigin="anonymous"></script>
+
+
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    
+
+    <title>Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster | somaz</title>
+    <meta name="description" content="Chaos Mesh hypotheses tested on a local kind cluster, not in production. A direction: to delay reported AllInjected=True yet left Service traffic untouched, ...">
+    <meta name="tdm-reservation" content="1">
+    
+        <meta name="keywords" content="chaos-mesh, chaos-engineering, fault-injection, podchaos, networkchaos, kubernetes, sre, reliability, kube-proxy, high-availability">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster | somaz">
+    <meta name="twitter:description" content="Chaos Mesh hypotheses tested on a local kind cluster, not in production. A direction: to delay reported AllInjected=True yet left Service traffic untouched, ...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1793870467/kubernetes-chaos-mesh-hypothesis-testing-guide_hofvji.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/">
+    <meta property="og:title" content="Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1793870467/kubernetes-chaos-mesh-hypothesis-testing-guide_hofvji.png">
+    <meta property="og:description" content="Chaos Mesh hypotheses tested on a local kind cluster, not in production. A direction: to delay reported AllInjected=True yet left Service traffic untouched, ...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-11-11T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=optional" rel="stylesheet">
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    <nav class="bar-links" aria-label="Author">
+        <a href="/resume/">Resume</a>
+        <a href="/career/">Career</a>
+        <a href="/portfolio/">Portfolio</a>
+    </nav>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-11-11T00:00:00+00:00">
+                            
+
+
+November 11, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>37 min to read</span>
+                </p>
+                <h1 class="post-title">Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster</h1>
+                <p class="post-subtitle">Hypotheses, verified injection, and recovery with PodChaos, NetworkChaos and StatusCheck, measured on a laptop kind cluster</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/v1793870467/kubernetes-chaos-mesh-hypothesis-testing-guide_hofvji.png" alt="Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>The <a href="/category/cs/spof-blast-radius-isolation-boundary-guide/">single point of failure post</a> argued that servers sharing a dependency stop together, however many of them you run. That judgment came from reading an architecture diagram. Whether they really stop together, and whether a fallback response really holds up, only shows once a failure is injected. This post turns those claims into hypotheses and tests them with Chaos Mesh’s PodChaos and NetworkChaos.</p>
+
+<p>Installation gets only the values that affected the results; the focus is the measurements for each hypothesis. The first thing to look at is a case where Chaos Mesh reported a successful injection and real traffic felt nothing. After that come the difference between pod-kill and a process crash, the conditions under which readiness design grows a partial failure into a total one, the point where latency turns into failure, and the safeguards that stop an experiment safely.</p>
+
+<p><br /></p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>How to read the numbers</strong>
+  <p>Every figure was measured on a local kind cluster on one laptop (Chaos Mesh 2.8.7, Kubernetes 1.35). There is no real network latency and no availability zone here, so the numbers show relative differences between configurations, not production values. Unlike the earlier posts in this series, this one has no real operating case. The number of runs is given in each table or the sentence before it, and an experiment run only once is marked as such.</p>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="hypotheses-and-test-setup">Hypotheses and Test Setup</h2>
+
+<p><br /></p>
+
+<h3 id="steady-state-metrics">Steady-State Metrics</h3>
+
+<p><a href="https://principlesofchaos.org/">Principles of Chaos Engineering</a> lays out the order of an experiment: define the system’s normal behavior as a measurable output (the steady state), hypothesize that this state will hold, introduce variables that reflect real-world events, and try to disprove the hypothesis by looking for a difference from the steady state.</p>
+
+<p>The heart of it is turning “we have redundancy, so we are fine” into a sentence that can be disproved. “There are three frontends, so it is safe” cannot be tested. “With frontend and backend cut off for 30 seconds, 30 requests per second keep getting responses” can.</p>
+
+<p>The steady-state metrics here are <code class="language-plaintext highlighter-rouge">ok%</code>, the share of normal responses, and <code class="language-plaintext highlighter-rouge">served%</code>, which adds fallback responses to the normal ones. Why the two are split becomes clear later. The baseline of every experiment was 100% success and a p50 of about 6ms. The exceptions are the baselines of two runs (C1 run 4, B4 run 3), each with 3 timeouts whose cause was not established.</p>
+
+<p><br /></p>
+
+<h3 id="test-target-and-load">Test Target and Load</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Setup</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Cluster</strong></td>
+        <td>kind v0.31.0, Kubernetes v1.35.0, containerd 2.2.0, kube-proxy in iptables mode, 1 control-plane and 2 workers</td>
+      </tr>
+      <tr>
+        <td><strong>Application</strong></td>
+        <td>3 <code>frontend</code> replicas (spread over 2 workers) call <code>backend</code> through a ClusterIP Service; <code>backend</code> has 1 replica unless noted</td>
+      </tr>
+      <tr>
+        <td><strong>Load</strong></td>
+        <td>An in-cluster load generator (probe) sends a steady 30 requests per second (open-loop), a new connection per request, client timeout 5 seconds</td>
+      </tr>
+      <tr>
+        <td><strong>Measurement window</strong></td>
+        <td>15 seconds of baseline, 30 seconds of fault, 25 seconds after it ends</td>
+      </tr>
+      <tr>
+        <td><strong>Result labels</strong></td>
+        <td><code>TO</code> is a client timeout, <code>ERR</code> is a connection error</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The demo app is built on the Python standard library. Each <code class="language-plaintext highlighter-rouge">backend</code> call opens a new TCP connection, and a 4-slot pool per replica limits concurrent calls. Environment variables set the call timeout (<code class="language-plaintext highlighter-rouge">TIMEOUT</code>), whether readiness checks as far as <code class="language-plaintext highlighter-rouge">backend</code> (<code class="language-plaintext highlighter-rouge">DEEP_READY</code>), and whether a failure returns a fallback response (<code class="language-plaintext highlighter-rouge">FALLBACK</code>). This is the code that directly affected the experiments.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if</span> <span class="n">self</span><span class="p">.</span><span class="n">path</span> <span class="o">==</span> <span class="sh">"</span><span class="s">/ready</span><span class="sh">"</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">DEEP</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nf">call</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">except</span> <span class="nb">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">reply</span><span class="p">(</span><span class="mi">503</span><span class="p">,</span> <span class="sa">b</span><span class="sh">"</span><span class="s">backend down</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">reply</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="sa">b</span><span class="sh">"</span><span class="s">ready</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">POOL</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">reply</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="nf">call</span><span class="p">(</span><span class="n">TIMEOUT</span><span class="p">))</span>
+    <span class="k">except</span> <span class="nb">Exception</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">FALLBACK</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">reply</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="sa">b</span><span class="sh">'</span><span class="s">{</span><span class="sh">"</span><span class="s">degraded</span><span class="sh">"</span><span class="s">:true}</span><span class="sh">'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">self</span><span class="p">.</span><span class="nf">reply</span><span class="p">(</span><span class="mi">503</span><span class="p">,</span> <span class="sa">b</span><span class="sh">"</span><span class="s">backend error</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The readiness probe has a 2-second period and a failure threshold of 2, and <code class="language-plaintext highlighter-rouge">terminationGracePeriodSeconds</code> is 5.</p>
+
+<p>Preparation turned up one more result. With a spread constraint of <code class="language-plaintext highlighter-rouge">maxSkew: 1</code> and <code class="language-plaintext highlighter-rouge">DoNotSchedule</code> on the 3 <code class="language-plaintext highlighter-rouge">frontend</code> replicas, the third pod stayed Pending with “didn’t match pod topology spread constraints”. The tainted control-plane was being counted as a topology domain with 0 pods, because <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/"><code class="language-plaintext highlighter-rouge">nodeTaintsPolicy</code> behaves as <code class="language-plaintext highlighter-rouge">Ignore</code> when it has no value</a>. Setting <code class="language-plaintext highlighter-rouge">nodeTaintsPolicy: Honor</code> fixed it.</p>
+
+<p><br /></p>
+
+<h3 id="install-values-that-affected-the-results">Install Values That Affected the Results</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm repo add chaos-mesh https://charts.chaos-mesh.org
+helm <span class="nb">install </span>chaos-mesh chaos-mesh/chaos-mesh <span class="se">\</span>
+  <span class="nt">--namespace</span> chaos-mesh <span class="nt">--create-namespace</span> <span class="nt">--version</span> 2.8.7 <span class="se">\</span>
+  <span class="nt">--set</span> chaosDaemon.runtime<span class="o">=</span>containerd <span class="se">\</span>
+  <span class="nt">--set</span> chaosDaemon.socketPath<span class="o">=</span>/run/containerd/containerd.sock <span class="se">\</span>
+  <span class="nt">--set</span> controllerManager.replicaCount<span class="o">=</span>1 <span class="se">\</span>
+  <span class="nt">--set</span> controllerManager.enableFilterNamespace<span class="o">=</span><span class="nb">true</span> <span class="se">\</span>
+  <span class="nt">--set</span> dashboard.create<span class="o">=</span><span class="nb">false</span> <span class="se">\</span>
+  <span class="nt">--set</span> dnsServer.create<span class="o">=</span><span class="nb">false</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Value</th>
+        <th>Chart default</th>
+        <th>Why it changed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>chaosDaemon.runtime</code>, <code>socketPath</code></td>
+        <td><code>docker</code>, <code>/var/run/docker.sock</code></td>
+        <td>The socket path differs by runtime, and this cluster runs containerd</td>
+      </tr>
+      <tr>
+        <td><code>controllerManager.enableFilterNamespace</code></td>
+        <td><code>false</code></td>
+        <td>Injects only into namespaces carrying the annotation</td>
+      </tr>
+      <tr>
+        <td><code>controllerManager.replicaCount</code></td>
+        <td><code>3</code></td>
+        <td>Reduced to 1 for this lab only; keep it in mind when reading the controller failure result</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The other two values turn off the Dashboard and the DNS server, neither of which these experiments use. At the time of writing, <a href="https://github.com/chaos-mesh/chaos-mesh/releases/tag/v2.8.7">2.8.7 is the latest release</a>.</p>
+
+<p><br /></p>
+
+<h3 id="hypotheses-and-results-at-a-glance">Hypotheses and Results at a Glance</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Hypothesis</th>
+        <th>Measured result</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>A status of <code>AllInjected=True</code> means the fault is in</td>
+        <td>With a <code>direction: to</code> delay on Service traffic, calls still took 0-8ms. The rule was in place but did not apply to this traffic</td>
+      </tr>
+      <tr>
+        <td>Passing pod-kill means a process exit is safe too</td>
+        <td>pod-kill removes the API object first. Results differed from container-kill, and the same experiment split between 0 and 18 failures</td>
+      </tr>
+      <tr>
+        <td>With three <code>frontend</code> replicas, the service survives losing <code>backend</code></td>
+        <td>With deep readiness all three went 0/1 Ready, and p50 rose to the 5-second timeout</td>
+      </tr>
+      <tr>
+        <td>Having a fallback makes it a soft dependency</td>
+        <td>served was 100% with a 0.2-second call timeout (3 runs) and 20.07% with 2 seconds (1 run)</td>
+      </tr>
+      <tr>
+        <td>Surviving a 100ms delay means being resilient to delay</td>
+        <td>100ms produced 0 failures; 300ms failed more than half</td>
+      </tr>
+      <tr>
+        <td>An experiment ends on its own once <code>duration</code> passes</td>
+        <td>With no controller, the injected delay outlasted <code>duration</code> and deletion did not finish (1 run)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="when-reported-injection-and-real-effect-differ">When Reported Injection and Real Effect Differ</h2>
+
+<div class="info-box info-box-question-not-check">
+  <strong>Hypothesis</strong>
+  <p>If the status is <code>AllInjected=True</code> and the events show Applied, the fault is in.</p>
+</div>
+
+<p><br /></p>
+
+<p>The first hypothesis is about the experiment tool, not the application. If it is wrong, none of the other results can be trusted.</p>
+
+<p><br /></p>
+
+<h3 id="service-traffic-that-direction-to-missed">Service Traffic That direction: to Missed</h3>
+
+<p>A 300ms delay went onto the traffic from <code class="language-plaintext highlighter-rouge">frontend</code> to <code class="language-plaintext highlighter-rouge">backend</code>.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">chaos-mesh.org/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">NetworkChaos</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">exp</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">shop</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">action</span><span class="pi">:</span> <span class="s">delay</span>
+  <span class="na">mode</span><span class="pi">:</span> <span class="s">all</span>
+  <span class="na">duration</span><span class="pi">:</span> <span class="s">30s</span>
+  <span class="na">direction</span><span class="pi">:</span> <span class="s">to</span>
+  <span class="na">selector</span><span class="pi">:</span>
+    <span class="na">namespaces</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">shop</span><span class="pi">]</span>
+    <span class="na">labelSelectors</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">app</span><span class="pi">:</span> <span class="nv">frontend</span><span class="pi">}</span>
+  <span class="na">target</span><span class="pi">:</span>
+    <span class="na">mode</span><span class="pi">:</span> <span class="s">all</span>
+    <span class="na">selector</span><span class="pi">:</span>
+      <span class="na">namespaces</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">shop</span><span class="pi">]</span>
+      <span class="na">labelSelectors</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">app</span><span class="pi">:</span> <span class="nv">backend</span><span class="pi">}</span>
+  <span class="na">delay</span><span class="pi">:</span>
+    <span class="na">latency</span><span class="pi">:</span> <span class="s">300ms</span>
+    <span class="na">correlation</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0"</span>
+    <span class="na">jitter</span><span class="pi">:</span> <span class="s">0ms</span>
+</code></pre></div></div>
+
+<p>The status was <code class="language-plaintext highlighter-rouge">AllInjected=True</code> and the events showed Applied. Direct calls from inside a <code class="language-plaintext highlighter-rouge">frontend</code> pod measured something else.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>direction</th>
+        <th>Called through the Service ClusterIP</th>
+        <th>Called directly at the backend Pod IP</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>to</code></td>
+        <td>0-8ms (no delay)</td>
+        <td>About 605ms</td>
+      </tr>
+      <tr>
+        <td><code>from</code></td>
+        <td>About 605ms</td>
+        <td>About 605ms</td>
+      </tr>
+      <tr>
+        <td><code>both</code></td>
+        <td>About 605ms</td>
+        <td>About 1205ms</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="caption">3 to 4 calls per direction and destination, with a new connection per call.</div>
+</div>
+
+<p><br /></p>
+
+<p>One run of the same config under 30 requests per second (D4) gave 900 successes out of 900 and a p50 of 6ms, indistinguishable from no fault at all. Keeping the delay at 300ms and switching to <code class="language-plaintext highlighter-rouge">direction: from</code> (D2, 3 runs) brought the success rate to 40.75-47.16%. Without checking the injection, the record would have read “no impact from a 300ms delay”, which is the wrong conclusion.</p>
+
+<p>Inside the <code class="language-plaintext highlighter-rouge">frontend</code> pod’s network namespace, the tc netem delay rule is clearly present, and the ipset its filter uses holds only the <code class="language-plaintext highlighter-rouge">backend</code> Pod IP. In kube-proxy iptables mode, <a href="https://kubernetes.io/docs/reference/networking/virtual-ips/">Service traffic is translated by rules on the node</a>, so the packet reaches that filter still addressed to the ClusterIP and does not match it.</p>
+
+<p><br /></p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart LR
+      subgraph Pod["frontend pod network namespace"]
+        P["Packet to backend<br />destination: ClusterIP"]
+        T["tc filter<br />ipset: backend Pod IP only"]
+      end
+      N["Rules on the node<br />DNAT to the backend Pod IP"]
+      B["backend pod"]
+
+      P --&gt; T
+      T --&gt;|"no match, no delay"| N
+      N --&gt; B
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>Service traffic under a <code>direction: to</code> delay, in kube-proxy iptables mode.</p>
+</div>
+
+<p><br /></p>
+
+<p><a href="https://github.com/chaos-mesh/chaos-mesh/blob/v2.8.7/controllers/chaosimpl/networkchaos/trafficcontrol/impl.go">Chaos Mesh 2.8.7’s tc implementation</a> puts the rule on the source pod for <code class="language-plaintext highlighter-rouge">to</code> and on the target pod for <code class="language-plaintext highlighter-rouge">from</code>. <code class="language-plaintext highlighter-rouge">from</code> working on Service traffic is read as a result of the responses <code class="language-plaintext highlighter-rouge">backend</code> sends: inside the pod, those are packets between real Pod IPs.</p>
+
+<p><br /></p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Where this explanation applies</strong>
+  <p>It combines values measured in kube-proxy iptables mode with code reading and reasoning, and it is not a claim about every CNI. Setups that replace kube-proxy with eBPF translate Service addresses in a different way, so the results may differ there, but that was not tested here.</p>
+</div>
+
+<p><br /></p>
+
+<p>One more thing to watch. The <a href="https://chaos-mesh.org/docs/simulate-network-chaos-on-kubernetes/">field table in the official docs</a> and the 2.8.7 CRD both define the default of <code class="language-plaintext highlighter-rouge">direction</code> as <code class="language-plaintext highlighter-rouge">to</code>. Leaving the field out was not tested separately, but going by the default it is the same setting as the <code class="language-plaintext highlighter-rouge">direction: to</code> above. That is why the delay experiments D1 to D3 in this post all use <code class="language-plaintext highlighter-rouge">direction: from</code>.</p>
+
+<p>The table shows 300ms as about 600ms because each call opens a new connection. That makes two round trips (connection setup, then request and response), and the injected delay lands on both. HTTP keep-alive was not tested. For a client that reuses connections, this doubling does not carry over as it stands.</p>
+
+<p><br /></p>
+
+<h3 id="partition-did-cut-the-same-traffic">partition Did Cut the Same Traffic</h3>
+
+<p>This result must not be generalized to all of NetworkChaos. In an experiment that cut the same Service traffic with <code class="language-plaintext highlighter-rouge">action: partition</code> and <code class="language-plaintext highlighter-rouge">direction: to</code> (C5, 1 run), 872 of 894 requests got a 503. The injection worked as it should.</p>
+
+<p>The <a href="https://github.com/chaos-mesh/chaos-mesh/blob/v2.8.7/controllers/chaosimpl/networkchaos/partition/impl.go">partition implementation</a> shows that for <code class="language-plaintext highlighter-rouge">to</code> it puts a rule on the source pod’s Output and also on the target pod’s Input. A packet arriving at the target pod has the real <code class="language-plaintext highlighter-rouge">frontend</code> Pod IP as its source, so that appears to be where it was caught. No other tc-family action besides delay was tested, so what this covers is delay and partition only.</p>
+
+<p><br /></p>
+
+<h3 id="mode-one-picked-a-terminating-pod">mode: one Picked a Terminating Pod</h3>
+
+<p>The second case of an experiment appearing to pass came from pod-kill. <code class="language-plaintext highlighter-rouge">mode: one</code> picked a pod that a rollout had put into Terminating 6 seconds earlier. The status was Applied, while the pod actually receiving traffic stayed the same for the whole observation.</p>
+
+<p>This happened in a script measuring a timeline, not in a measured run. In every pod-kill run in the result tables, the new pod was confirmed to be 8 seconds old at the 8-second mark. If an experiment starts right after a rollout, look first for Terminating pods still around.</p>
+
+<p><br /></p>
+
+<h3 id="experiments-stopped-by-the-namespace-filter">Experiments Stopped by the Namespace Filter</h3>
+
+<p>With <code class="language-plaintext highlighter-rouge">enableFilterNamespace=true</code>, <a href="https://chaos-mesh.org/docs/configure-enabled-namespace/">injection happens only in namespaces carrying the annotation</a>. A pod-kill in a namespace without it leaves <code class="language-plaintext highlighter-rouge">Selected=False</code> and “Failed to select targets: no pod is selected”, and the pod stays as it was. In a namespace with the annotation, the pod was deleted. The <code class="language-plaintext highlighter-rouge">shop</code> namespace in this lab got its annotation from a manifest; with the command from the docs it looks like this.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl annotate ns shop chaos-mesh.org/inject<span class="o">=</span>enabled
+</code></pre></div></div>
+
+<p>This filter is a guard against accidents, so it is better left on. The chart default is <code class="language-plaintext highlighter-rouge">false</code>, though, and with it on an experiment can have no effect and raise no error, so check the <code class="language-plaintext highlighter-rouge">Selected</code> condition too.</p>
+
+<p><br /></p>
+
+<h3 id="checking-the-effect-before-the-experiment">Checking the Effect Before the Experiment</h3>
+
+<p>With the <code class="language-plaintext highlighter-rouge">direction: to</code> delay and with <code class="language-plaintext highlighter-rouge">mode: one</code>, Chaos Mesh’s status alone could not tell whether the injection had any effect. With the namespace filter the status does say so through <code class="language-plaintext highlighter-rouge">Selected=False</code>, but you miss it if you do not look at that condition. <a href="https://chaos-mesh.org/docs/inspect-chaos-experiments/"><code class="language-plaintext highlighter-rouge">AllInjected</code> is a condition saying injection finished on the target pods</a>, not a guarantee that traffic is affected. Checking an injection can follow this order.</p>
+
+<ol>
+  <li>Inject first without load, and check <code class="language-plaintext highlighter-rouge">Selected</code> and <code class="language-plaintext highlighter-rouge">AllInjected</code> with <code class="language-plaintext highlighter-rouge">kubectl -n shop describe networkchaos exp</code>.</li>
+  <li>From inside the source pod, call along the same path as real users (the Service name) and see whether delay or failure shows up.</li>
+  <li>For pod-kill, check that a new pod appeared and that the deleted pod was one receiving traffic.</li>
+  <li>Apply load only with a setup whose effect is confirmed, and test the hypothesis.</li>
+</ol>
+
+<p>Since the demo image has Python, the call times in step 2 were measured in the way shown below. The actual measuring script has an extra try statement to record exceptions too; the code below raises an exception and stops if the connection is cut. Values are in milliseconds.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl <span class="nt">-n</span> shop <span class="nb">exec</span> &lt;frontend-pod&gt; <span class="nt">--</span> python <span class="nt">-c</span> <span class="s2">"
+import time, urllib.request as u
+for _ in range(3):
+    t = time.time()
+    u.urlopen('http://backend:8080/', timeout=3).read()
+    print(round((time.time() - t) * 1000))
+"</span>
+</code></pre></div></div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="the-difference-between-pod-kill-and-a-process-crash">The Difference Between pod-kill and a Process Crash</h2>
+
+<div class="info-box info-box-question-not-check">
+  <strong>Hypothesis</strong>
+  <p>A service that passes pod-kill is safe when its process exits suddenly.</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="the-api-object-goes-first">The API Object Goes First</h3>
+
+<p><a href="https://chaos-mesh.org/docs/simulate-pod-chaos-on-kubernetes/">PodChaos’s <code class="language-plaintext highlighter-rouge">gracePeriod</code> defaults to 0</a>, and the 2.8.7 CRD describes that as “delete immediately”. According to the <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/">forced termination section of the Kubernetes docs</a>, a grace period of 0 removes the pod from the API server at once, and on the node the process is force killed after a short grace period. Measured, the order looks like this.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>App behavior</th>
+        <th>API object deleted</th>
+        <th>Old container ends</th>
+        <th>New pod Ready</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Ignores SIGTERM</td>
+        <td>+0.1s</td>
+        <td>+2.5s</td>
+        <td>+1.9s</td>
+        <td>About 0.6s of overlap</td>
+      </tr>
+      <tr>
+        <td>Exits on SIGTERM</td>
+        <td>+0.1s</td>
+        <td>By +0.7s</td>
+        <td>+1.8s</td>
+        <td>About 1.1s of gap</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="caption">One recorded run of pod-kill on a single backend replica, sampled about every 0.6 seconds.</div>
+</div>
+
+<p><br /></p>
+
+<p>With Python as PID 1 and no signal handler, SIGTERM is ignored. In that case the container of a pod already gone from the API kept running for about another 2.5 seconds. The overlap and gap in the table, however, compare the times of the container and the new pod. In the same record, both cases had no Ready address in the EndpointSlice from +0.1s until the new pod became Ready, so the overlap does not mean a window that could take traffic.</p>
+
+<p>pod-kill removes the API object first. A real crash runs in the opposite order: the process ends first and the pod object stays. A specified <code class="language-plaintext highlighter-rouge">gracePeriod</code> was not tested.</p>
+
+<p><br /></p>
+
+<h3 id="injecting-into-three-frontend-replicas">Injecting into Three frontend Replicas</h3>
+
+<p>All three experiments ran 3 times. They have no <code class="language-plaintext highlighter-rouge">duration</code>, so the counts cover about 55 seconds from injection to the end of measurement rather than a 30-second fault window, which comes to about 1665 requests per run.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Experiment</th>
+        <th>Setup</th>
+        <th>Failures (3 runs)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>A</td>
+        <td>pod-kill, app ignores SIGTERM</td>
+        <td>0, 0, 0</td>
+      </tr>
+      <tr>
+        <td>A3</td>
+        <td>pod-kill, app exits on SIGTERM</td>
+        <td>0, 0, 1</td>
+      </tr>
+      <tr>
+        <td>A2</td>
+        <td>container-kill</td>
+        <td>8, 4, 4 (all <code>ERR</code>, within 0.4-0.7 seconds)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The counts are small, but the tendency differs. Passing pod-kill alone does not let you say a process crash is safe too. With container-kill the process ends first while the pod is still in the endpoints, which is how the connection errors are read here.</p>
+
+<p><br /></p>
+
+<h3 id="split-failure-counts-from-backend-pod-kill">Split Failure Counts from backend pod-kill</h3>
+
+<p>With <code class="language-plaintext highlighter-rouge">backend</code> as the target, the result depends on the replica count and how the app exits. All of these ran 3 times, the counting window is the same roughly 55 seconds as above, and the failures are what the probe got when calling <code class="language-plaintext highlighter-rouge">frontend</code>.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Experiment</th>
+        <th>Setup</th>
+        <th>Failures (3 runs)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>B1</td>
+        <td>pod-kill, 1 replica, ignores SIGTERM</td>
+        <td>0, 18, 18 (503, within 1 second)</td>
+      </tr>
+      <tr>
+        <td>B4</td>
+        <td>pod-kill, 1 replica, exits on SIGTERM</td>
+        <td>19, 17, 15</td>
+      </tr>
+      <tr>
+        <td>B2</td>
+        <td>pod-kill, 2 replicas, ignores SIGTERM</td>
+        <td>0, 0, 0</td>
+      </tr>
+      <tr>
+        <td>B5</td>
+        <td>pod-kill, 2 replicas, exits on SIGTERM</td>
+        <td>0, 0, 6</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The same B1 manifest gave 0 failures once and 18 twice. Had it run once and shown 0, the note would have said a single replica is safe. This data does not establish why the runs split.</p>
+
+<p>B1 looking better than B4 is no reason to recommend ignoring SIGTERM. The 0 in run 1 is a value of unknown cause, and graceful shutdown itself is something to design together with the preStop hook covered in the <a href="/category/kubernetes/k8s-pod-termination/">Pod termination post</a>.</p>
+
+<p>The table also holds values that stay unexplained. Besides the 503s at injection, B4 has 1 to 3 timeouts at around +20 to +30 seconds, and the third run of B5 has 5 timeouts at +40.9 to +41.9 seconds. They are apart from the injection and their cause was not established, so they are not read as results of the fault injection.</p>
+
+<p><br /></p>
+
+<h3 id="container-kill-impact-that-grows-with-repetition">container-kill Impact That Grows with Repetition</h3>
+
+<p>container-kill was repeated on the same pod about every minute and a half. <code class="language-plaintext highlighter-rouge">backend</code> has 1 replica, and the <code class="language-plaintext highlighter-rouge">frontend</code> call timeout is 2 seconds.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Round</th>
+        <th>Restart count</th>
+        <th>Impact window</th>
+        <th>Failures</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>1</td>
+        <td>1.6s</td>
+        <td>39</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>2</td>
+        <td>10.6s</td>
+        <td>315</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>3</td>
+        <td>24.7s</td>
+        <td>730</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>In rounds 2 and 3 the pod was in CrashLoopBackOff at the 8-second mark. <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/">The kubelet’s restart delay grows through 10, 20 and 40 seconds, and resets after 10 minutes of running without a problem</a>. So repeating an experiment without resetting that state does not reproduce the same experiment; it becomes a different one. When averaging repeated runs, replace the pod or leave time for the delay to reset. The reset itself was not measured here.</p>
+
+<p>In the impact windows of rounds 2 and 3, nearly all of the 30 requests per second failed. While <code class="language-plaintext highlighter-rouge">backend</code> is down, calls hold the 4-slot pool for up to 2 seconds each, which appears to saturate <code class="language-plaintext highlighter-rouge">frontend</code> as well. 503s came first, followed by client timeouts.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="when-three-frontend-replicas-stop-together">When Three frontend Replicas Stop Together</h2>
+
+<div class="info-box info-box-question-not-check">
+  <strong>Hypothesis</strong>
+  <p>With <code>frontend</code> made redundant across three replicas, the service survives losing <code>backend</code>.</p>
+</div>
+
+<p><br /></p>
+
+<p>This tests two claims from the <a href="/category/cs/spof-blast-radius-isolation-boundary-guide/">previous post</a>: that redundant copies with a shared dependency still stop together, and that moving to a soft dependency takes you out of the single point of failure (<abbr title="Single Point of Failure">SPOF</abbr>). <code class="language-plaintext highlighter-rouge">frontend</code> and <code class="language-plaintext highlighter-rouge">backend</code> were cut off for 30 seconds with <code class="language-plaintext highlighter-rouge">action: partition</code> and <code class="language-plaintext highlighter-rouge">direction: both</code>. Only the readiness design, the call timeout and the fallback changed.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Experiment</th>
+        <th>Setup</th>
+        <th>Runs</th>
+        <th>ok%</th>
+        <th>served%</th>
+        <th>p50</th>
+        <th>Failure breakdown</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>C1</td>
+        <td>deep readiness, 0.2s timeout</td>
+        <td>3</td>
+        <td>11.59, 14.90, 12.05</td>
+        <td>Same</td>
+        <td>5006ms</td>
+        <td>503 127/161/152, <code>ERR</code> 32/30/31, <code>TO</code> 627/563/605</td>
+      </tr>
+      <tr>
+        <td>C2</td>
+        <td>shallow, 0.2s timeout, no fallback</td>
+        <td>1</td>
+        <td>1.90</td>
+        <td>1.90</td>
+        <td>207ms</td>
+        <td>503 879</td>
+      </tr>
+      <tr>
+        <td>C3</td>
+        <td>shallow, 0.2s timeout, fallback</td>
+        <td>3</td>
+        <td>2.13-3.13</td>
+        <td>100.00</td>
+        <td>206-208ms</td>
+        <td>None</td>
+      </tr>
+      <tr>
+        <td>C4</td>
+        <td>shallow, 2s timeout, fallback</td>
+        <td>1</td>
+        <td>17.47</td>
+        <td>20.07</td>
+        <td>5007ms</td>
+        <td><code>TO</code> 709</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>C1 ran 4 times, but run 2 was thrown out: the laptop went to sleep during the experiment and latency values up to 860 seconds were recorded. A rerun replaced it.</p>
+
+<p><br /></p>
+
+<h3 id="deep-readiness-removes-all-three-at-once">Deep Readiness Removes All Three at Once</h3>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart TD
+      X["Partition between frontend and backend"]
+
+      subgraph Deep["Deep readiness (C1)"]
+        D1["Readiness calls backend"]
+        D2["All 3 frontends 0/1 Ready"]
+        D3["Out of the Service together"]
+        D1 --&gt; D2 --&gt; D3
+      end
+
+      subgraph Shallow["Shallow readiness (C2, C3)"]
+        S1["Readiness does not look at backend"]
+        S2["All 3 frontends stay 1/1 Ready"]
+        S3["C2: mostly 503, after 207ms"]
+        S4["C3: fallback, served 100%"]
+        S1 --&gt; S2
+        S2 --&gt; S3
+        S2 --&gt; S4
+      end
+
+      X --&gt; D1
+      X --&gt; S1
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>In C1 all three replicas were 0/1 Ready at the 8-second mark; in C2 and C3 they stayed 1/1 Ready throughout.</p>
+</div>
+
+<p><br /></p>
+
+<p>In C1 the three replicas left the Service for the same reason at the same moment. Over time (run 4), the first roughly 6 seconds gave 503s, and from then until the partition ended there were about 29 timeouts and 1 connection error per second. Most C2 users failed too, but they got their 503 in 207ms, while most C1 users waited 5 seconds and then timed out. C3’s 100% also depends on the pods staying in the Service. Deep readiness combined with a fallback was not run, but once the pods are out, requests cannot reach the fallback code.</p>
+
+<p><br /></p>
+
+<div class="highlight-box">
+  <p>Put a dependency shared by several replicas into readiness, and the moment that dependency is cut, readiness grows a partial failure into a total one. That is as far as this data goes.</p>
+</div>
+
+<p><br /></p>
+
+<p>A <code class="language-plaintext highlighter-rouge">/ready</code> that also checks external dependencies such as a database and a cache needs weighing against this result when the replicas share those dependencies. Readiness that checks for faults in an individual replica was not part of this test.</p>
+
+<p><br /></p>
+
+<h3 id="what-comparing-ok-alone-misses">What Comparing ok% Alone Misses</h3>
+
+<p>In the table, C1’s <code class="language-plaintext highlighter-rouge">ok%</code> is higher than C2’s. That is not because it held up better. The raw logs (runs 1 and 4) show that most of C1’s successes were requests sent in the last roughly 4 seconds of the fault window, and their latency falls with send time through about 4.1, 3.1, 2.1 and 1.0 seconds. They appear to have waited on a connection and been handled after the partition ended. Do not judge an experiment on one summary metric; look at failure types and the time distribution too.</p>
+
+<p><br /></p>
+
+<h3 id="fallback-that-requests-did-not-reach">Fallback That Requests Did Not Reach</h3>
+
+<p>C3 and C4 differ only in the call timeout. C4, run once, comes out at served 20.07%. This value also needs its time distribution, as with C1. Of 178 responses, 23 are fallback, 22 of them from requests sent in the first 5 seconds. The 155 normal responses are 20 from the first 5 seconds and 135 sent in the last 5. served 20.07% is close to the 6 <abbr title="requests per second">rps</abbr> (20% of 30 rps) in the calculation below, but the two do not measure the same thing. The fallback code was there, and most requests did not reach it in time.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>C4 capacity: 3 replicas x 4 slots / 2s   = 6 rps  &lt; offered 30 rps
+C3 capacity: 3 replicas x 4 slots / 0.2s = 60 rps &gt; offered 30 rps
+</code></pre></div></div>
+
+<p>In C4 a queue waiting for slots is read as having built up until requests hit the 5-second client timeout. The queue length was not measured directly. Calling something a soft dependency because it has a fallback only holds once the timeout and the concurrency limit have been worked through.</p>
+
+<p><br /></p>
+
+<h3 id="timeouts-from-a-service-with-no-endpoints">Timeouts from a Service with No Endpoints</h3>
+
+<p>C1 has one more value that needs explaining. kube-proxy rejects traffic to a Service with no endpoints right away, so the expectation was that clients would fail fast. The node’s rule was indeed as expected. The address is masked.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>-A KUBE-SERVICES -d &lt;ClusterIP&gt;/32 -p tcp -m comment --comment "shop/frontend has no endpoints" -m tcp --dport 8080 -j REJECT --reject-with icmp-port-unreachable
+</code></pre></div></div>
+
+<p>At 30 rps, though, connection errors came at about 1 per second and the rest were 5-second timeouts. Twenty sequential connections to a ClusterIP with no endpoints all ended in ConnectionRefused, but the first 6 took 0-1ms and the other 14 took about 1023ms each.</p>
+
+<p>The node’s settings were <code class="language-plaintext highlighter-rouge">net.ipv4.icmp_ratelimit = 1000</code> and <code class="language-plaintext highlighter-rouge">net.ipv4.icmp_ratemask = 6168</code>. According to the <a href="https://docs.kernel.org/networking/ip-sysctl.html">Linux kernel docs</a>, this mask includes Destination Unreachable, and the ratelimit is the minimum space between ICMP responses to a target, in milliseconds. The first 6 getting through appears to come from the kernel implementation accumulating tokens up to 6 times the interval (<a href="https://github.com/torvalds/linux/blob/master/net/ipv4/inetpeer.c"><code class="language-plaintext highlighter-rouge">XRLIM_BURST_FACTOR</code> in inetpeer.c</a>). When a rejection is lost to the limit, the client never receives it and retransmits the SYN a second later. Under load, the retransmissions hitting the limit as well is read here as what led to the timeouts.</p>
+
+<p>This load came from a single source, and how it changes with traffic from many sources was not tested. At least in this environment, “no endpoints means immediate failure” did not hold under load, and the caller’s connect timeout decided how long a user waited.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="where-latency-turns-into-failure">Where Latency Turns into Failure</h2>
+
+<div class="info-box info-box-question-not-check">
+  <strong>Hypothesis</strong>
+  <p>If a 100ms delay causes no errors, more delay only makes things a little slower.</p>
+</div>
+
+<p><br /></p>
+
+<p>As established above, the delay experiments use <code class="language-plaintext highlighter-rouge">direction: from</code> and ran for 30 seconds each.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Experiment</th>
+        <th>Setup</th>
+        <th>Runs</th>
+        <th>ok%</th>
+        <th>p50</th>
+        <th>p99</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>D1</td>
+        <td>100ms, 2s timeout</td>
+        <td>3</td>
+        <td>100</td>
+        <td>210-211ms</td>
+        <td>290-354ms</td>
+        <td>0 failures</td>
+      </tr>
+      <tr>
+        <td>D2</td>
+        <td>300ms, 2s timeout, no fallback</td>
+        <td>3</td>
+        <td>44.67, 47.16, 40.75</td>
+        <td>5003-5006ms</td>
+        <td>5012-5020ms</td>
+        <td><code>TO</code> 493/474/519</td>
+      </tr>
+      <tr>
+        <td>D3</td>
+        <td>300ms, 0.2s timeout, fallback</td>
+        <td>3</td>
+        <td>1.22-1.44 (served 100)</td>
+        <td>207-208ms</td>
+        <td>274-281ms</td>
+        <td>887-888 degraded</td>
+      </tr>
+      <tr>
+        <td>D4</td>
+        <td>300ms, <code>direction: to</code>, 2s timeout</td>
+        <td>1</td>
+        <td>100</td>
+        <td>6ms</td>
+        <td>63ms</td>
+        <td>No delay</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h3 id="the-threshold-where-a-queue-forms">The Threshold Where a Queue Forms</h3>
+
+<p>Tripling the injected delay was enough to turn 0 failures into more than half failing. By calculation, the cause is capacity more than the delay itself. Slot occupancy and queue length were not measured directly.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>100ms: call about 0.2s -&gt; 3 replicas x 4 slots / 0.2s = 60 rps &gt; offered 30 rps (no queue)
+300ms: call about 0.6s -&gt; 3 replicas x 4 slots / 0.6s = 20 rps &lt; offered 30 rps (queue grows)
+</code></pre></div></div>
+
+<p>In D2 the calls themselves were shorter than the 2-second timeout, so no 503s appeared. With offered load above capacity, though, the queue grew until it reached the 5-second client timeout. The first failure appearing at +6.0 to +6.6 seconds is also read as the time the queue took to grow. All the while <code class="language-plaintext highlighter-rouge">frontend</code> stayed Ready, so readiness said nothing.</p>
+
+<p>The calculated boundary sits around 200ms, but that value was not measured; only 100ms and 300ms were. The doubling also comes from how this app connects, so the numbers may change with connection reuse. What carries to another environment is the method of calculation, not the 300ms value. Work out the threshold from your own service’s concurrency limit and call time, then experiment on either side of it.</p>
+
+<p><br /></p>
+
+<h3 id="failures-that-status-codes-do-not-show">Failures That Status Codes Do Not Show</h3>
+
+<p>Every response in D3 is a 200. But 887-888 of the 898-900 are fallback responses, and normal responses are only 1.22-1.44%. With a call of about 0.6 seconds and a timeout of 0.2 seconds, nearly every call failed.</p>
+
+<p>Had the steady state been defined by status codes alone, D3 would be a pass. Availability was kept while the feature was nearly switched off, and whether the business can accept that is a separate judgment. This is the reason for splitting <code class="language-plaintext highlighter-rouge">ok%</code> and <code class="language-plaintext highlighter-rouge">served%</code> in these experiments. The probe also counted the <code class="language-plaintext highlighter-rouge">degraded</code> marker in the response body.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="keeping-an-experiment-from-becoming-an-outage">Keeping an Experiment from Becoming an Outage</h2>
+
+<div class="info-box info-box-question-not-check">
+  <strong>Hypothesis</strong>
+  <p>With <code>duration</code> set, the experiment ends after 30 seconds no matter what.</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="faults-that-stay-without-the-controller">Faults That Stay Without the Controller</h3>
+
+<p>After starting a delay with <code class="language-plaintext highlighter-rouge">direction: from</code>, 300ms and <code class="language-plaintext highlighter-rouge">duration: 30s</code>, the controller manager was scaled to 0 at about the 5-second mark. This lab normally runs 1 replica, and the chart default is 3; the point was to create a situation where no controller at all is available. Below is the result of one run. Values are the times of three calls from <code class="language-plaintext highlighter-rouge">frontend</code> to <code class="language-plaintext highlighter-rouge">backend</code>, in milliseconds.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Moment</th>
+        <th>Call times (ms)</th>
+        <th>State</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Before injection</td>
+        <td>7, 0, 0</td>
+        <td>Normal</td>
+      </tr>
+      <tr>
+        <td>+3s</td>
+        <td>613, 605, 603</td>
+        <td>Injected</td>
+      </tr>
+      <tr>
+        <td>+45s</td>
+        <td>615, 607, 606</td>
+        <td><code>duration</code> passed, 0 controllers</td>
+      </tr>
+      <tr>
+        <td>After the delete attempt</td>
+        <td>614, 608, 609</td>
+        <td>Deletion does not finish</td>
+      </tr>
+      <tr>
+        <td>+72s</td>
+        <td>613, 604, 606</td>
+        <td>Still injected</td>
+      </tr>
+      <tr>
+        <td>+16s after scaling the controller back to 1</td>
+        <td>612, 608, 608</td>
+        <td>Still injected</td>
+      </tr>
+      <tr>
+        <td>+22s after scaling the controller back to 1</td>
+        <td>8, 1, 0</td>
+        <td>Recovered (the query after the +31s call found no resource)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>While there was no controller, the following happened.</p>
+
+<ul>
+  <li>The injected delay stayed after <code class="language-plaintext highlighter-rouge">duration</code> passed, because nothing was left to keep time and take the rule away.</li>
+  <li>Creating a new NetworkChaos was refused. The call to the webhook <code class="language-plaintext highlighter-rouge">mnetworkchaos.kb.io</code> failed and returned an Internal error.</li>
+  <li><code class="language-plaintext highlighter-rouge">kubectl delete networkchaos exp --timeout=10s</code> ended in a timeout. <code class="language-plaintext highlighter-rouge">deletionTimestamp</code> was set, but the finalizer <code class="language-plaintext highlighter-rouge">chaos-mesh/records</code> remained.</li>
+</ul>
+
+<p>The delay went away about 20 seconds after the controller came back. So the emergency procedure of “just delete it if something goes wrong” only works with the controller running. The <a href="https://chaos-mesh.org/docs/simulate-network-chaos-on-kubernetes/">official docs</a> also say injected faults cannot be recovered if the controller manager and the Chaos Daemon cannot communicate.</p>
+
+<p><br /></p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Do not strip the finalizer to clean up faster</strong>
+  <p>This was not tested here, but the <a href="https://chaos-mesh.org/docs/clean-up-chaos-experiments/">Clean up docs</a> warn that force-clean removes the finalizer without waiting for recovery, so the resource can disappear while the fault stays on the target.</p>
+</div>
+
+<p><br /></p>
+
+<p>Before starting an experiment, confirm the controller is healthy, and write down in a <a href="/category/troubleshooting/runbook-toil-automation-guide/">runbook</a> who does what if the controller is gone. The <a href="https://chaos-mesh.org/docs/simulate-pod-chaos-on-kubernetes/">PodChaos docs</a> telling you to check that the target pods have no controller manager on them can be read in the same light.</p>
+
+<p><br /></p>
+
+<h3 id="statuscheck-that-stopped-the-experiment-in-8-9-seconds">StatusCheck That Stopped the Experiment in 8-9 Seconds</h3>
+
+<p>So that a runaway experiment does not depend on a person noticing, a <a href="https://chaos-mesh.org/docs/status-check-in-workflow/">Workflow StatusCheck</a> goes with it. This setup runs a partition and an HTTP status check in parallel, and aborts the whole Workflow when the check fails repeatedly.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">chaos-mesh.org/v1alpha1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Workflow</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">guarded</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">shop</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">entry</span><span class="pi">:</span> <span class="s">root</span>
+  <span class="na">templates</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">root</span>
+    <span class="na">templateType</span><span class="pi">:</span> <span class="s">Parallel</span>
+    <span class="na">deadline</span><span class="pi">:</span> <span class="s">120s</span>
+    <span class="na">children</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">partition</span><span class="pi">,</span> <span class="nv">slo-check</span><span class="pi">]</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">partition</span>
+    <span class="na">templateType</span><span class="pi">:</span> <span class="s">NetworkChaos</span>
+    <span class="na">deadline</span><span class="pi">:</span> <span class="s">120s</span>
+    <span class="na">networkChaos</span><span class="pi">:</span>
+      <span class="na">action</span><span class="pi">:</span> <span class="s">partition</span>
+      <span class="na">mode</span><span class="pi">:</span> <span class="s">all</span>
+      <span class="na">direction</span><span class="pi">:</span> <span class="s">both</span>
+      <span class="na">selector</span><span class="pi">:</span>
+        <span class="na">namespaces</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">shop</span><span class="pi">]</span>
+        <span class="na">labelSelectors</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">app</span><span class="pi">:</span> <span class="nv">frontend</span><span class="pi">}</span>
+      <span class="na">target</span><span class="pi">:</span>
+        <span class="na">mode</span><span class="pi">:</span> <span class="s">all</span>
+        <span class="na">selector</span><span class="pi">:</span>
+          <span class="na">namespaces</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">shop</span><span class="pi">]</span>
+          <span class="na">labelSelectors</span><span class="pi">:</span> <span class="pi">{</span><span class="nv">app</span><span class="pi">:</span> <span class="nv">backend</span><span class="pi">}</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">slo-check</span>
+    <span class="na">templateType</span><span class="pi">:</span> <span class="s">StatusCheck</span>
+    <span class="na">deadline</span><span class="pi">:</span> <span class="s">120s</span>
+    <span class="na">abortWithStatusCheck</span><span class="pi">:</span> <span class="kc">true</span>
+    <span class="na">statusCheck</span><span class="pi">:</span>
+      <span class="na">mode</span><span class="pi">:</span> <span class="s">Continuous</span>
+      <span class="na">type</span><span class="pi">:</span> <span class="s">HTTP</span>
+      <span class="na">intervalSeconds</span><span class="pi">:</span> <span class="m">2</span>
+      <span class="na">timeoutSeconds</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">failureThreshold</span><span class="pi">:</span> <span class="m">3</span>
+      <span class="na">successThreshold</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="na">http</span><span class="pi">:</span>
+        <span class="na">url</span><span class="pi">:</span> <span class="s">http://frontend.shop.svc.cluster.local:8080/api</span>
+        <span class="na">method</span><span class="pi">:</span> <span class="s">GET</span>
+        <span class="na">criteria</span><span class="pi">:</span>
+          <span class="na">statusCode</span><span class="pi">:</span> <span class="s2">"</span><span class="s">200"</span>
+</code></pre></div></div>
+
+<p><a href="https://chaos-mesh.org/docs/create-chaos-mesh-workflow/">The fault duration inside a Workflow is set by the outer <code class="language-plaintext highlighter-rouge">deadline</code>, not by <code class="language-plaintext highlighter-rouge">duration</code> in the Chaos spec</a>. <code class="language-plaintext highlighter-rouge">frontend</code> was set to shallow readiness, a 0.2-second call timeout and no fallback, and this ran 3 times.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Run</th>
+        <th>Impact window</th>
+        <th>503 count</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>8.0s</td>
+        <td>241</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>9.1s</td>
+        <td>271</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>8.1s</td>
+        <td>245</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The events recorded <code class="language-plaintext highlighter-rouge">StatusCheckFailureThresholdExceed</code>, <code class="language-plaintext highlighter-rouge">WorkflowAborted</code> and <code class="language-plaintext highlighter-rouge">ChaosCRDeleted</code>. Three consecutive failures at 2-second intervals mean this setup always takes about 6 seconds. Without the abort, about 3600 requests would have failed over 120 seconds at 30 rps. The 3600 is a calculation, not a measurement.</p>
+
+<p>StatusCheck goes through the same Service as users, so it sees the failures users see. It has limits too.</p>
+
+<ul>
+  <li>Its criterion is the status code alone. In a setup like D3, where a fallback returns 200, the criterion does not count a failure, so no abort happens either. This combination was not run.</li>
+  <li>The <a href="https://chaos-mesh.org/docs/">Workflow controller also lives inside the Chaos Controller Manager</a>. Whether StatusCheck can carry out an abort with the controller down was not tested, and given the earlier result it is safer not to expect it.</li>
+</ul>
+
+<p><br /></p>
+
+<h3 id="deciding-when-an-experiment-is-over">Deciding When an Experiment Is Over</h3>
+
+<p>An experiment ends when the steady-state metrics are back, not when the resource disappears. That is why measurement continued for 25 more seconds after the fault window. Where recovery time starts and ends can follow the distinctions drawn in the <a href="/category/monitoring/mttr-recovery-time-metrics-guide/">MTTR post</a>.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Experiment</th>
+        <th>Runs</th>
+        <th>Failures in the 25 seconds after the fault</th>
+        <th>Last failure</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>C1</td>
+        <td>3</td>
+        <td>0, 0, 1</td>
+        <td>+0.9s</td>
+      </tr>
+      <tr>
+        <td>C2</td>
+        <td>1</td>
+        <td>7 (503)</td>
+        <td>+0.2s</td>
+      </tr>
+      <tr>
+        <td>C4</td>
+        <td>1</td>
+        <td>0</td>
+        <td>None</td>
+      </tr>
+      <tr>
+        <td>D2</td>
+        <td>3</td>
+        <td>0, 0, 0</td>
+        <td>None</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>C1 was back within about 1 second for new connections, even though its pods had to become Ready again. This setup is a stateless demo app, though. A service with caches, connection pools or queues may not finish the way these numbers do, which is why the recovery window has to be measured as part of the experiment.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="scope-and-limits-of-these-experiments">Scope and Limits of These Experiments</h2>
+
+<p>Before carrying these results anywhere, here is their scope.</p>
+
+<ul>
+  <li>All nodes share one host on a single laptop. There is no real network latency and no real availability zone.</li>
+  <li>Only kube-proxy iptables mode was tested. <code class="language-plaintext highlighter-rouge">direction</code> may behave differently in setups that replace kube-proxy with eBPF.</li>
+  <li>HTTP keep-alive was not tested. The delay showing up doubled comes from opening a new connection per call.</li>
+  <li>Dashboard, Schedule, DNSChaos, StressChaos, IOChaos and TimeChaos are not covered.</li>
+  <li>C2, C4, C5, D4 and the controller failure experiment each ran once. Do not read them as repeated results.</li>
+  <li>Alerting and observability are not covered. Testing monitoring responsiveness and alert accuracy through fault injection gets a brief mention in the <a href="/category/aws/aws-monitoring-stack/">AWS monitoring stack post</a>.</li>
+</ul>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>What failed first here was not a hypothesis about the system but the assumption that the tool’s status display is right. In kube-proxy iptables mode a <code class="language-plaintext highlighter-rouge">direction: to</code> delay had no effect on Service traffic while the status read <code class="language-plaintext highlighter-rouge">AllInjected=True</code>, and <code class="language-plaintext highlighter-rouge">mode: one</code> picked a pod already terminating. Either way, writing the result down as it stood would have left a false record of “it holds up”. Measure the effect of the injection before testing the hypothesis.</p>
+
+<p>On the application side, these are the conclusions. pod-kill removes the API object first, so it cannot stand in for a process crash. The same experiment can split between 0 and 18 failures, or grow with repetition because of CrashLoopBackOff, so run counts and state resets belong in the design. A shared dependency in readiness takes all three replicas out together, and a fallback behind a long timeout did not protect the service. In the delay experiments, 100ms produced no failures and 300ms, beyond the calculated capacity, failed more than half (values in between were not measured), and a steady state defined only by status codes passes a feature that is nearly switched off.</p>
+
+<p>The experiment tool is itself a dependency. With the controller down, the injected delay stays past <code class="language-plaintext highlighter-rouge">duration</code>, and new experiments and deletion are blocked along with it. StatusCheck could abort in 8-9 seconds, but it too runs on top of the controller.</p>
+
+<p>The numbers in this post come from one laptop, so measure again in your own environment. What carries over is the procedure, not the numbers: write the hypothesis as a sentence that can be disproved, confirm the injection, record the run count, and measure as far as recovery time. Whether the action items left in a <a href="/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/">postmortem</a> really worked can be tested the same way.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://principlesofchaos.org/">Principles of Chaos Engineering</a></li>
+  <li><a href="https://chaos-mesh.org/docs/">Chaos Mesh Overview</a></li>
+  <li><a href="https://chaos-mesh.org/docs/simulate-network-chaos-on-kubernetes/">Simulate Network Faults - Chaos Mesh</a></li>
+  <li><a href="https://chaos-mesh.org/docs/simulate-pod-chaos-on-kubernetes/">Simulate Pod Faults - Chaos Mesh</a></li>
+  <li><a href="https://chaos-mesh.org/docs/configure-enabled-namespace/">Configure namespace for Chaos experiments - Chaos Mesh</a></li>
+  <li><a href="https://chaos-mesh.org/docs/inspect-chaos-experiments/">Inspect Results of Chaos Experiments - Chaos Mesh</a></li>
+  <li><a href="https://chaos-mesh.org/docs/clean-up-chaos-experiments/">Clean up Chaos Experiments - Chaos Mesh</a></li>
+  <li><a href="https://chaos-mesh.org/docs/create-chaos-mesh-workflow/">Create Chaos Mesh Workflow - Chaos Mesh</a></li>
+  <li><a href="https://chaos-mesh.org/docs/status-check-in-workflow/">Status Check in Workflow - Chaos Mesh</a></li>
+  <li><a href="https://github.com/chaos-mesh/chaos-mesh/releases/tag/v2.8.7">Chaos Mesh v2.8.7 Release</a></li>
+  <li><a href="https://github.com/chaos-mesh/chaos-mesh/blob/v2.8.7/controllers/chaosimpl/networkchaos/trafficcontrol/impl.go">trafficcontrol/impl.go - Chaos Mesh v2.8.7</a></li>
+  <li><a href="https://github.com/chaos-mesh/chaos-mesh/blob/v2.8.7/controllers/chaosimpl/networkchaos/partition/impl.go">partition/impl.go - Chaos Mesh v2.8.7</a></li>
+  <li><a href="https://kubernetes.io/docs/reference/networking/virtual-ips/">Virtual IPs and Service Proxies - Kubernetes</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/">Pod Lifecycle - Kubernetes</a></li>
+  <li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/">Pod Topology Spread Constraints - Kubernetes</a></li>
+  <li><a href="https://docs.kernel.org/networking/ip-sysctl.html">IP Sysctl - The Linux Kernel documentation</a></li>
+  <li><a href="https://github.com/torvalds/linux/blob/master/net/ipv4/inetpeer.c">inetpeer.c - Linux kernel</a></li>
+  <li><a href="/category/cs/spof-blast-radius-isolation-boundary-guide/">Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries</a></li>
+  <li><a href="/category/troubleshooting/runbook-toil-automation-guide/">From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun</a></li>
+  <li><a href="/category/monitoring/mttr-recovery-time-metrics-guide/">Measuring MTTR: Four Definitions, When to Measure, and the Average Trap</a></li>
+  <li><a href="/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/">How to Write a Postmortem: Blameless Practice and Root Cause Analysis</a></li>
+  <li><a href="/category/kubernetes/k8s-pod-termination/">Safe Pod Termination in Kubernetes - A Complete Guide</a></li>
+  <li><a href="/category/aws/aws-monitoring-stack/">AWS Monitoring Stack Complete Analysis - CloudWatch vs X-Ray vs 3rd Party Solutions</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/aws/aws-secrets-manager/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1738576381/aws-secretmanager_seysrh.png" alt="AWS Secrets Manager - Secure Secret Management Service">
+                                    
+                                    <h3>AWS Secrets Manager - Secure Secret Management Service</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/troubleshooting/nvidia-driver-library-mismatch-resolution/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1767769657/nvidia-mismatch-1_cjibne.png" alt="Resolving NVIDIA Driver/Library Version Mismatch Errors">
+                                    
+                                    <h3>Resolving NVIDIA Driver/Library Version Mismatch Errors</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/network/bgp-border-gateway-protocol-complete-guide/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1755074091/bgp-1_i4oqyf.png" alt="BGP (Border Gateway Protocol) Complete Guide - Internet's Core Routing Protocol">
+                                    
+                                    <h3>BGP (Border Gateway Protocol) Complete Guide - Internet's Core Routing Protocol</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="37">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/aws/aws-sns-sqs-eventbridge/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1773629849/aws-sns-sqs-eventbridge-1_g0amft.png" alt="SNS + SQS + EventBridge: AWS Event-Driven Architecture Design Guide">
+                
+            </div>
+            <h3 class="title">SNS + SQS + EventBridge: AWS Event-Driven Architecture Design Guide</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;Chaos Mesh hypotheses tested on a local kind cluster, not in production. A direction: to delay reported AllInjected=True yet left Service traffic untouched, deep readiness pulled all three frontends at once, and 300ms failed over half the requests.&quot;%20https://somaz.blog/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/%20via%20&#64;&hashtags=chaos-mesh,chaos-engineering,fault-injection,podchaos,networkchaos,kubernetes,sre,reliability,kube-proxy,high-availability"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile-400.jpg" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+
+    <p class="copyright">
+      &copy; Somaz. All rights reserved.<br />
+      Articles may not be reproduced or redistributed without permission.
+      Code samples are free to use.
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://somaz.blog/#organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": 600,
+      "height": 315
+  },
+  "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+</script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include extra scripts -->
+
+
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": "Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster",
+            "alternativeHeadline": "Hypotheses, verified injection, and recovery with PodChaos, NetworkChaos and StatusCheck, measured on a laptop kind cluster",
+            "description": "Chaos Mesh hypotheses tested on a local kind cluster, not in production. A direction: to delay reported AllInjected=True yet left Service traffic untouched, deep readiness pulled all three frontends at once, and 300ms failed over half the requests.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1793870467/kubernetes-chaos-mesh-hypothesis-testing-guide_hofvji.png",
+            "url": "https://somaz.blog/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/",
+            "mainEntityOfPage": "https://somaz.blog/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/",
+            "articleBody": "Overview The single point of failure post argued that servers sharing a dependency stop together, however many of them you run. That judgment came from reading an architecture diagram. Whether they really stop together, and whether a fallback response really holds up, only shows once a failure is injected. This post turns those claims into hypotheses and tests them with Chaos Mesh’s PodChaos and NetworkChaos. Installation gets only the values that affected the results; the focus is the measurements for each hypothesis. The first thing to look at is a case where Chaos Mesh reported a successful injection and real traffic felt nothing. After that come the difference between pod-kill and a process crash, the conditions under which readiness design grows a partial failure into a total one, the point where latency turns into failure, and the safeguards that stop an experiment safely. How to read the numbers Every figure was measured on a local kind cluster on one laptop (Chaos Mesh 2.8.7, Kubernetes 1.35). There is no real network latency and no availability zone here, so the numbers show relative differences between configurations, not production values. Unlike the earlier posts in this series, this one has no real operating case. The number of runs is given in each table or the sentence before it, and an experiment run only once is marked as such. Hypotheses and Test Setup Steady-State Metrics Principles of Chaos Engineering lays out the order of an experiment: define the system’s normal behavior as a measurable output (the steady state), hypothesize that this state will hold, introduce variables that reflect real-world events, and try to disprove the hypothesis by looking for a difference from the steady state. The heart of it is turning “we have redundancy, so we are fine” into a sentence that can be disproved. “There are three frontends, so it is safe” cannot be tested. “With frontend and backend cut off for 30 seconds, 30 requests per second keep getting responses” can. The steady-state metrics here are ok%, the share of normal responses, and served%, which adds fallback responses to the normal ones. Why the two are split becomes clear later. The baseline of every experiment was 100% success and a p50 of about 6ms. The exceptions are the baselines of two runs (C1 run 4, B4 run 3), each with 3 timeouts whose cause was not established. Test Target and Load Item Setup Cluster kind v0.31.0, Kubernetes v1.35.0, containerd 2.2.0, kube-proxy in iptables mode, 1 control-plane and 2 workers Application 3 frontend replicas (spread over 2 workers) call backend through a ClusterIP Service; backend has 1 replica unless noted Load An in-cluster load generator (probe) sends a steady 30 requests per second (open-loop), a new connection per request, client timeout 5 seconds Measurement window 15 seconds of baseline, 30 seconds of fault, 25 seconds after it ends Result labels TO is a client timeout, ERR is a connection error The demo app is built on the Python standard library. Each backend call opens a new TCP connection, and a 4-slot pool per replica limits concurrent calls. Environment variables set the call timeout (TIMEOUT), whether readiness checks as far as backend (DEEP_READY), and whether a failure returns a fallback response (FALLBACK). This is the code that directly affected the experiments. if self.path == \"/ready\": if DEEP: try: call(1) except Exception: return self.reply(503, b\"backend down\") return self.reply(200, b\"ready\") with POOL: try: return self.reply(200, call(TIMEOUT)) except Exception: if FALLBACK: return self.reply(200, b'{\"degraded\":true}') return self.reply(503, b\"backend error\") The readiness probe has a 2-second period and a failure threshold of 2, and terminationGracePeriodSeconds is 5. Preparation turned up one more result. With a spread constraint of maxSkew: 1 and DoNotSchedule on the 3 frontend replicas, the third pod stayed Pending with “didn’t match pod topology spread constraints”. The tainted control-plane was being counted as a topology domain with 0 pods, because nodeTaintsPolicy behaves as Ignore when it has no value. Setting nodeTaintsPolicy: Honor fixed it. Install Values That Affected the Results helm repo add chaos-mesh https://charts.chaos-mesh.org helm install chaos-mesh chaos-mesh/chaos-mesh \\ --namespace chaos-mesh --create-namespace --version 2.8.7 \\ --set chaosDaemon.runtime=containerd \\ --set chaosDaemon.socketPath=/run/containerd/containerd.sock \\ --set controllerManager.replicaCount=1 \\ --set controllerManager.enableFilterNamespace=true \\ --set dashboard.create=false \\ --set dnsServer.create=false Value Chart default Why it changed chaosDaemon.runtime, socketPath docker, /var/run/docker.sock The socket path differs by runtime, and this cluster runs containerd controllerManager.enableFilterNamespace false Injects only into namespaces carrying the annotation controllerManager.replicaCount 3 Reduced to 1 for this lab only; keep it in mind when reading the controller failure result The other two values turn off the Dashboard and the DNS server, neither of which these experiments use. At the time of writing, 2.8.7 is the latest release. Hypotheses and Results at a Glance Hypothesis Measured result A status of AllInjected=True means the fault is in With a direction: to delay on Service traffic, calls still took 0-8ms. The rule was in place but did not apply to this traffic Passing pod-kill means a process exit is safe too pod-kill removes the API object first. Results differed from container-kill, and the same experiment split between 0 and 18 failures With three frontend replicas, the service survives losing backend With deep readiness all three went 0/1 Ready, and p50 rose to the 5-second timeout Having a fallback makes it a soft dependency served was 100% with a 0.2-second call timeout (3 runs) and 20.07% with 2 seconds (1 run) Surviving a 100ms delay means being resilient to delay 100ms produced 0 failures; 300ms failed more than half An experiment ends on its own once duration passes With no controller, the injected delay outlasted duration and deletion did not finish (1 run) When Reported Injection and Real Effect Differ Hypothesis If the status is AllInjected=True and the events show Applied, the fault is in. The first hypothesis is about the experiment tool, not the application. If it is wrong, none of the other results can be trusted. Service Traffic That direction: to Missed A 300ms delay went onto the traffic from frontend to backend. apiVersion: chaos-mesh.org/v1alpha1 kind: NetworkChaos metadata: name: exp namespace: shop spec: action: delay mode: all duration: 30s direction: to selector: namespaces: [shop] labelSelectors: {app: frontend} target: mode: all selector: namespaces: [shop] labelSelectors: {app: backend} delay: latency: 300ms correlation: \"0\" jitter: 0ms The status was AllInjected=True and the events showed Applied. Direct calls from inside a frontend pod measured something else. direction Called through the Service ClusterIP Called directly at the backend Pod IP to 0-8ms (no delay) About 605ms from About 605ms About 605ms both About 605ms About 1205ms 3 to 4 calls per direction and destination, with a new connection per call. One run of the same config under 30 requests per second (D4) gave 900 successes out of 900 and a p50 of 6ms, indistinguishable from no fault at all. Keeping the delay at 300ms and switching to direction: from (D2, 3 runs) brought the success rate to 40.75-47.16%. Without checking the injection, the record would have read “no impact from a 300ms delay”, which is the wrong conclusion. Inside the frontend pod’s network namespace, the tc netem delay rule is clearly present, and the ipset its filter uses holds only the backend Pod IP. In kube-proxy iptables mode, Service traffic is translated by rules on the node, so the packet reaches that filter still addressed to the ClusterIP and does not match it. flowchart LR subgraph Pod[\"frontend pod network namespace\"] P[\"Packet to backenddestination: ClusterIP\"] T[\"tc filteripset: backend Pod IP only\"] end N[\"Rules on the nodeDNAT to the backend Pod IP\"] B[\"backend pod\"] P --&gt; T T --&gt;|\"no match, no delay\"| N N --&gt; B Service traffic under a direction: to delay, in kube-proxy iptables mode. Chaos Mesh 2.8.7’s tc implementation puts the rule on the source pod for to and on the target pod for from. from working on Service traffic is read as a result of the responses backend sends: inside the pod, those are packets between real Pod IPs. Where this explanation applies It combines values measured in kube-proxy iptables mode with code reading and reasoning, and it is not a claim about every CNI. Setups that replace kube-proxy with eBPF translate Service addresses in a different way, so the results may differ there, but that was not tested here. One more thing to watch. The field table in the official docs and the 2.8.7 CRD both define the default of direction as to. Leaving the field out was not tested separately, but going by the default it is the same setting as the direction: to above. That is why the delay experiments D1 to D3 in this post all use direction: from. The table shows 300ms as about 600ms because each call opens a new connection. That makes two round trips (connection setup, then request and response), and the injected delay lands on both. HTTP keep-alive was not tested. For a client that reuses connections, this doubling does not carry over as it stands. partition Did Cut the Same Traffic This result must not be generalized to all of NetworkChaos. In an experiment that cut the same Service traffic with action: partition and direction: to (C5, 1 run), 872 of 894 requests got a 503. The injection worked as it should. The partition implementation shows that for to it puts a rule on the source pod’s Output and also on the target pod’s Input. A packet arriving at the target pod has the real frontend Pod IP as its source, so that appears to be where it was caught. No other tc-family action besides delay was tested, so what this covers is delay and partition only. mode: one Picked a Terminating Pod The second case of an experiment appearing to pass came from pod-kill. mode: one picked a pod that a rollout had put into Terminating 6 seconds earlier. The status was Applied, while the pod actually receiving traffic stayed the same for the whole observation. This happened in a script measuring a timeline, not in a measured run. In every pod-kill run in the result tables, the new pod was confirmed to be 8 seconds old at the 8-second mark. If an experiment starts right after a rollout, look first for Terminating pods still around. Experiments Stopped by the Namespace Filter With enableFilterNamespace=true, injection happens only in namespaces carrying the annotation. A pod-kill in a namespace without it leaves Selected=False and “Failed to select targets: no pod is selected”, and the pod stays as it was. In a namespace with the annotation, the pod was deleted. The shop namespace in this lab got its annotation from a manifest; with the command from the docs it looks like this. kubectl annotate ns shop chaos-mesh.org/inject=enabled This filter is a guard against accidents, so it is better left on. The chart default is false, though, and with it on an experiment can have no effect and raise no error, so check the Selected condition too. Checking the Effect Before the Experiment With the direction: to delay and with mode: one, Chaos Mesh’s status alone could not tell whether the injection had any effect. With the namespace filter the status does say so through Selected=False, but you miss it if you do not look at that condition. AllInjected is a condition saying injection finished on the target pods, not a guarantee that traffic is affected. Checking an injection can follow this order. Inject first without load, and check Selected and AllInjected with kubectl -n shop describe networkchaos exp. From inside the source pod, call along the same path as real users (the Service name) and see whether delay or failure shows up. For pod-kill, check that a new pod appeared and that the deleted pod was one receiving traffic. Apply load only with a setup whose effect is confirmed, and test the hypothesis. Since the demo image has Python, the call times in step 2 were measured in the way shown below. The actual measuring script has an extra try statement to record exceptions too; the code below raises an exception and stops if the connection is cut. Values are in milliseconds. kubectl -n shop exec &lt;frontend-pod&gt; -- python -c \" import time, urllib.request as u for _ in range(3): t = time.time() u.urlopen('http://backend:8080/', timeout=3).read() print(round((time.time() - t) * 1000)) \" The Difference Between pod-kill and a Process Crash Hypothesis A service that passes pod-kill is safe when its process exits suddenly. The API Object Goes First PodChaos’s gracePeriod defaults to 0, and the 2.8.7 CRD describes that as “delete immediately”. According to the forced termination section of the Kubernetes docs, a grace period of 0 removes the pod from the API server at once, and on the node the process is force killed after a short grace period. Measured, the order looks like this. App behavior API object deleted Old container ends New pod Ready Result Ignores SIGTERM +0.1s +2.5s +1.9s About 0.6s of overlap Exits on SIGTERM +0.1s By +0.7s +1.8s About 1.1s of gap One recorded run of pod-kill on a single backend replica, sampled about every 0.6 seconds. With Python as PID 1 and no signal handler, SIGTERM is ignored. In that case the container of a pod already gone from the API kept running for about another 2.5 seconds. The overlap and gap in the table, however, compare the times of the container and the new pod. In the same record, both cases had no Ready address in the EndpointSlice from +0.1s until the new pod became Ready, so the overlap does not mean a window that could take traffic. pod-kill removes the API object first. A real crash runs in the opposite order: the process ends first and the pod object stays. A specified gracePeriod was not tested. Injecting into Three frontend Replicas All three experiments ran 3 times. They have no duration, so the counts cover about 55 seconds from injection to the end of measurement rather than a 30-second fault window, which comes to about 1665 requests per run. Experiment Setup Failures (3 runs) A pod-kill, app ignores SIGTERM 0, 0, 0 A3 pod-kill, app exits on SIGTERM 0, 0, 1 A2 container-kill 8, 4, 4 (all ERR, within 0.4-0.7 seconds) The counts are small, but the tendency differs. Passing pod-kill alone does not let you say a process crash is safe too. With container-kill the process ends first while the pod is still in the endpoints, which is how the connection errors are read here. Split Failure Counts from backend pod-kill With backend as the target, the result depends on the replica count and how the app exits. All of these ran 3 times, the counting window is the same roughly 55 seconds as above, and the failures are what the probe got when calling frontend. Experiment Setup Failures (3 runs) B1 pod-kill, 1 replica, ignores SIGTERM 0, 18, 18 (503, within 1 second) B4 pod-kill, 1 replica, exits on SIGTERM 19, 17, 15 B2 pod-kill, 2 replicas, ignores SIGTERM 0, 0, 0 B5 pod-kill, 2 replicas, exits on SIGTERM 0, 0, 6 The same B1 manifest gave 0 failures once and 18 twice. Had it run once and shown 0, the note would have said a single replica is safe. This data does not establish why the runs split. B1 looking better than B4 is no reason to recommend ignoring SIGTERM. The 0 in run 1 is a value of unknown cause, and graceful shutdown itself is something to design together with the preStop hook covered in the Pod termination post. The table also holds values that stay unexplained. Besides the 503s at injection, B4 has 1 to 3 timeouts at around +20 to +30 seconds, and the third run of B5 has 5 timeouts at +40.9 to +41.9 seconds. They are apart from the injection and their cause was not established, so they are not read as results of the fault injection. container-kill Impact That Grows with Repetition container-kill was repeated on the same pod about every minute and a half. backend has 1 replica, and the frontend call timeout is 2 seconds. Round Restart count Impact window Failures 1 1 1.6s 39 2 2 10.6s 315 3 3 24.7s 730 In rounds 2 and 3 the pod was in CrashLoopBackOff at the 8-second mark. The kubelet’s restart delay grows through 10, 20 and 40 seconds, and resets after 10 minutes of running without a problem. So repeating an experiment without resetting that state does not reproduce the same experiment; it becomes a different one. When averaging repeated runs, replace the pod or leave time for the delay to reset. The reset itself was not measured here. In the impact windows of rounds 2 and 3, nearly all of the 30 requests per second failed. While backend is down, calls hold the 4-slot pool for up to 2 seconds each, which appears to saturate frontend as well. 503s came first, followed by client timeouts. When Three frontend Replicas Stop Together Hypothesis With frontend made redundant across three replicas, the service survives losing backend. This tests two claims from the previous post: that redundant copies with a shared dependency still stop together, and that moving to a soft dependency takes you out of the single point of failure (SPOF). frontend and backend were cut off for 30 seconds with action: partition and direction: both. Only the readiness design, the call timeout and the fallback changed. Experiment Setup Runs ok% served% p50 Failure breakdown C1 deep readiness, 0.2s timeout 3 11.59, 14.90, 12.05 Same 5006ms 503 127/161/152, ERR 32/30/31, TO 627/563/605 C2 shallow, 0.2s timeout, no fallback 1 1.90 1.90 207ms 503 879 C3 shallow, 0.2s timeout, fallback 3 2.13-3.13 100.00 206-208ms None C4 shallow, 2s timeout, fallback 1 17.47 20.07 5007ms TO 709 C1 ran 4 times, but run 2 was thrown out: the laptop went to sleep during the experiment and latency values up to 860 seconds were recorded. A rerun replaced it. Deep Readiness Removes All Three at Once flowchart TD X[\"Partition between frontend and backend\"] subgraph Deep[\"Deep readiness (C1)\"] D1[\"Readiness calls backend\"] D2[\"All 3 frontends 0/1 Ready\"] D3[\"Out of the Service together\"] D1 --&gt; D2 --&gt; D3 end subgraph Shallow[\"Shallow readiness (C2, C3)\"] S1[\"Readiness does not look at backend\"] S2[\"All 3 frontends stay 1/1 Ready\"] S3[\"C2: mostly 503, after 207ms\"] S4[\"C3: fallback, served 100%\"] S1 --&gt; S2 S2 --&gt; S3 S2 --&gt; S4 end X --&gt; D1 X --&gt; S1 In C1 all three replicas were 0/1 Ready at the 8-second mark; in C2 and C3 they stayed 1/1 Ready throughout. In C1 the three replicas left the Service for the same reason at the same moment. Over time (run 4), the first roughly 6 seconds gave 503s, and from then until the partition ended there were about 29 timeouts and 1 connection error per second. Most C2 users failed too, but they got their 503 in 207ms, while most C1 users waited 5 seconds and then timed out. C3’s 100% also depends on the pods staying in the Service. Deep readiness combined with a fallback was not run, but once the pods are out, requests cannot reach the fallback code. Put a dependency shared by several replicas into readiness, and the moment that dependency is cut, readiness grows a partial failure into a total one. That is as far as this data goes. A /ready that also checks external dependencies such as a database and a cache needs weighing against this result when the replicas share those dependencies. Readiness that checks for faults in an individual replica was not part of this test. What Comparing ok% Alone Misses In the table, C1’s ok% is higher than C2’s. That is not because it held up better. The raw logs (runs 1 and 4) show that most of C1’s successes were requests sent in the last roughly 4 seconds of the fault window, and their latency falls with send time through about 4.1, 3.1, 2.1 and 1.0 seconds. They appear to have waited on a connection and been handled after the partition ended. Do not judge an experiment on one summary metric; look at failure types and the time distribution too. Fallback That Requests Did Not Reach C3 and C4 differ only in the call timeout. C4, run once, comes out at served 20.07%. This value also needs its time distribution, as with C1. Of 178 responses, 23 are fallback, 22 of them from requests sent in the first 5 seconds. The 155 normal responses are 20 from the first 5 seconds and 135 sent in the last 5. served 20.07% is close to the 6 rps (20% of 30 rps) in the calculation below, but the two do not measure the same thing. The fallback code was there, and most requests did not reach it in time. C4 capacity: 3 replicas x 4 slots / 2s = 6 rps &lt; offered 30 rps C3 capacity: 3 replicas x 4 slots / 0.2s = 60 rps &gt; offered 30 rps In C4 a queue waiting for slots is read as having built up until requests hit the 5-second client timeout. The queue length was not measured directly. Calling something a soft dependency because it has a fallback only holds once the timeout and the concurrency limit have been worked through. Timeouts from a Service with No Endpoints C1 has one more value that needs explaining. kube-proxy rejects traffic to a Service with no endpoints right away, so the expectation was that clients would fail fast. The node’s rule was indeed as expected. The address is masked. -A KUBE-SERVICES -d &lt;ClusterIP&gt;/32 -p tcp -m comment --comment \"shop/frontend has no endpoints\" -m tcp --dport 8080 -j REJECT --reject-with icmp-port-unreachable At 30 rps, though, connection errors came at about 1 per second and the rest were 5-second timeouts. Twenty sequential connections to a ClusterIP with no endpoints all ended in ConnectionRefused, but the first 6 took 0-1ms and the other 14 took about 1023ms each. The node’s settings were net.ipv4.icmp_ratelimit = 1000 and net.ipv4.icmp_ratemask = 6168. According to the Linux kernel docs, this mask includes Destination Unreachable, and the ratelimit is the minimum space between ICMP responses to a target, in milliseconds. The first 6 getting through appears to come from the kernel implementation accumulating tokens up to 6 times the interval (XRLIM_BURST_FACTOR in inetpeer.c). When a rejection is lost to the limit, the client never receives it and retransmits the SYN a second later. Under load, the retransmissions hitting the limit as well is read here as what led to the timeouts. This load came from a single source, and how it changes with traffic from many sources was not tested. At least in this environment, “no endpoints means immediate failure” did not hold under load, and the caller’s connect timeout decided how long a user waited. Where Latency Turns into Failure Hypothesis If a 100ms delay causes no errors, more delay only makes things a little slower. As established above, the delay experiments use direction: from and ran for 30 seconds each. Experiment Setup Runs ok% p50 p99 Notes D1 100ms, 2s timeout 3 100 210-211ms 290-354ms 0 failures D2 300ms, 2s timeout, no fallback 3 44.67, 47.16, 40.75 5003-5006ms 5012-5020ms TO 493/474/519 D3 300ms, 0.2s timeout, fallback 3 1.22-1.44 (served 100) 207-208ms 274-281ms 887-888 degraded D4 300ms, direction: to, 2s timeout 1 100 6ms 63ms No delay The Threshold Where a Queue Forms Tripling the injected delay was enough to turn 0 failures into more than half failing. By calculation, the cause is capacity more than the delay itself. Slot occupancy and queue length were not measured directly. 100ms: call about 0.2s -&gt; 3 replicas x 4 slots / 0.2s = 60 rps &gt; offered 30 rps (no queue) 300ms: call about 0.6s -&gt; 3 replicas x 4 slots / 0.6s = 20 rps &lt; offered 30 rps (queue grows) In D2 the calls themselves were shorter than the 2-second timeout, so no 503s appeared. With offered load above capacity, though, the queue grew until it reached the 5-second client timeout. The first failure appearing at +6.0 to +6.6 seconds is also read as the time the queue took to grow. All the while frontend stayed Ready, so readiness said nothing. The calculated boundary sits around 200ms, but that value was not measured; only 100ms and 300ms were. The doubling also comes from how this app connects, so the numbers may change with connection reuse. What carries to another environment is the method of calculation, not the 300ms value. Work out the threshold from your own service’s concurrency limit and call time, then experiment on either side of it. Failures That Status Codes Do Not Show Every response in D3 is a 200. But 887-888 of the 898-900 are fallback responses, and normal responses are only 1.22-1.44%. With a call of about 0.6 seconds and a timeout of 0.2 seconds, nearly every call failed. Had the steady state been defined by status codes alone, D3 would be a pass. Availability was kept while the feature was nearly switched off, and whether the business can accept that is a separate judgment. This is the reason for splitting ok% and served% in these experiments. The probe also counted the degraded marker in the response body. Keeping an Experiment from Becoming an Outage Hypothesis With duration set, the experiment ends after 30 seconds no matter what. Faults That Stay Without the Controller After starting a delay with direction: from, 300ms and duration: 30s, the controller manager was scaled to 0 at about the 5-second mark. This lab normally runs 1 replica, and the chart default is 3; the point was to create a situation where no controller at all is available. Below is the result of one run. Values are the times of three calls from frontend to backend, in milliseconds. Moment Call times (ms) State Before injection 7, 0, 0 Normal +3s 613, 605, 603 Injected +45s 615, 607, 606 duration passed, 0 controllers After the delete attempt 614, 608, 609 Deletion does not finish +72s 613, 604, 606 Still injected +16s after scaling the controller back to 1 612, 608, 608 Still injected +22s after scaling the controller back to 1 8, 1, 0 Recovered (the query after the +31s call found no resource) While there was no controller, the following happened. The injected delay stayed after duration passed, because nothing was left to keep time and take the rule away. Creating a new NetworkChaos was refused. The call to the webhook mnetworkchaos.kb.io failed and returned an Internal error. kubectl delete networkchaos exp --timeout=10s ended in a timeout. deletionTimestamp was set, but the finalizer chaos-mesh/records remained. The delay went away about 20 seconds after the controller came back. So the emergency procedure of “just delete it if something goes wrong” only works with the controller running. The official docs also say injected faults cannot be recovered if the controller manager and the Chaos Daemon cannot communicate. Do not strip the finalizer to clean up faster This was not tested here, but the Clean up docs warn that force-clean removes the finalizer without waiting for recovery, so the resource can disappear while the fault stays on the target. Before starting an experiment, confirm the controller is healthy, and write down in a runbook who does what if the controller is gone. The PodChaos docs telling you to check that the target pods have no controller manager on them can be read in the same light. StatusCheck That Stopped the Experiment in 8-9 Seconds So that a runaway experiment does not depend on a person noticing, a Workflow StatusCheck goes with it. This setup runs a partition and an HTTP status check in parallel, and aborts the whole Workflow when the check fails repeatedly. apiVersion: chaos-mesh.org/v1alpha1 kind: Workflow metadata: name: guarded namespace: shop spec: entry: root templates: - name: root templateType: Parallel deadline: 120s children: [partition, slo-check] - name: partition templateType: NetworkChaos deadline: 120s networkChaos: action: partition mode: all direction: both selector: namespaces: [shop] labelSelectors: {app: frontend} target: mode: all selector: namespaces: [shop] labelSelectors: {app: backend} - name: slo-check templateType: StatusCheck deadline: 120s abortWithStatusCheck: true statusCheck: mode: Continuous type: HTTP intervalSeconds: 2 timeoutSeconds: 1 failureThreshold: 3 successThreshold: 1 http: url: http://frontend.shop.svc.cluster.local:8080/api method: GET criteria: statusCode: \"200\" The fault duration inside a Workflow is set by the outer deadline, not by duration in the Chaos spec. frontend was set to shallow readiness, a 0.2-second call timeout and no fallback, and this ran 3 times. Run Impact window 503 count 1 8.0s 241 2 9.1s 271 3 8.1s 245 The events recorded StatusCheckFailureThresholdExceed, WorkflowAborted and ChaosCRDeleted. Three consecutive failures at 2-second intervals mean this setup always takes about 6 seconds. Without the abort, about 3600 requests would have failed over 120 seconds at 30 rps. The 3600 is a calculation, not a measurement. StatusCheck goes through the same Service as users, so it sees the failures users see. It has limits too. Its criterion is the status code alone. In a setup like D3, where a fallback returns 200, the criterion does not count a failure, so no abort happens either. This combination was not run. The Workflow controller also lives inside the Chaos Controller Manager. Whether StatusCheck can carry out an abort with the controller down was not tested, and given the earlier result it is safer not to expect it. Deciding When an Experiment Is Over An experiment ends when the steady-state metrics are back, not when the resource disappears. That is why measurement continued for 25 more seconds after the fault window. Where recovery time starts and ends can follow the distinctions drawn in the MTTR post. Experiment Runs Failures in the 25 seconds after the fault Last failure C1 3 0, 0, 1 +0.9s C2 1 7 (503) +0.2s C4 1 0 None D2 3 0, 0, 0 None C1 was back within about 1 second for new connections, even though its pods had to become Ready again. This setup is a stateless demo app, though. A service with caches, connection pools or queues may not finish the way these numbers do, which is why the recovery window has to be measured as part of the experiment. Scope and Limits of These Experiments Before carrying these results anywhere, here is their scope. All nodes share one host on a single laptop. There is no real network latency and no real availability zone. Only kube-proxy iptables mode was tested. direction may behave differently in setups that replace kube-proxy with eBPF. HTTP keep-alive was not tested. The delay showing up doubled comes from opening a new connection per call. Dashboard, Schedule, DNSChaos, StressChaos, IOChaos and TimeChaos are not covered. C2, C4, C5, D4 and the controller failure experiment each ran once. Do not read them as repeated results. Alerting and observability are not covered. Testing monitoring responsiveness and alert accuracy through fault injection gets a brief mention in the AWS monitoring stack post. Conclusion What failed first here was not a hypothesis about the system but the assumption that the tool’s status display is right. In kube-proxy iptables mode a direction: to delay had no effect on Service traffic while the status read AllInjected=True, and mode: one picked a pod already terminating. Either way, writing the result down as it stood would have left a false record of “it holds up”. Measure the effect of the injection before testing the hypothesis. On the application side, these are the conclusions. pod-kill removes the API object first, so it cannot stand in for a process crash. The same experiment can split between 0 and 18 failures, or grow with repetition because of CrashLoopBackOff, so run counts and state resets belong in the design. A shared dependency in readiness takes all three replicas out together, and a fallback behind a long timeout did not protect the service. In the delay experiments, 100ms produced no failures and 300ms, beyond the calculated capacity, failed more than half (values in between were not measured), and a steady state defined only by status codes passes a feature that is nearly switched off. The experiment tool is itself a dependency. With the controller down, the injected delay stays past duration, and new experiments and deletion are blocked along with it. StatusCheck could abort in 8-9 seconds, but it too runs on top of the controller. The numbers in this post come from one laptop, so measure again in your own environment. What carries over is the procedure, not the numbers: write the hypothesis as a sentence that can be disproved, confirm the injection, record the run count, and measure as far as recovery time. Whether the action items left in a postmortem really worked can be tested the same way. References Principles of Chaos Engineering Chaos Mesh Overview Simulate Network Faults - Chaos Mesh Simulate Pod Faults - Chaos Mesh Configure namespace for Chaos experiments - Chaos Mesh Inspect Results of Chaos Experiments - Chaos Mesh Clean up Chaos Experiments - Chaos Mesh Create Chaos Mesh Workflow - Chaos Mesh Status Check in Workflow - Chaos Mesh Chaos Mesh v2.8.7 Release trafficcontrol/impl.go - Chaos Mesh v2.8.7 partition/impl.go - Chaos Mesh v2.8.7 Virtual IPs and Service Proxies - Kubernetes Pod Lifecycle - Kubernetes Pod Topology Spread Constraints - Kubernetes IP Sysctl - The Linux Kernel documentation inetpeer.c - Linux kernel Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun Measuring MTTR: Four Definitions, When to Measure, and the Average Trap How to Write a Postmortem: Blameless Practice and Root Cause Analysis Safe Pod Termination in Kubernetes - A Complete Guide AWS Monitoring Stack Complete Analysis - CloudWatch vs X-Ray vs 3rd Party Solutions",
+            "wordCount": 6755,
+            "inLanguage": "en",
+            "datePublished": "2026-11-11T00:00:00+00:00",
+            "author": {
+    "@type": "Person",
+    "@id": "https://somaz.blog/authors/somaz/#person",
+    "name": "Somaz",
+    "image": "https://somaz.blog/assets/img/uploads/profile-400.jpg",
+    "jobTitle": "DevOps Engineer",
+    "url": "https://somaz.blog/authors/somaz/",
+    "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+,
+            "publisher": { "@id": "https://somaz.blog/#organization" },
+            "articleSection": "Kubernetes",
+            "keywords": ["chaos-mesh","chaos-engineering","fault-injection","podchaos","networkchaos","kubernetes","sre","reliability","kube-proxy","high-availability"]
+        }
+        </script>
+    </body>
+</html>

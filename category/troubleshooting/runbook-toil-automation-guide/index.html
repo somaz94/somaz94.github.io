@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MBP83N4Q');</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154" crossorigin="anonymous"></script>
+
+
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    
+
+    <title>From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun | somaz</title>
+    <meta name="description" content="A script a person still has to run is still toil. This guide covers how Google SRE defines and measures toil, how sources split runbooks from playbooks, what...">
+    <meta name="tdm-reservation" content="1">
+    
+        <meta name="keywords" content="runbook, toil, playbook, sre, automation, idempotency, incident-response, troubleshooting, kubernetes, devops">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun | somaz">
+    <meta name="twitter:description" content="A script a person still has to run is still toil. This guide covers how Google SRE defines and measures toil, how sources split runbooks from playbooks, what...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1793848911/runbook-toil-cover_guwmy9.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/troubleshooting/runbook-toil-automation-guide/">
+    <meta property="og:title" content="From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1793848911/runbook-toil-cover_guwmy9.png">
+    <meta property="og:description" content="A script a person still has to run is still toil. This guide covers how Google SRE defines and measures toil, how sources split runbooks from playbooks, what...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-11-09T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/troubleshooting/runbook-toil-automation-guide/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=optional" rel="stylesheet">
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    <nav class="bar-links" aria-label="Author">
+        <a href="/resume/">Resume</a>
+        <a href="/career/">Career</a>
+        <a href="/portfolio/">Portfolio</a>
+    </nav>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-11-09T00:00:00+00:00">
+                            
+
+
+November 9, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>45 min to read</span>
+                </p>
+                <h1 class="post-title">From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun</h1>
+                <p class="post-subtitle">What counts as toil and how to measure it, why runbook and playbook mean different things from source to source, what a runbook should record, how to write steps that are safe to rerun, and the order to automate them in</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/v1793848911/runbook-toil-cover_guwmy9.png" alt="From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="table-of-contents">Table of Contents</h2>
+
+<ol>
+  <li><a href="#overview">Overview</a></li>
+  <li><a href="#defining-and-measuring-toil">Defining and Measuring Toil</a></li>
+  <li><a href="#runbooks-and-playbooks">Runbooks and Playbooks</a></li>
+  <li><a href="#what-a-runbook-records">What a Runbook Records</a></li>
+  <li><a href="#steps-that-are-safe-to-rerun">Steps That Are Safe to Rerun</a></li>
+  <li><a href="#the-order-to-automate-in">The Order to Automate In</a></li>
+  <li><a href="#conclusion">Conclusion</a></li>
+  <li><a href="#references">References</a></li>
+</ol>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>Operating procedures usually live in someone’s head or somewhere in a chat history. Each person does the same job in a slightly different order, and when an outage hits, the first task is finding whoever knows the procedure. A procedure written down as a document is a runbook, and repeating that document by hand is what Google SRE calls toil.</p>
+
+<p>This post covers toil and how to measure it as the Google SRE Book and SRE Workbook define it, how the words runbook and playbook are used from one document to the next, what to put in a runbook, how to write steps that are safe to rerun, and what order to automate a runbook in. The Kubespray upgrade procedure itself is covered in <a href="/category/kubernetes/kubernetes-upgrade-kubespray-2026/">Upgrading a Kubernetes Cluster with Kubespray (2026V.)</a>, so it is not repeated here.</p>
+
+<p>The cases come from building runbooks and automation while running on-premises Kubernetes clusters and EKS.</p>
+
+<p><br /></p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>About the examples</strong>
+  <ul>
+    <li>The runbook form and the scripts in this post are examples written for illustration. They are not production files.</li>
+    <li>The numbers in the example table are also made up for illustration.</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="defining-and-measuring-toil">Defining and Measuring Toil</h2>
+
+<p><a href="https://sre.google/sre-book/eliminating-toil/">Chapter 5 of the SRE Book, Eliminating Toil</a>, defines toil as the part of running a production service that is manual, repetitive, automatable, tactical, without enduring value, and that tends to grow linearly as the service grows. The book adds that not every task that looks like toil has all of these traits, and that the more of them a task has, the more likely it is to be toil.</p>
+
+<p><br /></p>
+
+<h3 id="the-six-characteristics-of-toil">The Six Characteristics of Toil</h3>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Characteristic</th>
+        <th>What the book says</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Manual</strong></td>
+        <td>Includes a person running a script that automates the task. Even if the script is faster than running the steps by hand one at a time, the hands-on time a person spends running it is still toil. Time spent waiting does not count</td>
+      </tr>
+      <tr>
+        <td><strong>Repetitive</strong></td>
+        <td>Doing something for the first or second time is not toil. Doing it over and over is. Solving a new problem or building a new solution is not toil either</td>
+      </tr>
+      <tr>
+        <td><strong>Automatable</strong></td>
+        <td>It is toil if a machine could do it as well as a person, or if a design change could make it unnecessary. If human judgment is truly required, it is probably not toil</td>
+      </tr>
+      <tr>
+        <td><strong>Tactical</strong></td>
+        <td>Responding each time an interrupt comes in, rather than working ahead according to a strategy. Handling pages belongs here</td>
+      </tr>
+      <tr>
+        <td><strong>No enduring value</strong></td>
+        <td>If the service is in the same state after the work is done, it is probably toil. If the service is permanently better, it is not toil, even if some grungy work was involved</td>
+      </tr>
+      <tr>
+        <td><strong>O(n) with service growth</strong></td>
+        <td>Work that grows in proportion to service size, traffic or user count. The book holds that a well-designed service can grow by ten times or more with no added work, apart from one-time work to add resources</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<div class="highlight-box">
+  <p>The first row matters most for this post. If a runbook becomes a script and a person still runs that script, the toil has not gone away. The automation order below comes back to this.</p>
+</div>
+
+<p><br /></p>
+
+<p>The <a href="https://sre.google/workbook/eliminating-toil/">Eliminating Toil chapter of the SRE Workbook</a> uses documents like runbooks as its direct example when it explains automatability. A remediation document along the lines of “log in to X, execute this command, check the output, restart Y if you see…” is, it says, essentially pseudocode to someone who can develop software. The chapter goes on to say that fully automating detection and remediation, so that no person has to run the script, is better still, and that submitting a patch so the software no longer breaks that way is better than that.</p>
+
+<p><br /></p>
+
+<h3 id="what-does-not-count-as-toil">What Does Not Count as Toil</h3>
+
+<p>The book draws a line: not every job you dislike is toil. Administrative work not directly tied to running the service, such as team meetings, setting and grading goals, status reports and HR paperwork, is classified separately as overhead. Grungy work with enduring value is not toil either. The book’s example is cleaning up a service’s entire alerting configuration.</p>
+
+<p>The book divides SRE activity into four kinds: software engineering, systems engineering, toil and overhead. Systems engineering includes documenting a system so that doing it once keeps paying off. Writing and validating a runbook for the first time sits closer to engineering than to toil. Running through that runbook by hand every time is the toil.</p>
+
+<p><br /></p>
+
+<h3 id="the-50-cap-on-operational-work">The 50% Cap on Operational Work</h3>
+
+<p>The SRE Book sets a public goal of keeping each SRE’s time on operational work, meaning toil, below 50%. The remaining 50% or more should go to engineering projects that reduce future toil or add service features, because toil left alone expands until it can fill 100% of everyone’s time. The ratio is read as an average over several quarters or a year. Toil can come in bursts, so a given quarter may fall below 50% engineering, but the book adds that a long-term average well below it means the team has to work out what went wrong.</p>
+
+<p>For SREs on call, toil has a lower bound. The book calculates it like this:</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>People on call</th>
+        <th>On-call weeks per cycle</th>
+        <th>Lower bound on toil</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>6</td>
+        <td>2 of 6 weeks (1 primary, 1 secondary)</td>
+        <td>2/6 = 33%</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>2 of 8 weeks</td>
+        <td>2/8 = 25%</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>According to the book, a quarterly survey of Google SREs put the average time spent on toil at about 33%. The average hides the extremes, though: some people reported 0% and others 80%. The largest source of toil was interrupts such as non-urgent service-related messages and email, followed by urgent on-call response, then releases and pushes. The <a href="https://sre.google/sre-book/being-on-call/">Being On-Call chapter of the SRE Book</a> splits the 50% of operational work further: on-call takes no more than 25%, leaving up to another 25% for other operational work.</p>
+
+<p>The Workbook words it slightly differently. It says Google limits SRE teams’ operational work, both toil-heavy and not, to 50%. This target may not fit every organization, it says, but putting a cap on toil has benefits in itself, because finding toil and expressing it in numbers is the first step in optimizing how a team spends its time.</p>
+
+<p><br /></p>
+
+<h3 id="units-of-measurement-and-records">Units of Measurement and Records</h3>
+
+<p>The Workbook points out that sizing toil by experience and intuition is not repeatable, objective or transferable. Even within one team, people judge the time lost to toil differently and priorities split. Toil reduction also takes quarters to years, and people and priorities change in the meantime. That is why it calls for objective measurement, and the method it recommends has three steps.</p>
+
+<ol>
+  <li>Identify the toil. Ideally the stakeholders, including the people actually doing the work, do this.</li>
+  <li>Pick a unit of measure that expresses human effort. Minutes or hours are objective and easy for anyone to understand, and context-switching costs have to be counted too. If the work is scattered, units such as patches applied, tickets handled or manual production changes also work.</li>
+  <li>Keep recording before, during and after the reduction work. Simplify the recording with a tool or script so that measuring does not become toil itself.</li>
+</ol>
+
+<p>The same chapter explains that Google SRE teams often file toil as bugs to track it, and rank it by the cost of fixing it and the time saved by doing so. It also says to first ask whether the time saved by removing the toil justifies the time spent developing and maintaining the automation. Work that looks like a loss on time alone may still be worth doing for indirect benefits such as team morale, fewer interrupts, a clearer procedure and fewer outages caused by human error.</p>
+
+<p>Below is an example of a table that records toil this way.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Task (example)</th>
+        <th>Unit</th>
+        <th>Times per month</th>
+        <th>Hands-on time each</th>
+        <th>Monthly total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Issuing a VPN user certificate</td>
+        <td>1 issued</td>
+        <td>12</td>
+        <td>15 min</td>
+        <td>180 min</td>
+      </tr>
+      <tr>
+        <td>Checking the cluster after an upgrade</td>
+        <td>1 check</td>
+        <td>2</td>
+        <td>60 min</td>
+        <td>120 min</td>
+      </tr>
+      <tr>
+        <td>Checking certificate expiry dates</td>
+        <td>1 check</td>
+        <td>4</td>
+        <td>20 min</td>
+        <td>80 min</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="caption">All values are made up for illustration.</div>
+</div>
+
+<p><br /></p>
+
+<p>The times in the table are hands-on time, not elapsed time. If a person still runs the script and reads the result after a check becomes a script, that time stays in this table. Only by measuring again how far this column dropped after the change does the effect of the automation show up as a number.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="runbooks-and-playbooks">Runbooks and Playbooks</h2>
+
+<p>Some teams keep these two words apart and some mix them. The primary sources do not use them the same way either.</p>
+
+<p><br /></p>
+
+<h3 id="the-playbook-in-googles-sre-documents">The Playbook in Google’s SRE Documents</h3>
+
+<p>The SRE Book and Workbook chapters cited in this post never use the word runbook, and they call the document that answers an alert a playbook. The <a href="https://sre.google/sre-book/introduction/">SRE Book’s introduction</a> says that when human intervention is needed, thinking through best practices ahead of time and recording them in a “playbook” improves MTTR by roughly 3x over handling things as they come. The hero on-call engineer who can do everything does get the job done, but the practiced on-call engineer armed with a playbook does much better.</p>
+
+<p>The <a href="https://sre.google/workbook/on-call/">On-Call chapter of the Workbook</a> describes playbooks as high-level instructions on how to respond to automated alerts. A playbook explains the alert’s severity and impact, how to debug it, and the actions that can mitigate the impact and fully resolve the alert. In SRE, the chapter says, creating an alert usually means creating a matching playbook entry. So Google’s playbook is a document that covers one alert from investigation through to action.</p>
+
+<p>The same chapter does not hide that playbook content is a matter of debate. Even inside Google, one side wants a single entry for all “RPC Errors High” alerts, read by an experienced on-call engineer alongside an architecture diagram, and the other wants step-by-step playbooks to reduce the differences between people and drive down MTTR. The chapter’s advice is for the team to at least agree on the structured details a playbook must have. And if a playbook is a fixed list of commands that the on-call engineer runs every time a given alert fires, it recommends automating it.</p>
+
+<p><br /></p>
+
+<h3 id="runbooks-and-playbooks-in-aws-well-architected">Runbooks and Playbooks in AWS Well-Architected</h3>
+
+<p><a href="https://docs.aws.amazon.com/wellarchitected/latest/framework/ops_ready_to_support_use_runbooks.html">OPS07-BP03 in AWS Well-Architected</a> defines a runbook as a documented process for achieving a specific outcome. At its simplest, it says, a runbook is a checklist for completing a task.</p>
+
+<p><a href="https://docs.aws.amazon.com/wellarchitected/latest/framework/ops_ready_to_support_use_playbooks.html">OPS07-BP04</a> describes a playbook as a document for investigating an incident, scoping its impact and finding its root cause, and it connects the two documents like this:</p>
+
+<p><br /></p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart LR
+      Incident["Incident"] --&gt; Playbook["Playbook:<br />investigate, scope impact,<br />find the root cause"]
+      Playbook --&gt; Found{"Root cause<br />identified?"}
+      Found --&gt;|Yes| Runbook["Runbook that<br />resolves the cause"]
+      Found --&gt;|No| Escalate["Escalation plan"]
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>How OPS07-BP04 connects a playbook to a runbook. A root cause a playbook finds is in many cases answered with a runbook.</p>
+</div>
+
+<p><br /></p>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th>playbook</th>
+        <th>runbook</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Google SRE Book, Workbook (the chapters cited here)</td>
+        <td>A document that answers one alert. It holds severity, impact, how to debug, and mitigation and resolution steps together</td>
+        <td>Not used in the cited chapters</td>
+      </tr>
+      <tr>
+        <td>AWS Well-Architected</td>
+        <td>An investigation document. It finds the scope of impact and the root cause, and hands resolution to a runbook</td>
+        <td>A procedure that produces a specific outcome. At its simplest, a checklist</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>With two sources using the same words differently, it is hard to claim the industry has one settled distinction.</p>
+
+<p><br /></p>
+
+<h3 id="the-distinction-this-post-uses">The Distinction This Post Uses</h3>
+
+<p>This post borrows the AWS split. A procedure that produces a set outcome is a runbook, and an investigation order that narrows down a cause is a playbook. This definition is for this post only and is not a standard. In practice, a document that answers one alert usually holds both. In this post’s judgment, what matters more than how many documents you split them into is whether the document separates the steps that look for the cause from the steps that change the system. Investigation steps can run any number of times without changing the system, while execution steps change it, so they need verification and rollback attached.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="what-a-runbook-records">What a Runbook Records</h2>
+
+<p><br /></p>
+
+<h3 id="each-field-and-its-source">Each Field and Its Source</h3>
+
+<p>The fields below are a list this post put together. The last column names the source behind each one.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>What to write</th>
+        <th>Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Trigger</strong></td>
+        <td>The alert or request this document answers, and a direct link from the alert to the document</td>
+        <td>The Prometheus docs introduce alerting rule annotations as the place for longer information such as an alert description or a runbook link. AWS OPS07-BP04 also says to point from the alert to the playbook</td>
+      </tr>
+      <tr>
+        <td><strong>Prerequisites</strong></td>
+        <td>The permissions and tools needed, the access path, and the state to confirm before starting</td>
+        <td>AWS OPS07-BP03 says to clearly document special permissions and tools</td>
+      </tr>
+      <tr>
+        <td><strong>Steps</strong></td>
+        <td>For each step, the command to run, the expected result and how to confirm it</td>
+        <td>This post's own arrangement. AWS says a runbook should clearly state the desired outcome</td>
+      </tr>
+      <tr>
+        <td><strong>Rollback</strong></td>
+        <td>How to undo each step, with steps that cannot be undone marked separately</td>
+        <td>The SRE Book's Emergency Response chapter describes a case where an untested rollback procedure made an outage longer</td>
+      </tr>
+      <tr>
+        <td><strong>Stop conditions and escalation</strong></td>
+        <td>Which results mean stop, and who to hand it to</td>
+        <td>AWS says to include error handling and escalation guidance for when something goes wrong. The SRE Book's Managing Incidents chapter recommends setting incident declaration criteria in advance</td>
+      </tr>
+      <tr>
+        <td><strong>Related dashboards and documents</strong></td>
+        <td>The dashboards used for confirmation, and related playbooks</td>
+        <td>The Workbook's On-Call chapter recommends that pages link to the relevant monitoring consoles</td>
+      </tr>
+      <tr>
+        <td><strong>Owner</strong></td>
+        <td>The person or team responsible for fixing the document</td>
+        <td>AWS says to list the runbook owner and publish it in a central location</td>
+      </tr>
+      <tr>
+        <td><strong>Last verified</strong></td>
+        <td>The last date it was run end to end, and who ran it</td>
+        <td>The Workbook's point that playbook details go stale as fast as the production environment changes. For verification, AWS says to have another team member run the runbook</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>Last verified may look like the Last Updated field in the runbook template AWS gives as an example, but it is different. That template has Runbook Author and Last Updated fields, and this post adds last verified as a separate field. The last day a document was edited and the last day it was run end to end can differ, and the latter is what you need during an outage.</p>
+
+<p>For setting stop conditions, the incident declaration criteria in the <a href="https://sre.google/sre-book/managing-incidents/">Managing Incidents chapter of the SRE Book</a> are a useful reference. The author’s team declares an incident if any one of three applies.</p>
+
+<p><br /></p>
+
+<div class="info-box info-box-question-not-check">
+  <strong>Declare an incident if any one applies</strong>
+  <ul>
+    <li>Does fixing the problem need another team?</li>
+    <li>Is the outage visible to customers?</li>
+    <li>Is it still unsolved after an hour of concentrated analysis?</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<p>With a number such as “one hour” written in the runbook’s escalation field, the person following the runbook does not have to work out for themselves when to stop going it alone. The <a href="https://sre.google/sre-book/being-on-call/">Being On-Call chapter</a> explains that stress on call pushes people to rely on heuristics instead of thinking deliberately. That is why the stopping point gets written down in advance.</p>
+
+<p><br /></p>
+
+<h3 id="example-runbook-control-plane-certificates-near-expiry">Example Runbook: Control Plane Certificates Near Expiry</h3>
+
+<p>Below is an example runbook with those fields filled in. It is not a real production document, and its commands follow the <a href="https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/">kubeadm certificate management docs</a>. The certificate renewal flow in a Kubespray environment is covered separately in the <a href="/category/kubernetes/kubernetes-upgrade-kubespray-2026/">Kubespray upgrade post</a>. The manual renewal commands in that post restart kubelet, while this example moves the static Pod manifests away and back, as the kubeadm docs describe.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Runbook: control plane certificates near expiry (example)
+
+Trigger        The check script's "Certificates do not expire within 30 days" item is FAIL
+Owner          &lt;team name&gt;
+Last verified  &lt;YYYY-MM-DD&gt;, &lt;who verified it&gt; (run end to end on a rehearsal cluster)
+Prerequisites  sudo on every control plane node, a recent etcd snapshot exists
+Stop when      Any step differs from its expected result: stop and contact &lt;escalation contact&gt;
+               Not finished within 30 minutes: declare an incident
+
+1. Check the expiry dates (changes nothing)
+   Run        sudo kubeadm certs check-expiration
+   Expect     A certificate has a RESIDUAL TIME shorter than 30 days
+   Otherwise  Check the check script's verdict and end this runbook
+
+2. Back up certificates and kubeconfig files (on each control plane node)
+   Run        Only if the backup directory does not exist: sudo cp -a /etc/kubernetes /root/k8s-backup-&lt;YYYYMMDD&gt;
+   Expect     The backup directory holds the .crt and .key files of the certificate directory (pki/ by kubeadm default, ssl/ on Kubespray) plus admin.conf, controller-manager.conf and scheduler.conf
+
+3. Renew the certificates (on each control plane node)
+   Run        sudo kubeadm certs renew all
+   Expect     Running check-expiration again shows RESIDUAL TIME extended to nearly 1 year
+
+4. Restart the control plane Pods (one node at a time)
+   Run        Temporarily move the static Pod manifests out of /etc/kubernetes/manifests/,
+              then put them back after kubelet takes the Pods down (the kubeadm docs give a 20-second wait)
+   Expect     kubectl get --raw='/readyz' finishes without an error
+
+5. Update kubeconfig (if you copy admin.conf to $HOME/.kube/config)
+   Run        sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
+              sudo chown $(id -u):$(id -g) $HOME/.kube/config
+   Expect     kubectl get nodes finishes without an error
+
+Rollback  If trouble follows step 3, restore the certificate and kubeconfig files from the step 2 backup and repeat step 4
+          On a node with no backup, do not start step 3
+</code></pre></div></div>
+
+<p>Step 1 is an investigation step that changes nothing, and execution starts at step 2. Because step 1 has a branch that ends the runbook when the result differs from what is expected, a false alert can also be judged from the document alone. The kubeadm docs say the control plane Pods must be restarted after renewal, because not every component reloads certificates dynamically. Static Pods are managed by kubelet, so kubectl cannot delete them, which is why the manifests get moved away and back.</p>
+
+<p><br /></p>
+
+<h3 id="dependencies-outside-terraform">Dependencies Outside Terraform</h3>
+
+<p>When I built, with Terraform, the site-to-site VPN gateway on the EKS side that connects to on-premises, the tunnel had three external dependencies that <code class="language-plaintext highlighter-rouge">terraform plan</code> could not detect: a static route on the office router, the gateway’s configuration file and its private key. Those three went into the runbook. To keep the private key from sitting in plaintext in state, it was created outside Terraform as a SecureString in AWS SSM Parameter Store, and the gateway looked it up at boot.</p>
+
+<p>The <a href="https://developer.hashicorp.com/terraform/language/manage-sensitive-data">Terraform docs</a> explain that when you put a secret directly in configuration, Terraform stores the value in its state and plan files. Keeping the key outside Terraform keeps it out of state, but in exchange plan has no idea whether the key exists. A <code class="language-plaintext highlighter-rouge">terraform plan</code> with no changes only means the scope Terraform manages is in the desired state. Whatever lies outside that scope has to be written into the runbook’s prerequisites and check steps, or it gets missed on a rebuild. For reference, the <a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html">Parameter Store docs</a> currently recommend Secrets Manager for secrets such as database credentials, API keys and tokens, so if you are choosing fresh, start with that document.</p>
+
+<p><br /></p>
+
+<h3 id="runbooks-for-handover">Runbooks for Handover</h3>
+
+<p>When first building an EKS production environment, I documented the GitOps manifests and the CI/CD migration procedure as a runbook, so that someone else could take it over or rebuild the same environment. This kind of runbook has a different reader from an incident runbook. An incident runbook is read in a hurry by an on-call engineer who knows the system, while a handover runbook is read slowly by someone seeing the system for the first time. So the prerequisites field grows longer, and things like the dependencies outside Terraform above go there.</p>
+
+<p>AWS OPS07-BP03 recommends that once a runbook is written, you have another team member run it and then fix whatever is missing or unclear. The author reads the document while filling in undocumented steps from memory, so the gaps in a runbook show up when someone else runs it.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="steps-that-are-safe-to-rerun">Steps That Are Safe to Rerun</h2>
+
+<p><br /></p>
+
+<h3 id="rerunning-during-an-incident">Rerunning During an Incident</h3>
+
+<p>Work gets interrupted a lot during an outage. An SSH session drops, a command times out, the end of the workday comes and it gets handed to the next person. Then comes the moment you cannot be sure whether step 3 ran, or only half ran. If the step is written to be safe to rerun, that is, idempotent, the answer is simple: run it again. If not, you first have to investigate what state the system is in now, and that investigation is added to the outage time.</p>
+
+<p><a href="https://sre.google/sre-book/automation-at-google/">Chapter 7 of the SRE Book, The Evolution of Automation at Google</a>, has a case of this idea in actual use. Prodtest, a test system that checks cluster configuration, paired each failing test with a fix and required each fix to be written idempotently. That let teams run their “fix script” every 15 minutes without worrying about breaking the cluster’s configuration. When a fix failed several times, the automation judged it a failure, stopped and notified the user.</p>
+
+<p>The book also admits that the approach had a fundamental flaw that surfaced later. The delay between test, fix and retest produced tests that sometimes passed and sometimes did not, and since not every fix was naturally idempotent, a fix running after a flaky test could leave the system in an inconsistent state. Idempotency does not come by itself. It has to be designed step by step.</p>
+
+<p><br /></p>
+
+<h3 id="write-the-state-not-the-action">Write the State, Not the Action</h3>
+
+<p>The easiest way to write a step that is safe to rerun is to write the desired state instead of the action. “Add” and “increase by one” are actions. “Exists” and “there are 3” are states.</p>
+
+<p><br /></p>
+
+<div class="table-comparison-container">
+  <table class="table-comparison">
+    <thead>
+      <tr>
+        <th>Step written as an action</th>
+        <th>If you run it again</th>
+        <th>Step written as a state</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>kubectl create -f cm.yaml</code></td>
+        <td>Stops with an AlreadyExists error if it exists</td>
+        <td><code>kubectl apply -f cm.yaml</code>. The file's contents are the desired state</td>
+      </tr>
+      <tr>
+        <td><code>ip route add 198.51.100.0/24 via 192.0.2.1</code></td>
+        <td>Stops with a File exists error if it exists</td>
+        <td><code>ip route replace 198.51.100.0/24 via 192.0.2.1</code>. Adds it if missing, changes it if present</td>
+      </tr>
+      <tr>
+        <td><code>kubectl scale</code> to the current replica count plus 1</td>
+        <td>Grows by one on every run</td>
+        <td><code>kubectl scale deploy/api --replicas=3</code>. It is 3 however many times you run it</td>
+      </tr>
+      <tr>
+        <td><code>mkdir /data/backup</code></td>
+        <td>Stops with an error from the second run on</td>
+        <td><code>mkdir -p /data/backup</code></td>
+      </tr>
+      <tr>
+        <td>Restart kubelet</td>
+        <td>One more restart on every run</td>
+        <td>Start kubelet if it is not active (if <code>systemctl is-active --quiet kubelet</code> fails, <code>systemctl start kubelet</code>)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The <a href="https://man7.org/linux/man-pages/man8/ip-route.8.html">ip-route(8) man page</a> describes <code class="language-plaintext highlighter-rouge">ip route replace</code> as “change or add new one”. The declarative management style of <code class="language-plaintext highlighter-rouge">kubectl apply</code> is covered in the <a href="https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/">Kubernetes docs</a>.</p>
+
+<p>A runbook’s execution step is safe to rerun when written as three lines: check, act, recheck. This carries the way Prodtest paired a test with a fix into a single runbook step.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Step: the route to 198.51.100.0/24 goes through 192.0.2.1 (example)
+
+Check    ip route show 198.51.100.0/24
+         If "via 192.0.2.1" appears, skip this step
+Act      sudo ip route replace 198.51.100.0/24 via 192.0.2.1
+Recheck  ip route show 198.51.100.0/24
+         If it still differs, stop and escalate
+</code></pre></div></div>
+
+<p><br /></p>
+
+<h3 id="example-script-issuing-and-revoking-user-certificates">Example Script: Issuing and Revoking User Certificates</h3>
+
+<p>When I built an internal network VPN gateway on-premises using <abbr title="public key infrastructure">PKI</abbr> certificates, I automated per-user certificate work, from issuance through revocation, with a shell script safe to rerun. Below is the same approach carried over to <a href="https://github.com/OpenVPN/easy-rsa/blob/master/doc/EasyRSA-Readme.md">Easy-RSA</a> 3.2 as an example. It is not the actual production script.</p>
+
+<p>On Easy-RSA 3.2, <code class="language-plaintext highlighter-rouge">build-client-full</code> stops with an error rather than overwrite existing request, key or certificate files of the same name. That is safe behavior, but left alone it makes a second run end in failure, so the script checks the state first. From 3.2.2 the <code class="language-plaintext highlighter-rouge">revoke</code> command is marked as deprecated (see the <a href="https://github.com/OpenVPN/easy-rsa/blob/v3.2.2/easyrsa3/easyrsa#L45">help text in the v3.2.2 source</a>), so the script uses its replacement, <code class="language-plaintext highlighter-rouge">revoke-issued</code>. Versions matter here:</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Easy-RSA</th>
+        <th>What it means for this example</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>3.2.0, 3.2.1</td>
+        <td>No <code>revoke-issued</code>, so this example assumes 3.2.2 or later</td>
+      </tr>
+      <tr>
+        <td>3.2.2, 3.2.3</td>
+        <td>Revocation leaves <code>pki/reqs/&lt;user&gt;.req</code> and <code>pki/private/&lt;user&gt;.key</code> behind, so <code>build-client-full</code> stops when reissuing under the same name</td>
+      </tr>
+      <tr>
+        <td>3.2.4 and later</td>
+        <td>Those two files also move under <code>pki/revoked/</code>, so the same name can be reissued</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/usr/bin/env bash</span>
+<span class="c"># Example: issue and revoke user certificates on Easy-RSA 3.2. Users already handled are skipped.</span>
+<span class="nb">set</span> <span class="nt">-euo</span> pipefail
+<span class="nb">cd</span> <span class="s2">"</span><span class="k">${</span><span class="nv">EASYRSA_DIR</span>:?EASYRSA_DIR<span class="p"> must be set</span><span class="k">}</span><span class="s2">"</span>
+
+is_revoked<span class="o">()</span> <span class="o">{</span>   <span class="c"># index.txt: status R, sixth field /CN=&lt;user&gt; (with EASYRSA_DN=cn_only)</span>
+  <span class="nb">awk</span> <span class="nt">-F</span><span class="s1">'\t'</span> <span class="nt">-v</span> <span class="nv">dn</span><span class="o">=</span><span class="s2">"/CN=</span><span class="nv">$1</span><span class="s2">"</span> <span class="s1">'$1 == "R" &amp;&amp; $6 == dn {found=1} END {exit !found}'</span> pki/index.txt
+<span class="o">}</span>
+
+issue<span class="o">()</span> <span class="o">{</span>
+  <span class="nb">local </span><span class="nv">user</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+  <span class="k">if</span> <span class="o">[</span> <span class="nt">-f</span> <span class="s2">"pki/issued/</span><span class="k">${</span><span class="nv">user</span><span class="k">}</span><span class="s2">.crt"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"skip: </span><span class="k">${</span><span class="nv">user</span><span class="k">}</span><span class="s2"> certificate already exists"</span>
+    <span class="k">return </span>0
+  <span class="k">fi</span>
+  ./easyrsa <span class="nt">--batch</span> build-client-full <span class="s2">"</span><span class="nv">$user</span><span class="s2">"</span> nopass
+<span class="o">}</span>
+
+revoke<span class="o">()</span> <span class="o">{</span>
+  <span class="nb">local </span><span class="nv">user</span><span class="o">=</span><span class="s2">"</span><span class="nv">$1</span><span class="s2">"</span>
+  <span class="k">if</span> <span class="o">[</span> <span class="nt">-f</span> <span class="s2">"pki/issued/</span><span class="k">${</span><span class="nv">user</span><span class="k">}</span><span class="s2">.crt"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+    ./easyrsa <span class="nt">--batch</span> revoke-issued <span class="s2">"</span><span class="nv">$user</span><span class="s2">"</span>
+  <span class="k">elif </span>is_revoked <span class="s2">"</span><span class="nv">$user</span><span class="s2">"</span><span class="p">;</span> <span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"skip: </span><span class="k">${</span><span class="nv">user</span><span class="k">}</span><span class="s2"> certificate is already revoked"</span>
+  <span class="k">else
+    </span><span class="nb">echo</span> <span class="s2">"error: </span><span class="k">${</span><span class="nv">user</span><span class="k">}</span><span class="s2"> certificate not found"</span> <span class="o">&gt;</span>&amp;2
+    <span class="k">return </span>1
+  <span class="k">fi</span>
+  ./easyrsa <span class="nt">--batch</span> gen-crl
+<span class="o">}</span>
+
+<span class="k">case</span> <span class="s2">"</span><span class="k">${</span><span class="nv">1</span><span class="k">:-}</span><span class="s2">"</span> <span class="k">in
+  </span>issue<span class="p">)</span>  issue  <span class="s2">"</span><span class="k">${</span><span class="nv">2</span>:?user<span class="p"> name required</span><span class="k">}</span><span class="s2">"</span> <span class="p">;;</span>
+  revoke<span class="p">)</span> revoke <span class="s2">"</span><span class="k">${</span><span class="nv">2</span>:?user<span class="p"> name required</span><span class="k">}</span><span class="s2">"</span> <span class="p">;;</span>
+  <span class="k">*</span><span class="p">)</span>      <span class="nb">echo</span> <span class="s2">"usage: </span><span class="nv">$0</span><span class="s2"> issue|revoke &lt;user&gt;"</span> <span class="o">&gt;</span>&amp;2<span class="p">;</span> <span class="nb">exit </span>2 <span class="p">;;</span>
+<span class="k">esac</span>
+</code></pre></div></div>
+
+<p>Issuing skips when the certificate file exists. Revoking runs only when an issued certificate exists, and skips when it is already revoked. Anything else stops with an error, so that a mistyped name does not pass as “already handled.” The <abbr title="certificate revocation list">CRL</abbr> is regenerated on every revocation. The <a href="https://github.com/OpenVPN/easy-rsa/blob/master/doc/EasyRSA-Readme.md">Easy-RSA docs</a> say the CRL has to be published or sent to the systems that use it, and that until then the certificate is still valid. The example uses <code class="language-plaintext highlighter-rouge">nopass</code>, which leaves the private key unencrypted, to keep it short.</p>
+
+<p><br /></p>
+
+<div class="info-box info-box-warning-not-check">
+  <strong>Where the script leaves the decision to a person</strong>
+  <ul>
+    <li>If issuing is cut off after creating the key and request files but before signing, there is no certificate file, so the script tries to issue again, and <code>build-client-full</code> stops on the leftover files.</li>
+    <li>Whether to delete the leftover <code>pki/reqs/&lt;user&gt;.req</code> and <code>pki/private/&lt;user&gt;.key</code> at that point is a person's call.</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<h3 id="guarding-against-empty-input">Guarding Against Empty Input</h3>
+
+<p>The most dangerous thing on a rerun is empty input arriving to mean “everything is already done.” Automation: Enabling Failure at Scale, at the end of Chapter 7 of the SRE Book, covers one such accident.</p>
+
+<p><br /></p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart TD
+      Fail["Automation decommissioning one rack<br />fails after the Diskerase step"] --&gt; Rerun["The decommission is rerun from the start<br />to find the cause"]
+      Rerun --&gt; Empty["The automation correctly finds that the list of<br />machines still needing a disk wipe is empty"]
+      Empty --&gt; Special["The empty list is interpreted as<br />a special value meaning everything"]
+      Special --&gt; Wipe["Nearly all machines in every<br />colocation facility go to Diskerase"]
+
+      classDef bad fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c;
+      class Special,Wipe bad;
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>The sequence of the accident as the SRE Book describes it.</p>
+</div>
+
+<p><br /></p>
+
+<p>According to the book, almost no users noticed. Even so, the team spent nearly two days reinstalling the machines in the affected racks, and over the following weeks it reviewed the automation, added checks including rate limiting, and made the decommission workflow idempotent. The <a href="https://sre.google/sre-book/emergency-response/">Emergency Response chapter</a> records the same accident again from the viewpoint of the people responding to it.</p>
+
+<p>The example scripts in this post also guard against empty input. The certificate script stops immediately through <code class="language-plaintext highlighter-rouge">${2:?}</code> when there is no user name. The check script below treats an empty <code class="language-plaintext highlighter-rouge">kubectl get nodes</code> result as a failure, not a pass. If a failed command leaves the output empty and the check concludes “there are no nodes that are not Ready,” it passes without having looked at anything.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="the-order-to-automate-in">The Order to Automate In</h2>
+
+<p><br /></p>
+
+<h3 id="the-sre-books-five-levels">The SRE Book’s Five Levels</h3>
+
+<p>Chapter 7 of the SRE Book lays out the path automation evolves along in five levels, using database failover as the example.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Level</th>
+        <th>The book's example</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1. No automation</td>
+        <td>A person manually fails the database master over to another location</td>
+      </tr>
+      <tr>
+        <td>2. Externally maintained, system-specific automation</td>
+        <td>An SRE has a failover script in their home directory</td>
+      </tr>
+      <tr>
+        <td>3. Externally maintained, generic automation</td>
+        <td>An SRE adds database support to a generic failover script everyone uses</td>
+      </tr>
+      <tr>
+        <td>4. Internally maintained, system-specific automation</td>
+        <td>The database ships with its own failover script</td>
+      </tr>
+      <tr>
+        <td>5. Systems that need no automation</td>
+        <td>The database notices problems and fails over by itself with no human intervention</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<p>The five levels differ in who maintains the automation and where. The book points out that automation maintained apart from the core system goes stale, because it does not change when the system does. It also notes that automation that runs rarely has a long feedback cycle, which makes it hard to test and especially fragile, with a cluster failover that happens once every few months as the example. Runbooks are the same. The less often a runbook runs, say once a year, the more its last verified date matters.</p>
+
+<p>I also have experience close to the SRE Book’s level 4. After moving a logging stack to an Operator, manual work such as TLS certificate renewal, account provisioning and node replacement became automated through <abbr title="custom resource definition">CRD</abbr> declarations. Declaring a version in the CRD is all a rolling upgrade takes. Those are steps that used to be in a runbook, which moved inside the system and disappeared.</p>
+
+<p>In other cases a design change reduced the work itself. Consolidating several on-premises ingress-nginx instances into one Gateway API controller with a Gateway per class also merged the certificates into one wildcard, which cut the manual renewal work once done per app. That matches toil’s automatable characteristic, in the book’s words: “the need for the task could be designed away.”</p>
+
+<p><br /></p>
+
+<h3 id="this-posts-four-stages">This Post’s Four Stages</h3>
+
+<p>The four stages below are not in the SRE Book. They are an order this post put together. Where the book’s five levels deal with who maintains the automation, this order deals with how far one runbook leaves human hands. It weaves together the Workbook’s recommendations (use partial automation as an intermediate step toward full automation, start small, automate fixed lists of commands, hand off to a person in unsafe conditions) and AWS OPS07-BP03’s recommendation (automate short, frequently used runbooks first).</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Stage</th>
+        <th>What a person does</th>
+        <th>What a machine does</th>
+        <th>Condition for moving to the next stage</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Document</strong></td>
+        <td>Runs every step and makes every judgment</td>
+        <td>Nothing</td>
+        <td>Each step has an expected result, and someone other than the author has followed it to the end</td>
+      </tr>
+      <tr>
+        <td><strong>2. Check script</strong></td>
+        <td>Reads the result and runs the action</td>
+        <td>Checks the state and reports PASS or FAIL</td>
+        <td>The same FAIL always gets the same action</td>
+      </tr>
+      <tr>
+        <td><strong>3. Automation with an approval step</strong></td>
+        <td>Approves and judges exceptions</td>
+        <td>Detects, drafts the change, then runs and confirms it after approval</td>
+        <td>What a person looks at when approving is fixed, and a machine can check those items</td>
+      </tr>
+      <tr>
+        <td><strong>4. Full automation</strong></td>
+        <td>Reviews results and responds to failures</td>
+        <td>Everything from detection through execution and confirmation</td>
+        <td>The last stage. It hands off to a person when it meets an unsafe condition</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<div class="highlight-box">
+  <p>Stage 2 is still toil. By the definition of manual above, the time a person spends running a script and reading its result stays toil. The reason to pass through stage 2 anyway is that the way of checking hardens into code. The automation in stages 3 and 4 ends up using this checking code to judge whether a change succeeded.</p>
+</div>
+
+<p><br /></p>
+
+<h3 id="a-post-upgrade-cluster-check-script">A Post-Upgrade Cluster Check Script</h3>
+
+<p>On an on-premises cluster, I scripted the Kubespray upgrade procedure and the post-upgrade cluster health check (nodes, version match, etcd, API Server, DNS, certificate expiry and so on), which cut verification time by 90%. For certificates, an expiry check script and a renewal script were set up to catch them before they expire. The upgrade procedure and commands are in the <a href="/category/kubernetes/kubernetes-upgrade-kubespray-2026/">Kubespray upgrade post</a>.</p>
+
+<p>Below, that check is rewritten as an example in the shape of this post’s stage 2 (check script). It is not the actual production script. One check is one function, and each function exits 0 when the state is as desired. Not a single command changes the system, so it is safe to run any number of times.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/usr/bin/env bash</span>
+<span class="c"># Example: post-upgrade check. Assumes it runs on a control plane node.</span>
+<span class="nb">set</span> <span class="nt">-euo</span> pipefail
+
+<span class="nv">EXPECTED_VERSION</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">1</span>:?usage:<span class="p"> </span><span class="nv">$0</span><span class="p"> &lt;kubelet version, e.g. v1.34.3&gt;</span><span class="k">}</span><span class="s2">"</span>
+<span class="nv">CERT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">CERT_DIR</span><span class="k">:-</span><span class="p">/etc/kubernetes/ssl</span><span class="k">}</span><span class="s2">"</span>   <span class="c"># Kubespray kube_cert_dir default</span>
+<span class="nv">WARN_DAYS</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">WARN_DAYS</span><span class="k">:-</span><span class="nv">30</span><span class="k">}</span><span class="s2">"</span>
+<span class="nv">fail</span><span class="o">=</span>0
+
+check<span class="o">()</span> <span class="o">{</span>   <span class="c"># check &lt;description&gt; &lt;function&gt;: PASS if the function exits 0</span>
+  <span class="k">if</span> <span class="s2">"</span><span class="nv">$2</span><span class="s2">"</span> <span class="o">&gt;</span>/dev/null 2&gt;&amp;1<span class="p">;</span> <span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"PASS  </span><span class="nv">$1</span><span class="s2">"</span>
+  <span class="k">else
+    </span><span class="nb">echo</span> <span class="s2">"FAIL  </span><span class="nv">$1</span><span class="s2">"</span>
+    <span class="nv">fail</span><span class="o">=</span>1
+  <span class="k">fi</span>
+<span class="o">}</span>
+
+nodes_ready<span class="o">()</span> <span class="o">{</span>
+  <span class="nb">local </span>out
+  <span class="nv">out</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span>kubectl get nodes <span class="nt">--no-headers</span><span class="si">)</span><span class="s2">"</span> <span class="o">||</span> <span class="k">return </span>1
+  <span class="o">[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$out</span><span class="s2">"</span> <span class="o">]</span> <span class="o">||</span> <span class="k">return </span>1   <span class="c"># an empty list is a failure, not a pass</span>
+  <span class="o">[</span> <span class="nt">-z</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">awk</span> <span class="s1">'$2 != "Ready"'</span> <span class="o">&lt;&lt;&lt;</span><span class="s2">"</span><span class="nv">$out</span><span class="s2">"</span><span class="si">)</span><span class="s2">"</span> <span class="o">]</span>
+<span class="o">}</span>
+
+versions_match<span class="o">()</span> <span class="o">{</span>
+  <span class="nb">local </span>out
+  <span class="nv">out</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span>kubectl get nodes <span class="se">\</span>
+    <span class="nt">-o</span> <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{range .items[*]}{.status.nodeInfo.kubeletVersion}{"\n"}{end}'</span><span class="si">)</span><span class="s2">"</span> <span class="o">||</span> <span class="k">return </span>1
+  <span class="o">[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$out</span><span class="s2">"</span> <span class="o">]</span> <span class="o">||</span> <span class="k">return </span>1
+  <span class="o">!</span> <span class="nb">grep</span> <span class="nt">-qvxF</span> <span class="s2">"</span><span class="nv">$EXPECTED_VERSION</span><span class="s2">"</span> <span class="o">&lt;&lt;&lt;</span><span class="s2">"</span><span class="nv">$out</span><span class="s2">"</span>
+<span class="o">}</span>
+
+apiserver_ready<span class="o">()</span> <span class="o">{</span> kubectl get <span class="nt">--raw</span><span class="o">=</span><span class="s1">'/readyz'</span><span class="p">;</span> <span class="o">}</span>
+etcd_ready<span class="o">()</span>      <span class="o">{</span> etcdctl endpoint health <span class="nt">--cluster</span><span class="p">;</span> <span class="o">}</span>   <span class="c"># assumes ETCDCTL_ENDPOINTS, ETCDCTL_CACERT, ETCDCTL_CERT and ETCDCTL_KEY are set</span>
+dns_resolves<span class="o">()</span>    <span class="o">{</span> kubectl <span class="nb">exec </span>dnsutils <span class="nt">--</span> nslookup kubernetes.default<span class="p">;</span> <span class="o">}</span>
+
+certs_valid<span class="o">()</span> <span class="o">{</span>
+  <span class="nb">local </span>crt
+  <span class="k">for </span>crt <span class="k">in</span> <span class="s2">"</span><span class="nv">$CERT_DIR</span><span class="s2">"</span>/<span class="k">*</span>.crt<span class="p">;</span> <span class="k">do
+    </span>openssl x509 <span class="nt">-checkend</span> <span class="k">$((</span>WARN_DAYS <span class="o">*</span> <span class="m">86400</span><span class="k">))</span> <span class="nt">-noout</span> <span class="nt">-in</span> <span class="s2">"</span><span class="nv">$crt</span><span class="s2">"</span> <span class="o">||</span> <span class="k">return </span>1
+  <span class="k">done</span>
+<span class="o">}</span>
+
+check <span class="s2">"All nodes are Ready"</span>                              nodes_ready
+check <span class="s2">"All kubelets are </span><span class="k">${</span><span class="nv">EXPECTED_VERSION</span><span class="k">}</span><span class="s2">"</span>             versions_match
+check <span class="s2">"API Server readyz"</span>                                apiserver_ready
+check <span class="s2">"etcd endpoint health"</span>                             etcd_ready
+check <span class="s2">"Cluster DNS lookup"</span>                               dns_resolves
+check <span class="s2">"Certificates do not expire within </span><span class="k">${</span><span class="nv">WARN_DAYS</span><span class="k">}</span><span class="s2"> days"</span> certs_valid
+
+<span class="nb">exit</span> <span class="s2">"</span><span class="nv">$fail</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">/readyz</code> is a path from the <a href="https://kubernetes.io/docs/reference/using-api/health-checks/">Kubernetes API health endpoints docs</a>. The docs say a machine checking these endpoints should judge by the HTTP status code, so the verdict comes from <code class="language-plaintext highlighter-rouge">kubectl</code>’s exit code, not the output string. The docs treat individual check paths such as <code class="language-plaintext highlighter-rouge">/readyz/etcd</code> as an alpha feature meant for a person debugging rather than a machine, so etcd is checked separately through the exit code of <code class="language-plaintext highlighter-rouge">etcdctl endpoint health --cluster</code>.</li>
+  <li>The DNS check assumes the <code class="language-plaintext highlighter-rouge">dnsutils</code> Pod from the <a href="https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/">DNS debugging docs</a> is running.</li>
+  <li><code class="language-plaintext highlighter-rouge">openssl x509 -checkend</code>, per the <a href="https://docs.openssl.org/3.0/man1/openssl-x509/">OpenSSL docs</a>, exits nonzero when the certificate expires within the given seconds. If the certificate directory is empty, the glob stays as written and openssl fails, so this check also treats empty input as failure.</li>
+  <li>The <code class="language-plaintext highlighter-rouge">CERT_DIR</code> default <code class="language-plaintext highlighter-rouge">/etc/kubernetes/ssl</code> is Kubespray’s <code class="language-plaintext highlighter-rouge">kube_cert_dir</code> default. With another installer, the path has to change.</li>
+</ul>
+
+<p>What to do on a FAIL stays in the runbook, not the script. The trigger of the certificate runbook earlier is exactly this script’s FAIL. Whether to move from stage 2 to stage 3 is decided by whether each FAIL always gets the same action.</p>
+
+<p><br /></p>
+
+<h3 id="version-upgrades-with-an-approval-step">Version Upgrades with an Approval Step</h3>
+
+<p>When managing CI tool images, I built version upgrades in the shape of this post’s stage 3 (automation with an approval step).</p>
+
+<p><br /></p>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+    flowchart LR
+      Detect["New upstream version detected<br />(weekly scheduler)"] --&gt; Mirror["MR to mirror it into<br />the internal registry"]
+      Mirror --&gt; Rebuild["MR to rebuild the shared images and<br />align the central version variable"]
+      Rebuild --&gt; Propagate["Bulk propagation to the<br />repositories using the image"]
+      Person["Person"] -.-&gt;|reviews before it runs| Rebuild
+
+      classDef human fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037;
+      class Person human;
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>The automated chain. Running the pipelines and approving MRs at some steps were also left to a person, and the high-blast-radius image rebuild runs only after a person has reviewed it.</p>
+</div>
+
+<p><br /></p>
+
+<p>Why a person has to check came out during an automatic upgrade. The minimum helm version that helmfile 1.5.1 requires (3.18.6) was higher than the pinned helm version (3.16.4), and the build pipeline stopped. The automatic upgrade could not detect this dependency in advance. So helm, helmfile and kubectl got a minor-guard: only patch versions within the same minor go up automatically, and minor and major changes go up by hand after compatibility is confirmed. When truly needed, an environment variable can apply a one-time exception.</p>
+
+<p>Component upgrades were split into tiers by risk. T1 runs weekly, T2 every two weeks, and T3 monthly with a pre-check added. Detecting new versions, Slack notification and applying in wave order were automated, major versions were blocked from going up automatically, and T3 was set up to roll back entirely on failure.</p>
+
+<p>In both cases, what people check is compatibility between tools, major changes and high-blast-radius rebuilds. This post considers all three hard for a machine to judge in advance. Patch versions within the same minor, on the other hand, were left to go up automatically. Chapter 7 of the SRE Book also holds that for well-defined work such as failover, it makes no sense to have a person periodically press an “Allow system to continue to run” button. More approval steps do not make things safer. They belong only where a person has something real to look at when approving.</p>
+
+<p><br /></p>
+
+<h3 id="checks-before-an-irreversible-change">Checks Before an Irreversible Change</h3>
+
+<p>Automatic upgrades caused one more accident. While automatically upgrading an on-premises Elastic Stack to a new version, the upgrade referenced an image that had appeared in the release feed but had not yet been published to the registry, which produced <code class="language-plaintext highlighter-rouge">ImagePullBackOff</code>. I tried to roll back right away, but recovery was blocked because ECK’s Admission Webhook has a policy of refusing downgrades, and the failure spread to the Operator.</p>
+
+<p>Analyzing this accident, I concluded that the real risk is not a failed deployment but a state you cannot go back from. If a failed deployment can still return to the previous version, the outage ends quickly. So to guard against a repeat, the upgrade pipeline gained a check that the image exists in the registry, a cluster health check, a snapshot backup warning on major upgrades, and a rollback procedure that takes the Webhook constraint into account.</p>
+
+<p>Below is an example built on that pre-check. It is not the actual pipeline code. The real pipeline issues a snapshot backup warning on major upgrades, while the example stops at that point. Image existence is checked with the <code class="language-plaintext highlighter-rouge">digest</code> command of <a href="https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane_digest.md">crane</a>.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/usr/bin/env bash</span>
+<span class="c"># Example: checks before raising a version. If any fails, the change does not start.</span>
+<span class="nb">set</span> <span class="nt">-euo</span> pipefail
+
+<span class="nv">IMAGE</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">1</span>:?usage:<span class="p"> </span><span class="nv">$0</span><span class="p"> &lt;image</span>:tag&gt;<span class="p"> &lt;current-version&gt; &lt;target-version&gt;</span><span class="k">}</span><span class="s2">"</span>
+<span class="nv">CURRENT</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">2</span>:?<span class="k">}</span><span class="s2">"</span>
+<span class="nv">TARGET</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">3</span>:?<span class="k">}</span><span class="s2">"</span>
+
+<span class="c"># 1. Does the image actually exist in the registry? (do not trust the release feed alone)</span>
+crane digest <span class="s2">"</span><span class="nv">$IMAGE</span><span class="s2">"</span> <span class="o">&gt;</span>/dev/null <span class="o">||</span> <span class="o">{</span> <span class="nb">echo</span> <span class="s2">"STOP: could not confirm image </span><span class="k">${</span><span class="nv">IMAGE</span><span class="k">}</span><span class="s2"> in the registry"</span><span class="p">;</span> <span class="nb">exit </span>1<span class="p">;</span> <span class="o">}</span>
+
+<span class="c"># 2. Is the starting state healthy?</span>
+kubectl get <span class="nt">--raw</span><span class="o">=</span><span class="s1">'/readyz'</span> <span class="o">&gt;</span>/dev/null <span class="o">||</span> <span class="o">{</span> <span class="nb">echo</span> <span class="s2">"STOP: API Server is not ready"</span><span class="p">;</span> <span class="nb">exit </span>1<span class="p">;</span> <span class="o">}</span>
+
+<span class="c"># 3. If the major version changes, hand off to a person</span>
+<span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="k">${</span><span class="nv">CURRENT</span><span class="p">%%.*</span><span class="k">}</span><span class="s2">"</span> <span class="o">!=</span> <span class="s2">"</span><span class="k">${</span><span class="nv">TARGET</span><span class="p">%%.*</span><span class="k">}</span><span class="s2">"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
+  </span><span class="nb">echo</span> <span class="s2">"STOP: major version change (</span><span class="k">${</span><span class="nv">CURRENT</span><span class="k">}</span><span class="s2"> → </span><span class="k">${</span><span class="nv">TARGET</span><span class="k">}</span><span class="s2">). Confirm the snapshot backup and rollback path, then proceed manually"</span>
+  <span class="nb">exit </span>1
+<span class="k">fi
+
+</span><span class="nb">echo</span> <span class="s2">"OK: pre-checks passed"</span>
+</code></pre></div></div>
+
+<p>The Assess Risk Within Automation section of the Workbook says to evaluate every action automation performs for safety before running it, and to make handing off to a person the default when automation meets an unsafe condition. The STOPs in the example above are exactly those hand-off points. The same reason is behind marking irreversible steps separately in the runbook’s rollback field. A person should stand in front of an irreversible step, and a machine can handle the checks leading up to it.</p>
+
+<p><br /></p>
+
+<h3 id="decisions-left-to-people">Decisions Left to People</h3>
+
+<p>The decisions left to people to the end in these cases fall into three groups. This grouping is this post’s own.</p>
+
+<p><br /></p>
+
+<div class="info-box info-box-default-not-check">
+  <strong>What stays with a person</strong>
+  <ul>
+    <li><strong>Judgments a machine cannot check in advance.</strong> Decisions like compatibility between tools, which need information outside what the automation checks ahead of time.</li>
+    <li><strong>Irreversible or high-blast-radius changes.</strong> Changes such as major upgrades and shared image rebuilds, which are hard to undo on failure or whose impact spreads widely.</li>
+    <li><strong>The response when automation meets an unsafe condition.</strong> A person decides what to do when a pre-check returns STOP.</li>
+  </ul>
+</div>
+
+<p><br /></p>
+
+<p>The <a href="https://sre.google/sre-book/monitoring-distributed-systems/">Monitoring Distributed Systems chapter of the SRE Book</a> states the same standard from the alerting side. A page should require human intelligence in its response, and an alert that only needs a mechanical response should not be a page. A page with a rote, fixed response is a warning sign, and a team unwilling to automate such pages lacks the confidence to clear its technical debt. The Workbook adds that automation should not cost people their understanding of what is going wrong. The further automation reaches, the more what remains for people should be only the work that needs judgment.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Toil is operational work that is manual, repetitive, automatable, tactical, without enduring value, and growing in proportion to scale. The SRE Book aims to keep it below 50% of an SRE’s time, and the Workbook recommends measuring before and after reduction in objective units such as hands-on time or items handled. That the time a person spends running a script also counts as toil is the yardstick when setting the order of automation.</p>
+
+<p>Runbook and playbook are defined differently from source to source. The Google SRE chapters cited in this post call an alert-response document a playbook, and AWS splits the playbook that investigates from the runbook that produces an outcome. Whichever you follow, separate the investigation steps that do not change the system from the execution steps that do, and attach an expected result, a way to confirm it, a rollback and a stop condition to each execution step. The owner and the last verified date are what let you judge whether a document has gone stale.</p>
+
+<p>Writing execution steps as a desired state rather than an action, split into check, act and recheck, makes them safe to rerun. Empty input should be handled as “nothing to do” or “failure,” and must never be read as “everything.” Widen automation in the order of document, check script, automation with an approval step and full automation, and keep a person in front of judgments a machine cannot check and changes that cannot be undone.</p>
+
+<p>How to record an outage handled with a runbook is covered in the <a href="/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/">postmortem writing guide</a>, and how to measure the recovery time that runbooks and automation should reduce is covered in the <a href="/category/monitoring/mttr-recovery-time-metrics-guide/">MTTR measurement post</a>.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://sre.google/sre-book/eliminating-toil/">Google SRE Book - Chapter 5. Eliminating Toil</a></li>
+  <li><a href="https://sre.google/sre-book/introduction/">Google SRE Book - Chapter 1. Introduction</a></li>
+  <li><a href="https://sre.google/sre-book/monitoring-distributed-systems/">Google SRE Book - Chapter 6. Monitoring Distributed Systems</a></li>
+  <li><a href="https://sre.google/sre-book/automation-at-google/">Google SRE Book - Chapter 7. The Evolution of Automation at Google</a></li>
+  <li><a href="https://sre.google/sre-book/being-on-call/">Google SRE Book - Chapter 11. Being On-Call</a></li>
+  <li><a href="https://sre.google/sre-book/emergency-response/">Google SRE Book - Chapter 13. Emergency Response</a></li>
+  <li><a href="https://sre.google/sre-book/managing-incidents/">Google SRE Book - Chapter 14. Managing Incidents</a></li>
+  <li><a href="https://sre.google/workbook/eliminating-toil/">Google SRE Workbook - Chapter 6. Eliminating Toil</a></li>
+  <li><a href="https://sre.google/workbook/on-call/">Google SRE Workbook - Chapter 8. On-Call</a></li>
+  <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/framework/ops_ready_to_support_use_runbooks.html">AWS Well-Architected Framework - OPS07-BP03 Use runbooks to perform procedures</a></li>
+  <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/framework/ops_ready_to_support_use_playbooks.html">AWS Well-Architected Framework - OPS07-BP04 Use playbooks to investigate issues</a></li>
+  <li><a href="https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/">Prometheus - Alerting rules</a></li>
+  <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/">Kubernetes - Certificate Management with kubeadm</a></li>
+  <li><a href="https://kubernetes.io/docs/reference/using-api/health-checks/">Kubernetes - Kubernetes API health endpoints</a></li>
+  <li><a href="https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/">Kubernetes - Debugging DNS Resolution</a></li>
+  <li><a href="https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/">Kubernetes - Declarative Management of Kubernetes Objects Using Configuration Files</a></li>
+  <li><a href="https://man7.org/linux/man-pages/man8/ip-route.8.html">ip-route(8) - Linux manual page</a></li>
+  <li><a href="https://docs.openssl.org/3.0/man1/openssl-x509/">OpenSSL 3.0 - openssl-x509</a></li>
+  <li><a href="https://github.com/OpenVPN/easy-rsa/blob/master/doc/EasyRSA-Readme.md">Easy-RSA - EasyRSA-Readme</a></li>
+  <li><a href="https://github.com/OpenVPN/easy-rsa/blob/v3.2.2/easyrsa3/easyrsa#L45">Easy-RSA v3.2.2 - easyrsa</a></li>
+  <li><a href="https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane_digest.md">go-containerregistry - crane digest</a></li>
+  <li><a href="https://developer.hashicorp.com/terraform/language/manage-sensitive-data">Terraform - Manage sensitive data in your configuration</a></li>
+  <li><a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html">AWS Systems Manager Parameter Store</a></li>
+  <li><a href="/category/kubernetes/kubernetes-upgrade-kubespray-2026/">Upgrading a Kubernetes Cluster with Kubespray (2026V.)</a></li>
+  <li><a href="/category/troubleshooting/postmortem-blameless-root-cause-analysis-guide/">How to Write a Postmortem: Blameless Practice and Root Cause Analysis</a></li>
+  <li><a href="/category/monitoring/mttr-recovery-time-metrics-guide/">Measuring MTTR: Four Definitions, When to Measure, and the Average Trap</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/openstack/openstack-storage/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1756113713/openstack-storage-1_af6k1n.png" alt="Deep Dive into OpenStack Storage Services">
+                                    
+                                    <h3>Deep Dive into OpenStack Storage Services</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/kubernetes/kubernetes-install-kubespray/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1737697968/kubespray_uyug5r.png" alt="Installing Kubernetes with Kubespray and Adding Worker Nodes (2024V.)">
+                                    
+                                    <h3>Installing Kubernetes with Kubespray and Adding Worker Nodes (2024V.)</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/virtualization/libvirt-virsh/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1755587965/libvirt-virsh_hb18ke.png" alt="Libvirt Complete Guide - Linux Virtualization Management Tool">
+                                    
+                                    <h3>Libvirt Complete Guide - Linux Virtualization Management Tool</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="45">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/cs/spof-blast-radius-isolation-boundary-guide/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1793857991/spof-blast-radius-isolation-boundary-guide_rfomzo.png" alt="Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries">
+                
+            </div>
+            <h3 class="title">Single Point of Failure and Blast Radius: Spares vs Isolation Boundaries</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;A script a person still has to run is still toil. This guide covers how Google SRE defines and measures toil, how sources split runbooks from playbooks, what a runbook records, how to write steps safe to rerun, and the order to automate them in.&quot;%20https://somaz.blog/category/troubleshooting/runbook-toil-automation-guide/%20via%20&#64;&hashtags=runbook,toil,playbook,sre,automation,idempotency,incident-response,troubleshooting,kubernetes,devops"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/troubleshooting/runbook-toil-automation-guide/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile-400.jpg" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/troubleshooting/runbook-toil-automation-guide/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+
+    <p class="copyright">
+      &copy; Somaz. All rights reserved.<br />
+      Articles may not be reproduced or redistributed without permission.
+      Code samples are free to use.
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://somaz.blog/#organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": 600,
+      "height": 315
+  },
+  "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+</script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include extra scripts -->
+
+
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": "From Runbook to Automation: Measuring Toil, Writing Steps Safe to Rerun",
+            "alternativeHeadline": "What counts as toil and how to measure it, why runbook and playbook mean different things from source to source, what a runbook should record, how to write steps that are safe to rerun, and the order to automate them in",
+            "description": "A script a person still has to run is still toil. This guide covers how Google SRE defines and measures toil, how sources split runbooks from playbooks, what a runbook records, how to write steps safe to rerun, and the order to automate them in.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1793848911/runbook-toil-cover_guwmy9.png",
+            "url": "https://somaz.blog/category/troubleshooting/runbook-toil-automation-guide/",
+            "mainEntityOfPage": "https://somaz.blog/category/troubleshooting/runbook-toil-automation-guide/",
+            "articleBody": "Table of Contents Overview Defining and Measuring Toil Runbooks and Playbooks What a Runbook Records Steps That Are Safe to Rerun The Order to Automate In Conclusion References Overview Operating procedures usually live in someone’s head or somewhere in a chat history. Each person does the same job in a slightly different order, and when an outage hits, the first task is finding whoever knows the procedure. A procedure written down as a document is a runbook, and repeating that document by hand is what Google SRE calls toil. This post covers toil and how to measure it as the Google SRE Book and SRE Workbook define it, how the words runbook and playbook are used from one document to the next, what to put in a runbook, how to write steps that are safe to rerun, and what order to automate a runbook in. The Kubespray upgrade procedure itself is covered in Upgrading a Kubernetes Cluster with Kubespray (2026V.), so it is not repeated here. The cases come from building runbooks and automation while running on-premises Kubernetes clusters and EKS. About the examples The runbook form and the scripts in this post are examples written for illustration. They are not production files. The numbers in the example table are also made up for illustration. Defining and Measuring Toil Chapter 5 of the SRE Book, Eliminating Toil, defines toil as the part of running a production service that is manual, repetitive, automatable, tactical, without enduring value, and that tends to grow linearly as the service grows. The book adds that not every task that looks like toil has all of these traits, and that the more of them a task has, the more likely it is to be toil. The Six Characteristics of Toil Characteristic What the book says Manual Includes a person running a script that automates the task. Even if the script is faster than running the steps by hand one at a time, the hands-on time a person spends running it is still toil. Time spent waiting does not count Repetitive Doing something for the first or second time is not toil. Doing it over and over is. Solving a new problem or building a new solution is not toil either Automatable It is toil if a machine could do it as well as a person, or if a design change could make it unnecessary. If human judgment is truly required, it is probably not toil Tactical Responding each time an interrupt comes in, rather than working ahead according to a strategy. Handling pages belongs here No enduring value If the service is in the same state after the work is done, it is probably toil. If the service is permanently better, it is not toil, even if some grungy work was involved O(n) with service growth Work that grows in proportion to service size, traffic or user count. The book holds that a well-designed service can grow by ten times or more with no added work, apart from one-time work to add resources The first row matters most for this post. If a runbook becomes a script and a person still runs that script, the toil has not gone away. The automation order below comes back to this. The Eliminating Toil chapter of the SRE Workbook uses documents like runbooks as its direct example when it explains automatability. A remediation document along the lines of “log in to X, execute this command, check the output, restart Y if you see…” is, it says, essentially pseudocode to someone who can develop software. The chapter goes on to say that fully automating detection and remediation, so that no person has to run the script, is better still, and that submitting a patch so the software no longer breaks that way is better than that. What Does Not Count as Toil The book draws a line: not every job you dislike is toil. Administrative work not directly tied to running the service, such as team meetings, setting and grading goals, status reports and HR paperwork, is classified separately as overhead. Grungy work with enduring value is not toil either. The book’s example is cleaning up a service’s entire alerting configuration. The book divides SRE activity into four kinds: software engineering, systems engineering, toil and overhead. Systems engineering includes documenting a system so that doing it once keeps paying off. Writing and validating a runbook for the first time sits closer to engineering than to toil. Running through that runbook by hand every time is the toil. The 50% Cap on Operational Work The SRE Book sets a public goal of keeping each SRE’s time on operational work, meaning toil, below 50%. The remaining 50% or more should go to engineering projects that reduce future toil or add service features, because toil left alone expands until it can fill 100% of everyone’s time. The ratio is read as an average over several quarters or a year. Toil can come in bursts, so a given quarter may fall below 50% engineering, but the book adds that a long-term average well below it means the team has to work out what went wrong. For SREs on call, toil has a lower bound. The book calculates it like this: People on call On-call weeks per cycle Lower bound on toil 6 2 of 6 weeks (1 primary, 1 secondary) 2/6 = 33% 8 2 of 8 weeks 2/8 = 25% According to the book, a quarterly survey of Google SREs put the average time spent on toil at about 33%. The average hides the extremes, though: some people reported 0% and others 80%. The largest source of toil was interrupts such as non-urgent service-related messages and email, followed by urgent on-call response, then releases and pushes. The Being On-Call chapter of the SRE Book splits the 50% of operational work further: on-call takes no more than 25%, leaving up to another 25% for other operational work. The Workbook words it slightly differently. It says Google limits SRE teams’ operational work, both toil-heavy and not, to 50%. This target may not fit every organization, it says, but putting a cap on toil has benefits in itself, because finding toil and expressing it in numbers is the first step in optimizing how a team spends its time. Units of Measurement and Records The Workbook points out that sizing toil by experience and intuition is not repeatable, objective or transferable. Even within one team, people judge the time lost to toil differently and priorities split. Toil reduction also takes quarters to years, and people and priorities change in the meantime. That is why it calls for objective measurement, and the method it recommends has three steps. Identify the toil. Ideally the stakeholders, including the people actually doing the work, do this. Pick a unit of measure that expresses human effort. Minutes or hours are objective and easy for anyone to understand, and context-switching costs have to be counted too. If the work is scattered, units such as patches applied, tickets handled or manual production changes also work. Keep recording before, during and after the reduction work. Simplify the recording with a tool or script so that measuring does not become toil itself. The same chapter explains that Google SRE teams often file toil as bugs to track it, and rank it by the cost of fixing it and the time saved by doing so. It also says to first ask whether the time saved by removing the toil justifies the time spent developing and maintaining the automation. Work that looks like a loss on time alone may still be worth doing for indirect benefits such as team morale, fewer interrupts, a clearer procedure and fewer outages caused by human error. Below is an example of a table that records toil this way. Task (example) Unit Times per month Hands-on time each Monthly total Issuing a VPN user certificate 1 issued 12 15 min 180 min Checking the cluster after an upgrade 1 check 2 60 min 120 min Checking certificate expiry dates 1 check 4 20 min 80 min All values are made up for illustration. The times in the table are hands-on time, not elapsed time. If a person still runs the script and reads the result after a check becomes a script, that time stays in this table. Only by measuring again how far this column dropped after the change does the effect of the automation show up as a number. Runbooks and Playbooks Some teams keep these two words apart and some mix them. The primary sources do not use them the same way either. The Playbook in Google’s SRE Documents The SRE Book and Workbook chapters cited in this post never use the word runbook, and they call the document that answers an alert a playbook. The SRE Book’s introduction says that when human intervention is needed, thinking through best practices ahead of time and recording them in a “playbook” improves MTTR by roughly 3x over handling things as they come. The hero on-call engineer who can do everything does get the job done, but the practiced on-call engineer armed with a playbook does much better. The On-Call chapter of the Workbook describes playbooks as high-level instructions on how to respond to automated alerts. A playbook explains the alert’s severity and impact, how to debug it, and the actions that can mitigate the impact and fully resolve the alert. In SRE, the chapter says, creating an alert usually means creating a matching playbook entry. So Google’s playbook is a document that covers one alert from investigation through to action. The same chapter does not hide that playbook content is a matter of debate. Even inside Google, one side wants a single entry for all “RPC Errors High” alerts, read by an experienced on-call engineer alongside an architecture diagram, and the other wants step-by-step playbooks to reduce the differences between people and drive down MTTR. The chapter’s advice is for the team to at least agree on the structured details a playbook must have. And if a playbook is a fixed list of commands that the on-call engineer runs every time a given alert fires, it recommends automating it. Runbooks and Playbooks in AWS Well-Architected OPS07-BP03 in AWS Well-Architected defines a runbook as a documented process for achieving a specific outcome. At its simplest, it says, a runbook is a checklist for completing a task. OPS07-BP04 describes a playbook as a document for investigating an incident, scoping its impact and finding its root cause, and it connects the two documents like this: flowchart LR Incident[\"Incident\"] --&gt; Playbook[\"Playbook:investigate, scope impact,find the root cause\"] Playbook --&gt; Found{\"Root causeidentified?\"} Found --&gt;|Yes| Runbook[\"Runbook thatresolves the cause\"] Found --&gt;|No| Escalate[\"Escalation plan\"] How OPS07-BP04 connects a playbook to a runbook. A root cause a playbook finds is in many cases answered with a runbook. Source playbook runbook Google SRE Book, Workbook (the chapters cited here) A document that answers one alert. It holds severity, impact, how to debug, and mitigation and resolution steps together Not used in the cited chapters AWS Well-Architected An investigation document. It finds the scope of impact and the root cause, and hands resolution to a runbook A procedure that produces a specific outcome. At its simplest, a checklist With two sources using the same words differently, it is hard to claim the industry has one settled distinction. The Distinction This Post Uses This post borrows the AWS split. A procedure that produces a set outcome is a runbook, and an investigation order that narrows down a cause is a playbook. This definition is for this post only and is not a standard. In practice, a document that answers one alert usually holds both. In this post’s judgment, what matters more than how many documents you split them into is whether the document separates the steps that look for the cause from the steps that change the system. Investigation steps can run any number of times without changing the system, while execution steps change it, so they need verification and rollback attached. What a Runbook Records Each Field and Its Source The fields below are a list this post put together. The last column names the source behind each one. Field What to write Source Trigger The alert or request this document answers, and a direct link from the alert to the document The Prometheus docs introduce alerting rule annotations as the place for longer information such as an alert description or a runbook link. AWS OPS07-BP04 also says to point from the alert to the playbook Prerequisites The permissions and tools needed, the access path, and the state to confirm before starting AWS OPS07-BP03 says to clearly document special permissions and tools Steps For each step, the command to run, the expected result and how to confirm it This post's own arrangement. AWS says a runbook should clearly state the desired outcome Rollback How to undo each step, with steps that cannot be undone marked separately The SRE Book's Emergency Response chapter describes a case where an untested rollback procedure made an outage longer Stop conditions and escalation Which results mean stop, and who to hand it to AWS says to include error handling and escalation guidance for when something goes wrong. The SRE Book's Managing Incidents chapter recommends setting incident declaration criteria in advance Related dashboards and documents The dashboards used for confirmation, and related playbooks The Workbook's On-Call chapter recommends that pages link to the relevant monitoring consoles Owner The person or team responsible for fixing the document AWS says to list the runbook owner and publish it in a central location Last verified The last date it was run end to end, and who ran it The Workbook's point that playbook details go stale as fast as the production environment changes. For verification, AWS says to have another team member run the runbook Last verified may look like the Last Updated field in the runbook template AWS gives as an example, but it is different. That template has Runbook Author and Last Updated fields, and this post adds last verified as a separate field. The last day a document was edited and the last day it was run end to end can differ, and the latter is what you need during an outage. For setting stop conditions, the incident declaration criteria in the Managing Incidents chapter of the SRE Book are a useful reference. The author’s team declares an incident if any one of three applies. Declare an incident if any one applies Does fixing the problem need another team? Is the outage visible to customers? Is it still unsolved after an hour of concentrated analysis? With a number such as “one hour” written in the runbook’s escalation field, the person following the runbook does not have to work out for themselves when to stop going it alone. The Being On-Call chapter explains that stress on call pushes people to rely on heuristics instead of thinking deliberately. That is why the stopping point gets written down in advance. Example Runbook: Control Plane Certificates Near Expiry Below is an example runbook with those fields filled in. It is not a real production document, and its commands follow the kubeadm certificate management docs. The certificate renewal flow in a Kubespray environment is covered separately in the Kubespray upgrade post. The manual renewal commands in that post restart kubelet, while this example moves the static Pod manifests away and back, as the kubeadm docs describe. # Runbook: control plane certificates near expiry (example) Trigger The check script's \"Certificates do not expire within 30 days\" item is FAIL Owner &lt;team name&gt; Last verified &lt;YYYY-MM-DD&gt;, &lt;who verified it&gt; (run end to end on a rehearsal cluster) Prerequisites sudo on every control plane node, a recent etcd snapshot exists Stop when Any step differs from its expected result: stop and contact &lt;escalation contact&gt; Not finished within 30 minutes: declare an incident 1. Check the expiry dates (changes nothing) Run sudo kubeadm certs check-expiration Expect A certificate has a RESIDUAL TIME shorter than 30 days Otherwise Check the check script's verdict and end this runbook 2. Back up certificates and kubeconfig files (on each control plane node) Run Only if the backup directory does not exist: sudo cp -a /etc/kubernetes /root/k8s-backup-&lt;YYYYMMDD&gt; Expect The backup directory holds the .crt and .key files of the certificate directory (pki/ by kubeadm default, ssl/ on Kubespray) plus admin.conf, controller-manager.conf and scheduler.conf 3. Renew the certificates (on each control plane node) Run sudo kubeadm certs renew all Expect Running check-expiration again shows RESIDUAL TIME extended to nearly 1 year 4. Restart the control plane Pods (one node at a time) Run Temporarily move the static Pod manifests out of /etc/kubernetes/manifests/, then put them back after kubelet takes the Pods down (the kubeadm docs give a 20-second wait) Expect kubectl get --raw='/readyz' finishes without an error 5. Update kubeconfig (if you copy admin.conf to $HOME/.kube/config) Run sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config sudo chown $(id -u):$(id -g) $HOME/.kube/config Expect kubectl get nodes finishes without an error Rollback If trouble follows step 3, restore the certificate and kubeconfig files from the step 2 backup and repeat step 4 On a node with no backup, do not start step 3 Step 1 is an investigation step that changes nothing, and execution starts at step 2. Because step 1 has a branch that ends the runbook when the result differs from what is expected, a false alert can also be judged from the document alone. The kubeadm docs say the control plane Pods must be restarted after renewal, because not every component reloads certificates dynamically. Static Pods are managed by kubelet, so kubectl cannot delete them, which is why the manifests get moved away and back. Dependencies Outside Terraform When I built, with Terraform, the site-to-site VPN gateway on the EKS side that connects to on-premises, the tunnel had three external dependencies that terraform plan could not detect: a static route on the office router, the gateway’s configuration file and its private key. Those three went into the runbook. To keep the private key from sitting in plaintext in state, it was created outside Terraform as a SecureString in AWS SSM Parameter Store, and the gateway looked it up at boot. The Terraform docs explain that when you put a secret directly in configuration, Terraform stores the value in its state and plan files. Keeping the key outside Terraform keeps it out of state, but in exchange plan has no idea whether the key exists. A terraform plan with no changes only means the scope Terraform manages is in the desired state. Whatever lies outside that scope has to be written into the runbook’s prerequisites and check steps, or it gets missed on a rebuild. For reference, the Parameter Store docs currently recommend Secrets Manager for secrets such as database credentials, API keys and tokens, so if you are choosing fresh, start with that document. Runbooks for Handover When first building an EKS production environment, I documented the GitOps manifests and the CI/CD migration procedure as a runbook, so that someone else could take it over or rebuild the same environment. This kind of runbook has a different reader from an incident runbook. An incident runbook is read in a hurry by an on-call engineer who knows the system, while a handover runbook is read slowly by someone seeing the system for the first time. So the prerequisites field grows longer, and things like the dependencies outside Terraform above go there. AWS OPS07-BP03 recommends that once a runbook is written, you have another team member run it and then fix whatever is missing or unclear. The author reads the document while filling in undocumented steps from memory, so the gaps in a runbook show up when someone else runs it. Steps That Are Safe to Rerun Rerunning During an Incident Work gets interrupted a lot during an outage. An SSH session drops, a command times out, the end of the workday comes and it gets handed to the next person. Then comes the moment you cannot be sure whether step 3 ran, or only half ran. If the step is written to be safe to rerun, that is, idempotent, the answer is simple: run it again. If not, you first have to investigate what state the system is in now, and that investigation is added to the outage time. Chapter 7 of the SRE Book, The Evolution of Automation at Google, has a case of this idea in actual use. Prodtest, a test system that checks cluster configuration, paired each failing test with a fix and required each fix to be written idempotently. That let teams run their “fix script” every 15 minutes without worrying about breaking the cluster’s configuration. When a fix failed several times, the automation judged it a failure, stopped and notified the user. The book also admits that the approach had a fundamental flaw that surfaced later. The delay between test, fix and retest produced tests that sometimes passed and sometimes did not, and since not every fix was naturally idempotent, a fix running after a flaky test could leave the system in an inconsistent state. Idempotency does not come by itself. It has to be designed step by step. Write the State, Not the Action The easiest way to write a step that is safe to rerun is to write the desired state instead of the action. “Add” and “increase by one” are actions. “Exists” and “there are 3” are states. Step written as an action If you run it again Step written as a state kubectl create -f cm.yaml Stops with an AlreadyExists error if it exists kubectl apply -f cm.yaml. The file's contents are the desired state ip route add 198.51.100.0/24 via 192.0.2.1 Stops with a File exists error if it exists ip route replace 198.51.100.0/24 via 192.0.2.1. Adds it if missing, changes it if present kubectl scale to the current replica count plus 1 Grows by one on every run kubectl scale deploy/api --replicas=3. It is 3 however many times you run it mkdir /data/backup Stops with an error from the second run on mkdir -p /data/backup Restart kubelet One more restart on every run Start kubelet if it is not active (if systemctl is-active --quiet kubelet fails, systemctl start kubelet) The ip-route(8) man page describes ip route replace as “change or add new one”. The declarative management style of kubectl apply is covered in the Kubernetes docs. A runbook’s execution step is safe to rerun when written as three lines: check, act, recheck. This carries the way Prodtest paired a test with a fix into a single runbook step. Step: the route to 198.51.100.0/24 goes through 192.0.2.1 (example) Check ip route show 198.51.100.0/24 If \"via 192.0.2.1\" appears, skip this step Act sudo ip route replace 198.51.100.0/24 via 192.0.2.1 Recheck ip route show 198.51.100.0/24 If it still differs, stop and escalate Example Script: Issuing and Revoking User Certificates When I built an internal network VPN gateway on-premises using PKI certificates, I automated per-user certificate work, from issuance through revocation, with a shell script safe to rerun. Below is the same approach carried over to Easy-RSA 3.2 as an example. It is not the actual production script. On Easy-RSA 3.2, build-client-full stops with an error rather than overwrite existing request, key or certificate files of the same name. That is safe behavior, but left alone it makes a second run end in failure, so the script checks the state first. From 3.2.2 the revoke command is marked as deprecated (see the help text in the v3.2.2 source), so the script uses its replacement, revoke-issued. Versions matter here: Easy-RSA What it means for this example 3.2.0, 3.2.1 No revoke-issued, so this example assumes 3.2.2 or later 3.2.2, 3.2.3 Revocation leaves pki/reqs/&lt;user&gt;.req and pki/private/&lt;user&gt;.key behind, so build-client-full stops when reissuing under the same name 3.2.4 and later Those two files also move under pki/revoked/, so the same name can be reissued #!/usr/bin/env bash # Example: issue and revoke user certificates on Easy-RSA 3.2. Users already handled are skipped. set -euo pipefail cd \"${EASYRSA_DIR:?EASYRSA_DIR must be set}\" is_revoked() { # index.txt: status R, sixth field /CN=&lt;user&gt; (with EASYRSA_DN=cn_only) awk -F'\\t' -v dn=\"/CN=$1\" '$1 == \"R\" &amp;&amp; $6 == dn {found=1} END {exit !found}' pki/index.txt } issue() { local user=\"$1\" if [ -f \"pki/issued/${user}.crt\" ]; then echo \"skip: ${user} certificate already exists\" return 0 fi ./easyrsa --batch build-client-full \"$user\" nopass } revoke() { local user=\"$1\" if [ -f \"pki/issued/${user}.crt\" ]; then ./easyrsa --batch revoke-issued \"$user\" elif is_revoked \"$user\"; then echo \"skip: ${user} certificate is already revoked\" else echo \"error: ${user} certificate not found\" &gt;&amp;2 return 1 fi ./easyrsa --batch gen-crl } case \"${1:-}\" in issue) issue \"${2:?user name required}\" ;; revoke) revoke \"${2:?user name required}\" ;; *) echo \"usage: $0 issue|revoke &lt;user&gt;\" &gt;&amp;2; exit 2 ;; esac Issuing skips when the certificate file exists. Revoking runs only when an issued certificate exists, and skips when it is already revoked. Anything else stops with an error, so that a mistyped name does not pass as “already handled.” The CRL is regenerated on every revocation. The Easy-RSA docs say the CRL has to be published or sent to the systems that use it, and that until then the certificate is still valid. The example uses nopass, which leaves the private key unencrypted, to keep it short. Where the script leaves the decision to a person If issuing is cut off after creating the key and request files but before signing, there is no certificate file, so the script tries to issue again, and build-client-full stops on the leftover files. Whether to delete the leftover pki/reqs/&lt;user&gt;.req and pki/private/&lt;user&gt;.key at that point is a person's call. Guarding Against Empty Input The most dangerous thing on a rerun is empty input arriving to mean “everything is already done.” Automation: Enabling Failure at Scale, at the end of Chapter 7 of the SRE Book, covers one such accident. flowchart TD Fail[\"Automation decommissioning one rackfails after the Diskerase step\"] --&gt; Rerun[\"The decommission is rerun from the startto find the cause\"] Rerun --&gt; Empty[\"The automation correctly finds that the list ofmachines still needing a disk wipe is empty\"] Empty --&gt; Special[\"The empty list is interpreted asa special value meaning everything\"] Special --&gt; Wipe[\"Nearly all machines in everycolocation facility go to Diskerase\"] classDef bad fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c; class Special,Wipe bad; The sequence of the accident as the SRE Book describes it. According to the book, almost no users noticed. Even so, the team spent nearly two days reinstalling the machines in the affected racks, and over the following weeks it reviewed the automation, added checks including rate limiting, and made the decommission workflow idempotent. The Emergency Response chapter records the same accident again from the viewpoint of the people responding to it. The example scripts in this post also guard against empty input. The certificate script stops immediately through ${2:?} when there is no user name. The check script below treats an empty kubectl get nodes result as a failure, not a pass. If a failed command leaves the output empty and the check concludes “there are no nodes that are not Ready,” it passes without having looked at anything. The Order to Automate In The SRE Book’s Five Levels Chapter 7 of the SRE Book lays out the path automation evolves along in five levels, using database failover as the example. Level The book's example 1. No automation A person manually fails the database master over to another location 2. Externally maintained, system-specific automation An SRE has a failover script in their home directory 3. Externally maintained, generic automation An SRE adds database support to a generic failover script everyone uses 4. Internally maintained, system-specific automation The database ships with its own failover script 5. Systems that need no automation The database notices problems and fails over by itself with no human intervention The five levels differ in who maintains the automation and where. The book points out that automation maintained apart from the core system goes stale, because it does not change when the system does. It also notes that automation that runs rarely has a long feedback cycle, which makes it hard to test and especially fragile, with a cluster failover that happens once every few months as the example. Runbooks are the same. The less often a runbook runs, say once a year, the more its last verified date matters. I also have experience close to the SRE Book’s level 4. After moving a logging stack to an Operator, manual work such as TLS certificate renewal, account provisioning and node replacement became automated through CRD declarations. Declaring a version in the CRD is all a rolling upgrade takes. Those are steps that used to be in a runbook, which moved inside the system and disappeared. In other cases a design change reduced the work itself. Consolidating several on-premises ingress-nginx instances into one Gateway API controller with a Gateway per class also merged the certificates into one wildcard, which cut the manual renewal work once done per app. That matches toil’s automatable characteristic, in the book’s words: “the need for the task could be designed away.” This Post’s Four Stages The four stages below are not in the SRE Book. They are an order this post put together. Where the book’s five levels deal with who maintains the automation, this order deals with how far one runbook leaves human hands. It weaves together the Workbook’s recommendations (use partial automation as an intermediate step toward full automation, start small, automate fixed lists of commands, hand off to a person in unsafe conditions) and AWS OPS07-BP03’s recommendation (automate short, frequently used runbooks first). Stage What a person does What a machine does Condition for moving to the next stage 1. Document Runs every step and makes every judgment Nothing Each step has an expected result, and someone other than the author has followed it to the end 2. Check script Reads the result and runs the action Checks the state and reports PASS or FAIL The same FAIL always gets the same action 3. Automation with an approval step Approves and judges exceptions Detects, drafts the change, then runs and confirms it after approval What a person looks at when approving is fixed, and a machine can check those items 4. Full automation Reviews results and responds to failures Everything from detection through execution and confirmation The last stage. It hands off to a person when it meets an unsafe condition Stage 2 is still toil. By the definition of manual above, the time a person spends running a script and reading its result stays toil. The reason to pass through stage 2 anyway is that the way of checking hardens into code. The automation in stages 3 and 4 ends up using this checking code to judge whether a change succeeded. A Post-Upgrade Cluster Check Script On an on-premises cluster, I scripted the Kubespray upgrade procedure and the post-upgrade cluster health check (nodes, version match, etcd, API Server, DNS, certificate expiry and so on), which cut verification time by 90%. For certificates, an expiry check script and a renewal script were set up to catch them before they expire. The upgrade procedure and commands are in the Kubespray upgrade post. Below, that check is rewritten as an example in the shape of this post’s stage 2 (check script). It is not the actual production script. One check is one function, and each function exits 0 when the state is as desired. Not a single command changes the system, so it is safe to run any number of times. #!/usr/bin/env bash # Example: post-upgrade check. Assumes it runs on a control plane node. set -euo pipefail EXPECTED_VERSION=\"${1:?usage: $0 &lt;kubelet version, e.g. v1.34.3&gt;}\" CERT_DIR=\"${CERT_DIR:-/etc/kubernetes/ssl}\" # Kubespray kube_cert_dir default WARN_DAYS=\"${WARN_DAYS:-30}\" fail=0 check() { # check &lt;description&gt; &lt;function&gt;: PASS if the function exits 0 if \"$2\" &gt;/dev/null 2&gt;&amp;1; then echo \"PASS $1\" else echo \"FAIL $1\" fail=1 fi } nodes_ready() { local out out=\"$(kubectl get nodes --no-headers)\" || return 1 [ -n \"$out\" ] || return 1 # an empty list is a failure, not a pass [ -z \"$(awk '$2 != \"Ready\"' &lt;&lt;&lt;\"$out\")\" ] } versions_match() { local out out=\"$(kubectl get nodes \\ -o jsonpath='{range .items[*]}{.status.nodeInfo.kubeletVersion}{\"\\n\"}{end}')\" || return 1 [ -n \"$out\" ] || return 1 ! grep -qvxF \"$EXPECTED_VERSION\" &lt;&lt;&lt;\"$out\" } apiserver_ready() { kubectl get --raw='/readyz'; } etcd_ready() { etcdctl endpoint health --cluster; } # assumes ETCDCTL_ENDPOINTS, ETCDCTL_CACERT, ETCDCTL_CERT and ETCDCTL_KEY are set dns_resolves() { kubectl exec dnsutils -- nslookup kubernetes.default; } certs_valid() { local crt for crt in \"$CERT_DIR\"/*.crt; do openssl x509 -checkend $((WARN_DAYS * 86400)) -noout -in \"$crt\" || return 1 done } check \"All nodes are Ready\" nodes_ready check \"All kubelets are ${EXPECTED_VERSION}\" versions_match check \"API Server readyz\" apiserver_ready check \"etcd endpoint health\" etcd_ready check \"Cluster DNS lookup\" dns_resolves check \"Certificates do not expire within ${WARN_DAYS} days\" certs_valid exit \"$fail\" /readyz is a path from the Kubernetes API health endpoints docs. The docs say a machine checking these endpoints should judge by the HTTP status code, so the verdict comes from kubectl’s exit code, not the output string. The docs treat individual check paths such as /readyz/etcd as an alpha feature meant for a person debugging rather than a machine, so etcd is checked separately through the exit code of etcdctl endpoint health --cluster. The DNS check assumes the dnsutils Pod from the DNS debugging docs is running. openssl x509 -checkend, per the OpenSSL docs, exits nonzero when the certificate expires within the given seconds. If the certificate directory is empty, the glob stays as written and openssl fails, so this check also treats empty input as failure. The CERT_DIR default /etc/kubernetes/ssl is Kubespray’s kube_cert_dir default. With another installer, the path has to change. What to do on a FAIL stays in the runbook, not the script. The trigger of the certificate runbook earlier is exactly this script’s FAIL. Whether to move from stage 2 to stage 3 is decided by whether each FAIL always gets the same action. Version Upgrades with an Approval Step When managing CI tool images, I built version upgrades in the shape of this post’s stage 3 (automation with an approval step). flowchart LR Detect[\"New upstream version detected(weekly scheduler)\"] --&gt; Mirror[\"MR to mirror it intothe internal registry\"] Mirror --&gt; Rebuild[\"MR to rebuild the shared images andalign the central version variable\"] Rebuild --&gt; Propagate[\"Bulk propagation to therepositories using the image\"] Person[\"Person\"] -.-&gt;|reviews before it runs| Rebuild classDef human fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#5d4037; class Person human; The automated chain. Running the pipelines and approving MRs at some steps were also left to a person, and the high-blast-radius image rebuild runs only after a person has reviewed it. Why a person has to check came out during an automatic upgrade. The minimum helm version that helmfile 1.5.1 requires (3.18.6) was higher than the pinned helm version (3.16.4), and the build pipeline stopped. The automatic upgrade could not detect this dependency in advance. So helm, helmfile and kubectl got a minor-guard: only patch versions within the same minor go up automatically, and minor and major changes go up by hand after compatibility is confirmed. When truly needed, an environment variable can apply a one-time exception. Component upgrades were split into tiers by risk. T1 runs weekly, T2 every two weeks, and T3 monthly with a pre-check added. Detecting new versions, Slack notification and applying in wave order were automated, major versions were blocked from going up automatically, and T3 was set up to roll back entirely on failure. In both cases, what people check is compatibility between tools, major changes and high-blast-radius rebuilds. This post considers all three hard for a machine to judge in advance. Patch versions within the same minor, on the other hand, were left to go up automatically. Chapter 7 of the SRE Book also holds that for well-defined work such as failover, it makes no sense to have a person periodically press an “Allow system to continue to run” button. More approval steps do not make things safer. They belong only where a person has something real to look at when approving. Checks Before an Irreversible Change Automatic upgrades caused one more accident. While automatically upgrading an on-premises Elastic Stack to a new version, the upgrade referenced an image that had appeared in the release feed but had not yet been published to the registry, which produced ImagePullBackOff. I tried to roll back right away, but recovery was blocked because ECK’s Admission Webhook has a policy of refusing downgrades, and the failure spread to the Operator. Analyzing this accident, I concluded that the real risk is not a failed deployment but a state you cannot go back from. If a failed deployment can still return to the previous version, the outage ends quickly. So to guard against a repeat, the upgrade pipeline gained a check that the image exists in the registry, a cluster health check, a snapshot backup warning on major upgrades, and a rollback procedure that takes the Webhook constraint into account. Below is an example built on that pre-check. It is not the actual pipeline code. The real pipeline issues a snapshot backup warning on major upgrades, while the example stops at that point. Image existence is checked with the digest command of crane. #!/usr/bin/env bash # Example: checks before raising a version. If any fails, the change does not start. set -euo pipefail IMAGE=\"${1:?usage: $0 &lt;image:tag&gt; &lt;current-version&gt; &lt;target-version&gt;}\" CURRENT=\"${2:?}\" TARGET=\"${3:?}\" # 1. Does the image actually exist in the registry? (do not trust the release feed alone) crane digest \"$IMAGE\" &gt;/dev/null || { echo \"STOP: could not confirm image ${IMAGE} in the registry\"; exit 1; } # 2. Is the starting state healthy? kubectl get --raw='/readyz' &gt;/dev/null || { echo \"STOP: API Server is not ready\"; exit 1; } # 3. If the major version changes, hand off to a person if [ \"${CURRENT%%.*}\" != \"${TARGET%%.*}\" ]; then echo \"STOP: major version change (${CURRENT} → ${TARGET}). Confirm the snapshot backup and rollback path, then proceed manually\" exit 1 fi echo \"OK: pre-checks passed\" The Assess Risk Within Automation section of the Workbook says to evaluate every action automation performs for safety before running it, and to make handing off to a person the default when automation meets an unsafe condition. The STOPs in the example above are exactly those hand-off points. The same reason is behind marking irreversible steps separately in the runbook’s rollback field. A person should stand in front of an irreversible step, and a machine can handle the checks leading up to it. Decisions Left to People The decisions left to people to the end in these cases fall into three groups. This grouping is this post’s own. What stays with a person Judgments a machine cannot check in advance. Decisions like compatibility between tools, which need information outside what the automation checks ahead of time. Irreversible or high-blast-radius changes. Changes such as major upgrades and shared image rebuilds, which are hard to undo on failure or whose impact spreads widely. The response when automation meets an unsafe condition. A person decides what to do when a pre-check returns STOP. The Monitoring Distributed Systems chapter of the SRE Book states the same standard from the alerting side. A page should require human intelligence in its response, and an alert that only needs a mechanical response should not be a page. A page with a rote, fixed response is a warning sign, and a team unwilling to automate such pages lacks the confidence to clear its technical debt. The Workbook adds that automation should not cost people their understanding of what is going wrong. The further automation reaches, the more what remains for people should be only the work that needs judgment. Conclusion Toil is operational work that is manual, repetitive, automatable, tactical, without enduring value, and growing in proportion to scale. The SRE Book aims to keep it below 50% of an SRE’s time, and the Workbook recommends measuring before and after reduction in objective units such as hands-on time or items handled. That the time a person spends running a script also counts as toil is the yardstick when setting the order of automation. Runbook and playbook are defined differently from source to source. The Google SRE chapters cited in this post call an alert-response document a playbook, and AWS splits the playbook that investigates from the runbook that produces an outcome. Whichever you follow, separate the investigation steps that do not change the system from the execution steps that do, and attach an expected result, a way to confirm it, a rollback and a stop condition to each execution step. The owner and the last verified date are what let you judge whether a document has gone stale. Writing execution steps as a desired state rather than an action, split into check, act and recheck, makes them safe to rerun. Empty input should be handled as “nothing to do” or “failure,” and must never be read as “everything.” Widen automation in the order of document, check script, automation with an approval step and full automation, and keep a person in front of judgments a machine cannot check and changes that cannot be undone. How to record an outage handled with a runbook is covered in the postmortem writing guide, and how to measure the recovery time that runbooks and automation should reduce is covered in the MTTR measurement post. References Google SRE Book - Chapter 5. Eliminating Toil Google SRE Book - Chapter 1. Introduction Google SRE Book - Chapter 6. Monitoring Distributed Systems Google SRE Book - Chapter 7. The Evolution of Automation at Google Google SRE Book - Chapter 11. Being On-Call Google SRE Book - Chapter 13. Emergency Response Google SRE Book - Chapter 14. Managing Incidents Google SRE Workbook - Chapter 6. Eliminating Toil Google SRE Workbook - Chapter 8. On-Call AWS Well-Architected Framework - OPS07-BP03 Use runbooks to perform procedures AWS Well-Architected Framework - OPS07-BP04 Use playbooks to investigate issues Prometheus - Alerting rules Kubernetes - Certificate Management with kubeadm Kubernetes - Kubernetes API health endpoints Kubernetes - Debugging DNS Resolution Kubernetes - Declarative Management of Kubernetes Objects Using Configuration Files ip-route(8) - Linux manual page OpenSSL 3.0 - openssl-x509 Easy-RSA - EasyRSA-Readme Easy-RSA v3.2.2 - easyrsa go-containerregistry - crane digest Terraform - Manage sensitive data in your configuration AWS Systems Manager Parameter Store Upgrading a Kubernetes Cluster with Kubespray (2026V.) How to Write a Postmortem: Blameless Practice and Root Cause Analysis Measuring MTTR: Four Definitions, When to Measure, and the Average Trap",
+            "wordCount": 8106,
+            "inLanguage": "en",
+            "datePublished": "2026-11-09T00:00:00+00:00",
+            "author": {
+    "@type": "Person",
+    "@id": "https://somaz.blog/authors/somaz/#person",
+    "name": "Somaz",
+    "image": "https://somaz.blog/assets/img/uploads/profile-400.jpg",
+    "jobTitle": "DevOps Engineer",
+    "url": "https://somaz.blog/authors/somaz/",
+    "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+,
+            "publisher": { "@id": "https://somaz.blog/#organization" },
+            "articleSection": "Troubleshooting",
+            "keywords": ["runbook","toil","playbook","sre","automation","idempotency","incident-response","troubleshooting","kubernetes","devops"]
+        }
+        </script>
+    </body>
+</html>
