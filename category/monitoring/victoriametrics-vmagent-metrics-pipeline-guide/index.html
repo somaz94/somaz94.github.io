@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MBP83N4Q');</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8725590811736154" crossorigin="anonymous"></script>
+
+
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    
+
+    <title>VictoriaMetrics Guide: Long-Term Prometheus Storage with vmagent | somaz</title>
+    <meta name="description" content="How to build a reliable metrics pipeline with VictoriaMetrics and vmagent, replacing Prometheus memory bottlenecks and Thanos complexity. Covers vmsingle vs ...">
+    <meta name="tdm-reservation" content="1">
+    
+        <meta name="keywords" content="victoriametrics, vmagent, metricsql, tsdb, prometheus, observability, monitoring, kubernetes, grafana, helm, thanos, devops">
+    
+
+    <!-- Social: Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="VictoriaMetrics Guide: Long-Term Prometheus Storage with vmagent | somaz">
+    <meta name="twitter:description" content="How to build a reliable metrics pipeline with VictoriaMetrics and vmagent, replacing Prometheus memory bottlenecks and Thanos complexity. Covers vmsingle vs ...">
+
+    
+        <meta property="twitter:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1794378589/victoriametrics-vmagent-metrics-pipeline-guide_lupwtd.png">
+    
+    
+    
+
+    <!-- Social: Facebook / Open Graph -->
+    <meta property="og:url" content="https://somaz.blog/category/monitoring/victoriametrics-vmagent-metrics-pipeline-guide/">
+    <meta property="og:title" content="VictoriaMetrics Guide: Long-Term Prometheus Storage with vmagent | somaz">
+    <meta property="og:image" content="https://res.cloudinary.com/dkcm26aem/image/upload/v1794378589/victoriametrics-vmagent-metrics-pipeline-guide_lupwtd.png">
+    <meta property="og:description" content="How to build a reliable metrics pipeline with VictoriaMetrics and vmagent, replacing Prometheus memory bottlenecks and Thanos complexity. Covers vmsingle vs ...">
+    <meta property="og:site_name" content="Somaz Tech Blog">
+    <meta property="og:type" content="article">
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-11-17T00:00:00+00:00">
+    <meta property="article:author" content="somaz">
+    
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/assets/img/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/assets/img/icons/apple-touch-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/img/icons/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/assets/img/icons/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/img/icons/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/img/icons/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/img/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/icons/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/img/icons/apple-touch-icon-152x152.png" />
+
+    <!-- Windows 8 Tile Icons -->
+    <meta name="application-name" content="somaz">
+    <meta name="msapplication-TileColor" content="#141414">
+    <meta name="msapplication-square70x70logo" content="smalltile.png" />
+    <meta name="msapplication-square150x150logo" content="mediumtile.png" />
+    <meta name="msapplication-wide310x150logo" content="widetile.png" />
+    <meta name="msapplication-square310x310logo" content="largetile.png" />
+    
+    <!-- Android Lolipop Theme Color -->
+    <meta name="theme-color" content="#141414">
+
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <link rel="canonical" href="https://somaz.blog/category/monitoring/victoriametrics-vmagent-metrics-pipeline-guide/">
+    <link rel="alternate" type="application/rss+xml" title="Somaz Tech Blog" href="https://somaz.blog/feed.xml" />
+
+    <!-- Include extra styles -->
+    
+
+    <!-- JavaScript enabled/disabled -->
+    <script>
+        document.querySelector('html').classList.remove('no-js');
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;700&display=optional" rel="stylesheet">
+
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+
+</head>
+    <body class="has-push-menu">
+        
+
+
+
+
+
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none" version="1.1"><defs><symbol id="icon-menu" viewBox="0 0 1024 1024"><path class="path1" d="M128 213.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 725.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5zM128 469.333h768q17.667 0 30.167 12.5t12.5 30.167-12.5 30.167-30.167 12.5h-768q-17.667 0-30.167-12.5t-12.5-30.167 12.5-30.167 30.167-12.5z"/></symbol><symbol id="icon-search" viewBox="0 0 951 1024"><path class="path1" d="M658.286 475.429q0-105.714-75.143-180.857t-180.857-75.143-180.857 75.143-75.143 180.857 75.143 180.857 180.857 75.143 180.857-75.143 75.143-180.857zM950.857 950.857q0 29.714-21.714 51.429t-51.429 21.714q-30.857 0-51.429-21.714l-196-195.429q-102.286 70.857-228 70.857-81.714 0-156.286-31.714t-128.571-85.714-85.714-128.571-31.714-156.286 31.714-156.286 85.714-128.571 128.571-85.714 156.286-31.714 156.286 31.714 128.571 85.714 85.714 128.571 31.714 156.286q0 125.714-70.857 228l196 196q21.143 21.143 21.143 51.429z"/></symbol><symbol id="icon-close" viewBox="0 0 1000 1000"><path d="M969.8,870.3c27,27.7,27,71.8,0,99.1C955.7,983,937.9,990,920,990c-17.9,0-35.7-7-49.7-20.7L500,599L129.6,969.4C115.6,983,97.8,990,79.9,990s-35.7-7-49.7-20.7c-27-27.3-27-71.4,0-99.1L400.9,500L30.3,129.3c-27-27.3-27-71.4,0-99.1c27.3-27,71.8-27,99.4,0L500,400.9L870.4,30.2c27.7-27,71.8-27,99.4,0c27,27.7,27,71.8,0,99.1L599.1,500L969.8,870.3z"/></symbol><symbol id="icon-twitter" viewBox="0 0 951 1024"><path class="path1" d="M925.714 233.143q-38.286 56-92.571 95.429 0.571 8 0.571 24 0 74.286-21.714 148.286t-66 142-105.429 120.286-147.429 83.429-184.571 31.143q-154.857 0-283.429-82.857 20 2.286 44.571 2.286 128.571 0 229.143-78.857-60-1.143-107.429-36.857t-65.143-91.143q18.857 2.857 34.857 2.857 24.571 0 48.571-6.286-64-13.143-106-63.714t-42-117.429v-2.286q38.857 21.714 83.429 23.429-37.714-25.143-60-65.714t-22.286-88q0-50.286 25.143-93.143 69.143 85.143 168.286 136.286t212.286 56.857q-4.571-21.714-4.571-42.286 0-76.571 54-130.571t130.571-54q80 0 134.857 58.286 62.286-12 117.143-44.571-21.143 65.714-81.143 101.714 53.143-5.714 106.286-28.571z"/></symbol><symbol id="icon-facebook" viewBox="0 0 585 1024"><path class="path1" d="M548 6.857v150.857h-89.714q-49.143 0-66.286 20.571t-17.143 61.714v108h167.429l-22.286 169.143h-145.143v433.714h-174.857v-433.714h-145.714v-169.143h145.714v-124.571q0-106.286 59.429-164.857t158.286-58.571q84 0 130.286 6.857z"/></symbol><symbol id="icon-clock" viewBox="0 0 1000 1000"><path d="M500,10C229.8,10,10,229.8,10,500c0,270.2,219.8,490,490,490c270.2,0,490-219.8,490-490C990,229.8,770.2,10,500,10z M500,910.2c-226.2,0-410.2-184-410.2-410.2c0-226.2,184-410.2,410.2-410.2c226.2,0,410.2,184,410.2,410.2C910.2,726.1,726.2,910.2,500,910.2z M753.1,374c8.2,11.9,5.2,28.1-6.6,36.3L509.9,573.7c-4.4,3.1-9.6,4.6-14.8,4.6c-4.1,0-8.3-1-12.1-3c-8.6-4.5-14-13.4-14-23.1V202.5c0-14.4,11.7-26.1,26.1-26.1c14.4,0,26.1,11.7,26.1,26.1v300l195.6-135.1C728.7,359.2,744.9,362.1,753.1,374z"/></symbol><symbol id="icon-calendar" viewBox="0 0 1000 1000"><path d="M920,500v420H80V500H920 M990,430H10v490c0,38.7,31.3,70,70,70h840c38.7,0,70-31.3,70-70V430L990,430z"/><path d="M850,80v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80H360v105c0,57.9-47.2,105-105,105c-58,0-105-47.1-105-105V80C72.8,80,10,142.7,10,220v140h980V220C990,142.7,927.2,80,850,80z"/><path d="M255,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C290,25.8,274.3,10,255,10z"/><path d="M745,10c-19.3,0-35,15.8-35,35v140c0,19.2,15.7,35,35,35c19.3,0,35-15.8,35-35V45C780,25.8,764.3,10,745,10z"/></symbol><symbol id="icon-github" viewBox="0 0 12 14"><path d="M6 1q1.633 0 3.012 0.805t2.184 2.184 0.805 3.012q0 1.961-1.145 3.527t-2.957 2.168q-0.211 0.039-0.312-0.055t-0.102-0.234q0-0.023 0.004-0.598t0.004-1.051q0-0.758-0.406-1.109 0.445-0.047 0.801-0.141t0.734-0.305 0.633-0.52 0.414-0.82 0.16-1.176q0-0.93-0.617-1.609 0.289-0.711-0.062-1.594-0.219-0.070-0.633 0.086t-0.719 0.344l-0.297 0.187q-0.727-0.203-1.5-0.203t-1.5 0.203q-0.125-0.086-0.332-0.211t-0.652-0.301-0.664-0.105q-0.352 0.883-0.062 1.594-0.617 0.68-0.617 1.609 0 0.664 0.16 1.172t0.41 0.82 0.629 0.523 0.734 0.305 0.801 0.141q-0.305 0.281-0.383 0.805-0.164 0.078-0.352 0.117t-0.445 0.039-0.512-0.168-0.434-0.488q-0.148-0.25-0.379-0.406t-0.387-0.187l-0.156-0.023q-0.164 0-0.227 0.035t-0.039 0.090 0.070 0.109 0.102 0.094l0.055 0.039q0.172 0.078 0.34 0.297t0.246 0.398l0.078 0.18q0.102 0.297 0.344 0.48t0.523 0.234 0.543 0.055 0.434-0.027l0.18-0.031q0 0.297 0.004 0.691t0.004 0.426q0 0.141-0.102 0.234t-0.312 0.055q-1.812-0.602-2.957-2.168t-1.145-3.527q0-1.633 0.805-3.012t2.184-2.184 3.012-0.805zM2.273 9.617q0.023-0.055-0.055-0.094-0.078-0.023-0.102 0.016-0.023 0.055 0.055 0.094 0.070 0.047 0.102-0.016zM2.516 9.883q0.055-0.039-0.016-0.125-0.078-0.070-0.125-0.023-0.055 0.039 0.016 0.125 0.078 0.078 0.125 0.023zM2.75 10.234q0.070-0.055 0-0.148-0.062-0.102-0.133-0.047-0.070 0.039 0 0.141t0.133 0.055zM3.078 10.562q0.062-0.062-0.031-0.148-0.094-0.094-0.156-0.023-0.070 0.062 0.031 0.148 0.094 0.094 0.156 0.023zM3.523 10.758q0.023-0.086-0.102-0.125-0.117-0.031-0.148 0.055t0.102 0.117q0.117 0.047 0.148-0.047zM4.016 10.797q0-0.102-0.133-0.086-0.125 0-0.125 0.086 0 0.102 0.133 0.086 0.125 0 0.125-0.086zM4.469 10.719q-0.016-0.086-0.141-0.070-0.125 0.023-0.109 0.117t0.141 0.062 0.109-0.109z"></path></symbol><symbol id="icon-medium" viewBox="0 0 1000 1000"><path d="M336.5,240.2v641.5c0,9.1-2.3,16.9-6.8,23.2s-11.2,9.6-20,9.6c-6.2,0-12.2-1.5-18-4.4L37.3,782.7c-7.7-3.6-14.1-9.8-19.4-18.3S10,747.4,10,739V115.5c0-7.3,1.8-13.5,5.5-18.6c3.6-5.1,8.9-7.7,15.9-7.7c5.1,0,13.1,2.7,24.1,8.2l279.5,140C335.9,238.6,336.5,239.5,336.5,240.2L336.5,240.2z M371.5,295.5l292,473.6l-292-145.5V295.5z M990,305.3v576.4c0,9.1-2.6,16.5-7.7,22.1c-5.1,5.7-12,8.5-20.8,8.5s-17.3-2.4-25.7-7.1L694.7,784.9L990,305.3z M988.4,239.7c0,1.1-46.8,77.6-140.3,229.4C754.6,621,699.8,709.8,683.8,735.7L470.5,389l177.2-288.2c6.2-10.2,15.7-15.3,28.4-15.3c5.1,0,9.8,1.1,14.2,3.3l295.9,147.7C987.6,237.1,988.4,238.2,988.4,239.7L988.4,239.7z"/></symbol><symbol id="icon-instagram" viewBox="0 0 489.84 489.84"><path d="M249.62,50.46c65.4,0,73.14.25,99,1.43C372.47,53,385.44,57,394.07,60.32a75.88,75.88,0,0,1,28.16,18.32,75.88,75.88,0,0,1,18.32,28.16c3.35,8.63,7.34,21.6,8.43,45.48,1.18,25.83,1.43,33.57,1.43,99s-0.25,73.14-1.43,99c-1.09,23.88-5.08,36.85-8.43,45.48a81.11,81.11,0,0,1-46.48,46.48c-8.63,3.35-21.6,7.34-45.48,8.43-25.82,1.18-33.57,1.43-99,1.43s-73.15-.25-99-1.43c-23.88-1.09-36.85-5.08-45.48-8.43A75.88,75.88,0,0,1,77,423.86,75.88,75.88,0,0,1,58.69,395.7c-3.35-8.63-7.34-21.6-8.43-45.48-1.18-25.83-1.43-33.57-1.43-99s0.25-73.14,1.43-99c1.09-23.88,5.08-36.85,8.43-45.48A75.88,75.88,0,0,1,77,78.64a75.88,75.88,0,0,1,28.16-18.32c8.63-3.35,21.6-7.34,45.48-8.43,25.83-1.18,33.57-1.43,99-1.43m0-44.13c-66.52,0-74.86.28-101,1.47s-43.87,5.33-59.45,11.38A120.06,120.06,0,0,0,45.81,47.44,120.06,120.06,0,0,0,17.56,90.82C11.5,106.4,7.36,124.2,6.17,150.27s-1.47,34.46-1.47,101,0.28,74.86,1.47,101,5.33,43.87,11.38,59.45a120.06,120.06,0,0,0,28.25,43.38,120.06,120.06,0,0,0,43.38,28.25c15.58,6.05,33.38,10.19,59.45,11.38s34.46,1.47,101,1.47,74.86-.28,101-1.47,43.87-5.33,59.45-11.38a125.24,125.24,0,0,0,71.63-71.63c6.05-15.58,10.19-33.38,11.38-59.45s1.47-34.46,1.47-101-0.28-74.86-1.47-101-5.33-43.87-11.38-59.45a120.06,120.06,0,0,0-28.25-43.38,120.06,120.06,0,0,0-43.38-28.25C394.47,13.13,376.67,9,350.6,7.8s-34.46-1.47-101-1.47h0Z" transform="translate(-4.7 -6.33)" /><path d="M249.62,125.48A125.77,125.77,0,1,0,375.39,251.25,125.77,125.77,0,0,0,249.62,125.48Zm0,207.41a81.64,81.64,0,1,1,81.64-81.64A81.64,81.64,0,0,1,249.62,332.89Z" transform="translate(-4.7 -6.33)"/><circle cx="375.66" cy="114.18" r="29.39" /></symbol><symbol id="icon-linkedin" viewBox="0 0 12 14"><path d="M2.727 4.883v7.742h-2.578v-7.742h2.578zM2.891 2.492q0.008 0.57-0.395 0.953t-1.059 0.383h-0.016q-0.641 0-1.031-0.383t-0.391-0.953q0-0.578 0.402-0.957t1.051-0.379 1.039 0.379 0.398 0.957zM12 8.187v4.437h-2.57v-4.141q0-0.82-0.316-1.285t-0.988-0.465q-0.492 0-0.824 0.27t-0.496 0.668q-0.086 0.234-0.086 0.633v4.32h-2.57q0.016-3.117 0.016-5.055t-0.008-2.313l-0.008-0.375h2.57v1.125h-0.016q0.156-0.25 0.32-0.438t0.441-0.406 0.68-0.34 0.895-0.121q1.336 0 2.148 0.887t0.813 2.598z"></path></symbol><symbol id="icon-heart" viewBox="0 0 34 30"><path d="M17,29.7 L16.4,29.2 C3.5,18.7 0,15 0,9 C0,4 4,0 9,0 C13.1,0 15.4,2.3 17,4.1 C18.6,2.3 20.9,0 25,0 C30,0 34,4 34,9 C34,15 30.5,18.7 17.6,29.2 L17,29.7 Z M9,2 C5.1,2 2,5.1 2,9 C2,14.1 5.2,17.5 17,27.1 C28.8,17.5 32,14.1 32,9 C32,5.1 28.9,2 25,2 C21.5,2 19.6,4.1 18.1,5.8 L17,7.1 L15.9,5.8 C14.4,4.1 12.5,2 9,2 Z" id="Shape"></path></symbol><symbol id="icon-arrow-right" viewBox="0 0 25.452 25.452"><path d="M4.471,24.929v-2.004l12.409-9.788c0.122-0.101,0.195-0.251,0.195-0.411c0-0.156-0.073-0.31-0.195-0.409L4.471,2.526V0.522c0-0.2,0.115-0.384,0.293-0.469c0.18-0.087,0.396-0.066,0.552,0.061l15.47,12.202c0.123,0.1,0.195,0.253,0.195,0.409c0,0.16-0.072,0.311-0.195,0.411L5.316,25.34c-0.155,0.125-0.372,0.147-0.552,0.061C4.586,25.315,4.471,25.13,4.471,24.929z"/></symbol><symbol id="icon-star" viewBox="0 0 48 48"><path fill="currentColor" d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"/><path fill="#ffffff" d="M24,11l3.898,7.898l8.703,1.301l-6.301,6.102l1.5,8.699L24,30.898L16.199,35l1.5-8.699l-6.301-6.102  l8.703-1.301L24,11z"/></symbol><symbol id="icon-read" viewBox="0 0 32 32"><path fill="currentColor" d="M29,4H3C1.343,4,0,5.343,0,7v18c0,1.657,1.343,3,3,3h10c0,0.552,0.448,1,1,1h4c0.552,0,1-0.448,1-1h10  c1.657,0,3-1.343,3-3V7C32,5.343,30.657,4,29,4z M29,5v20H18.708c-0.618,0-1.236,0.146-1.789,0.422l-0.419,0.21V5H29z M15.5,5  v20.632l-0.419-0.21C14.528,25.146,13.91,25,13.292,25H3V5H15.5z M31,25c0,1.103-0.897,2-2,2H18v1h-4v-1H3c-1.103,0-2-0.897-2-2V7  c0-0.737,0.405-1.375,1-1.722V25c0,0.552,0.448,1,1,1h10.292c0.466,0,0.925,0.108,1.342,0.317l0.919,0.46  c0.141,0.07,0.294,0.106,0.447,0.106c0.153,0,0.306-0.035,0.447-0.106l0.919-0.46C17.783,26.108,18.242,26,18.708,26H29  c0.552,0,1-0.448,1-1V5.278C30.595,5.625,31,6.263,31,7V25z M6,12.5C6,12.224,6.224,12,6.5,12h5c0.276,0,0.5,0.224,0.5,0.5  S11.776,13,11.5,13h-5C6.224,13,6,12.776,6,12.5z M6,14.5C6,14.224,6.224,14,6.5,14h5c0.276,0,0.5,0.224,0.5,0.5S11.776,15,11.5,15  h-5C6.224,15,6,14.776,6,14.5z M6,16.5C6,16.224,6.224,16,6.5,16h5c0.276,0,0.5,0.224,0.5,0.5S11.776,17,11.5,17h-5  C6.224,17,6,16.776,6,16.5z M20,12.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,13,25.5,13h-5  C20.224,13,20,12.776,20,12.5z M20,14.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,15,25.5,15h-5  C20.224,15,20,14.776,20,14.5z M20,16.5c0-0.276,0.224-0.5,0.5-0.5h5c0.276,0,0.5,0.224,0.5,0.5S25.776,17,25.5,17h-5  C20.224,17,20,16.776,20,16.5z"></path></symbol><symbol id="icon-tistory" viewBox="0 0 24 24"><path d="M4 4h16v3h-6v13h-4V7H4V4z"/></symbol></defs></svg>
+
+        <header class="bar-header">
+    <a id="menu" role="button">
+        <svg id="open" class="icon-menu"><use xlink:href="#icon-menu"></use></svg>
+    </a>
+    <h1 class="logo">
+        <a href="/">
+            
+                somaz <span class="version">v3.1.2</span>
+            
+        </a>
+    </h1>
+    <a id="search" class="dosearch" role="button">
+        <svg class="icon-search"><use xlink:href="#icon-search"></use></svg>
+    </a>
+    <nav class="bar-links" aria-label="Author">
+        <a href="/resume/">Resume</a>
+        <a href="/career/">Career</a>
+        <a href="/portfolio/">Portfolio</a>
+    </nav>
+    
+        <a href="https://github.com/thiagorossener/jekflix-template" class="get-theme" role="button">
+            Get this theme!
+        </a>
+    
+</header>
+
+<div id="mask" class="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <nav id="navigation">
+      <h2>Menu</h2>
+      <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+    </nav>
+</aside>
+
+<div class="search-wrapper">
+    <div class="search-form">
+        <input type="text" class="search-field" placeholder="Search">
+        <svg class="icon-remove-sign"><use xlink:href="#icon-close"></use></svg>
+        <ul class="search-results search-list"></ul>
+    </div>
+</div>
+
+
+
+        <section class="post two-columns">
+            <article role="article" class="post-content">
+                <p class="post-info">
+                    
+                        <svg class="icon-calendar" id="date"><use xlink:href="#icon-calendar"></use></svg>
+                        <time class="date" datetime="2026-11-17T00:00:00+00:00">
+                            
+
+
+November 17, 2026
+
+                        </time>
+                    
+                    <svg id="clock" class="icon-clock"><use xlink:href="#icon-clock"></use></svg>
+                    <span>14 min to read</span>
+                </p>
+                <h1 class="post-title">VictoriaMetrics Guide: Long-Term Prometheus Storage with vmagent</h1>
+                <p class="post-subtitle">Replace Prometheus memory bottlenecks and Thanos operational complexity with vmsingle, lossless disk-buffered vmagent ingestion, and native MetricsQL.</p>
+
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/v1794378589/victoriametrics-vmagent-metrics-pipeline-guide_lupwtd.png" alt="VictoriaMetrics Guide: Long-Term Prometheus Storage with vmagent" class="post-cover">
+                
+
+                <!-- Pagination links -->
+
+
+
+                <!-- Add your table of contents here -->
+
+
+                <p><br /></p>
+
+<hr />
+
+<h2 id="overview">Overview</h2>
+
+<p>As Kubernetes cluster environments scale up, the volume of collected time-series metrics grows exponentially. Ingesting and retaining metrics from hundreds of nodes and tens of thousands of pods with a single Prometheus instance introduces chronic operational risks: high memory consumption leading to OOM-Kills, local disk I/O bottlenecks during long retention periods, and degrading query latencies. While Thanos is frequently adopted as an object storage-backed long-term storage solution, managing its distributed components—Sidecar, Store Gateway, Querier, Compactor, and Receiver—introduces operational complexity and infrastructure maintenance overhead.</p>
+
+<p>VictoriaMetrics is an ultra-lightweight, high-performance time-series database (TSDB) engineered to solve these operational pain points. Built with 100% Prometheus scrape configuration compatibility and PromQL support, it consumes 4 to 10 times less memory than Prometheus while delivering storage compression rates of 0.4 to 0.8 bytes per sample. Furthermore, paired with its lightweight collector <code class="language-plaintext highlighter-rouge">vmagent</code>, it enables a zero-loss metric ingestion pipeline backed by local disk queue buffering.</p>
+
+<p>This guide explores the core architecture of VictoriaMetrics (<code class="language-plaintext highlighter-rouge">vmsingle</code> vs Cluster), building a resilient metric pipeline with <code class="language-plaintext highlighter-rouge">vmagent</code>, production Helm deployments and seamless Grafana integration, MetricsQL query enhancements, non-disruptive S3 snapshot backups with <code class="language-plaintext highlighter-rouge">vmbackup</code>, and high-cardinality diagnosis with TSDB tuning.</p>
+
+<p><br /></p>
+
+<h2 id="prometheus-limitations-and-victoriametrics-solutions">Prometheus Limitations and VictoriaMetrics Solutions</h2>
+
+<h3 id="memory-bottlenecks-and-disk-io-pressure-in-large-clusters">Memory Bottlenecks and Disk I/O Pressure in Large Clusters</h3>
+
+<p>Prometheus relies on in-memory chunks and local TSDB block structures to deliver high read and write performance. However, this architecture faces structural limits in dynamic, large-scale container environments. When thousands of ephemeral pods churn continuously, newly generated time series explode, driving memory utilization sharply upward. In particular, periodic TSDB block compaction cycles and heavy long-range queries cause memory spikes that routinely trigger pod OOM-Kills.</p>
+
+<p>In addition, Prometheus persists data directly to a single node’s local disk. Retaining metrics over several months for capacity planning or compliance escalates disk capacity requirements and I/O load beyond what a single local volume can reliably sustain.</p>
+
+<h3 id="operational-simplicity-and-storage-efficiency-over-thanos">Operational Simplicity and Storage Efficiency over Thanos</h3>
+
+<p>As discussed in earlier posts on <a href="/category/monitoring/prometheus-thanos/">What is Prometheus and Thanos?</a> and <a href="/category/monitoring/prometheus-thanos-install/">Installing Prometheus and Thanos with Helm</a>, Thanos offloads metrics to object storage via Prometheus sidecars to provide long-term retention and global query federation. However, managing Thanos in production requires operating multiple decoupled services. Engineering teams must resolve inter-service communication latencies, debug Compactor block overlap failures, and tune Store Gateway index cache memory.</p>
+
+<p>VictoriaMetrics delivers equal or superior performance while drastically reducing operational surface area. In single-node deployments, <code class="language-plaintext highlighter-rouge">vmsingle</code> runs as a standalone Go binary without external dependencies. In distributed environments, VictoriaMetrics Cluster divides responsibilities into three clear roles: <code class="language-plaintext highlighter-rouge">vmstorage</code>, <code class="language-plaintext highlighter-rouge">vminsert</code>, and <code class="language-plaintext highlighter-rouge">vmselect</code>. Its specialized block compression algorithm achieves 0.4 to 0.8 bytes per sample, cutting storage footprint and disk costs to less than half of Prometheus.</p>
+
+<p><br /></p>
+
+<div class="table-container">
+  <table class="table-modern">
+    <thead>
+      <tr>
+        <th>Dimension</th>
+        <th>Prometheus</th>
+        <th>Thanos</th>
+        <th>VictoriaMetrics</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Architecture</strong></td>
+        <td>Monolithic single-node instance</td>
+        <td>Modular distributed microservices (Sidecar, Querier, Store, Compactor)</td>
+        <td>Single binary (<code>vmsingle</code>) or 3 distinct components (Cluster)</td>
+      </tr>
+      <tr>
+        <td><strong>Memory Footprint</strong></td>
+        <td>High (churn causes frequent OOMs)</td>
+        <td>High (Prometheus scraper + Store Gateway cache)</td>
+        <td>4–10x lower memory usage than Prometheus</td>
+      </tr>
+      <tr>
+        <td><strong>Storage Efficiency</strong></td>
+        <td>1.5–2.5 bytes / sample</td>
+        <td>Prometheus TSDB block format in object storage</td>
+        <td>0.4–0.8 bytes / sample (custom block compression)</td>
+      </tr>
+      <tr>
+        <td><strong>Ingestion Buffering</strong></td>
+        <td>Drops samples when memory queue fills</td>
+        <td>Prometheus memory buffer dependent</td>
+        <td>Persistent local disk buffer in <code>vmagent</code></td>
+      </tr>
+      <tr>
+        <td><strong>Query Language</strong></td>
+        <td>PromQL</td>
+        <td>PromQL</td>
+        <td>PromQL + extended MetricsQL</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p><br /></p>
+
+<h2 id="victoriametrics-core-architecture-and-components">VictoriaMetrics Core Architecture and Components</h2>
+
+<h3 id="single-binary-all-in-one-mode-vmsingle">Single-Binary All-in-One Mode: vmsingle</h3>
+
+<p>VictoriaMetrics supports two deployment models depending on cluster size and operational requirements: <code class="language-plaintext highlighter-rouge">vmsingle</code> and Cluster mode. <code class="language-plaintext highlighter-rouge">vmsingle</code> is an all-in-one architecture where ingestion, storage, and query processing execute within a single Go process.</p>
+
+<ul>
+  <li><strong>Ingestion Throughput:</strong> Easily processes over 1,000,000 samples per second on a single modest instance.</li>
+  <li><strong>Operational Simplicity:</strong> Stores time-series data directly into a local directory with zero external coordination or database dependencies.</li>
+  <li><strong>Target Use Cases:</strong> Optimized for individual Kubernetes clusters spanning dozens to hundreds of nodes, staging and testing environments, and edge infrastructure monitoring.</li>
+</ul>
+
+<h3 id="distributed-cluster-mode-vmstorage-vminsert-and-vmselect">Distributed Cluster Mode: vmstorage, vminsert, and vmselect</h3>
+
+<p>For large enterprise environments, multi-cluster architectures, or multi-tenant setups requiring horizontal scalability, VictoriaMetrics Cluster mode separates storage from compute, allowing each tier to scale independently.</p>
+
+<ul>
+  <li><strong>vmstorage:</strong> Stateful nodes responsible for storing raw time-series data, indexing label sets, and managing disk I/O.</li>
+  <li><strong>vminsert:</strong> Stateless ingestion proxies that receive <code class="language-plaintext highlighter-rouge">remote_write</code> payloads from <code class="language-plaintext highlighter-rouge">vmagent</code> or Prometheus and distribute samples across <code class="language-plaintext highlighter-rouge">vmstorage</code> nodes using consistent hash routing.</li>
+  <li><strong>vmselect:</strong> Stateless query routers that process PromQL and MetricsQL requests from Grafana or alerting systems, fetching and aggregating partial results from <code class="language-plaintext highlighter-rouge">vmstorage</code> nodes.</li>
+</ul>
+
+<div style="width: 100%; margin: 20px auto;">
+  <div class="mermaid">
+flowchart TD
+    subgraph Ingestion["Ingestion Tier"]
+        VMAGENT["vmagent (Local Disk Buffer)"]
+    end
+
+    subgraph Cluster["VictoriaMetrics Cluster"]
+        VMINSERT["vminsert (Stateless Ingestion Router)"]
+        VMSELECT["vmselect (Stateless Query Engine)"]
+        
+        subgraph StorageTier["Stateful Storage Tier"]
+            STORAGE1["vmstorage-0"]
+            STORAGE2["vmstorage-1"]
+            STORAGE3["vmstorage-N"]
+        end
+    end
+
+    subgraph Visualization["Visualization &amp; Alerting"]
+        GRAFANA["Grafana / Alertmanager"]
+    end
+
+    VMAGENT --&gt;|remote_write HTTP API| VMINSERT
+    VMINSERT --&gt;|Hash-based Routing| STORAGE1
+    VMINSERT --&gt;|Hash-based Routing| STORAGE2
+    VMINSERT --&gt;|Hash-based Routing| STORAGE3
+
+    GRAFANA --&gt;|PromQL / MetricsQL| VMSELECT
+    VMSELECT --&gt;|Query Aggregation| STORAGE1
+    VMSELECT --&gt;|Query Aggregation| STORAGE2
+    VMSELECT --&gt;|Query Aggregation| STORAGE3
+  </div>
+</div>
+
+<div class="diagram-caption">
+  <p>VictoriaMetrics Cluster architecture: decoupled stateless ingestion (vminsert) and query (vmselect) tiers scaling independently above stateful storage nodes (vmstorage)</p>
+</div>
+
+<p>This modular separation prevents resource contention. When write ingestion traffic surges, only <code class="language-plaintext highlighter-rouge">vminsert</code> replicas need to scale. When complex dashboards run heavy queries simultaneously, only <code class="language-plaintext highlighter-rouge">vmselect</code> replicas need to scale, protecting write performance from query-driven memory pressure.</p>
+
+<p><br /></p>
+
+<h2 id="lightweight-ingestion-and-lossless-pipelines-with-vmagent">Lightweight Ingestion and Lossless Pipelines with vmagent</h2>
+
+<h3 id="full-prometheus-scrape-compatibility-and-minimal-footprint">Full Prometheus Scrape Compatibility and Minimal Footprint</h3>
+
+<p><code class="language-plaintext highlighter-rouge">vmagent</code> is a purpose-built, ultra-lightweight agent that handles metric scraping and <code class="language-plaintext highlighter-rouge">remote_write</code> forwarding. Because it natively supports Prometheus <code class="language-plaintext highlighter-rouge">scrape_configs</code> syntax alongside <code class="language-plaintext highlighter-rouge">ServiceMonitor</code> and <code class="language-plaintext highlighter-rouge">PodMonitor</code> Custom Resource Definitions (CRDs), existing scrape configurations can be transferred directly without modifying a single line of YAML.</p>
+
+<p>Unlike a full Prometheus server that combines scraping, indexing, query execution, and TSDB compaction—consuming gigabytes of memory—<code class="language-plaintext highlighter-rouge">vmagent</code> strips away the query engine. Scraping hundreds of thousands of targets requires only tens of megabytes of RAM.</p>
+
+<h3 id="local-disk-buffering-and-zero-loss-mechanism">Local Disk Buffering and Zero-Loss Mechanism</h3>
+
+<p>The standout capability of <code class="language-plaintext highlighter-rouge">vmagent</code> is its integrated local disk queue buffer (<code class="language-plaintext highlighter-rouge">-remoteWrite.tmpDataPath</code>). When temporary network partitions occur or the remote storage endpoint becomes unreachable, standard Prometheus drops incoming samples once its in-memory queue reaches capacity. In contrast, <code class="language-plaintext highlighter-rouge">vmagent</code> spools undelivered samples to local disk.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">extraArgs</span><span class="pi">:</span>
+  <span class="na">remoteWrite.tmpDataPath</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/vmagent-remotewrite-data"</span>
+  <span class="na">remoteWrite.maxDiskUsagePerURL</span><span class="pi">:</span> <span class="s2">"</span><span class="s">10737418240"</span> <span class="c1"># Max 10 GiB buffer per destination URL</span>
+  <span class="na">remoteWrite.queues</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8"</span>
+  <span class="na">remoteWrite.flushInterval</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1s"</span>
+</code></pre></div></div>
+
+<p>Once connectivity to the remote storage backend is restored, <code class="language-plaintext highlighter-rouge">vmagent</code> replays the buffered data from disk in chronological sequence in the background, guaranteeing lossless metrics ingestion without operator intervention.</p>
+
+<h3 id="multi-tenancy-and-multi-destination-remote_write-routing">Multi-Tenancy and Multi-Destination remote_write Routing</h3>
+
+<p><code class="language-plaintext highlighter-rouge">vmagent</code> natively supports replicating or conditionally routing metrics to multiple destination endpoints from a single collection pipeline:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">remoteWrite</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://vmsingle-victoria-metrics-single-server.monitoring.svc.cluster.local:8428/api/v1/write"</span>
+  <span class="pi">-</span> <span class="na">url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://backup-vminsert.monitoring.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"</span>
+    <span class="na">urlRelabelConfig</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">action</span><span class="pi">:</span> <span class="s">keep</span>
+        <span class="na">source_labels</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">__name__</span><span class="pi">]</span>
+        <span class="na">regex</span><span class="pi">:</span> <span class="s2">"</span><span class="s">(node_.*|container_.*)"</span>
+</code></pre></div></div>
+
+<p>Using <code class="language-plaintext highlighter-rouge">urlRelabelConfig</code>, operators can forward all metrics to an operational <code class="language-plaintext highlighter-rouge">vmsingle</code> instance while replicating only essential host and container metrics to a secondary long-term storage cluster.</p>
+
+<p><br /></p>
+
+<h2 id="production-helm-deployment-and-seamless-grafana-integration">Production Helm Deployment and Seamless Grafana Integration</h2>
+
+<h3 id="deploying-vmsingle-and-vmagent-with-helm-charts">Deploying vmsingle and vmagent with Helm Charts</h3>
+
+<p>Deploying VictoriaMetrics on Kubernetes is streamlined using the official Helm charts repository:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm repo add vm https://victoriametrics.github.io/helm-charts/
+helm repo update
+</code></pre></div></div>
+
+<p>Create a production-tuned <code class="language-plaintext highlighter-rouge">values-vmsingle.yaml</code> manifest configuring retention periods, persistent volume storage, and memory limits:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">server</span><span class="pi">:</span>
+  <span class="na">image</span><span class="pi">:</span>
+    <span class="na">tag</span><span class="pi">:</span> <span class="s2">"</span><span class="s">v1.106.1"</span>
+  <span class="na">retentionPeriod</span><span class="pi">:</span> <span class="s2">"</span><span class="s">12M"</span> <span class="c1"># 12-month retention period</span>
+  <span class="na">persistentVolume</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="kc">true</span>
+    <span class="na">size</span><span class="pi">:</span> <span class="s">150Gi</span>
+    <span class="na">storageClassName</span><span class="pi">:</span> <span class="s2">"</span><span class="s">gp3"</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">4"</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">8Gi"</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1"</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2Gi"</span>
+  <span class="na">extraArgs</span><span class="pi">:</span>
+    <span class="na">memory.allowedPercent</span><span class="pi">:</span> <span class="s2">"</span><span class="s">80"</span>
+    <span class="na">search.maxQueryDuration</span><span class="pi">:</span> <span class="s2">"</span><span class="s">30s"</span>
+    <span class="na">search.maxConcurrentRequests</span><span class="pi">:</span> <span class="s2">"</span><span class="s">16"</span>
+</code></pre></div></div>
+
+<p>Deploy the <code class="language-plaintext highlighter-rouge">vmsingle</code> server into the <code class="language-plaintext highlighter-rouge">monitoring</code> namespace:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm upgrade <span class="nt">--install</span> vmsingle vm/victoria-metrics-single <span class="se">\</span>
+  <span class="nt">--namespace</span> monitoring <span class="se">\</span>
+  <span class="nt">--create-namespace</span> <span class="se">\</span>
+  <span class="nt">-f</span> values-vmsingle.yaml
+</code></pre></div></div>
+
+<p>Next, deploy <code class="language-plaintext highlighter-rouge">vmagent</code> configured to scrape cluster metrics and forward them to the <code class="language-plaintext highlighter-rouge">vmsingle</code> service endpoint:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm upgrade <span class="nt">--install</span> vmagent vm/victoria-metrics-agent <span class="se">\</span>
+  <span class="nt">--namespace</span> monitoring <span class="se">\</span>
+  <span class="nt">--set</span> remoteWrite[0].url<span class="o">=</span><span class="s2">"http://vmsingle-victoria-metrics-single-server.monitoring.svc.cluster.local:8428/api/v1/write"</span> <span class="se">\</span>
+  <span class="nt">--set</span> extraArgs.remoteWrite<span class="se">\.</span><span class="nv">tmpDataPath</span><span class="o">=</span><span class="s2">"/vmagent-remotewrite-data"</span>
+</code></pre></div></div>
+
+<h3 id="grafana-data-source-setup-and-zero-query-modification-transition">Grafana Data Source Setup and Zero-Query-Modification Transition</h3>
+
+<p>Connecting VictoriaMetrics to a Grafana environment—such as the one configured in the <a href="/category/monitoring/what-is-grafana-installation/">Grafana Installation Guide (Helm-based)</a>—requires no dashboard refactoring. Because VictoriaMetrics provides an API fully compatible with Prometheus, Grafana’s data source type remains set to <code class="language-plaintext highlighter-rouge">prometheus</code>, requiring only an update to the HTTP endpoint URL.</p>
+
+<p>In Grafana’s <code class="language-plaintext highlighter-rouge">datasources.yaml</code> provisioning file:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="m">1</span>
+<span class="na">datasources</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">VictoriaMetrics</span>
+    <span class="na">type</span><span class="pi">:</span> <span class="s">prometheus</span>
+    <span class="na">access</span><span class="pi">:</span> <span class="s">proxy</span>
+    <span class="na">url</span><span class="pi">:</span> <span class="s">http://vmsingle-victoria-metrics-single-server.monitoring.svc.cluster.local:8428</span>
+    <span class="na">isDefault</span><span class="pi">:</span> <span class="kc">true</span>
+    <span class="na">jsonData</span><span class="pi">:</span>
+      <span class="na">httpMethod</span><span class="pi">:</span> <span class="s">POST</span>
+      <span class="na">timeInterval</span><span class="pi">:</span> <span class="s">15s</span>
+</code></pre></div></div>
+
+<p>In Cluster mode, set the URL to <code class="language-plaintext highlighter-rouge">http://vmselect-service:8481/select/0/prometheus/</code>. Once provisioned, existing Kubernetes monitoring dashboards, Node Exporter templates, and custom PromQL alert rules execute identically without modifying a single query.</p>
+
+<p><br /></p>
+
+<h2 id="metricsql-extensions-and-practical-query-optimization">MetricsQL Extensions and Practical Query Optimization</h2>
+
+<h3 id="full-promql-compatibility-and-metricsql-enhancements">Full PromQL Compatibility and MetricsQL Enhancements</h3>
+
+<p>VictoriaMetrics evaluates standard PromQL out of the box. Beyond standard compatibility, it introduces <code class="language-plaintext highlighter-rouge">MetricsQL</code>, an extended query dialect that resolves structural limitations in PromQL and improves query ergonomics.</p>
+
+<p>MetricsQL optimizes subquery execution and supports implicit query conversions, eliminating the need for redundant range vector declarations in common aggregations.</p>
+
+<h3 id="subquery-optimization-and-efficient-rate-evaluation">Subquery Optimization and Efficient rate Evaluation</h3>
+
+<p>In standard PromQL, calculating the rate of change for a counter or gauge across a long window often requires expensive subqueries (such as <code class="language-plaintext highlighter-rouge">[1h:1m]</code>), which frequently trigger query timeouts in high-cardinality environments.</p>
+
+<p>MetricsQL redesigns the internal rollup calculation engine to be cache-aware. It processes subqueries up to an order of magnitude faster and allows omitting explicit step intervals when evaluating rates over extended time windows:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Calculate per-second HTTP request increase rate over 1 hour using a 5-minute subquery window
+rate(http_requests_total[5m])[1h]
+</code></pre></div></div>
+
+<h3 id="preserving-metric-names-with-keep_metric_names-and-tracking-changes">Preserving Metric Names with keep_metric_names and Tracking changes</h3>
+
+<p>A known frustration in PromQL is that transforming functions like <code class="language-plaintext highlighter-rouge">rate()</code> or <code class="language-plaintext highlighter-rouge">increase()</code> automatically strip the metric name label (<code class="language-plaintext highlighter-rouge">__name__</code>). This forces operators to manually reconstruct or remap metric labels when defining alert templates or composite dashboard variables.</p>
+
+<p>MetricsQL introduces the <code class="language-plaintext highlighter-rouge">keep_metric_names</code> modifier to preserve the original metric name across transformation functions:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>rate(http_requests_total[5m]) keep_metric_names
+</code></pre></div></div>
+
+<p>In addition, the <code class="language-plaintext highlighter-rouge">changes</code> function counts how many times a metric’s value has altered over a given duration, providing an effective way to detect flapping status codes, pod restart cycles, or rapid deployment changes early.</p>
+
+<p><br /></p>
+
+<h2 id="non-disruptive-s3-snapshot-backups-and-disaster-recovery-with-vmbackup">Non-Disruptive S3 Snapshot Backups and Disaster Recovery with vmbackup</h2>
+
+<h3 id="instant-snapshots-and-incremental-object-storage-backups">Instant Snapshots and Incremental Object Storage Backups</h3>
+
+<p>Historical metric data serves as essential input for long-term capacity planning, SLA tracking, and incident postmortems. VictoriaMetrics provides <code class="language-plaintext highlighter-rouge">vmbackup</code>, a specialized utility that generates consistent point-in-time snapshots and backs them up incrementally to object storage services like AWS S3 without service interruption.</p>
+
+<p>The backup pipeline proceeds in three steps:</p>
+
+<ol>
+  <li><strong>Snapshot Creation:</strong> An HTTP call to <code class="language-plaintext highlighter-rouge">/snapshot/create</code> freezes data consistency via filesystem hard links in under one second, causing zero degradation to ongoing ingestion or query traffic.</li>
+  <li><strong>Incremental Sync:</strong> The <code class="language-plaintext highlighter-rouge">vmbackup</code> binary reads the snapshot directory, compares existing blocks with remote object storage, and uploads only newly added or modified data blocks.</li>
+  <li><strong>Snapshot Cleanup:</strong> Once the upload finishes, calling <code class="language-plaintext highlighter-rouge">/snapshot/delete</code> removes the local hard links.</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vmbackup <span class="se">\</span>
+  <span class="nt">-storageDataPath</span><span class="o">=</span>/storage <span class="se">\</span>
+  <span class="nt">-snapshot</span>.createURL<span class="o">=</span>http://localhost:8428/snapshot/create <span class="se">\</span>
+  <span class="nt">-dst</span><span class="o">=</span>s3://&lt;your-backup-bucket&gt;/victoriametrics/backup
+</code></pre></div></div>
+
+<h3 id="disaster-recovery-pipeline-with-vmrestore">Disaster Recovery Pipeline with vmrestore</h3>
+
+<p>If a storage volume suffers corruption or a cluster must be recovered in a new environment, <code class="language-plaintext highlighter-rouge">vmrestore</code> pulls snapshot data from S3 directly into the designated local storage path:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vmrestore <span class="se">\</span>
+  <span class="nt">-src</span><span class="o">=</span>s3://&lt;your-backup-bucket&gt;/victoriametrics/backup/latest <span class="se">\</span>
+  <span class="nt">-storageDataPath</span><span class="o">=</span>/storage
+</code></pre></div></div>
+
+<p>Once the files are restored, starting the VictoriaMetrics process immediately serves historical metrics without requiring index rebuilds.</p>
+
+<p><br /></p>
+
+<h2 id="high-cardinality-diagnosis-and-tsdb-tuning-strategies">High Cardinality Diagnosis and TSDB Tuning Strategies</h2>
+
+<h3 id="tracking-cardinality-explosions-via-apiv1statustsdb">Tracking Cardinality Explosions via /api/v1/status/tsdb</h3>
+
+<p>In microservice architectures, high cardinality represents the primary cause of TSDB performance degradation. When application developers attach unbounded labels—such as user IDs, UUIDs, or raw API paths—to metric dimensions, time series count explodes, exhausting memory and stalling queries.</p>
+
+<p>VictoriaMetrics provides a built-in diagnostic endpoint to inspect TSDB cardinality in real time:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-s</span> http://localhost:8428/api/v1/status/tsdb | jq <span class="nb">.</span>
+</code></pre></div></div>
+
+<p>The returned JSON payload highlights the exact dimensions driving index growth:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">seriesCountByMetricName</code>: Top metric names generating the highest number of active time series.</li>
+  <li><code class="language-plaintext highlighter-rouge">labelValueCountByLabelName</code>: Label keys with the highest count of unique label values.</li>
+  <li><code class="language-plaintext highlighter-rouge">seriesCountByLabelValuePair</code>: Specific <code class="language-plaintext highlighter-rouge">label=value</code> pairs accounting for the largest share of stored series.</li>
+</ul>
+
+<p>Reviewing these fields enables operators to quickly identify offending workloads and isolate high-cardinality label keys.</p>
+
+<h3 id="metric-relabel-filtering-and-memory-cache-optimization">Metric Relabel Filtering and Memory Cache Optimization</h3>
+
+<p>When high-cardinality labels like transaction IDs or user IDs are detected, they should be stripped during ingestion using <code class="language-plaintext highlighter-rouge">metric_relabel_configs</code> in <code class="language-plaintext highlighter-rouge">vmagent</code>:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">metric_relabel_configs</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">regex</span><span class="pi">:</span> <span class="s2">"</span><span class="s">(user_id|session_token|request_uuid)"</span>
+    <span class="na">action</span><span class="pi">:</span> <span class="s">labeldrop</span>
+</code></pre></div></div>
+
+<p>In addition, tune memory allocation flags on <code class="language-plaintext highlighter-rouge">vmsingle</code> or <code class="language-plaintext highlighter-rouge">vmstorage</code> to optimize disk caching and prevent memory exhaustion:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">-memory.allowedPercent=80</code>: Limits the process to 80% of total host RAM, leaving 20% for the operating system page cache and preventing kernel OOM-Kills.</li>
+  <li><code class="language-plaintext highlighter-rouge">-search.maxQueryDuration=30s</code>: Enforces a hard 30-second timeout on complex queries to prevent rogue dashboard requests from monopolizing compute resources.</li>
+</ul>
+
+<p><br /></p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>VictoriaMetrics preserves the key advantages of the Prometheus ecosystem—declarative scrape configuration, familiar PromQL syntax, and native Grafana dashboard support—while resolving its primary operational bottlenecks: high memory consumption and local disk I/O exhaustion.</p>
+
+<p>In single-cluster or mid-sized environments, combining <code class="language-plaintext highlighter-rouge">vmsingle</code> with <code class="language-plaintext highlighter-rouge">vmagent</code> provides a low-maintenance, resource-efficient monitoring architecture that handles over a million samples per second. In large enterprise or multi-cluster deployments, switching to VictoriaMetrics Cluster decouples stateless ingestion (<code class="language-plaintext highlighter-rouge">vminsert</code>) and query processing (<code class="language-plaintext highlighter-rouge">vmselect</code>) from stateful storage (<code class="language-plaintext highlighter-rouge">vmstorage</code>), delivering independent horizontal scalability and high availability.</p>
+
+<p>For teams struggling with Prometheus memory crashes or hesitant to manage the distributed operational complexity of Thanos, adopting VictoriaMetrics with <code class="language-plaintext highlighter-rouge">vmagent</code> provides an efficient, reliable, and production-tested metric pipeline.</p>
+
+<p><br /></p>
+
+<hr />
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://docs.victoriametrics.com/">VictoriaMetrics Documentation</a></li>
+  <li><a href="https://github.com/VictoriaMetrics/VictoriaMetrics">VictoriaMetrics GitHub Repository</a></li>
+  <li><a href="https://github.com/VictoriaMetrics/helm-charts">VictoriaMetrics Helm Charts Repository</a></li>
+  <li><a href="https://docs.victoriametrics.com/victoriametrics/vmagent/">VictoriaMetrics vmagent Documentation</a></li>
+  <li><a href="https://docs.victoriametrics.com/victoriametrics/metricsql/">VictoriaMetrics MetricsQL Documentation</a></li>
+  <li><a href="https://docs.victoriametrics.com/victoriametrics/vmbackup/">VictoriaMetrics vmbackup Documentation</a></li>
+  <li><a href="https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/">VictoriaMetrics Cluster Architecture Documentation</a></li>
+  <li><a href="/category/monitoring/prometheus-thanos/">What is Prometheus and Thanos?</a></li>
+  <li><a href="/category/monitoring/prometheus-thanos-install/">Installing Prometheus and Thanos with Helm</a></li>
+  <li><a href="/category/monitoring/what-is-grafana-installation/">Grafana Installation Guide (Helm-based)</a></li>
+</ul>
+
+
+                <!-- Pagination links -->
+
+
+            </article>
+
+            
+                <aside class="see-also">
+                    <h2>See also</h2>
+                    <ul>
+                        
+                        
+                        
+                            <li>
+                                <a href="/category/kubernetes/kubernetes-chaos-mesh-hypothesis-testing-guide/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1793870467/kubernetes-chaos-mesh-hypothesis-testing-guide_hofvji.png" alt="Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster">
+                                    
+                                    <h3>Testing Failure Hypotheses with Chaos Mesh on a Local kind Cluster</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/virtualization/libvirt-virsh/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1755587965/libvirt-virsh_hb18ke.png" alt="Libvirt Complete Guide - Linux Virtualization Management Tool">
+                                    
+                                    <h3>Libvirt Complete Guide - Linux Virtualization Management Tool</h3>
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a href="/category/aws/aws-vpc-peering-transit-gateway/">
+                                    
+                                        <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1793693658/453-network-comparison_j70dxa.png" alt="AWS Network Connection Methods Complete Comparison - VPC Peering vs Transit Gateway vs VPN">
+                                    
+                                    <h3>AWS Network Connection Methods Complete Comparison - VPC Peering vs Transit Gateway vs VPN</h3>
+                                </a>
+                            </li>
+                        
+                    </ul>
+                </aside>
+            
+
+        </section>
+
+        <!-- Add time bar only for pages without pagination -->
+        
+            <div class="time-bar" data-minutes="14">
+    <span class="time-completed"></span>
+    <span class="time-remaining"></span>
+    <div class="bar">
+        <span class="completed" style="width:0%;"></span>
+        <span class="remaining" style="width:100%;"></span>
+    </div>
+</div>
+
+            <button class="toggle-preview" onclick="togglePreview()">
+    <span>Hide Preview ▼</span>
+</button>
+
+<div id="recommendationSection" class="recommendation">
+    <div class="message">
+        <strong>Why don't you read something next?</strong>
+        <div>
+            <button>
+                <svg><use xlink:href="#icon-arrow-right"></use></svg>
+                <span>Go back to top</span>
+            </button>
+        </div>
+    </div>
+    <div id="previewSection" class="preview-section">
+        
+        <a href="/category/linux/linux-ebpf-bpftrace-bcc-system-analysis-guide/" class="post-preview">
+            <div class="image">
+                
+                    <img src="https://res.cloudinary.com/dkcm26aem/image/upload/f_auto,q_auto,c_limit,w_1600/c_scale,w_380/v1794382227/linux-ebpf-bpftrace-bcc-system-analysis-guide_c9lpbv.png" alt="Linux eBPF Tracing Guide: System Analysis with bpftrace and BCC">
+                
+            </div>
+            <h3 class="title">Linux eBPF Tracing Guide: System Analysis with bpftrace and BCC</h3>
+        </a>
+    </div>
+</div>
+
+<style>
+.toggle-preview {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.toggle-preview:hover {
+    background: #444;
+}
+
+.toggle-preview.visible {
+    opacity: 1;
+}
+
+.recommendation {
+    margin-top: 1000px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.recommendation.hidden {
+    display: none;
+}
+
+.hide-preview {
+    margin-left: 10px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hide-preview:hover {
+    background: #f0f0f0;
+}
+
+.preview-section {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.preview-section.hidden {
+    max-height: 0;
+}
+</style>
+
+<script>
+function togglePreview() {
+    const recommendation = document.getElementById('recommendationSection');
+    const button = document.querySelector('.toggle-preview span');
+    
+    if (recommendation.classList.contains('hidden')) {
+        recommendation.classList.remove('hidden');
+        button.textContent = 'Hide Preview ▼';
+    } else {
+        recommendation.classList.add('hidden');
+        button.textContent = 'Show Preview ▲';
+    }
+}
+
+window.addEventListener('scroll', function() {
+    const toggleButton = document.querySelector('.toggle-preview');
+    const recommendation = document.getElementById('recommendationSection');
+    const rect = recommendation.getBoundingClientRect();
+    
+    if (rect.top <= window.innerHeight) {
+        toggleButton.classList.add('visible');
+    } else {
+        toggleButton.classList.remove('visible');
+    }
+});
+</script>
+
+        
+
+        <!-- Show modal if the post is the last one -->
+        
+
+        <!-- Show modal before user leaves the page -->
+        
+
+        <!-- Add your newsletter subscription form here -->
+
+        <section class="share">
+    <h3>Share</h3>
+    <a aria-label="Share on Twitter" href="https://twitter.com/intent/tweet?text=&quot;How to build a reliable metrics pipeline with VictoriaMetrics and vmagent, replacing Prometheus memory bottlenecks and Thanos complexity. Covers vmsingle vs Cluster architecture, disk-buffered ingestion, Helm deployment, Grafana integration, MetricsQL, and vmbackup S3 snapshots.&quot;%20https://somaz.blog/category/monitoring/victoriametrics-vmagent-metrics-pipeline-guide/%20via%20&#64;&hashtags=victoriametrics,vmagent,metricsql,tsdb,prometheus,observability,monitoring,kubernetes,grafana,helm,thanos,devops"
+    onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;" title="Share on Twitter">
+        <svg class="icon icon-twitter"><use xlink:href="#icon-twitter"></use></svg>
+    </a>
+    <a aria-label="Share on Facebook" href="https://www.facebook.com/sharer/sharer.php?u=https://somaz.blog/category/monitoring/victoriametrics-vmagent-metrics-pipeline-guide/"
+    onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;" title="Share on Facebook">
+        <svg class="icon icon-facebook"><use xlink:href="#icon-facebook"></use></svg>
+    </a>
+</section>
+
+        
+
+  <section class="author">
+    <div class="details">
+      
+        <img class="img-rounded" src="/assets/img/uploads/profile-400.jpg" alt="Somaz">
+      
+      <p class="def">Author</p>
+      <h3 class="name">
+        <a href="/authors/somaz/">Somaz</a>
+      </h3>
+      <p class="desc">DevOps engineer focused on cloud infrastructure and automation</p>
+      <p>
+        
+          <a href="https://github.com/somaz94" title="Github">
+            <svg><use xlink:href="#icon-github"></use></svg>
+          </a>
+        
+        
+        
+        
+        
+        
+          <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+            <svg><use xlink:href="#icon-linkedin"></use></svg>
+          </a>
+        
+        
+          <a href="https://somaz.tistory.com" title="Tistory">
+            <svg><use xlink:href="#icon-tistory"></use></svg>
+          </a>
+        
+      </p>
+    </div>
+  </section>
+
+
+
+        
+
+<section class="comments">
+    <h3>Comments</h3>
+    <div id="disqus_thread"></div>
+</section>
+<script type="text/javascript">
+    var disqus_loaded = false;
+
+    function load_disqus()
+    {
+        disqus_loaded = true;
+        var disqus_shortname = 'https-somaz94-github-io';
+        var disqus_title = '';
+        var disqus_url = '/category/monitoring/victoriametrics-vmagent-metrics-pipeline-guide/';
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        var ldr = document.getElementById('disqus_loader');
+    };
+    window.onscroll = function(e) {
+        if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 800)) {
+            //hit bottom of page
+            if (disqus_loaded==false)
+                load_disqus()
+        }
+    };
+</script>
+
+
+
+        <footer>
+    <p>
+      
+        <a href="https://github.com/somaz94" title="Github">
+          <svg><use xlink:href="#icon-github"></use></svg>
+        </a>
+      
+      
+      
+      
+      
+      
+        <a href="https://www.linkedin.com/in/somaz" title="LinkedIn">
+          <svg><use xlink:href="#icon-linkedin"></use></svg>
+        </a>
+      
+      
+        <a href="https://somaz.tistory.com" title="Tistory">
+          <svg><use xlink:href="#icon-tistory"></use></svg>
+        </a>
+      
+    </p>
+
+    <ul>
+  
+    
+      <li>
+        <a href="https://somaz.blog/">Home</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/about/">About</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/category/">Category</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/tools/">Tools</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/contact/">Contact</a>
+      </li>
+    
+  
+    
+      <li>
+        <a href="https://somaz.blog/feed.xml">Feed</a>
+      </li>
+    
+  
+</ul>
+
+
+    <p>
+      <a href="https://somaz.blog/sitemap.xml" title="sitemap">Sitemap</a> |
+      <a href="https://somaz.blog/privacy-policy" title="Privacy Policy">Privacy Policy</a>
+    </p>
+
+    <p>
+      <span>Somaz Tech Blog</span> <svg class="love"><use xlink:href="#icon-heart"></use></svg>
+    </p>
+
+    <p class="copyright">
+      &copy; Somaz. All rights reserved.<br />
+      Articles may not be reproduced or redistributed without permission.
+      Code samples are free to use.
+    </p>
+</footer>
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://somaz.blog/#organization",
+  "name": "somaz",
+  "description": "DevOps engineer's tech blog.",
+  "url": "https://somaz.blog/",
+  "logo": {
+      "@type": "ImageObject",
+      "url": "https://somaz.blog/assets/img/icons/mediumtile.png",
+      "width": 600,
+      "height": 315
+  },
+  "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+</script>
+
+<!-- Include the website scripts -->
+<script src="/assets/js/scripts.min.js"></script>
+
+<!-- Include extra scripts -->
+
+
+        
+        
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": "VictoriaMetrics Guide: Long-Term Prometheus Storage with vmagent",
+            "alternativeHeadline": "Replace Prometheus memory bottlenecks and Thanos operational complexity with vmsingle, lossless disk-buffered vmagent ingestion, and native MetricsQL.",
+            "description": "How to build a reliable metrics pipeline with VictoriaMetrics and vmagent, replacing Prometheus memory bottlenecks and Thanos complexity. Covers vmsingle vs Cluster architecture, disk-buffered ingestion, Helm deployment, Grafana integration, MetricsQL, and vmbackup S3 snapshots.",
+            "image": "https://res.cloudinary.com/dkcm26aem/image/upload/v1794378589/victoriametrics-vmagent-metrics-pipeline-guide_lupwtd.png",
+            "url": "https://somaz.blog/category/monitoring/victoriametrics-vmagent-metrics-pipeline-guide/",
+            "mainEntityOfPage": "https://somaz.blog/category/monitoring/victoriametrics-vmagent-metrics-pipeline-guide/",
+            "articleBody": "Overview As Kubernetes cluster environments scale up, the volume of collected time-series metrics grows exponentially. Ingesting and retaining metrics from hundreds of nodes and tens of thousands of pods with a single Prometheus instance introduces chronic operational risks: high memory consumption leading to OOM-Kills, local disk I/O bottlenecks during long retention periods, and degrading query latencies. While Thanos is frequently adopted as an object storage-backed long-term storage solution, managing its distributed components—Sidecar, Store Gateway, Querier, Compactor, and Receiver—introduces operational complexity and infrastructure maintenance overhead. VictoriaMetrics is an ultra-lightweight, high-performance time-series database (TSDB) engineered to solve these operational pain points. Built with 100% Prometheus scrape configuration compatibility and PromQL support, it consumes 4 to 10 times less memory than Prometheus while delivering storage compression rates of 0.4 to 0.8 bytes per sample. Furthermore, paired with its lightweight collector vmagent, it enables a zero-loss metric ingestion pipeline backed by local disk queue buffering. This guide explores the core architecture of VictoriaMetrics (vmsingle vs Cluster), building a resilient metric pipeline with vmagent, production Helm deployments and seamless Grafana integration, MetricsQL query enhancements, non-disruptive S3 snapshot backups with vmbackup, and high-cardinality diagnosis with TSDB tuning. Prometheus Limitations and VictoriaMetrics Solutions Memory Bottlenecks and Disk I/O Pressure in Large Clusters Prometheus relies on in-memory chunks and local TSDB block structures to deliver high read and write performance. However, this architecture faces structural limits in dynamic, large-scale container environments. When thousands of ephemeral pods churn continuously, newly generated time series explode, driving memory utilization sharply upward. In particular, periodic TSDB block compaction cycles and heavy long-range queries cause memory spikes that routinely trigger pod OOM-Kills. In addition, Prometheus persists data directly to a single node’s local disk. Retaining metrics over several months for capacity planning or compliance escalates disk capacity requirements and I/O load beyond what a single local volume can reliably sustain. Operational Simplicity and Storage Efficiency over Thanos As discussed in earlier posts on What is Prometheus and Thanos? and Installing Prometheus and Thanos with Helm, Thanos offloads metrics to object storage via Prometheus sidecars to provide long-term retention and global query federation. However, managing Thanos in production requires operating multiple decoupled services. Engineering teams must resolve inter-service communication latencies, debug Compactor block overlap failures, and tune Store Gateway index cache memory. VictoriaMetrics delivers equal or superior performance while drastically reducing operational surface area. In single-node deployments, vmsingle runs as a standalone Go binary without external dependencies. In distributed environments, VictoriaMetrics Cluster divides responsibilities into three clear roles: vmstorage, vminsert, and vmselect. Its specialized block compression algorithm achieves 0.4 to 0.8 bytes per sample, cutting storage footprint and disk costs to less than half of Prometheus. Dimension Prometheus Thanos VictoriaMetrics Architecture Monolithic single-node instance Modular distributed microservices (Sidecar, Querier, Store, Compactor) Single binary (vmsingle) or 3 distinct components (Cluster) Memory Footprint High (churn causes frequent OOMs) High (Prometheus scraper + Store Gateway cache) 4–10x lower memory usage than Prometheus Storage Efficiency 1.5–2.5 bytes / sample Prometheus TSDB block format in object storage 0.4–0.8 bytes / sample (custom block compression) Ingestion Buffering Drops samples when memory queue fills Prometheus memory buffer dependent Persistent local disk buffer in vmagent Query Language PromQL PromQL PromQL + extended MetricsQL VictoriaMetrics Core Architecture and Components Single-Binary All-in-One Mode: vmsingle VictoriaMetrics supports two deployment models depending on cluster size and operational requirements: vmsingle and Cluster mode. vmsingle is an all-in-one architecture where ingestion, storage, and query processing execute within a single Go process. Ingestion Throughput: Easily processes over 1,000,000 samples per second on a single modest instance. Operational Simplicity: Stores time-series data directly into a local directory with zero external coordination or database dependencies. Target Use Cases: Optimized for individual Kubernetes clusters spanning dozens to hundreds of nodes, staging and testing environments, and edge infrastructure monitoring. Distributed Cluster Mode: vmstorage, vminsert, and vmselect For large enterprise environments, multi-cluster architectures, or multi-tenant setups requiring horizontal scalability, VictoriaMetrics Cluster mode separates storage from compute, allowing each tier to scale independently. vmstorage: Stateful nodes responsible for storing raw time-series data, indexing label sets, and managing disk I/O. vminsert: Stateless ingestion proxies that receive remote_write payloads from vmagent or Prometheus and distribute samples across vmstorage nodes using consistent hash routing. vmselect: Stateless query routers that process PromQL and MetricsQL requests from Grafana or alerting systems, fetching and aggregating partial results from vmstorage nodes. flowchart TD subgraph Ingestion[\"Ingestion Tier\"] VMAGENT[\"vmagent (Local Disk Buffer)\"] end subgraph Cluster[\"VictoriaMetrics Cluster\"] VMINSERT[\"vminsert (Stateless Ingestion Router)\"] VMSELECT[\"vmselect (Stateless Query Engine)\"] subgraph StorageTier[\"Stateful Storage Tier\"] STORAGE1[\"vmstorage-0\"] STORAGE2[\"vmstorage-1\"] STORAGE3[\"vmstorage-N\"] end end subgraph Visualization[\"Visualization &amp; Alerting\"] GRAFANA[\"Grafana / Alertmanager\"] end VMAGENT --&gt;|remote_write HTTP API| VMINSERT VMINSERT --&gt;|Hash-based Routing| STORAGE1 VMINSERT --&gt;|Hash-based Routing| STORAGE2 VMINSERT --&gt;|Hash-based Routing| STORAGE3 GRAFANA --&gt;|PromQL / MetricsQL| VMSELECT VMSELECT --&gt;|Query Aggregation| STORAGE1 VMSELECT --&gt;|Query Aggregation| STORAGE2 VMSELECT --&gt;|Query Aggregation| STORAGE3 VictoriaMetrics Cluster architecture: decoupled stateless ingestion (vminsert) and query (vmselect) tiers scaling independently above stateful storage nodes (vmstorage) This modular separation prevents resource contention. When write ingestion traffic surges, only vminsert replicas need to scale. When complex dashboards run heavy queries simultaneously, only vmselect replicas need to scale, protecting write performance from query-driven memory pressure. Lightweight Ingestion and Lossless Pipelines with vmagent Full Prometheus Scrape Compatibility and Minimal Footprint vmagent is a purpose-built, ultra-lightweight agent that handles metric scraping and remote_write forwarding. Because it natively supports Prometheus scrape_configs syntax alongside ServiceMonitor and PodMonitor Custom Resource Definitions (CRDs), existing scrape configurations can be transferred directly without modifying a single line of YAML. Unlike a full Prometheus server that combines scraping, indexing, query execution, and TSDB compaction—consuming gigabytes of memory—vmagent strips away the query engine. Scraping hundreds of thousands of targets requires only tens of megabytes of RAM. Local Disk Buffering and Zero-Loss Mechanism The standout capability of vmagent is its integrated local disk queue buffer (-remoteWrite.tmpDataPath). When temporary network partitions occur or the remote storage endpoint becomes unreachable, standard Prometheus drops incoming samples once its in-memory queue reaches capacity. In contrast, vmagent spools undelivered samples to local disk. extraArgs: remoteWrite.tmpDataPath: \"/vmagent-remotewrite-data\" remoteWrite.maxDiskUsagePerURL: \"10737418240\" # Max 10 GiB buffer per destination URL remoteWrite.queues: \"8\" remoteWrite.flushInterval: \"1s\" Once connectivity to the remote storage backend is restored, vmagent replays the buffered data from disk in chronological sequence in the background, guaranteeing lossless metrics ingestion without operator intervention. Multi-Tenancy and Multi-Destination remote_write Routing vmagent natively supports replicating or conditionally routing metrics to multiple destination endpoints from a single collection pipeline: remoteWrite: - url: \"http://vmsingle-victoria-metrics-single-server.monitoring.svc.cluster.local:8428/api/v1/write\" - url: \"http://backup-vminsert.monitoring.svc.cluster.local:8480/insert/0/prometheus/api/v1/write\" urlRelabelConfig: - action: keep source_labels: [__name__] regex: \"(node_.*|container_.*)\" Using urlRelabelConfig, operators can forward all metrics to an operational vmsingle instance while replicating only essential host and container metrics to a secondary long-term storage cluster. Production Helm Deployment and Seamless Grafana Integration Deploying vmsingle and vmagent with Helm Charts Deploying VictoriaMetrics on Kubernetes is streamlined using the official Helm charts repository: helm repo add vm https://victoriametrics.github.io/helm-charts/ helm repo update Create a production-tuned values-vmsingle.yaml manifest configuring retention periods, persistent volume storage, and memory limits: server: image: tag: \"v1.106.1\" retentionPeriod: \"12M\" # 12-month retention period persistentVolume: enabled: true size: 150Gi storageClassName: \"gp3\" resources: limits: cpu: \"4\" memory: \"8Gi\" requests: cpu: \"1\" memory: \"2Gi\" extraArgs: memory.allowedPercent: \"80\" search.maxQueryDuration: \"30s\" search.maxConcurrentRequests: \"16\" Deploy the vmsingle server into the monitoring namespace: helm upgrade --install vmsingle vm/victoria-metrics-single \\ --namespace monitoring \\ --create-namespace \\ -f values-vmsingle.yaml Next, deploy vmagent configured to scrape cluster metrics and forward them to the vmsingle service endpoint: helm upgrade --install vmagent vm/victoria-metrics-agent \\ --namespace monitoring \\ --set remoteWrite[0].url=\"http://vmsingle-victoria-metrics-single-server.monitoring.svc.cluster.local:8428/api/v1/write\" \\ --set extraArgs.remoteWrite\\.tmpDataPath=\"/vmagent-remotewrite-data\" Grafana Data Source Setup and Zero-Query-Modification Transition Connecting VictoriaMetrics to a Grafana environment—such as the one configured in the Grafana Installation Guide (Helm-based)—requires no dashboard refactoring. Because VictoriaMetrics provides an API fully compatible with Prometheus, Grafana’s data source type remains set to prometheus, requiring only an update to the HTTP endpoint URL. In Grafana’s datasources.yaml provisioning file: apiVersion: 1 datasources: - name: VictoriaMetrics type: prometheus access: proxy url: http://vmsingle-victoria-metrics-single-server.monitoring.svc.cluster.local:8428 isDefault: true jsonData: httpMethod: POST timeInterval: 15s In Cluster mode, set the URL to http://vmselect-service:8481/select/0/prometheus/. Once provisioned, existing Kubernetes monitoring dashboards, Node Exporter templates, and custom PromQL alert rules execute identically without modifying a single query. MetricsQL Extensions and Practical Query Optimization Full PromQL Compatibility and MetricsQL Enhancements VictoriaMetrics evaluates standard PromQL out of the box. Beyond standard compatibility, it introduces MetricsQL, an extended query dialect that resolves structural limitations in PromQL and improves query ergonomics. MetricsQL optimizes subquery execution and supports implicit query conversions, eliminating the need for redundant range vector declarations in common aggregations. Subquery Optimization and Efficient rate Evaluation In standard PromQL, calculating the rate of change for a counter or gauge across a long window often requires expensive subqueries (such as [1h:1m]), which frequently trigger query timeouts in high-cardinality environments. MetricsQL redesigns the internal rollup calculation engine to be cache-aware. It processes subqueries up to an order of magnitude faster and allows omitting explicit step intervals when evaluating rates over extended time windows: # Calculate per-second HTTP request increase rate over 1 hour using a 5-minute subquery window rate(http_requests_total[5m])[1h] Preserving Metric Names with keep_metric_names and Tracking changes A known frustration in PromQL is that transforming functions like rate() or increase() automatically strip the metric name label (__name__). This forces operators to manually reconstruct or remap metric labels when defining alert templates or composite dashboard variables. MetricsQL introduces the keep_metric_names modifier to preserve the original metric name across transformation functions: rate(http_requests_total[5m]) keep_metric_names In addition, the changes function counts how many times a metric’s value has altered over a given duration, providing an effective way to detect flapping status codes, pod restart cycles, or rapid deployment changes early. Non-Disruptive S3 Snapshot Backups and Disaster Recovery with vmbackup Instant Snapshots and Incremental Object Storage Backups Historical metric data serves as essential input for long-term capacity planning, SLA tracking, and incident postmortems. VictoriaMetrics provides vmbackup, a specialized utility that generates consistent point-in-time snapshots and backs them up incrementally to object storage services like AWS S3 without service interruption. The backup pipeline proceeds in three steps: Snapshot Creation: An HTTP call to /snapshot/create freezes data consistency via filesystem hard links in under one second, causing zero degradation to ongoing ingestion or query traffic. Incremental Sync: The vmbackup binary reads the snapshot directory, compares existing blocks with remote object storage, and uploads only newly added or modified data blocks. Snapshot Cleanup: Once the upload finishes, calling /snapshot/delete removes the local hard links. vmbackup \\ -storageDataPath=/storage \\ -snapshot.createURL=http://localhost:8428/snapshot/create \\ -dst=s3://&lt;your-backup-bucket&gt;/victoriametrics/backup Disaster Recovery Pipeline with vmrestore If a storage volume suffers corruption or a cluster must be recovered in a new environment, vmrestore pulls snapshot data from S3 directly into the designated local storage path: vmrestore \\ -src=s3://&lt;your-backup-bucket&gt;/victoriametrics/backup/latest \\ -storageDataPath=/storage Once the files are restored, starting the VictoriaMetrics process immediately serves historical metrics without requiring index rebuilds. High Cardinality Diagnosis and TSDB Tuning Strategies Tracking Cardinality Explosions via /api/v1/status/tsdb In microservice architectures, high cardinality represents the primary cause of TSDB performance degradation. When application developers attach unbounded labels—such as user IDs, UUIDs, or raw API paths—to metric dimensions, time series count explodes, exhausting memory and stalling queries. VictoriaMetrics provides a built-in diagnostic endpoint to inspect TSDB cardinality in real time: curl -s http://localhost:8428/api/v1/status/tsdb | jq . The returned JSON payload highlights the exact dimensions driving index growth: seriesCountByMetricName: Top metric names generating the highest number of active time series. labelValueCountByLabelName: Label keys with the highest count of unique label values. seriesCountByLabelValuePair: Specific label=value pairs accounting for the largest share of stored series. Reviewing these fields enables operators to quickly identify offending workloads and isolate high-cardinality label keys. Metric Relabel Filtering and Memory Cache Optimization When high-cardinality labels like transaction IDs or user IDs are detected, they should be stripped during ingestion using metric_relabel_configs in vmagent: metric_relabel_configs: - regex: \"(user_id|session_token|request_uuid)\" action: labeldrop In addition, tune memory allocation flags on vmsingle or vmstorage to optimize disk caching and prevent memory exhaustion: -memory.allowedPercent=80: Limits the process to 80% of total host RAM, leaving 20% for the operating system page cache and preventing kernel OOM-Kills. -search.maxQueryDuration=30s: Enforces a hard 30-second timeout on complex queries to prevent rogue dashboard requests from monopolizing compute resources. Conclusion VictoriaMetrics preserves the key advantages of the Prometheus ecosystem—declarative scrape configuration, familiar PromQL syntax, and native Grafana dashboard support—while resolving its primary operational bottlenecks: high memory consumption and local disk I/O exhaustion. In single-cluster or mid-sized environments, combining vmsingle with vmagent provides a low-maintenance, resource-efficient monitoring architecture that handles over a million samples per second. In large enterprise or multi-cluster deployments, switching to VictoriaMetrics Cluster decouples stateless ingestion (vminsert) and query processing (vmselect) from stateful storage (vmstorage), delivering independent horizontal scalability and high availability. For teams struggling with Prometheus memory crashes or hesitant to manage the distributed operational complexity of Thanos, adopting VictoriaMetrics with vmagent provides an efficient, reliable, and production-tested metric pipeline. References VictoriaMetrics Documentation VictoriaMetrics GitHub Repository VictoriaMetrics Helm Charts Repository VictoriaMetrics vmagent Documentation VictoriaMetrics MetricsQL Documentation VictoriaMetrics vmbackup Documentation VictoriaMetrics Cluster Architecture Documentation What is Prometheus and Thanos? Installing Prometheus and Thanos with Helm Grafana Installation Guide (Helm-based)",
+            "wordCount": 2637,
+            "inLanguage": "en",
+            "datePublished": "2026-11-17T00:00:00+00:00",
+            "author": {
+    "@type": "Person",
+    "@id": "https://somaz.blog/authors/somaz/#person",
+    "name": "Somaz",
+    "image": "https://somaz.blog/assets/img/uploads/profile-400.jpg",
+    "jobTitle": "DevOps Engineer",
+    "url": "https://somaz.blog/authors/somaz/",
+    "sameAs": ["https://github.com/somaz94","https://www.linkedin.com/in/somaz","https://somaz.tistory.com"]
+}
+,
+            "publisher": { "@id": "https://somaz.blog/#organization" },
+            "articleSection": "Monitoring",
+            "keywords": ["victoriametrics","vmagent","metricsql","tsdb","prometheus","observability","monitoring","kubernetes","grafana","helm","thanos","devops"]
+        }
+        </script>
+    </body>
+</html>
